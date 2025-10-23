@@ -3991,7 +3991,7 @@ Valid parameters depend on the configured logical decoding plug-in.
 Parameters that are not relevant to the configured plug-in are ignored.
 
 ifdef::community[]
-Valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
+Some valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
 +
 For example,
 
@@ -4000,7 +4000,7 @@ For example,
 These options can help to prevent memory-related problems when the plugin handles large transactions.
 endif::community[]
 
-Valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
+Some valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
 +
 For example,
 
