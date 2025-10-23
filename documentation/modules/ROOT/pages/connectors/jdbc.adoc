@@ -495,56 +495,101 @@ If the database does not support time or timestamps with time zones, the mapping
 
 .Mappings between {prodname} dialect-specific logical types and column data types
 |===
-|Logical Type |MySQL SQL Type |PostgreSQL SQL Type |SQL Server SQL Type
+|Logical Type |Db2 Type |MySQL Type |PostgreSQL Type |Oracle Type |SQL Server Type
 
 |io.debezium.data.Bits
+|`blob`
 |`bit(n)`
-|`bit(n)` or `bit varying`
+|`bit varying` +
+`bit(n)`*
+|`blob`
 |`varbinary(n)`
 
 |io.debezium.data.Enum
+|n/a
 |`enum`
-|Types.VARCHAR
+|`text`
+|n/a
 |n/a
 
 |io.debezium.data.Json
+|`clob`
+|`json`
 |`json`
 |`json`
 |n/a
 
 |io.debezium.data.EnumSet
+|n/a
 |`set`
+|n/a
 |n/a
 |n/a
 
 |io.debezium.time.Year
+|`integer`
 |`year(n)`
-|n/a
-|n/a
+|`int4`
+|`number`
+|`int`
 
 |io.debezium.time.MicroDuration
-|n/a
+|`bigint`
 |`interval`
-|n/a
+|`int8`
+|`number`
+|`bigint`
 
 |io.debezium.data.Ltree
-|n/a
+|`clob` +
+`varchar(n)`*
+|`longtext` +
+`varchar`*
 |`ltree`
-|n/a
+|`clob` +
+`varchar2(n)`*
+|`varchar`
 
 |io.debezium.data.Uuid
-|n/a
+|`clob` +
+`varchar(n)`*
 |`uuid`
-|n/a
+|`text` +
+`varchar(n)`*
+|`clob` +
+`varchar2(n)`*
+|`varchar`
 
 |io.debezium.data.Xml
+|`clob`
+|`longtext`
+|`xml`
+|`xmltype`
+|`xml`
+
+|io.debezium.data.Geography
 |n/a
-|`xml`
-|`xml`
+|`geometry`
+|`postgis.geography`
+|`sdo_geometry`
+|`geometry`
+
+
+|io.debezium.data.Geometry
+|n/a
+|`geometry`
+|`postgis.geometry`
+|`sdo_geometry`
+|`geometry`
 
 |===
 
+[IMPORTANT]
+====
+When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
 
+When consuming changes from topics populated by a {prodname} source connector, enable either `column.propagate.source.type` or `datatype.propagate.source.type` in the source connector configuration to pass column metadata that the JDBC connector will use to construct columns with a stricter concrete data type, shown as the second type.
+====
 
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
