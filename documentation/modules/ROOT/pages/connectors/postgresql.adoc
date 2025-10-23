@@ -4005,13 +4005,12 @@ For example,
 
 Use these options to customize streaming behavior related to transaction boundaries, multi-phase commits, and replication filtering.
 
-
 [NOTE]
 ====
 The parameters that are available for use with the `pgoutput` plug-in depend on the `proto_version`, which defines the version of the logical streaming replication protocol, and which is specified when you create the replication slot.
-Currently, if you configure {prodname} to create replication slots automatically, the value of `proto_version` is hardcoded to `1`.
+If you configure {prodname} to create replication slots automatically, the value of `proto_version` is hardcoded to `1`.
 This version of the protocol does not support streaming of large in-progress transactions, or the use of two-phase commits.
-To take advantage of those features, you must create slots manually and set the `proto_version` to a higher value.
+To take advantage of those features, create slots manually and set the `proto_version` to a higher value.
 For more information, see the https://www.postgresql.org/docs/18/protocol-logical-replication.html[PostgreSQL documentation].
 ====
 
