@@ -190,6 +190,60 @@
                                 <mode>override</mode>
                             </external>
                         </image>
+                        <image>
+                            <alias>alternative</alias>
+                            <name>debezium/mariadb-server-test-database-alternative</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MARIADB_ROOT_PASSWORD>debezium-rocks</MARIADB_ROOT_PASSWORD>
+                                    <MARIADB_USER>mariadbuser</MARIADB_USER>
+                                    <MARIADB_PASSWORD>mariadbpwd</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
+                                </env>
+                                <ports>
+                                    <port>3307:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mariadb</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>(MariaDB) init process done. Ready for start up.(?s)(.*)(mariadbd): ready for connections.</log>
+                                    <time>60000</time>
+                                </wait>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/main/resources/sql/alternative/alternative.sql:/docker-entrypoint-initdb.d/alternative.sql</volume>
+                                    </bind>
+                                </volumes>
+                            </run>
+                            <build>
+                                <from>mirror.gcr.io/library/mariadb:11.4.3</from>
+                                <runCmds>
+                                    <run>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/main/resources/configuration</directory>
+                                                <includes>
+                                                    <include>mariadb.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
                     </images>
                 </configuration>
             </plugin>
