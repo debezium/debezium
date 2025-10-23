@@ -43,6 +43,15 @@ public class AgroalDatasourceConfiguration implements QuarkusDatasourceConfigura
 
     @Override
     public Map<String, String> asDebezium() {
+        if (database == null) {
+            return Map.of(
+                    "name", name.replaceAll("[<>]", ""),
+                    DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name(), host,
+                    DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT.name(), port,
+                    DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER.name(), username,
+                    DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD.name(), password);
+        }
+
         return Map.of(
                 "name", name.replaceAll("[<>]", ""),
                 DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name(), host,
