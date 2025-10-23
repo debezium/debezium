@@ -25,6 +25,6 @@ public class TestingAntlrDdlParser extends AbstractDdlParser {
 
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
-
+        return new DdlChanges();
     }
 }

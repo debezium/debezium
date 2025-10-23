@@ -305,9 +305,10 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
             return schemaChangeEvents;
         }
 
+        DdlChanges ddlChanges = new DdlChanges();
         try {
             this.ddlParser.setCurrentSchema(databaseName);
-            this.ddlParser.parse(ddlStatements, tables());
+            ddlChanges = this.ddlParser.parse(ddlStatements, tables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDdlStatements()) {
@@ -317,8 +318,6 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 throw e;
             }
         }
-
-        DdlChanges ddlChanges = this.ddlParser.getAndResetDdlChanges();
 
         // No need to send schema events or store DDL if no table has changed
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
