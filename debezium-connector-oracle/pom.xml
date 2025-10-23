@@ -71,12 +71,10 @@
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xdb</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xmlparserv2</artifactId>
-            <scope>provided</scope>
         </dependency>
         <!-- Dependencies for OpenLogReplicator -->
         <dependency>
