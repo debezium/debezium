@@ -3987,22 +3987,25 @@ Set a delay value that is higher than the value of the {link-kafka-docs}/#connec
 |No default
 |A list of optional key-value pairs, separated by semicolons, that represent parameters that the connector passes to the configured PostgreSQL logical decoding plug-in when the replication stream starts.
 The connector passes the specified parameters as-is to the plug-in.
+Valid parameters depend on the configured logical decoding plug-in.
 Parameters that are not relevant to the configured plug-in are ignored.
 
 ifdef::community[]
-For the `decoderbufs` plug-in, valid parameters include `include-xacts`, `write-in-chunks`, and `chunk-size`.
+Valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
++
 For example,
 
  include-xacts=true;write-in-chunks=true;chunk-size=65536
-
++
 These options can help to prevent memory-related problems when the plugin handles large transactions.
 endif::community[]
 
-Valid parameters for use with the `pgoutput` plug-in, include `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, and `origin`.
+Valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
++
 For example,
 
  publicationnames=dbzpublication;messages=true;binary=true;two_phase=true;origin=any
-
++
 Use these options to customize streaming behavior related to transaction boundaries, multi-phase commits, and replication filtering.
 
 [NOTE]
