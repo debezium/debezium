@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.Alpha1
+October 23rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466509)
+
+### New features since 3.3.0.Final
+
+* Support Redis Cluster mode in the Debezium Redis sink module [DBZ-9226](https://issues.redhat.com/browse/DBZ-9226)
+* Apply query.fetch.size universally to all Oracle non-snapshot queries [DBZ-9448](https://issues.redhat.com/browse/DBZ-9448)
+* Update documentation to Readonly mode [DBZ-9466](https://issues.redhat.com/browse/DBZ-9466)
+* Apply mining upper boundary to avoid PGA_AGGREGATE_LIMIT [DBZ-9476](https://issues.redhat.com/browse/DBZ-9476)
+* Upgrade Apicurio to version 2.6.13.Final [DBZ-9491](https://issues.redhat.com/browse/DBZ-9491)
+* Add support for SDO_GEOMETRY columns in jdbc-connector [DBZ-9508](https://issues.redhat.com/browse/DBZ-9508)
+* MongoDB docker image with replica set enabled [DBZ-9516](https://issues.redhat.com/browse/DBZ-9516)
+* Use Jakarta variant of ehcache [DBZ-9517](https://issues.redhat.com/browse/DBZ-9517)
+* Add support for PostgreSQL 18 [DBZ-9523](https://issues.redhat.com/browse/DBZ-9523)
+* Support TOKENLIST datatype in Spanner connector [DBZ-9526](https://issues.redhat.com/browse/DBZ-9526)
+* Introduce a Swap Geometry Coordinate System Transform [DBZ-9556](https://issues.redhat.com/browse/DBZ-9556)
+
+
+### Breaking changes since 3.3.0.Final
+
+* IBMI Connector | Add Trim Config (trailing trim only) [DBZ-8835](https://issues.redhat.com/browse/DBZ-8835)
+* Drop support for PostgreSQL 13 [DBZ-9376](https://issues.redhat.com/browse/DBZ-9376)
+* Add LogMiner metrics for mining range [DBZ-9545](https://issues.redhat.com/browse/DBZ-9545)
+
+
+### Fixes since 3.3.0.Final
+
+* Can bind a LONG value only for insert into a LONG column [DBZ-8276](https://issues.redhat.com/browse/DBZ-8276)
+* Oracle Connector stops mining on REVOKE FLASHBACK on ... [DBZ-9112](https://issues.redhat.com/browse/DBZ-9112)
+* MariaDB Connector Fails to Parse DDL for System-Versioned Table with Custom ROW START/ROW END Columns [DBZ-9411](https://issues.redhat.com/browse/DBZ-9411)
+* MySQL example container images are not properly configured [DBZ-9485](https://issues.redhat.com/browse/DBZ-9485)
+* Debezium platform conductor service fails on /q/openapi [DBZ-9496](https://issues.redhat.com/browse/DBZ-9496)
+* Oracle pom does not trigger annotation processors across profiles for Java 25 [DBZ-9513](https://issues.redhat.com/browse/DBZ-9513)
+* Only log an error when the dump folder is provided but doesn't exist [DBZ-9519](https://issues.redhat.com/browse/DBZ-9519)
+* Events are mistakenly skipped during commit dispatch when LOB is enabled  [DBZ-9521](https://issues.redhat.com/browse/DBZ-9521)
+* Missing OpenLineage Complete event during gracefully shutdown [DBZ-9524](https://issues.redhat.com/browse/DBZ-9524)
+* Correct type is not used for the PORT field in the connection payload [DBZ-9530](https://issues.redhat.com/browse/DBZ-9530)
+* Oracle alter DDL to move partition/subpartition fails to be parsed [DBZ-9534](https://issues.redhat.com/browse/DBZ-9534)
+* SchemaUtil creates invalid JSON [DBZ-9540](https://issues.redhat.com/browse/DBZ-9540)
+* Test shouldNotFailToStartWhenSignalDataCollectionNotDefinedWithinTableIncludeList does not work with non-CDB images [DBZ-9544](https://issues.redhat.com/browse/DBZ-9544)
+* Deadlock due to lost interrupt with blc keep alive thread [DBZ-9548](https://issues.redhat.com/browse/DBZ-9548)
+* Timestamp values cause NPE in Postgres on JDK23+ [DBZ-9558](https://issues.redhat.com/browse/DBZ-9558)
+
+
+### Other changes since 3.3.0.Final
+
+* Enable OpenLineage output dataset events on Debezium Server [DBZ-9059](https://issues.redhat.com/browse/DBZ-9059)
+* Multi-engine Support [DBZ-9160](https://issues.redhat.com/browse/DBZ-9160)
+* Align Debezium Oracle DDL grammar with upstream [DBZ-9302](https://issues.redhat.com/browse/DBZ-9302)
+* Update docs about new chart versioning [DBZ-9365](https://issues.redhat.com/browse/DBZ-9365)
+* Clarify the use of $$ for escaping $-based variable substitutions in Debezium Server [DBZ-9385](https://issues.redhat.com/browse/DBZ-9385)
+* Update Quarkus platform on Debezium Platform  [DBZ-9418](https://issues.redhat.com/browse/DBZ-9418)
+* Blog post on how add a new table to capture list [DBZ-9507](https://issues.redhat.com/browse/DBZ-9507)
+* Doc: Document metric `NumberOfErroneousEvents` [DBZ-9510](https://issues.redhat.com/browse/DBZ-9510)
+* Replace Kafka cluster test infra with test containers based [DBZ-9512](https://issues.redhat.com/browse/DBZ-9512)
+* Update service-provider-enforcer-rule [DBZ-9525](https://issues.redhat.com/browse/DBZ-9525)
+* Oracle test shouldHandleParentChildIndexOrganizedTables randomly fails  [DBZ-9528](https://issues.redhat.com/browse/DBZ-9528)
+* Oracle TestHelper#dropTable should retry on resource locks [DBZ-9529](https://issues.redhat.com/browse/DBZ-9529)
+* Add support to show the Active count in the Connection page [DBZ-9531](https://issues.redhat.com/browse/DBZ-9531)
+* Refactor CdcSourceTaskContext [DBZ-9542](https://issues.redhat.com/browse/DBZ-9542)
+* Add basic UI validation in the Pipeline package specific log configuration options [DBZ-9561](https://issues.redhat.com/browse/DBZ-9561)
+* Send the signal.data.collection property in the source payload only when its added [DBZ-9562](https://issues.redhat.com/browse/DBZ-9562)
+* Use StrimziKafkaCluster instead of custom made KafkaCluster class [DBZ-9565](https://issues.redhat.com/browse/DBZ-9565)
+* Update Debezium Quarkus and Outbox Extensions to Quarkus 3.28.4 [DBZ-9568](https://issues.redhat.com/browse/DBZ-9568)
+* Update Debezium Server/Operator to Quarkus 3.20.3 [DBZ-9569](https://issues.redhat.com/browse/DBZ-9569)
+* Improve Informix pom to be similar to the debezium/debezium ones.  [DBZ-9576](https://issues.redhat.com/browse/DBZ-9576)
+* Update MongoDB driver to 5.5.1 [DBZ-9585](https://issues.redhat.com/browse/DBZ-9585)
+
+
+
 ## 3.3.0.Final
 October 1st 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469379)
 
