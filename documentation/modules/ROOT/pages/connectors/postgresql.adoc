@@ -3993,20 +3993,22 @@ Parameters that are not relevant to the configured plug-in are ignored.
 ifdef::community[]
 Some valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
 +
-For example,
-
- include-xacts=true;write-in-chunks=true;chunk-size=65536
-+
 These options can help to prevent memory-related problems when the plugin handles large transactions.
++
+For example,
++
+ include-xacts=true;write-in-chunks=true;chunk-size=65536
+
 endif::community[]
 
 Some valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
 +
-For example,
-
- publicationnames=dbzpublication;messages=true;binary=true;two_phase=true;origin=any
-+
 Use these options to customize streaming behavior related to transaction boundaries, multi-phase commits, and replication filtering.
++
+For example,
++
+ publicationnames=dbzpublication;messages=true;binary=true;two_phase=true;origin=any
+
 
 [NOTE]
 ====
