@@ -56,6 +56,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             return;
         }
         checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
@@ -82,6 +83,9 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        if (getContext().currentDataCollectionId() == null) {
+            return;
+        }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
@@ -95,6 +99,9 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        if (getContext().currentDataCollectionId() == null) {
+            return;
+        }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
@@ -106,6 +113,9 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        if (getContext().currentDataCollectionId() == null) {
             return;
         }
         readUntilGtidChange(partition, offsetContext);
@@ -146,13 +156,10 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
 
     private void readUntilGtidChange(P partition, OffsetContext offsetContext) throws InterruptedException {
         String currentGtid = getContext().getCurrentGtid(offsetContext);
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
+        if (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
-            if (currentGtid == null && getContext().watermarksChanged()) {
-                return;
-            }
         }
     }
 

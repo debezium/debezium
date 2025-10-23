@@ -581,8 +581,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * instead of this method to add their specific logic.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public final void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context != null) {
+            checkAndAddDataCollections(partition, offsetContext);
+            checkAndProcessStopFlag(partition, offsetContext);
+        }
         doProcessHeartbeat(partition, offsetContext);
     }
 
@@ -591,8 +596,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Ensures common data collection management is always executed before connector-specific logic.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public final void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context != null) {
+            checkAndAddDataCollections(partition, offsetContext);
+            checkAndProcessStopFlag(partition, offsetContext);
+        }
         doProcessFilteredEvent(partition, offsetContext);
     }
 
@@ -601,8 +611,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Ensures common data collection management is always executed before connector-specific logic.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public final void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context != null) {
+            checkAndAddDataCollections(partition, offsetContext);
+            checkAndProcessStopFlag(partition, offsetContext);
+        }
         doProcessTransactionStartedEvent(partition, offsetContext);
     }
 
@@ -611,8 +626,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Ensures common data collection management is always executed before connector-specific logic.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public final void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context != null) {
+            checkAndAddDataCollections(partition, offsetContext);
+            checkAndProcessStopFlag(partition, offsetContext);
+        }
         doProcessTransactionCommittedEvent(partition, offsetContext);
     }
 
@@ -650,7 +670,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void checkAndAddDataCollections(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (context == null) {
-            LOGGER.warn("Context is null, skipping check and add data collections");
             return;
         }
         LOGGER.debug("Check and add data collections");
@@ -663,9 +682,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
-        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+    protected void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
+        if (context == null) {
+            return;
+        }
         List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
         if (dataCollectionsToStop.isEmpty()) {
             return;
