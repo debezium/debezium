@@ -3,6 +3,7 @@ Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
 Abhishek Hodavdekar
+Adam Gray
 Adam Strickland
 Addison Higham
 Adham
@@ -125,6 +126,7 @@ Christian Jacob Mencias
 Christian Posta
 Christian Seki
 Christian Stein
+Christoph Moench-Tegeder
 Christopher Burch
 Christopher Sang
 Chuck Ha
@@ -188,6 +190,7 @@ Eric Weaver
 Eric S. Kreiseir
 Erik Malm
 Eric Xiao
+Erlend Hamnaberg
 Ethan Zou
 Eugene Abramchuk
 Ewen Cheslack-Postava
@@ -385,6 +388,7 @@ MaoXiang Pan
 Marc Zbyszynski
 Marcelo Avancini
 Marci
+Marcin Piatek
 Marek Winkler
 Mario Fiore Vitale
 Mario Mueller
@@ -394,6 +398,7 @@ Mark Drilling
 Mark Ducommun
 Mark Lambert
 Markus Kull
+Maros Orsak
 Micro Huang
 Martin Medek
 Martin Sillence

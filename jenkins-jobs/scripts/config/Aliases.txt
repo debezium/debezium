@@ -318,3 +318,5 @@ matt.bayley,Matt Bayley
 Olivier CHÉDRU,Olivier Chédru
 eljeko,Stefano Linguerri
 jiangzzhu,Jiang Zhu
+see-quick,Maros Orsak
+PIATEK Marcin,Marcin Piatek
