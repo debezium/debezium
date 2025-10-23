@@ -583,6 +583,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @Override
     public final void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         doProcessHeartbeat(partition, offsetContext);
     }
 
@@ -664,7 +665,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @SuppressWarnings("unchecked")
-    private void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
+    protected void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
         if (dataCollectionsToStop.isEmpty()) {

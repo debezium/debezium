@@ -116,6 +116,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     @Override
     public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;

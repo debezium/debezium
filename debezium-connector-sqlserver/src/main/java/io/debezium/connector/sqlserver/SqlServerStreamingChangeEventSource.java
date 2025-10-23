@@ -361,6 +361,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn), 0);
                         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                     }
+                    // Always dispatch server heartbeat to process queued incremental snapshot requests
+                    dispatcher.dispatchServerHeartbeatEvent(partition, offsetContext);
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(databaseName, e, tablesSlot.get()));

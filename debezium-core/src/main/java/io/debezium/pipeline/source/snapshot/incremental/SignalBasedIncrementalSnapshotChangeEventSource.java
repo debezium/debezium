@@ -101,6 +101,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, maybeRedactSensitiveData(key), window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);

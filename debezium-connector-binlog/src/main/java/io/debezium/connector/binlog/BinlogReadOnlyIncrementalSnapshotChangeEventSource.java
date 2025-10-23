@@ -56,6 +56,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             return;
         }
         checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
