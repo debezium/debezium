@@ -96,6 +96,7 @@
         <module>quarkus-debezium-mongodb-parent</module>
         <module>quarkus-debezium-sqlserver-parent</module>
         <module>quarkus-debezium-mysql-parent</module>
+        <module>quarkus-debezium-mariadb-parent</module>
     </modules>
 
     <build>
