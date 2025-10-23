@@ -24,6 +24,7 @@ public interface DdlParser {
      * @param ddlContent     the stream of tokens containing the DDL statements; may not be null
      * @param databaseTables the database's table definitions, which should be used by this method to create, change, or remove
      *                       tables as defined in the DDL content; may not be null
+     * @return the changes that were made to the database tables; never null
      * @throws ParsingException if there is a problem parsing the supplied content
      */
     DdlChanges parse(String ddlContent, Tables databaseTables);
@@ -36,8 +37,6 @@ public interface DdlParser {
      * @param schemaName the name of the current schema; may be null
      */
     void setCurrentSchema(String schemaName);
-
-    DdlChanges getAndResetDdlChanges();
 
     SystemVariables systemVariables();
 }

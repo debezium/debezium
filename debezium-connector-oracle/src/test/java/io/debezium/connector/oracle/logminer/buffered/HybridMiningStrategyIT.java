@@ -1282,13 +1282,11 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
                 "snapshot_completed", true);
 
         OracleDdlParser parser = new OracleDdlParser();
-        DdlChanges ddlChanges = parser.getAndResetDdlChanges();
         Tables tables = new Tables();
 
-        ddlChanges.reset();
         parser.setCurrentDatabase(databaseName);
         parser.setCurrentSchema(schemaName);
-        parser.parse(ddlText, tables);
+        DdlChanges ddlChanges = parser.parse(ddlText, tables);
 
         ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
             events.forEach(event -> {

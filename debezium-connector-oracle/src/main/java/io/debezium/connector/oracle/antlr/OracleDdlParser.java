@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.antlr;
 import java.sql.Types;
 import java.util.Arrays;
 
-import io.debezium.relational.ddl.DdlChanges;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -24,6 +23,7 @@ import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.ddl.DdlChanges;
 
 import oracle.jdbc.OracleTypes;
 
@@ -68,7 +68,7 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
         if (!strippedDdl.endsWith(";")) {
             strippedDdl = strippedDdl + ";";
         }
-        super.parse(strippedDdl, databaseTables);
+        return super.parse(strippedDdl, databaseTables);
     }
 
     @Override

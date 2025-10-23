@@ -8,7 +8,6 @@ package io.debezium.antlr;
 
 import java.util.Collection;
 
-import io.debezium.relational.ddl.DdlChanges;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -24,6 +23,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 
