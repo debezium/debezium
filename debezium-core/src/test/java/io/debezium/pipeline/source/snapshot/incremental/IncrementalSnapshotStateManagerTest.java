@@ -5,11 +5,11 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
@@ -34,23 +34,23 @@ public class IncrementalSnapshotStateManagerTest {
         IncrementalSnapshotStateManager stateManager = new IncrementalSnapshotStateManager();
 
         // Initial state should not be paused
-        assertFalse("Should not be paused initially", stateManager.isSnapshotPaused());
+        assertFalse(stateManager.isSnapshotPaused(), "Should not be paused initially");
 
         // Pause operation
         stateManager.pauseSnapshot();
-        assertTrue("Should be paused after pause", stateManager.isSnapshotPaused());
+        assertTrue(stateManager.isSnapshotPaused(), "Should be paused after pause");
 
         // Idempotent pause
         stateManager.pauseSnapshot();
-        assertTrue("Should remain paused after second pause", stateManager.isSnapshotPaused());
+        assertTrue(stateManager.isSnapshotPaused(), "Should remain paused after second pause");
 
         // Resume operation
         stateManager.resumeSnapshot();
-        assertFalse("Should not be paused after resume", stateManager.isSnapshotPaused());
+        assertFalse(stateManager.isSnapshotPaused(), "Should not be paused after resume");
 
         // Idempotent resume
         stateManager.resumeSnapshot();
-        assertFalse("Should remain not paused after second resume", stateManager.isSnapshotPaused());
+        assertFalse(stateManager.isSnapshotPaused(), "Should remain not paused after second resume");
     }
 
     @Test
@@ -60,21 +60,21 @@ public class IncrementalSnapshotStateManagerTest {
 
         // Set current chunk ID
         stateManager.setCurrentChunkId(chunkId);
-        assertEquals("Chunk ID should match", chunkId, stateManager.getCurrentChunkId());
+        assertEquals(chunkId, stateManager.getCurrentChunkId(), "Chunk ID should match");
 
         // Open window
-        assertTrue("Should open window for valid chunk", stateManager.openWindow(chunkId));
-        assertTrue("Should need deduplication when window is open", stateManager.deduplicationNeeded());
+        assertTrue(stateManager.openWindow(chunkId), "Should open window for valid chunk");
+        assertTrue(stateManager.deduplicationNeeded(), "Should need deduplication when window is open");
 
         // Try to open with different chunk (should be ignored)
-        assertFalse("Should ignore window open for different chunk", stateManager.openWindow("different-chunk"));
+        assertFalse(stateManager.openWindow("different-chunk"), "Should ignore window open for different chunk");
 
         // Close window
-        assertTrue("Should close window for valid chunk", stateManager.closeWindow(chunkId));
-        assertFalse("Should not need deduplication when window is closed", stateManager.deduplicationNeeded());
+        assertTrue(stateManager.closeWindow(chunkId), "Should close window for valid chunk");
+        assertFalse(stateManager.deduplicationNeeded(), "Should not need deduplication when window is closed");
 
         // Try to close with different chunk (should be ignored)
-        assertFalse("Should ignore window close for different chunk", stateManager.closeWindow("different-chunk"));
+        assertFalse(stateManager.closeWindow("different-chunk"), "Should ignore window close for different chunk");
     }
 
     @Test
@@ -89,33 +89,33 @@ public class IncrementalSnapshotStateManagerTest {
         stateManager.requestAddDataCollectionToSnapshot(payload1, config);
         stateManager.requestAddDataCollectionToSnapshot(payload2, config);
 
-        assertEquals("Should have 2 pending adds", 2, stateManager.getPendingAddCount());
+        assertEquals(2, stateManager.getPendingAddCount(), "Should have 2 pending adds");
 
         // Test polling
         SignalDataCollection polled1 = stateManager.pollDataCollectionToAdd();
-        assertNotNull("Should poll first collection", polled1);
-        assertEquals("Should poll correct collection", payload1, polled1.getSignalPayload());
+        assertNotNull(polled1, "Should poll first collection");
+        assertEquals(payload1, polled1.getSignalPayload(), "Should poll correct collection");
 
         SignalDataCollection polled2 = stateManager.pollDataCollectionToAdd();
-        assertNotNull("Should poll second collection", polled2);
-        assertEquals("Should poll correct collection", payload2, polled2.getSignalPayload());
+        assertNotNull(polled2, "Should poll second collection");
+        assertEquals(payload2, polled2.getSignalPayload(), "Should poll correct collection");
 
         // No more collections
-        assertNull("Should return null when no more collections", stateManager.pollDataCollectionToAdd());
-        assertEquals("Should have 0 pending adds", 0, stateManager.getPendingAddCount());
+        assertNull(stateManager.pollDataCollectionToAdd(), "Should return null when no more collections");
+        assertEquals(0, stateManager.getPendingAddCount(), "Should have 0 pending adds");
 
         // Test stop operations
         List<String> collectionsToStop = Arrays.asList("table1", "table2");
         stateManager.requestStopSnapshot(collectionsToStop);
 
-        assertEquals("Should have 2 pending stops", 2, stateManager.getPendingStopCount());
+        assertEquals(2, stateManager.getPendingStopCount(), "Should have 2 pending stops");
 
         List<String> stoppedCollections = stateManager.drainDataCollectionsToStop();
-        assertEquals("Should drain all collections", 2, stoppedCollections.size());
-        assertTrue("Should contain table1", stoppedCollections.contains("table1"));
-        assertTrue("Should contain table2", stoppedCollections.contains("table2"));
+        assertEquals(2, stoppedCollections.size(), "Should drain all collections");
+        assertTrue(stoppedCollections.contains("table1"), "Should contain table1");
+        assertTrue(stoppedCollections.contains("table2"), "Should contain table2");
 
-        assertEquals("Should have 0 pending stops after drain", 0, stateManager.getPendingStopCount());
+        assertEquals(0, stateManager.getPendingStopCount(), "Should have 0 pending stops after drain");
     }
 
     @Test
@@ -149,9 +149,9 @@ public class IncrementalSnapshotStateManagerTest {
         executor.shutdown();
 
         // Verify all operations completed without race conditions
-        assertEquals("All collections should be added", numThreads * operationsPerThread, addedCount.get());
-        assertEquals("State manager should have all pending collections",
-                numThreads * operationsPerThread, stateManager.getPendingAddCount());
+        assertEquals(numThreads * operationsPerThread, addedCount.get(), "All collections should be added");
+        assertEquals(numThreads * operationsPerThread, stateManager.getPendingAddCount(),
+                "State manager should have all pending collections");
 
         // Poll all collections to verify queue integrity
         int polledCount = 0;
@@ -159,7 +159,7 @@ public class IncrementalSnapshotStateManagerTest {
             polledCount++;
         }
 
-        assertEquals("Should poll all added collections", numThreads * operationsPerThread, polledCount);
+        assertEquals(numThreads * operationsPerThread, polledCount, "Should poll all added collections");
     }
 
     @Test
@@ -170,15 +170,15 @@ public class IncrementalSnapshotStateManagerTest {
         stateManager.requestStopSnapshot(null);
 
         List<String> stopped = stateManager.drainDataCollectionsToStop();
-        assertEquals("Should have wildcard stop", 1, stopped.size());
-        assertEquals("Should contain wildcard", ".*", stopped.get(0));
+        assertEquals(1, stopped.size(), "Should have wildcard stop");
+        assertEquals(".*", stopped.get(0), "Should contain wildcard");
 
         // Request stop with empty list should also stop all
         stateManager.requestStopSnapshot(Arrays.asList());
 
         stopped = stateManager.drainDataCollectionsToStop();
-        assertEquals("Should have wildcard stop", 1, stopped.size());
-        assertEquals("Should contain wildcard", ".*", stopped.get(0));
+        assertEquals(1, stopped.size(), "Should have wildcard stop");
+        assertEquals(".*", stopped.get(0), "Should contain wildcard");
     }
 
     @Test
@@ -202,11 +202,11 @@ public class IncrementalSnapshotStateManagerTest {
         stateManager.clear();
 
         // Verify everything is cleared
-        assertFalse("Should not be paused after clear", stateManager.isSnapshotPaused());
-        assertFalse("Should not need deduplication after clear", stateManager.deduplicationNeeded());
-        assertEquals("Should have no pending adds", 0, stateManager.getPendingAddCount());
-        assertEquals("Should have no pending stops", 0, stateManager.getPendingStopCount());
-        assertNull("Current chunk ID should be null", stateManager.getCurrentChunkId());
+        assertFalse(stateManager.isSnapshotPaused(), "Should not be paused after clear");
+        assertFalse(stateManager.deduplicationNeeded(), "Should not need deduplication after clear");
+        assertEquals(0, stateManager.getPendingAddCount(), "Should have no pending adds");
+        assertEquals(0, stateManager.getPendingStopCount(), "Should have no pending stops");
+        assertNull(stateManager.getCurrentChunkId(), "Current chunk ID should be null");
     }
 
     @Test
@@ -214,9 +214,9 @@ public class IncrementalSnapshotStateManagerTest {
         IncrementalSnapshotStateManager stateManager = new IncrementalSnapshotStateManager();
 
         String initialState = stateManager.toString();
-        assertTrue("Should contain class name", initialState.contains("IncrementalSnapshotStateManager"));
-        assertTrue("Should contain state info", initialState.contains("pendingAdds=0"));
-        assertTrue("Should contain pause state", initialState.contains("paused=false"));
+        assertTrue(initialState.contains("IncrementalSnapshotStateManager"), "Should contain class name");
+        assertTrue(initialState.contains("pendingAdds=0"), "Should contain state info");
+        assertTrue(initialState.contains("paused=false"), "Should contain pause state");
 
         // Add some state and verify toString reflects changes
         stateManager.pauseSnapshot();
@@ -224,9 +224,9 @@ public class IncrementalSnapshotStateManagerTest {
         stateManager.requestAddDataCollectionToSnapshot(createMockSignalPayload("test"), new SnapshotConfiguration());
 
         String stateWithData = stateManager.toString();
-        assertTrue("Should show paused state", stateWithData.contains("paused=true"));
-        assertTrue("Should show pending adds", stateWithData.contains("pendingAdds=1"));
-        assertTrue("Should show chunk ID", stateWithData.contains("currentChunkId='test'"));
+        assertTrue(stateWithData.contains("paused=true"), "Should show paused state");
+        assertTrue(stateWithData.contains("pendingAdds=1"), "Should show pending adds");
+        assertTrue(stateWithData.contains("currentChunkId='test'"), "Should show chunk ID");
     }
 
     private SignalPayload createMockSignalPayload(String id) {
