@@ -60,7 +60,6 @@ public abstract class AbstractDdlParser implements DdlParser {
         this.currentSchema = databaseName;
     }
 
-    @Override
     public DdlChanges getAndResetDdlChanges() {
         DdlChanges changes = ddlChanges;
         ddlChanges = new DdlChanges();
