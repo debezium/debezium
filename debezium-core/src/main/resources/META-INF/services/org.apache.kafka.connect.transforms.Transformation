@@ -11,3 +11,4 @@ io.debezium.transforms.tracing.ActivateTracingSpan
 io.debezium.transforms.VectorToJsonConverter
 io.debezium.transforms.openlineage.OpenLineage
 io.debezium.transforms.SwapGeometryCoordinates
+io.debezium.transforms.GeometryFormatTransformer
