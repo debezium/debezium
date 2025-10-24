@@ -167,8 +167,9 @@ public class PostgresConnectionIT {
     private PgConnection getUnderlyingConnection(ReplicationConnection connection) throws Exception {
         Field connField = JdbcConnection.class.getDeclaredField("conn");
         connField.setAccessible(true);
+        Connection underlying = (Connection) connField.get(connection);
 
-        return (PgConnection) connField.get(connection);
+        return underlying.unwrap(PgConnection.class);
     }
 
     @Test

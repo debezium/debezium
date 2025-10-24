@@ -866,7 +866,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected BaseConnection pgConnection() throws SQLException {
-        return (BaseConnection) connection(false);
+        return connection(false).unwrap(BaseConnection.class);
     }
 
     private SlotCreationResult parseSlotCreation(ResultSet rs) {
