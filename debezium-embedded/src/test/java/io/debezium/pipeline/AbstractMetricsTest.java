@@ -30,6 +30,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
@@ -217,7 +218,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     protected void assertSnapshotWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        final ObjectName objectName = getSnapshotMetricsObjectName(connector(), server(), task(), database(), customMetricTags);
+        final ObjectName objectName = MetricsHelper.getSnapshotMetricsObjectName(connector(), server(), task(), database(), customMetricTags);
 
         // Wait for the snapshot to complete to verify metrics
         waitForSnapshotWithCustomMetricsToBeCompleted(connector(), server(), task(), database(), customMetricTags);
@@ -274,12 +275,9 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         }
     }
 
-    public void assertAdvancedMetrics(long expectedInsert) throws Exception {
-
-        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        TabularDataSupport numberOfCreateEventsSeen = (TabularDataSupport) mBeanServer
-                .getAttribute(getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), database()), "NumberOfCreateEventsSeen");
+    public void assertAdvancedMetrics(long expectedInsert) {
+        final TabularDataSupport numberOfCreateEventsSeen = MetricsHelper.getStreamingMetric(
+                connector(), server(), getStreamingNamespace(), task(), database(), "NumberOfCreateEventsSeen");
 
         String values = numberOfCreateEventsSeen.values().stream()
                 .limit(1)
@@ -313,26 +311,27 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         // Check streaming metrics
         Testing.print("****ASSERTIONS****");
-        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(connector(), server(), task(), null, customMetricTags), "Connected")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(MetricsHelper.getStreamingMetricsObjectName(connector(), server(), task(), null, customMetricTags), "Connected"))
+                .isEqualTo(true);
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectNameCustomTags(customMetricTags), "TotalNumberOfCreateEventsSeen"))
                 .isEqualTo(expectedEvents);
     }
 
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(connector(), server());
+        return MetricsHelper.getSnapshotMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getMultiplePartitionStreamingMetricsObjectName() throws MalformedObjectNameException {
         // Only SQL Server manage partition scoped metrics
-        return getStreamingMetricsObjectName(connector(), server());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getMultiplePartitionStreamingMetricsObjectNameCustomTags(Map<String, String> customTags) throws MalformedObjectNameException {
         // Only SQL Server manage partition scoped metrics
-        return getStreamingMetricsObjectName(connector(), server(), customTags);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), customTags);
     }
 }

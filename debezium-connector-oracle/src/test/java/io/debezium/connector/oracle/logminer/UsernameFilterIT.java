@@ -9,16 +9,12 @@ import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.Adapte
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.runners.Parameterized.Parameters;
 
-import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import javax.management.JMException;
-import javax.management.MBeanServer;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -37,6 +33,7 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -115,8 +112,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
 
             // There should be at least 2 DML events captured but ignored
-            Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
-            assertThat(totalDmlCount).isGreaterThanOrEqualTo(2L);
+            assertThat(OracleMetricsHelper.getTotalCapturedDmlCount()).isGreaterThanOrEqualTo(2L);
 
         }
         finally {
@@ -311,14 +307,6 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz8884");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T getStreamingMetric(String metricName) throws JMException {
-        final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-        return (T) server.getAttribute(
-                getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME),
-                metricName);
     }
 
     private static String topicName(String schemaName, String tableName) {

@@ -22,6 +22,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.pipeline.AbstractMetricsTest;
 import io.debezium.util.Testing;
 
@@ -110,23 +111,22 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     @Override
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1);
+        return MetricsHelper.getSnapshotMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1);
     }
 
     @Override
     protected ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task());
     }
 
     @Override
     protected ObjectName getMultiplePartitionStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), TEST_DATABASE_1);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), TEST_DATABASE_1);
     }
 
     @Override
     protected ObjectName getMultiplePartitionStreamingMetricsObjectNameCustomTags(Map<String, String> customTags) throws MalformedObjectNameException {
-
-        return getStreamingMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1, customTags);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1, customTags);
     }
 
     @Test
