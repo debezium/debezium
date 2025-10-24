@@ -207,6 +207,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @SuppressWarnings("unchecked")
     private <T extends Transaction> CacheProvider<T> createCacheProvider(OracleConnectorConfig connectorConfig) {
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            OracleConnectorConfig.LogMiningSpillProvider provider = connectorConfig.getLogMiningBufferSpillProvider();
+            switch (provider) {
+                case CHRONICLE:
+                    return (CacheProvider<T>) new io.debezium.connector.oracle.logminer.buffered.chronicle.ChronicleCacheProvider(connectorConfig);
+                case ROCKSDB:
+                    return (CacheProvider<T>) new io.debezium.connector.oracle.logminer.buffered.rocksdb.RocksDbCacheProvider(connectorConfig);
+                case EHCACHE:
+                    return (CacheProvider<T>) new io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider(connectorConfig);
+                default:
+                    throw new IllegalArgumentException("Unknown spill provider: " + provider);
+            }
+        }
+        // Default logic for other types
         return (CacheProvider<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryCacheProvider(connectorConfig);
             case INFINISPAN_EMBEDDED -> new EmbeddedInfinispanCacheProvider(connectorConfig);
@@ -217,6 +231,24 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @SuppressWarnings("unchecked")
     private <T extends Transaction> TransactionFactory<T> createTransactionFactory(OracleConnectorConfig connectorConfig) {
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            OracleConnectorConfig.LogMiningSpillProvider provider = connectorConfig.getLogMiningBufferSpillProvider();
+            switch (provider) {
+                case CHRONICLE: {
+                    return (TransactionFactory<T>) new io.debezium.connector.oracle.logminer.buffered.chronicle.ChronicleTransactionFactory();
+                }
+                case ROCKSDB: {
+                    return (TransactionFactory<T>) new io.debezium.connector.oracle.logminer.buffered.rocksdb.RocksDbTransactionFactory();
+                }
+                case EHCACHE: {
+                    return (TransactionFactory<T>) new io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory();
+                }
+                // Add more providers here as needed
+                default:
+                    throw new IllegalArgumentException("Unknown spill provider: " + provider);
+            }
+        }
+        // Default logic for other types
         return (TransactionFactory<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryTransactionFactory();
             case INFINISPAN_EMBEDDED, INFINISPAN_REMOTE -> new InfinispanTransactionFactory();
