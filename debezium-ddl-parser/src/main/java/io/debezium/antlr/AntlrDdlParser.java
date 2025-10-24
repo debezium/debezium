@@ -23,6 +23,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 
@@ -57,7 +58,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     @Override
-    public void parse(String ddlContent, Tables databaseTables) {
+    public DdlChanges parse(String ddlContent, Tables databaseTables) {
         this.databaseTables = databaseTables;
 
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
@@ -85,6 +86,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         else {
             throwParsingException(parsingErrorListener.getErrors());
         }
+        return getAndResetDdlChanges();
     }
 
     /**

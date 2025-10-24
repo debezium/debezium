@@ -23,6 +23,7 @@ import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.ddl.DdlChanges;
 
 import oracle.jdbc.OracleTypes;
 
@@ -62,12 +63,12 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
     }
 
     @Override
-    public void parse(String ddlContent, Tables databaseTables) {
+    public DdlChanges parse(String ddlContent, Tables databaseTables) {
         String strippedDdl = ddlContent.strip();
         if (!strippedDdl.endsWith(";")) {
             strippedDdl = strippedDdl + ";";
         }
-        super.parse(strippedDdl, databaseTables);
+        return super.parse(strippedDdl, databaseTables);
     }
 
     @Override
