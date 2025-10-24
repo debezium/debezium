@@ -192,7 +192,7 @@
                     <!--autoPull>always</autoPull-->
                     <images>
                         <image>
-                            <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>quay.io/apicurio/apicurio-registry:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -204,7 +204,7 @@
                                     <color>blue</color>
                                 </log>
                                 <wait>
-                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <log>.*Using the following RegistryStorage.*</log>
                                     <time>${apicurio.init.timeout}</time>
                                 </wait>
                             </run>
@@ -426,7 +426,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>quay.io/apicurio/apicurio-registry:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
