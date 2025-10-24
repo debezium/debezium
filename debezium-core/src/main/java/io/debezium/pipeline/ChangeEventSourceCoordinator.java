@@ -187,6 +187,15 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         return previousOffset == null || previousOffset.getOffsets().size() == 1 ? Optional.ofNullable(signalProcessor) : Optional.empty();
     }
 
+    /**
+     * Returns the current streaming change event source, if available.
+     *
+     * Note: the streaming source may be {@code null} until streaming has been initialized.
+     */
+    public Optional<StreamingChangeEventSource<P, O>> getStreamingSource() {
+        return Optional.ofNullable(streamingSource);
+    }
+
     protected void executeChangeEventSources(CdcSourceTaskContext taskContext, SnapshotChangeEventSource<P, O> snapshotSource, Offsets<P, O> previousOffsets,
                                              AtomicReference<LoggingContext.PreviousContext> previousLogContext, ChangeEventSourceContext context)
             throws InterruptedException {
