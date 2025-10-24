@@ -49,8 +49,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
@@ -611,24 +609,6 @@ public class OracleConnection extends JdbcConnection {
             column.scale().filter(s -> s == ORACLE_UNSET_SCALE).ifPresent(s -> column.scale(null));
         }
         return column;
-    }
-
-    @Override
-    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName,
-                                                           String schemaName,
-                                                           String tableName,
-                                                           Tables.TableFilter tableFilter,
-                                                           ColumnNameFilter columnFilter,
-                                                           DatabaseMetaData metadata,
-                                                           Set<TableId> viewIds)
-            throws SQLException {
-        // The Oracle JDBC driver expects that if the table name contains a "/" character that
-        // the table name is pre-escaped prior to the JDBC driver call, or else it throws an
-        // exception about the character sequence being improperly escaped.
-        if (tableName != null && tableName.contains("/")) {
-            tableName = tableName.replace("/", "//");
-        }
-        return super.getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds);
     }
 
     /**

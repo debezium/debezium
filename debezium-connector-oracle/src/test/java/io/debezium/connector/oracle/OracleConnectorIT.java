@@ -4011,11 +4011,11 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-5006")
     public void shouldSupportTablesWithForwardSlashes() throws Exception {
         // Different forward-slash scenarios
-        testTableWithForwardSlashes("/dbz5006", "_dbz5006");
-        testTableWithForwardSlashes("dbz/5006", "dbz_5006");
-        testTableWithForwardSlashes("dbz5006/", "dbz5006_");
-        testTableWithForwardSlashes("db/z50/06", "db_z50_06");
-        testTableWithForwardSlashes("dbz//5006", "dbz__5006");
+        testTableWithForwardSlashes("/dbz5006", "_dbz5006", false);
+        testTableWithForwardSlashes("dbz/5006", "dbz_5006", false);
+        testTableWithForwardSlashes("dbz5006/", "dbz5006_", false);
+        testTableWithForwardSlashes("db/z50/06", "db_z50_06", false);
+        testTableWithForwardSlashes("dbz//5006", "dbz__5006", false);
     }
 
     @Test
@@ -4363,7 +4363,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    private void testTableWithForwardSlashes(String tableName, String topicTableName) throws Exception {
+    private void testTableWithForwardSlashes(String tableName, String topicTableName, boolean storeOnlyCapturedTables) throws Exception {
         final String quotedTableName = "\"" + tableName + "\"";
         TestHelper.dropTable(connection, quotedTableName);
         try {
@@ -4377,6 +4377,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\." + tableName)
+                    .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables)
                     .build();
 
             start(OracleConnector.class, config);
@@ -6054,5 +6055,18 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private Struct getBefore(SourceRecord record) {
         return ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+    }
+
+    @Test
+    @FixFor("DBZ-9620")
+    public void shouldSupportTablesWithForwardSlashesPairedWithNonCapturedButSelectableTables() throws Exception {
+        TestHelper.dropTable(connection, "locations");
+        try {
+            connection.execute("CREATE TABLE debezium.locations (id numeric(9,0) primary key, data varchar2(50))");
+            testTableWithForwardSlashes("/TEST/WAREHOUSES_1000", "_TEST_WAREHOUSES_1000", true);
+        }
+        finally {
+            TestHelper.dropTable(connection, "locations");
+        }
     }
 }
