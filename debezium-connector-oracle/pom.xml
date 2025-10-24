@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.4.0-SNAPSHOT</version>
+        <version>3.4.0.Alpha1</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -447,8 +447,8 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <configuration combine.self="merge">
                             <!-- Point (2) add the Xstream sources back into the module -->
-                            <excludes combine.self="override"/>
-                            <testExcludes combine.self="override"/>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
@@ -499,8 +499,8 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
                         <configuration combine.self="merge">
-                            <excludes combine.self="override"/>
-                            <testExcludes combine.self="override"/>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
@@ -525,8 +525,8 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <configuration combine.self="merge">
                             <!-- include xstream back into the module on assembly builds -->
-                            <excludes combine.self="override"/>
-                            <testExcludes combine.self="override"/>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                     <plugin>
