@@ -1065,6 +1065,21 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |
 |Name of the Event Hub
 
+
+|[[dynamic-partition-routing]]<<dynamic-partition-routing, `debezium.sink.eventhubs.dynamicpartitionrouting`>>
+|
+| An optional setting that controls the behavior of dynamic partition routing. There are three possible values:
+
+- `default`: If the record key is not null, it is used as the batch partition key. Else, if the record's partition ID is not null, events are batched and routed to the specified partition ID. Otherwise, round-robin routing is applied. This is the default when no value is provided.
+- `key`: If the record key is not null, it is used as the batch partition key. Otherwise, round-robin routing is applied.
+- `partitionid`: If the record's partition ID is not null, events are batched and routed to the specified partition ID. Otherwise, round-robin routing is applied.
+
+The `debezium.sink.eventhubs.dynamicpartitionrouting` configuration is only applied when **both** of the following options are unset:
+
+- `debezium.sink.eventhubs.partitionid`
+- `debezium.sink.eventhubs.partitionkey`
+
+
 |[[partition-id]]<<partition-id, `debezium.sink.eventhubs.partitionid`>>
 |
 |(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
