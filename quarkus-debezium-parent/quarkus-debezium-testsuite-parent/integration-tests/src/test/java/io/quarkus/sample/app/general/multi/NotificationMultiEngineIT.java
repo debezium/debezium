@@ -36,8 +36,6 @@ public class NotificationMultiEngineIT {
                 .containsExactlyInAnyOrder(
                         SnapshotStarted.class.getName(),
                         SnapshotInProgress.class.getName(),
-                        SnapshotInProgress.class.getName(),
-                        SnapshotTableScanCompleted.class.getName(),
                         SnapshotTableScanCompleted.class.getName(),
                         SnapshotCompleted.class.getName()));
     }
