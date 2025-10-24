@@ -49,6 +49,10 @@
               <exclude>com.oracle.database.jdbc:ojdbc11:*</exclude>
               <exclude>com.oracle.database.nls:orai18n:*</exclude>
 
+              <!-- Exclude Oracle XML dependencies -->
+              <exclude>com.oracle.database.xml:xdb:*</exclude>
+              <exclude>com.oracle.database.xml:xmlparserv2:*</exclude>
+
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>
