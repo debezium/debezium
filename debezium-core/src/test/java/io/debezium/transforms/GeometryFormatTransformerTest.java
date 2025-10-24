@@ -16,6 +16,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -114,8 +115,6 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, POINT_GEO_WKB_HEX, POINT_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(3557, POINT_GEO_WKB_HEX);
-
         assertFormatTransformationException(null, POINT_GEO_WKB_HEX);
 
     }
@@ -138,8 +137,6 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, LINE_STRING_GEO_WKB_HEX, LINE_STRING_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(3557, LINE_STRING_GEO_WKB_HEX);
-
         assertFormatTransformationException(null, LINE_STRING_GEO_WKB_HEX);
     }
 
@@ -160,8 +157,6 @@ public class GeometryFormatTransformerTest {
     public void testTransformPolygonWkbToEwkb() {
 
         assertFormatTransformation(4326, POLYGON_GEO_WKB_HEX, POLYGON_GEO_EWKB_HEX);
-
-        assertFormatTransformationException(3557, POLYGON_GEO_WKB_HEX);
 
         assertFormatTransformationException(null, POLYGON_GEO_WKB_HEX);
     }
@@ -184,8 +179,6 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_POLYGON_GEO_WKB_HEX, MULTI_POLYGON_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(3557, MULTI_POLYGON_GEO_WKB_HEX);
-
         assertFormatTransformationException(null, MULTI_POLYGON_GEO_WKB_HEX);
     }
 
@@ -206,8 +199,6 @@ public class GeometryFormatTransformerTest {
     public void testTransformPolygonWithMultipleRingsWkbToEwkb() {
 
         assertFormatTransformation(4326, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX);
-
-        assertFormatTransformationException(3557, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
 
         assertFormatTransformationException(null, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
     }
@@ -230,8 +221,6 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_LINE_STRING_GEO_WKB_HEX, MULTI_LINE_STRING_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(3557, MULTI_LINE_STRING_GEO_WKB_HEX);
-
         assertFormatTransformationException(null, MULTI_LINE_STRING_GEO_WKB_HEX);
     }
 
@@ -252,8 +241,6 @@ public class GeometryFormatTransformerTest {
     public void testTransformGeometryCollectionWkbToEwkb() {
 
         assertFormatTransformation(4326, GEOMETRY_COLLECTION_WKB_HEX, GEOMETRY_COLLECTION_EWKB_HEX);
-
-        assertFormatTransformationException(3557, GEOMETRY_COLLECTION_WKB_HEX);
 
         assertFormatTransformationException(null, GEOMETRY_COLLECTION_WKB_HEX);
     }
@@ -276,8 +263,6 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_POINT_GEO_WKB_HEX, MULTI_POINT_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(3557, MULTI_POINT_GEO_WKB_HEX);
-
         assertFormatTransformationException(null, MULTI_POINT_GEO_WKB_HEX);
     }
 
@@ -298,8 +283,6 @@ public class GeometryFormatTransformerTest {
     public void testTransformEmptyGeometryWkbToEwkb() {
 
         assertFormatTransformation(4326, EMPTY_GEOMETRY_WKB_HEX, EMPTY_GEOMETRY_EWKB_HEX);
-
-        assertFormatTransformationException(3557, EMPTY_GEOMETRY_WKB_HEX);
 
         assertFormatTransformationException(null, EMPTY_GEOMETRY_WKB_HEX);
     }
@@ -476,7 +459,7 @@ public class GeometryFormatTransformerTest {
      */
     private void assetException(Integer srid, SourceRecord record) {
         assertThatThrownBy(() -> geometryFormatTransformer.apply(record))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot convert to EWKB when SRID is null or is not in the configured list: " + srid);
+                .isInstanceOf(ConnectException.class)
+                .hasMessage("Cannot convert to EWKB when SRID is null");
     }
 }
