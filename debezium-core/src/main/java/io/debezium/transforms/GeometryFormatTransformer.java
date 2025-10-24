@@ -5,7 +5,6 @@
  */
 package io.debezium.transforms;
 
-import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -13,6 +12,7 @@ import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +32,15 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GeometryFormatTransformer.class);
 
-    private static final Field SRIDS = Field.create("srids")
-            .withDisplayName("Geometry SRIDs that should be considered to include with EWKB")
-            .withType(ConfigDef.Type.STRING)
+    private static final Field GEOMETRY_FORMAT = Field.create("format")
+            .withDisplayName("Target Format")
+            .withEnum(GeometryFormat.class, GeometryFormat.WKB)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("A comma-separated list of Geometry SRIDs used in converting between WKB and EWKB formats.");
+            .withDescription("The target Geometry format to convert to. Options are 'wkb' and 'ewkb'");
 
     private SmtManager<R> smtManager;
-    private List<Integer> sridList = List.of(4326, 3857, 4269);
-    private GeometryFormat geometryFormat = GeometryFormat.WKB;
+    private GeometryFormat geometryFormat;
 
     /**
      * The set of predefined Geometry format options. This enum implements {@link EnumeratedValue}.
@@ -64,6 +63,19 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
             this.value = value;
         }
 
+        public static GeometryFormat parse(String value) {
+            if (value == null) {
+                return WKB;
+            }
+            value = value.trim();
+            for (GeometryFormat format : GeometryFormat.values()) {
+                if (format.getValue().equalsIgnoreCase(value)) {
+                    return format;
+                }
+            }
+            return WKB;
+        }
+
         @Override
         public String getValue() {
             return value;
@@ -76,7 +88,7 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, SRIDS);
+        Field.group(config, null, GEOMETRY_FORMAT);
         return config;
     }
 
@@ -88,11 +100,9 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
         smtManager = new SmtManager<>(config);
-        smtManager.validate(config, Field.setOf(SRIDS));
+        smtManager.validate(config, Field.setOf(GEOMETRY_FORMAT));
 
-        if (config.hasKey(SRIDS)) {
-            sridList = config.getList(SRIDS).stream().map(Integer::valueOf).toList();
-        }
+        geometryFormat = GeometryFormat.parse(config.getString(GEOMETRY_FORMAT));
     }
 
     @Override
@@ -170,10 +180,10 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
         switch (geometryFormat) {
             case WKB -> {
                 // Convert to EWKB by adding SRID
-                if (srid == null || !sridList.contains(srid)) {
-                    String errorMessage = "Cannot convert to EWKB when SRID is null or is not in the configured list: " + srid;
+                if (srid == null) {
+                    String errorMessage = "Cannot convert to EWKB when SRID is null";
                     LOGGER.error(errorMessage);
-                    throw new IllegalArgumentException(errorMessage);
+                    throw new ConnectException(errorMessage);
                 }
                 return value.put(Geometry.WKB_FIELD, geometry.asExtendedWkb().getBytes());
 
