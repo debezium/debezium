@@ -180,7 +180,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.QUERY, (event) -> handleQueryEvent(partition, effectiveOffsetContext, event));
-        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> handleTransactionPayload(partition, effectiveOffsetContext, event));
+        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> {
+            TransactionPayloadEventData transactionPayloadEventData = event.getData();
+            // Loop over the uncompressed events in the transaction payload event and add the table map
+            // event in the map of table events
+            for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
+                handleEvent(partition, effectiveOffsetContext, context, uncompressedEvent);
+            }
+        });
 
         if (!skippedOperations.contains(Envelope.Operation.CREATE)) {
             eventHandlers.put(EventType.WRITE_ROWS, (event) -> handleInsert(partition, effectiveOffsetContext, event));
@@ -573,7 +580,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         else if (eventHeader instanceof EventHeaderV4) {
             EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
-            offsetContext.setEventPosition(trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+            if (trackableEventHeader.getPosition() > 0) {
+                offsetContext.setEventPosition(
+                        trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+            }
         }
 
         // If there is a handler for this event, forward the event to it ...
@@ -813,29 +823,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         else {
             informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId);
-        }
-    }
-
-    /**
-     * Handle an event of type TRANSACTION_PAYLOAD_EVENT<p></p>
-     *
-     * This method should be called whenever a transaction payload event is encountered by the mysql binlog connector.
-     * A Transaction payload event is propagated from the binlog connector when compression is turned on over binlog.
-     * This method loops over the individual events in the compressed binlog and calls the respective atomic event
-     * handlers.
-     *
-     * @param partition the partition; never null
-     * @param offsetContext the offset context; never null
-     * @param event the transaction payload event; never null
-     */
-    protected void handleTransactionPayload(P partition, O offsetContext, Event event) throws InterruptedException {
-        TransactionPayloadEventData transactionPayloadEventData = event.getData();
-        // Loop over the uncompressed events in the transaction payload event and add the table map
-        // event in the map of table events
-        for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
-            eventHandlers.getOrDefault(
-                    uncompressedEvent.getHeader().getEventType(),
-                    (e) -> ignoreEvent(offsetContext, uncompressedEvent)).accept(uncompressedEvent);
         }
     }
 
