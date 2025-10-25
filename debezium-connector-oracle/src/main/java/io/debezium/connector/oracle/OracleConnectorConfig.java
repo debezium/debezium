@@ -754,6 +754,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(1)
             .withDescription("Adjusts the LAST_REDO_SCN from V$THREAD by this value.");
 
+    public static final Field BINARY_DECIMAL_HANDLING_MODE = Field.create("binary.decimal.handling.mode")
+            .withDisplayName("Binary decimal handling mode")
+            .withEnum(BinaryDecimalHandlingMode.class, BinaryDecimalHandlingMode.NUMERIC)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specifies how Oracle binary float/double columns are serialized." +
+                    "numeric: serialized as either float32 or float64 types depending on precision; " +
+                    "string: serialized as a string, allowing support for NaN/Infinity/-Infinity values");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -842,7 +851,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READONLY_HOSTNAME,
                     LEGACY_DECIMAL_HANDLING_STRATEGY,
                     LOG_MINING_USE_CTE_QUERY,
-                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT)
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT,
+                    BINARY_DECIMAL_HANDLING_MODE)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -876,6 +886,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int snapshotRetryDatabaseErrorsMaxRetries;
     private final int objectIdToTableIdCacheSize;
     private final boolean legacyDecimalHandlingStrategy;
+    private final BinaryDecimalHandlingMode binaryDecimalHandlingMode;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -951,6 +962,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
         this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
         this.legacyDecimalHandlingStrategy = config.getBoolean(LEGACY_DECIMAL_HANDLING_STRATEGY);
+        this.binaryDecimalHandlingMode = BinaryDecimalHandlingMode.parse(config.getString(BINARY_DECIMAL_HANDLING_MODE));
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -1670,6 +1682,31 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
+    public enum BinaryDecimalHandlingMode implements EnumeratedValue {
+        NUMERIC("numeric"),
+        STRING("string");
+
+        private final String value;
+
+        BinaryDecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static BinaryDecimalHandlingMode parse(String value) {
+            for (BinaryDecimalHandlingMode mode : BinaryDecimalHandlingMode.values()) {
+                if (mode.getValue().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            return NUMERIC;
+        }
+    }
+
     /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
@@ -1736,6 +1773,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isUsingLegacyDecimalHandlingStrategy() {
         return legacyDecimalHandlingStrategy;
+    }
+
+    /**
+     * @return how binary float/double column types should be handled
+     */
+    public BinaryDecimalHandlingMode getBinaryDecimalHandlingMode() {
+        return binaryDecimalHandlingMode;
     }
 
     /**
