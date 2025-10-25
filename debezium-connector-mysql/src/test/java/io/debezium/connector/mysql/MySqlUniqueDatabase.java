@@ -65,6 +65,12 @@ public class MySqlUniqueDatabase extends UniqueDatabase {
     }
 
     @Override
+    protected Configuration.Builder applyConnectorDefaultJdbcConfiguration(Configuration.Builder builder) {
+        return super.applyConnectorDefaultJdbcConfiguration(builder)
+                .with("database.connectionTimeZone", getTimezone());
+    }
+
+    @Override
     public ZoneId getTimezone() {
         return ZoneId.of("US/Samoa");
     }
