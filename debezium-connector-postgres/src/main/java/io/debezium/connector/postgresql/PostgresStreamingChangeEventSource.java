@@ -27,12 +27,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.PositionLocator;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.connection.WalPositionLocator;
+import io.debezium.connector.postgresql.connection.WalPositionLocatorFactory;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -162,7 +163,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         boolean hasStartLsnStoredInContext = offsetContext != null;
 
         try {
-            final WalPositionLocator walPosition;
+            final PositionLocator walPosition;
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
@@ -170,12 +171,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
+                walPosition = WalPositionLocatorFactory.create(connectorConfig, this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType,
+                        this.effectiveOffset.lastCommitTransactionId());
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
                 LOGGER.info("No previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
-                walPosition = new WalPositionLocator();
+                walPosition = WalPositionLocatorFactory.create(connectorConfig);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
 
@@ -257,7 +259,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         while (context.isRunning()
                 && haveNotReceivedStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
                 && !commitOffsetFailure) {
-            boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
+            boolean receivedMessage = stream.readPending((message, beginMessageTransactionId) -> processReplicationMessages(partition, offsetContext, stream, message),
+                    false);
 
             probeConnectionIfNeeded();
 
@@ -399,7 +402,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void searchWalPosition(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext,
-                                   final ReplicationStream stream, final WalPositionLocator walPosition)
+                                   final ReplicationStream stream, final PositionLocator walPosition)
             throws SQLException, InterruptedException {
         AtomicReference<Lsn> resumeLsn = new AtomicReference<>();
         int noMessageIterations = 0;
@@ -407,10 +410,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         LOGGER.info("Searching for WAL resume position");
         while (context.isRunning() && resumeLsn.get() == null) {
 
-            boolean receivedMessage = stream.readPending(message -> {
+            boolean receivedMessage = stream.readPending((message, transactionId) -> {
                 final Lsn lsn = stream.lastReceivedLsn();
-                resumeLsn.set(walPosition.resumeFromLsn(lsn, message).orElse(null));
-            });
+                resumeLsn.set(walPosition.resumeFromLsn(lsn, message, transactionId).orElse(null));
+            }, true);
 
             if (receivedMessage) {
                 noMessageIterations = 0;
