@@ -32,7 +32,7 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -79,7 +79,7 @@ The following example shows the naming formats to use for each connector:
 .Fully qualified table names
 [id="format-for-specifying-fully-qualified-names-for-data-collections"]
 Db2:: `_<schemaName>_._<tableName>_`
-MariaDB (Technology Preview):: `_<databaseName>_._<tableName>_`
+MariaDB :: `_<databaseName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
 MySQL:: `_<databaseName>_._<tableName>_`
 Oracle:: `_<databaseName>_._<schemaName>_._<tableName>_`
@@ -499,7 +499,7 @@ You can initiate ad hoc snapshots at any time.
 Ad hoc snapshots are available for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -565,7 +565,7 @@ After processing the signal, the connector will stop the current in-progress sna
 You can stop ad hoc snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -623,7 +623,7 @@ Therefor it's not possible to specify the data collection as the snapshot proces
 You can pause incremental snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -656,7 +656,7 @@ After processing the signal, the connector will resume previously paused snapsho
 You can resume incremental snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -705,7 +705,7 @@ You can initiate ad hoc blocking snapshots at any time.
 Blocking snapshots are available for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 ifdef::community[]
 * MongoDB
 endif::community[]
