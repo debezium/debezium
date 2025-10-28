@@ -436,8 +436,8 @@ Fully-qualified name of the data collection that is used to send {link-prefix}:{
 Use the following format to specify the collection name:
 +
 `_<databaseName>_._<tableName>_`
-
-
++
+Collection names are case-sensitive.
 
 [id="{context}-property-signal-enabled-channels"]
 xref:{context}-property-signal-enabled-channels[`signal.enabled.channels`]::

@@ -63,34 +63,40 @@ The following table describes the parameters in the example:
 
 |2
 |null
-|The `_id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request. +
+|The `_id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request.
+
 The insert method in the preceding example omits use of the optional `_id` parameter.
-Because the document does not explicitly assign a value for the parameter, the arbitrary id that MongoDB automatically assigns to the document becomes the `id` identifier for the signal request. +
+Because the document does not explicitly assign a value for the parameter, the arbitrary id that MongoDB automatically assigns to the document becomes the `id` identifier for the signal request.
+
 Use this string to identify logging messages to entries in the signaling {data-collection}.
 {prodname} does not use this identifier string.
 Rather, during the snapshot, {prodname} generates its own `id` string as a watermarking signal.
 
 |3
 |`execute-snapshot`
-|Specifies `type` parameter specifies the operation that the signal is intended to trigger. +
+|Specifies `type` parameter specifies the operation that the signal is intended to trigger.
 
 |4
 |`data-collections`
-|A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot. +
+|A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot.
+
 The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
 
 |5
 |`incremental`
-|An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
-Currently supports the `incremental` and `blocking` types. +
+|An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run.
+Currently supports the `incremental` and `blocking` types.
+
 If you do not specify a value, the connector runs an incremental snapshot.
 
 |6
 |`additional-conditions`
-| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
+| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot.
+
 Each element in the `additional-conditions` array is an object that includes the following keys:
 
 `data-collection`:: The fully-qualified name of the data collection for which the filter will be applied.
+Colleciton names are case-sensitive.
 `filter`:: Specifies the column values that must be present in a data collection record for the snapshot to include it, for example, `"color='blue'"`.
 |===
 
@@ -116,14 +122,16 @@ The following example, shows the JSON for an incremental snapshot event that is 
     "transaction":null
 }
 ----
-[cols="1,1,4",options="header"]
+[cols="1,1,4a",options="header"]
 |===
 |Item |Field name |Description
 |1
 |`snapshot`
-|Specifies the type of snapshot operation to run. +
-Currently, the only valid options are `blocking` and `incremental`. +
-Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional. +
+|Specifies the type of snapshot operation to run.
+
+Currently, the only valid options are `blocking` and `incremental`.
+
+Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional.
 If you do not specify a value, the connector runs an incremental snapshot.
 
 |2
