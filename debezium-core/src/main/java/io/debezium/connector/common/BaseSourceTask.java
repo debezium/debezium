@@ -463,9 +463,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     public final void stop() {
         try {
             performCommit();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.warn("Error while performing commit.", e);
-        } finally {
+        }
+        finally {
             stop(false);
             DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()));
         }
