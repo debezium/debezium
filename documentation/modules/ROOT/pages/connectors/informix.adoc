@@ -2592,7 +2592,10 @@ You can specify the following values:
 |[[informix-property-signal-data-collection]]<<informix-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
 |[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>

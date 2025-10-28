@@ -4051,9 +4051,12 @@ Set the value to `none` if you do not want the connector to skip any operations.
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-|Fully-qualified name of the data collection that is used to send signals to the connector. +
-Use the following format to specify the collection name: +
-`_<schemaName>_._<tableName>_` +
+|Fully-qualified name of the data collection that is used to send signals to the connector.
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
+`_<schemaName>_._<tableName>_`
 
 |[[postgresql-property-signal-enabled-channels]]<<postgresql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
@@ -4186,7 +4189,7 @@ Set the value to `0` (zero) to remove the timeout limit.
 
 |[[postgresql-property-guardrail-collections-max]]<<postgresql-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of tables that the connector can capture. 
+|Specifies the maximum number of tables that the connector can capture.
 Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
