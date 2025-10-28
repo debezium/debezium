@@ -1,0 +1,62 @@
+:page-aliases: configuration/geometry-format-transformer.adoc
+[id="geometry-format-transformer"]
+= Geometry Format Transformer
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The 'GeometryFormatTransformer' is a transformer which converts the formats between WKB(Well-Known Binary format) and EWKB(Extended Well-Known Binary Format).
+This Transformer will convert the formats either at source  connector i.e modify before the message is sent to kafka or at sink connector i.e before the message is sent to external system.
+
+You can configure the SMT to modify the format in the message.
+For more information about configuring the SMT, see the following xref:example-geometry-format-transformer[example].
+
+[[example-geometry-format-transformer]]
+== Example
+
+For example, to configure the connector to convert the Geometry formats between WKB and EWKB, add the following lines to the connector configuration:
+
+[source]
+----
+transforms=convertGeometryFormat
+transforms.convertGeometryFormat.type=io.debezium.transforms.GeometryFormatTransformer
+----
+
+To apply the transformation to Geometry Format `WKB`, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=convertGeometryFormat
+transforms.convertGeometryFormat.type=io.debezium.transforms.GeometryFormatTransformer
+transforms.convertGeometryFormat.format=WKB
+----
+
+[[geometry-format-transformer-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `GeometryFormatTransformer` SMT.
+
+.GeometryFormatTransformer SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[geometry-format-transformer-format]]<<geometry-format-transformer-format, `format`>>
+|A Geometry format to which you want to apply the transformation.
+The transformation converts the geometry format between WKB and EWKB.
+|enum
+|WKB
+|WKB, EWKB
+|high
+
+|===

@@ -39,6 +39,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/timezone-converter.adoc[Timezone Converter]
 |Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
 
+|xref:transformations/geometry-format-transformer.adoc[Geometry Format Transformer]
+|Transformer which converts between WKB and EWKB geometry formats.
+
 |xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 |Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.
 
