@@ -494,14 +494,15 @@ If the database does not support time or timestamps with time zones, the mapping
 === {prodname} dialect-specific data type mappings
 
 .Mappings between {prodname} dialect-specific logical types and column data types
+[cols="as,as,as,as,as,as",options="header"]
 |===
-|Logical Type |Db2 Type |MySQL Type |PostgreSQL Type |Oracle Type |SQL Server Type
+|Logical type |Db2 type |MySQL type |PostgreSQL type |Oracle type |SQL Server type
 
 |io.debezium.data.Bits
 |`blob`
 |`bit(n)`
-|`bit varying` +
-`bit(n)`*
+|`bit varying`
+`bit(n)`^1^
 |`blob`
 |`varbinary(n)`
 
@@ -542,22 +543,22 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |io.debezium.data.Ltree
 |`clob` +
-`varchar(n)`*
-|`longtext` +
-`varchar`*
+`varchar(n)`^1^
+|`longtext`
+`varchar`^1^
 |`ltree`
-|`clob` +
-`varchar2(n)`*
+|`clob`
+`varchar2(n)`^1^
 |`varchar`
 
 |io.debezium.data.Uuid
-|`clob` +
-`varchar(n)`*
+|`clob`
+`varchar(n)`^1^
 |`uuid`
-|`text` +
-`varchar(n)`*
-|`clob` +
-`varchar2(n)`*
+|`text`
+`varchar(n)`^1^
+|`clob`
+`varchar2(n)`^1^
 |`varchar`
 
 |io.debezium.data.Xml
@@ -584,12 +585,11 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |===
 
-[IMPORTANT]
-====
-When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
-
-When consuming changes from topics populated by a {prodname} source connector, enable either `column.propagate.source.type` or `datatype.propagate.source.type` in the source connector configuration to pass column metadata that the JDBC connector will use to construct columns with a stricter concrete data type, shown as the second type.
-====
+^1^ When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
+If the connector consumes change events from topics that are populated by a {prodname} source connector, the JDBC connector can use stricter, more concrete data types when it sends data to some targets.
+To enable the use of these stricter data type conversions, set the `column.propagate.source.type` or `datatype.propagate.source.type` properties in the source connector configuration.
+When these properties are set in the source connector, the events that it generates include additional column metadata that the JDBC connector then uses to construct columns with a stricter concrete data type.
+In the preceding table, where a second entry, marked with an asterisk, appears in a table cell, it represents the stricter data type.
 
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
