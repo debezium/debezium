@@ -40,7 +40,7 @@ The following SMTs are provided by {prodname}:
 |Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
 
 |xref:transformations/geometry-format-transformer.adoc[Geometry Format Transformer]
-|Transformer which converts between WKB and EWKB geometry formats.
+|Converts Debezium Geometry field types between Well-Known Binary(WKB) and Extended Well-Known Binary(EWKB) formats.
 
 |xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 |Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.

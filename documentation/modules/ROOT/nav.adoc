@@ -43,7 +43,7 @@
 ** xref:transformations/partition-routing.adoc[Partition Routing]
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
-** xref:transformations/geometry-format-transformer.adoc[Geometry Format Transformer]
+** xref:transformations/geometry-format-transformer.adoc[Geometry Format Conversion]
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 ** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
 ** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
