@@ -30,6 +30,7 @@ Data collection names are case-sensitive.
 
 Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
 You can set the following parameters for each additional condition:
+
 `data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
 You can apply different filters to each {data-collection}.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`.

@@ -53,7 +53,7 @@ The values of the `id`,`type`, and `data` parameters in the command correspond t
 The following table describes the parameters in the example:
 +
 .Descriptions of fields in a MongoDB insert() command for sending an incremental snapshot signal to the signaling {data-collection}
-[cols="1,2,6",options="header"]
+[cols="1,2,6a",options="header"]
 |===
 |Item |Value |Description
 
@@ -74,13 +74,14 @@ Rather, during the snapshot, {prodname} generates its own `id` string as a water
 
 |3
 |`execute-snapshot`
-|Specifies `type` parameter specifies the operation that the signal is intended to trigger.
+|Specifies the `type` of operation that the signal triggers.
 
 |4
 |`data-collections`
 |A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot.
 
 The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
+Data collection names are case-sensitive.
 
 |5
 |`incremental`
