@@ -41,6 +41,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-mariadb</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jackson</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
