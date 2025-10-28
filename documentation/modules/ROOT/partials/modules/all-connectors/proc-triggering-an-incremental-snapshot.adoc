@@ -269,7 +269,8 @@ If you do not specify a value, the connector runs an incremental snapshot.
 
 |2
 |`op`
-|Specifies the event type. +
+|Specifies the event type.
+
 The value for snapshot events is `r`, signifying a `READ` operation.
 
 |===
