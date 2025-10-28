@@ -1,6 +1,6 @@
 :page-aliases: configuration/geometry-format-transformer.adoc
-[id="geometry-format-transformer"]
-= Geometry Format Transformer
+[id="convert-between-geometry-formats"]
+= Convert between Geometry formats
 
 :toc:
 :toc-placement: macro
@@ -10,8 +10,8 @@
 
 toc::[]
 
-The 'GeometryFormatTransformer' is a transformer which converts the formats between WKB(Well-Known Binary format) and EWKB(Extended Well-Known Binary Format).
-This Transformer will convert the formats either at source  connector i.e modify before the message is sent to kafka or at sink connector i.e before the message is sent to external system.
+The 'GeometryFormatTransformer' is a transformation that converts between the WKB (Well-Known Binary) and EWKB (Extended Well-Known Binary) formats.This transformation identifies geometry fields using the 'io.debezium.data.Geometry' logical type.
+It can be applied to either a {prodname} source connector to modify the format before events are emitted, or to a {prodname} sink connector to process events from a {prodname} source connector topic.
 
 You can configure the SMT to modify the format in the message.
 For more information about configuring the SMT, see the following xref:example-geometry-format-transformer[example].
@@ -52,7 +52,7 @@ The following table lists the configuration options that you can use with the `G
 |Importance
 
 |[[geometry-format-transformer-format]]<<geometry-format-transformer-format, `format`>>
-|A Geometry format to which you want to apply the transformation.
+|The geometry format that is applied to all Debezium Geometry logical types.
 The transformation converts the geometry format between WKB and EWKB.
 |enum
 |WKB
