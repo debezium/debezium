@@ -3158,7 +3158,10 @@ Because the {prodname} Db2 connector does not support `truncate` change events, 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<schemaName>_._<tableName>_`
 
 |[[db2-property-signal-enabled-channels]]<<db2-property-signal-enabled-channels, `+signal.enabled.channels+`>>

@@ -4410,7 +4410,7 @@ Any transaction that exceeds this configured value is discarded entirely, and th
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
 
-For information about specifying the archive destination in environments where the primary and standby instances use different names, see xref:archive-log-destinations[Archive log destinations]. 
+For information about specifying the archive destination in environments where the primary and standby instances use different names, see xref:archive-log-destinations[Archive log destinations].
 
 |[[oracle-property-log-mining-username-include-list]]<<oracle-property-log-mining-username-include-list, `+log.mining.username.include.list+`>>
 |No default
@@ -4515,8 +4515,11 @@ By default, only truncate operations are skipped.
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
 a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
-Use the following format to specify the collection name: +
+When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database.
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
 |[[oracle-property-signal-enabled-channels]]<<oracle-property-signal-enabled-channels, `+signal.enabled.channels+`>>
