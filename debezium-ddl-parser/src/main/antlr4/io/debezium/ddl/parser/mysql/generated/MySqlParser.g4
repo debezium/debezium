@@ -2807,6 +2807,7 @@ keywordsCanBeId
     | CURRENT
     | CURRENT_USER
     | CURSOR_NAME
+    | CYCLE
     | DATA
     | DATAFILE
     | DEALLOCATE
