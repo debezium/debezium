@@ -27,10 +27,6 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
-        </dependency>
     </dependencies>
     
 </project>
