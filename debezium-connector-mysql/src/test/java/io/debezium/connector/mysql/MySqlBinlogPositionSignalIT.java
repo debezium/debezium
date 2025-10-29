@@ -82,7 +82,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with("driver.connectionTimeZone", "UTC")
+                .with("database.connectionTimeZone", "US/Samoa")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -169,7 +169,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with("driver.connectionTimeZone", "UTC")
+                .with("database.connectionTimeZone", "US/Samoa")
                 .build();
 
         start(MySqlConnector.class, config);
