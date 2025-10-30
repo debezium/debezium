@@ -5,10 +5,10 @@ metadata:
   keywords:
   - "debezium"
   - "cdc"
-  - "mariaDB"
+  - "mariadb"
   guide: "https://debezium.io/documentation/reference/${parsedVersion.majorVersion}.${parsedVersion.minorVersion}/integrations/quarkus-debezium-engine-extension.html"
   categories:
   - "integration"
   - "cdc"
-  - "mariaDB"
+  - "mariadb"
   status: "experimental"
