@@ -12,6 +12,7 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
@@ -31,7 +32,7 @@ public class AgroalDatasourceRecorder {
             String username = ConfigProvider.getConfig().getConfigValue(PREFIX + USERNAME).getValue();
             String password = ConfigProvider.getConfig().getConfigValue(PREFIX + PASSWORD).getValue();
 
-            return createConfiguration("default", jdbcUrl, username, password, true, dbKind);
+            return createConfiguration(QuarkusDatasourceConfiguration.DEFAULT, jdbcUrl, username, password, true, dbKind);
         }
         LOGGER.trace("Extracting datasource configuration for {}", name);
 
