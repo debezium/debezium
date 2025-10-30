@@ -42,7 +42,7 @@ public class CaptureHandler {
         productService.add(event.record());
     }
 
-    @Capturing(destination = "integration.alternative.orders", engine = "alternative")
+    @Capturing(destination = "integration2.alternative.orders", engine = "alternative")
     public void orders(CapturingEvent<Order> event) {
         logger.info("getting a order event for destination {} from capturing id {}", event.destination(), event.engine());
         orderService.add(event.record());
