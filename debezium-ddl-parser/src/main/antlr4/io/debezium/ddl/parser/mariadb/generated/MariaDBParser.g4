@@ -750,8 +750,8 @@ alterSpecification
     | ENABLE KEYS                                                         # alterByEnableKeys
     | RENAME renameFormat = (TO | AS)? (uid | fullId)                     # alterByRename
     | ORDER BY uidList                                                    # alterByOrder
-    | CONVERT TO CHARACTER SET charsetName (COLLATE collationName)?       # alterByConvertCharset
-    | DEFAULT? CHARACTER SET '=' charsetName (COLLATE '=' collationName)? # alterByDefaultCharset
+    | CONVERT TO charSet charsetName (COLLATE collationName)?             # alterByConvertCharacterset
+    | DEFAULT? charSet '=' charsetName (COLLATE '=' collationName)?       # alterByDefaultCharset
     | DISCARD TABLESPACE                                                  # alterByDiscardTablespace
     | IMPORT TABLESPACE                                                   # alterByImportTablespace
     | FORCE                                                               # alterByForce
@@ -848,7 +848,7 @@ dropSequence // sequence is MariaDB-specific only
 //    Other DDL statements
 
 renameTable
-    : RENAME TABLE ifExists? renameTableClause (',' renameTableClause)*
+    : RENAME (TABLE | TABLES) ifExists? renameTableClause (',' renameTableClause)*
     ;
 
 renameTableClause
