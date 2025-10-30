@@ -43,6 +43,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -288,7 +289,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        final var rowsScanned = (TabularDataSupport) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
+        final var rowsScanned = (TabularDataSupport) mbeanServer.getAttribute(MetricsHelper.getSnapshotMetricsObjectName(connector, server, task, database),
                 "RowsScanned");
 
         final var scannedRowsByCollection = rowsScanned.values().stream().map(c -> ((CompositeDataSupport) c))

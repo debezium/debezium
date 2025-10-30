@@ -21,6 +21,7 @@ import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.pipeline.AbstractMetricsTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -109,11 +110,11 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
     }
 
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(getConnectorName(), SERVER_NAME);
+        return MetricsHelper.getSnapshotMetricsObjectName(getConnectorName(), SERVER_NAME);
     }
 
     public ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(getConnectorName(), SERVER_NAME, getStreamingNamespace());
+        return MetricsHelper.getStreamingMetricsObjectName(getConnectorName(), SERVER_NAME, getStreamingNamespace());
     }
 
 }

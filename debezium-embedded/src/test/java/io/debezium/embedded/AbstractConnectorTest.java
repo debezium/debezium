@@ -33,12 +33,10 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.apache.kafka.common.config.Config;
@@ -72,6 +70,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.RequiresAssemblyProfileTestRule;
@@ -1375,41 +1374,31 @@ public abstract class AbstractConnectorTest implements Testing {
         waitForSnapshotEvent(connector, server, "SnapshotCompleted", task, database);
     }
 
-    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, Map<String, String> props) throws InterruptedException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
+    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, Map<String, String> props) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server, props), "SnapshotCompleted"));
+                .until(() -> MetricsHelper.getSnapshotMetric(connector, server, props, "SnapshotCompleted"));
     }
 
-    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, String task, String database, Map<String, String> props)
-            throws InterruptedException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
+    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, String task, String database, Map<String, String> props) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server, task, database, props), "SnapshotCompleted"));
+                .until(() -> MetricsHelper.getSnapshotMetric(connector, server, task, database, props, "SnapshotCompleted"));
     }
 
-    private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) throws InterruptedException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
+    private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server, task, database), event));
+                .until(() -> MetricsHelper.getSnapshotMetric(connector, server, task, database, event));
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
@@ -1466,8 +1455,9 @@ public abstract class AbstractConnectorTest implements Testing {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         try {
-            ObjectName streamingMetricsObjectName = task != null ? getStreamingMetricsObjectName(connector, server, contextName, task)
-                    : getStreamingMetricsObjectName(connector, server, contextName);
+            ObjectName streamingMetricsObjectName = task != null
+                    ? MetricsHelper.getStreamingMetricsObjectName(connector, server, contextName, task)
+                    : MetricsHelper.getStreamingMetricsObjectName(connector, server, contextName);
             return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
         }
         catch (JMException ignored) {
@@ -1479,7 +1469,7 @@ public abstract class AbstractConnectorTest implements Testing {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         try {
-            ObjectName streamingMetricsObjectName = getStreamingMetricsObjectName(connector, server, task, null, props);
+            ObjectName streamingMetricsObjectName = MetricsHelper.getStreamingMetricsObjectName(connector, server, task, null, props);
             return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
         }
         catch (JMException ignored) {
@@ -1487,99 +1477,7 @@ public abstract class AbstractConnectorTest implements Testing {
         return false;
     }
 
-    public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server);
-    }
-
-    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database) throws MalformedObjectNameException {
-
-        Map<String, String> props = new HashMap<>();
-        props.put("task", task);
-        props.put("database", database);
-
-        return getSnapshotMetricsObjectName(connector, server, props);
-    }
-
-    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, Map<String, String> props) throws MalformedObjectNameException {
-        String additionalProperties = props.entrySet().stream()
-                .filter(e -> e.getValue() != null)
-                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
-                .collect(Collectors.joining(","));
-
-        if (additionalProperties.length() != 0) {
-            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + "," + additionalProperties);
-        }
-
-        return getSnapshotMetricsObjectName(connector, server);
-    }
-
-    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database, Map<String, String> props)
-            throws MalformedObjectNameException {
-
-        Map<String, String> taskAndDatabase = new HashMap<>();
-        taskAndDatabase.put("task", task);
-        taskAndDatabase.put("database", database);
-
-        String additionalProperties = Stream.of(props.entrySet(), taskAndDatabase.entrySet()).flatMap(Set::stream)
-                .filter(e -> e.getValue() != null)
-                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
-                .collect(Collectors.joining(","));
-
-        if (additionalProperties.length() != 0) {
-            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + "," + additionalProperties);
-        }
-
-        return getSnapshotMetricsObjectName(connector, server);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector, server, getStreamingNamespace());
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task, String database)
-            throws MalformedObjectNameException {
-
-        Map<String, String> props = new HashMap<>();
-        props.put("task", task);
-        props.put("database", database);
-
-        return getStreamingMetricsObjectName(connector, server, props);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String task, String database, Map<String, String> customTags)
-            throws MalformedObjectNameException {
-
-        Map<String, String> props = new HashMap<>();
-        props.put("task", task);
-        props.put("database", database);
-        props.putAll(customTags);
-
-        return getStreamingMetricsObjectName(connector, server, props);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, Map<String, String> props) throws MalformedObjectNameException {
-        String additionalProperties = props.entrySet().stream()
-                .filter(e -> e.getValue() != null)
-                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
-                .collect(Collectors.joining(","));
-
-        if (additionalProperties.length() != 0) {
-            return new ObjectName(
-                    "debezium." + connector + ":type=connector-metrics,context=" + getStreamingNamespace() + ",server=" + server + "," + additionalProperties);
-        }
-
-        return getStreamingMetricsObjectName(connector, server);
-    }
-
     protected static String getStreamingNamespace() {
-        return System.getProperty("test.streaming.metrics.namespace", "streaming");
+        return MetricsHelper.getStreamingNamespace();
     }
 }
