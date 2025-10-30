@@ -58,6 +58,7 @@
             <scope>provided</scope>
         </dependency>
 
+
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
@@ -165,6 +166,18 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>${version.azure.sdk}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

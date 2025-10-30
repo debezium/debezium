@@ -180,6 +180,9 @@
         <!-- OpenTelemetry version to use for the attached test agent-->
         <version.opentelemetry.testing>2.10.0-alpha</version.opentelemetry.testing>
 
+        <!-- Azure SDK -->
+        <version.azure.sdk>1.3.0</version.azure.sdk>
+
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
 
