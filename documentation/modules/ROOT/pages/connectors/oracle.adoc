@@ -4884,6 +4884,10 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The total duration in milliseconds spent processing results from LogMiner sessions.
 
+|[[oracle-streaming-metrics-totalcommittimeinmilliseconds]]<<oracle-streaming-metrics-totalcommittimeinmilliseconds, `+TotalCommitTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent emitting a transaction after a commit is observed.
+
 |[[oracle-streaming-metrics-totalresultsetnexttimeinmilliseconds]]<<oracle-streaming-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
 |`long`
 |The total duration in milliseconds spent by the JDBC driver fetching the next row to be processed from the log mining view.

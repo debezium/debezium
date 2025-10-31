@@ -312,6 +312,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     @Override
+    public long getTotalCommitTimeInMilliseconds() {
+        return commitDuration.getTotal().toMillis();
+    }
+
+    @Override
     public long getCommitThroughput() {
         final long timeSpent = Duration.between(startTime, clock.instant()).toMillis();
         return getNumberOfCommittedTransactions() * MILLIS_PER_SECOND / (timeSpent != 0 ? timeSpent : 1);

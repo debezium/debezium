@@ -191,6 +191,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getTotalBatchProcessingTimeInMilliseconds();
 
     /**
+     * @return total duration in milliseconds for dispatching committed transactions
+     */
+    long getTotalCommitTimeInMilliseconds();
+
+    /**
      * @return average number of committed transactions per second in the transaction buffer
      */
     long getCommitThroughput();
