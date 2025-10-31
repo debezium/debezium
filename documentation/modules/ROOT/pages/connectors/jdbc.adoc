@@ -542,7 +542,7 @@ If the database does not support time or timestamps with time zones, the mapping
 |`bigint`
 
 |io.debezium.data.Ltree
-|`clob` +
+|`clob`
 `varchar(n)`^1^
 |`longtext`
 `varchar`^1^
