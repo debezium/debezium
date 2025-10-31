@@ -97,11 +97,9 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             // Force a new offset commit to persist the change
             eventDispatcher.alwaysDispatchHeartbeatEvent(signalPayload.partition, offsetContext);
 
-            LOGGER.info("Successfully updated binlog position. New offset: {}", offsetContext);
+            LOGGER.info("Successfully updated binlog position. New offset: {}. Connector restart required to apply new position.", offsetContext);
 
-            // To force the connector to use the new position, we need to restart the streaming
-            // The most reliable way is to throw a retriable exception that will cause the task to restart
-            throw new DebeziumException("Binlog position changed via signal. Restarting connector to apply new position.");
+            return true;
 
         }
         catch (DebeziumException e) {

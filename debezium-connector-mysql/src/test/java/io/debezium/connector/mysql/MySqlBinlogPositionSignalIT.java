@@ -61,7 +61,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     public void shouldSkipToBinlogPositionViaSignal() throws Exception {
         // Setup database
         connection.execute(
-                "CREATE DATABASE IF NOT EXISTS signal_test",
+                "DROP DATABASE IF EXISTS signal_test",
+                "CREATE DATABASE signal_test",
                 "USE signal_test",
                 "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
                 "CREATE TABLE " + SIGNAL_TABLE + " (" +
@@ -82,6 +83,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                .with("schema.history.internal.file.filename", Testing.Files.createTestingPath("schema-history.txt").toString())
                 .with("database.connectionTimeZone", "US/Samoa")
                 .build();
 
@@ -100,15 +103,17 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
         SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(SERVER_NAME + ".signal_test.test_table")).hasSize(2);
 
-        // Get current binlog position before inserting more data
-        Map<String, Object> position = getCurrentBinlogPosition();
-        String binlogFile = (String) position.get("file");
-        Long binlogPos = (Long) position.get("position");
-
         // Insert more data that we'll skip
         connection.execute(
                 "INSERT INTO test_table VALUES (3, 'value3')",
                 "INSERT INTO test_table VALUES (4, 'value4')");
+
+        // Get current binlog position AFTER the records we want to skip
+        // This position will be after records 3 and 4, so when we restart the connector
+        // it will skip those and start reading from record 5
+        Map<String, Object> position = getCurrentBinlogPosition();
+        String binlogFile = (String) position.get("file");
+        Long binlogPos = (Long) position.get("position");
 
         // Insert data we want to capture after the skip
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -122,10 +127,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-1', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // The connector should restart and skip records 3 and 4, capturing only record 5
-        // Wait for connector to restart (signal throws exception to force restart)
-        waitForConnectorShutdown("mysql", SERVER_NAME);
-        Thread.sleep(5000); // Give time for restart
+        // Wait for the signal to be processed and offset to be committed
+        // The signal processing will trigger a heartbeat event with the new offset
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {});
+
+        // Stop and restart the connector to apply the new binlog position
+        stopConnector();
+        start(MySqlConnector.class, config);
 
         // Verify we only get record 5 (skipped 3 and 4)
         records = consumeRecordsByTopic(1);
@@ -148,7 +159,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Setup database
         connection.execute(
-                "CREATE DATABASE IF NOT EXISTS signal_test",
+                "DROP DATABASE IF EXISTS signal_test",
+                "CREATE DATABASE signal_test",
                 "USE signal_test",
                 "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
                 "CREATE TABLE " + SIGNAL_TABLE + " (" +
@@ -169,6 +181,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                .with("schema.history.internal.file.filename", Testing.Files.createTestingPath("schema-history-gtid.txt").toString())
                 .with("database.connectionTimeZone", "US/Samoa")
                 .build();
 
@@ -187,13 +201,13 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
         SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(SERVER_NAME + ".signal_test.test_table")).hasSize(2);
 
-        // Get current GTID set
-        String gtidSet = getCurrentGtidSet();
-
         // Insert more data that we'll skip
         connection.execute(
                 "INSERT INTO test_table VALUES (3, 'value3')",
                 "INSERT INTO test_table VALUES (4, 'value4')");
+
+        // Get current GTID set AFTER the records we want to skip
+        String gtidSet = getCurrentGtidSet();
 
         // Insert data we want to capture after the skip
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -205,9 +219,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // The connector should restart and skip records 3 and 4, capturing only record 5
-        waitForConnectorShutdown("mysql", SERVER_NAME);
-        Thread.sleep(5000); // Give time for restart
+        // Wait for the signal to be processed and offset to be committed
+        // The signal processing will trigger a heartbeat event with the new offset
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {});
+
+        // Stop and restart the connector to apply the new GTID position
+        stopConnector();
+        start(MySqlConnector.class, config);
 
         // Verify we only get record 5 (skipped 3 and 4)
         records = consumeRecordsByTopic(1);
@@ -221,14 +242,28 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     }
 
     private Map<String, Object> getCurrentBinlogPosition() throws SQLException {
-        return connection.queryAndMap("SHOW MASTER STATUS", rs -> {
-            if (rs.next()) {
-                return Map.of(
-                        "file", rs.getString(1),
-                        "position", rs.getLong(2));
-            }
-            throw new IllegalStateException("Could not get binlog position");
-        });
+        // Try SHOW BINARY LOG STATUS (MySQL 8.0.22+) first, fall back to SHOW MASTER STATUS
+        try {
+            return connection.queryAndMap("SHOW BINARY LOG STATUS", rs -> {
+                if (rs.next()) {
+                    return Map.of(
+                            "file", rs.getString(1),
+                            "position", rs.getLong(2));
+                }
+                throw new IllegalStateException("Could not get binlog position");
+            });
+        }
+        catch (SQLException e) {
+            // Fall back to legacy command for older MySQL versions
+            return connection.queryAndMap("SHOW MASTER STATUS", rs -> {
+                if (rs.next()) {
+                    return Map.of(
+                            "file", rs.getString(1),
+                            "position", rs.getLong(2));
+                }
+                throw new IllegalStateException("Could not get binlog position");
+            });
+        }
     }
 
     private String getCurrentGtidSet() throws SQLException {
