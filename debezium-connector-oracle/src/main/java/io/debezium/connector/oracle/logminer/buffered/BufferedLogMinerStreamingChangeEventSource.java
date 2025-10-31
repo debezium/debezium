@@ -525,7 +525,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
-        updateCommitMetrics(row, Duration.between(start, Instant.now()));
+        updateCommitMetrics(row, Duration.between(start, Instant.now()), numEvents);
     }
 
     @Override

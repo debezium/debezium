@@ -1638,12 +1638,14 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param event the event, should not be {@code null}
      * @param commitDuration the duration of the commit operation, should not be {@code null}
+     * @param eventCount the number of events in the committed transaction
      */
-    protected void updateCommitMetrics(LogMinerEventRow event, Duration commitDuration) {
+    protected void updateCommitMetrics(LogMinerEventRow event, Duration commitDuration, int eventCount) {
         getMetrics().incrementCommittedTransactionCount();
         getMetrics().setCommitScn(event.getScn());
         getMetrics().setOffsetScn(getOffsetContext().getScn());
         getMetrics().setLastCommitDuration(commitDuration);
+        getMetrics().setLastCommitEventCount(eventCount);
     }
 
     /**
