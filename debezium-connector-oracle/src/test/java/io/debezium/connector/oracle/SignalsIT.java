@@ -7,12 +7,21 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.management.ManagementFactory;
+import java.math.BigInteger;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.JMException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -21,11 +30,14 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.spi.DropTransactionAction;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
 /**
@@ -44,7 +56,17 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     @BeforeClass
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
+    }
 
+    @AfterClass
+    public static void closeConnection() throws SQLException {
+        if (connection != null) {
+            connection.close();
+        }
+    }
+
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.debezium_signal");
 
@@ -70,24 +92,15 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("GRANT SELECT ON debezium.debezium_signal to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.debezium_signal ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-    }
-
-    @AfterClass
-    public static void closeConnection() throws SQLException {
-        if (connection != null) {
-            TestHelper.dropTable(connection, "debezium.debezium_signal");
-            TestHelper.dropTable(connection, "debezium.customer");
-            connection.close();
-        }
-    }
-
-    @Before
-    public void before() throws SQLException {
-        connection.execute("delete from debezium.customer");
-        connection.execute("delete from debezium.debezium_signal");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+    }
+
+    @After
+    public void after() throws SQLException {
+        TestHelper.dropTable(connection, "debezium.debezium_signal");
+        TestHelper.dropTable(connection, "debezium.customer");
     }
 
     @Test
@@ -148,5 +161,119 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         assertThat(postKey2.schema().fields()).hasSize(2);
         assertThat(postKey2.schema().field("ID")).isNotNull();
         assertThat(postKey2.schema().field("NAME")).isNotNull();
+    }
+
+    @Test
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
+    public void shouldDropTransactionViaSignal() throws Exception {
+        // There isn't an easy way to track the transaction ID, so we test the negative case
+        // to validate signal processing and logging work correctly.
+
+        final LogInterceptor logInterceptor = new LogInterceptor(DropTransactionAction.class);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Create an uncommitted transaction in the buffer (won't be captured until committed)
+        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Uncommitted-Transaction', 100.00, TO_DATE('2024-01-01', 'yyyy-mm-dd'))");
+
+        // Send drop-transaction signal with a fake transaction ID using a separate connection
+        // This ensures the signal doesn't accidentally commit the uncommitted transaction above
+        final String fakeTransactionId = "fake.transaction.id.12345";
+        try (OracleConnection signalConnection = TestHelper.testConnection()) {
+            signalConnection.execute(String.format(
+                    "INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{\"transaction-id\": \"%s\"}')",
+                    fakeTransactionId));
+        }
+
+        // Wait for signal to be processed
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> logInterceptor.containsMessage("Attempting to drop transaction '" + fakeTransactionId + "'"));
+
+        // Verify the signal was processed and warning logged for non-existent transaction
+        assertThat(logInterceptor.containsMessage("Attempting to drop transaction '" + fakeTransactionId + "'")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Transaction '" + fakeTransactionId + "' was not found")).isTrue();
+
+        // Commit the first transaction (was uncommitted until now)
+        connection.execute("COMMIT");
+
+        // Insert a new transaction to verify connector still works after the signal
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'After-Signal', 88.88, TO_DATE('2024-01-02', 'yyyy-mm-dd'))");
+        connection.execute("COMMIT");
+
+        waitForCurrentScnToHaveBeenSeenByConnector();
+
+        // Should receive 2 records (the first uncommitted transaction + the After-Signal transaction)
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> customerRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        List<SourceRecord> signalRecords = records.recordsForTopic("server1.DEBEZIUM.DEBEZIUM_SIGNAL");
+        assertThat(customerRecords).hasSize(2);
+        assertThat(signalRecords).hasSize(1);
+
+        // Validate the schema and content of the first customer record
+        SourceRecord firstRecord = customerRecords.get(0);
+        final Struct firstKey = (Struct) firstRecord.key();
+        assertThat(firstKey.schema().fields()).hasSize(1);
+        assertThat(firstKey.schema().field("ID")).isNotNull();
+
+        Struct firstValue = (Struct) firstRecord.value();
+        Struct firstAfter = firstValue.getStruct("after");
+        assertThat(firstAfter.get("ID")).isEqualTo(1);
+        assertThat(firstAfter.getString("NAME")).isEqualTo("Uncommitted-Transaction");
+
+        // Validate the schema and content of the second customer record
+        SourceRecord secondRecord = customerRecords.get(1);
+        final Struct secondKey = (Struct) secondRecord.key();
+        assertThat(secondKey.schema().fields()).hasSize(1);
+        assertThat(secondKey.schema().field("ID")).isNotNull();
+
+        Struct secondValue = (Struct) secondRecord.value();
+        Struct secondAfter = secondValue.getStruct("after");
+        assertThat(secondAfter.get("ID")).isEqualTo(2);
+        assertThat(secondAfter.getString("NAME")).isEqualTo("After-Signal");
+
+        // Validate the signal record
+        SourceRecord signalRecord = signalRecords.get(0);
+        Struct signalValue = (Struct) signalRecord.value();
+        Struct signalAfter = signalValue.getStruct("after");
+        assertThat(signalAfter.getString("ID")).isEqualTo("drop-tx-1");
+        assertThat(signalAfter.getString("TYPE")).isEqualTo("drop-transaction");
+        assertThat(signalAfter.getString("DATA")).contains(fakeTransactionId);
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
+
+    private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            final Scn scn = admin.getCurrentScn();
+            Awaitility.await()
+                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
+                    .until(() -> {
+                        final BigInteger scnValue = getStreamingMetric("CurrentScn");
+                        if (scnValue == null) {
+                            return false;
+                        }
+                        return new Scn(scnValue).compareTo(scn) > 0;
+                    });
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T getStreamingMetric(String metricName) throws JMException {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        return (T) mbeanServer.getAttribute(objectName, metricName);
     }
 }
