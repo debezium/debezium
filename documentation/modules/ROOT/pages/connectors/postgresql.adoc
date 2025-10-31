@@ -3985,7 +3985,40 @@ Set a delay value that is higher than the value of the {link-kafka-docs}/#connec
 
 |[[postgresql-property-slot-stream-params]]<<postgresql-property-slot-stream-params, `+slot.stream.params+`>>
 |No default
-|Semicolon separated list of parameters to pass to the configured logical decoding plug-in. For example, `add-tables=public.table,public.table2;include-lsn=true`.
+|A list of optional key-value pairs, separated by semicolons, that represent parameters that the connector passes to the configured PostgreSQL logical decoding plug-in when the replication stream starts.
+The connector passes the specified parameters as-is to the plug-in.
+Valid parameters depend on the configured logical decoding plug-in.
+Parameters that are not relevant to the configured plug-in are ignored.
+
+ifdef::community[]
+Some valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
++
+These options can help to prevent memory-related problems when the plugin handles large transactions.
++
+For example,
++
+ include-xacts=true;write-in-chunks=true;chunk-size=65536
+
+endif::community[]
+
+Some valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
++
+Use these options to customize streaming behavior related to transaction boundaries, multi-phase commits, and replication filtering.
++
+For example,
++
+ publicationnames=dbzpublication;messages=true;binary=true;two_phase=true;origin=any
+
+
+[NOTE]
+====
+The parameters that are available for use with the `pgoutput` plug-in depend on the `proto_version`, which defines the version of the logical streaming replication protocol, and which is specified when you create the replication slot.
+If you configure {prodname} to create replication slots automatically, the value of `proto_version` is hardcoded to `1`.
+This version of the protocol does not support streaming of large in-progress transactions, or the use of two-phase commits.
+To take advantage of those features, create slots manually and set the `proto_version` to a higher value.
+For more information, see the https://www.postgresql.org/docs/18/protocol-logical-replication.html[PostgreSQL documentation].
+====
+
 
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`
