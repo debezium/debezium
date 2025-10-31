@@ -332,7 +332,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (transaction == null) {
                 getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             else {
                 LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
@@ -888,6 +887,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
             transaction = transactionFactory.createTransaction(event);
             getTransactionCache().addTransaction(transaction);
+
+            getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
 
         final int eventId = transaction.getNextEventId();
@@ -896,12 +897,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
             getTransactionCache().addTransactionEvent(transaction, eventId, dispatchedEvent);
             getMetrics().calculateLagFromSource(event.getChangeTime());
+
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
         // When using Infinispan, this extra put is required so that the state is properly synchronized
         getTransactionCache().syncTransaction(transaction);
-        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
     }
 
     /**
@@ -969,8 +970,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         getMetrics().addAbandonedTransactionId(key);
                     }
 
-                    getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-                    getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+                    if (!abandoned.isEmpty()) {
+                        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+                    }
 
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
