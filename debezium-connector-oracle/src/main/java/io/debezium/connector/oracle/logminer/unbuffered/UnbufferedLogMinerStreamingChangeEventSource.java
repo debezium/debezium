@@ -390,6 +390,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             dispatchSchemaChanges();
         }
 
+        final int numEvents = accumulator.getTotalEvents();
         accumulator.close();
 
         getEventDispatcher().dispatchTransactionCommittedEvent(getPartition(), getOffsetContext(), event.getChangeTime());
@@ -397,7 +398,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getBatchMetrics().commitObserved();
 
         getMetrics().setActiveTransactionCount(0L);
-        updateCommitMetrics(event, Duration.between(commitStartTime, Instant.now()));
+        updateCommitMetrics(event, Duration.between(commitStartTime, Instant.now()), numEvents);
     }
 
     @Override

@@ -4951,7 +4951,7 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 
 |[[oracle-streaming-metrics-commit-throughput]]<<oracle-streaming-metrics-commit-throughput, `+CommitThroughput+`>>
 |`long`
-|The average number of committed transactions per second in the transaction buffer.
+|The number of emitted events per second during transaction commit windows.
 
 |[[oracle-streaming-metrics-total-changes-count]]<<oracle-streaming-metrics-total-changes-count, `+TotalChangesCount+`>>
 |`long`
