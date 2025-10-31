@@ -84,6 +84,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicLong scnFreezeCount = new AtomicLong();
     private final AtomicLong partialRollbackCount = new AtomicLong();
     private final AtomicLong numberOfBufferedEvents = new AtomicLong();
+    private final AtomicLong numberOfCommittedEvents = new AtomicLong();
 
     private final DurationHistogramMetric batchProcessingDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric fetchQueryDuration = new DurationHistogramMetric();
@@ -137,6 +138,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         scnFreezeCount.set(0);
         partialRollbackCount.set(0);
         numberOfBufferedEvents.set(0);
+        numberOfCommittedEvents.set(0);
 
         fetchQueryDuration.reset();
         batchProcessingDuration.reset();
@@ -318,8 +320,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
     @Override
     public long getCommitThroughput() {
-        final long timeSpent = Duration.between(startTime, clock.instant()).toMillis();
-        return getNumberOfCommittedTransactions() * MILLIS_PER_SECOND / (timeSpent != 0 ? timeSpent : 1);
+        final long timeSpent = commitDuration.getTotal().toSeconds();
+        return numberOfCommittedEvents.get() / (timeSpent != 0 ? timeSpent : 1);
     }
 
     @Override
@@ -664,6 +666,15 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setLastCommitDuration(Duration duration) {
         commitDuration.set(duration);
+    }
+
+    /**
+     * Sets the number of events emitted in the last transaction commit.
+     *
+     * @param eventCount number of events
+     */
+    public void setLastCommitEventCount(int eventCount) {
+        numberOfCommittedEvents.addAndGet(eventCount);
     }
 
     /**
