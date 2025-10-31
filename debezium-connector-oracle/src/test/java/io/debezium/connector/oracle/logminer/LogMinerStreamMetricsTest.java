@@ -283,9 +283,11 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
 
         metrics.setLastCommitDuration(Duration.ofMillis(100L));
         assertThat(metrics.getLastCommitDurationInMilliseconds()).isEqualTo(100L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(100L);
 
         metrics.setLastCommitDuration(Duration.ofMillis(50L));
         assertThat(metrics.getMaxCommitDurationInMilliseconds()).isEqualTo(100L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(150L);
 
         metrics.setOffsetScn(Scn.valueOf(10L));
         assertThat(metrics.getOldestScn()).isEqualTo("10");
