@@ -109,6 +109,11 @@ import io.quarkus.deployment.recording.RecorderContext;
 
 public class EngineProcessor {
 
+    public static final List<String> PROPERTIES_WITH_CLASSES = List.of(
+            "schema.history.internal",
+            "topic.naming.strategy",
+            "offset.storage");
+
     @BuildStep
     void features(BuildProducer<FeatureBuildItem> producer, List<DebeziumExtensionNameBuildItem> debeziumExtensionNameBuildItems) {
         debeziumExtensionNameBuildItems
@@ -232,6 +237,33 @@ public class EngineProcessor {
                 .forEach(predicate -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(predicate)
                         .reason(getClass().getName())
+                        .build()));
+
+        debeziumEngineConfiguration
+                .defaultConfiguration()
+                .entrySet()
+                .stream()
+                .filter(property -> PROPERTIES_WITH_CLASSES.contains(property.getKey()))
+                .forEach(item -> reflectiveClasses.produce(ReflectiveClassBuildItem
+                        .builder(item.getValue())
+                        .reason(getClass().getName())
+                        .constructors(true)
+                        .methods(true)
+                        .fields(true)
+                        .build()));
+
+        debeziumEngineConfiguration
+                .capturing()
+                .values()
+                .stream()
+                .flatMap(capturing -> capturing.configurations().entrySet().stream())
+                .filter(property -> PROPERTIES_WITH_CLASSES.contains(property.getKey()))
+                .forEach(item -> reflectiveClasses.produce(ReflectiveClassBuildItem
+                        .builder(item.getValue())
+                        .reason(getClass().getName())
+                        .constructors(true)
+                        .methods(true)
+                        .fields(true)
                         .build()));
 
         POST_PROCESSOR.extract(debeziumEngineConfiguration.defaultConfiguration())
