@@ -473,7 +473,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName, connection.isAutonomousDatabase()),
                 rs -> {
                     final List<LogFile> logs = new ArrayList<>();
                     while (rs.next()) {
@@ -505,7 +505,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName, connection.isAutonomousDatabase());
     }
 
     /**
