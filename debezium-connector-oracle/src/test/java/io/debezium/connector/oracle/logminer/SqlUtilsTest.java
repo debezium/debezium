@@ -113,7 +113,7 @@ public class SqlUtilsTest {
         String result = SqlUtils.switchHistoryQuery(Collections.emptyList(), true);
         String expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG A " +
                 "WHERE A.FIRST_TIME > TRUNC(SYSDATE) " +
-                "AND A.DEST_ID IN (SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG)";
+                "AND A.DEST_ID IN (SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%'))";
         assertThat(result).isEqualTo(expected);
 
         // When destination names are available, ADB mode uses the standard destination filtering
@@ -269,7 +269,7 @@ public class SqlUtilsTest {
                 "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
                 "AND A.STATUS='A' " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME" +
@@ -285,7 +285,6 @@ public class SqlUtilsTest {
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3"), true);
         assertThat(result).isEqualTo(SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3")));
     }
-
     @Test
     @FixFor("debezium/dbz#1106")
     void testAllRedoThreadArchiveLogsSqlAdbMode() {
@@ -293,7 +292,7 @@ public class SqlUtilsTest {
                 "A.DICTIONARY_BEGIN, A.DICTIONARY_END, NULL AS DEST_NAME " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
                 "AND A.STATUS='A' " +
                 "AND A.THREAD#=%d " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
@@ -307,7 +306,6 @@ public class SqlUtilsTest {
         result = SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5"), true);
         assertThat(result).isEqualTo(SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5")));
     }
-
     @Test
     @FixFor("debezium/dbz#1106")
     void testAllMinableLogsSqlAdbMode() {
@@ -320,7 +318,7 @@ public class SqlUtilsTest {
                 "AND A.STATUS = 'A' " +
                 "AND A.NEXT_CHANGE# > %d " +
                 "AND A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
                 "%s" +

@@ -309,11 +309,13 @@ public class SqlUtils {
     /**
      * Returns a subquery that selects the archive log destination identifiers to be used when
      * connected to an Oracle Autonomous Database (ADB). In ADB, {@code V$ARCHIVE_DEST_STATUS}
-     * returns empty results since ADB manages archiving automatically, so all destination
-     * identifiers found in {@link #ARCHIVED_LOG_VIEW} are included.
+     * returns empty results since ADB manages archiving automatically. We query for DEST_IDs
+     * that have actual archive log files (NAME starts with '+' or '/'), excluding shipping/standby
+     * destinations that don't have physical files (e.g., 'oracle.rfs.shipping'). This prevents
+     * duplicate sequence numbers from being returned.
      */
     private static String autonomousArchiveLogDestinationsQuery() {
-        return String.format("SELECT DISTINCT DEST_ID FROM %s", ARCHIVED_LOG_VIEW);
+        return String.format("SELECT DISTINCT DEST_ID FROM %s WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')", ARCHIVED_LOG_VIEW);
     }
 
     public static String deletedArchiveLogsQuery(Scn scn, List<String> archiveDestinationNames) {
