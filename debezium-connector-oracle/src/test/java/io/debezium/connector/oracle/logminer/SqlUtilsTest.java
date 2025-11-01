@@ -98,7 +98,7 @@ public class SqlUtilsTest {
     public void testLogSwitchHistorySqlAdbMode() {
         String result = SqlUtils.switchHistoryQuery(null, true);
         String expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG)";
+                " AND DEST_ID IN (SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%'))";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.switchHistoryQuery("LOG_ARCHIVE_DEST_4", true);
@@ -208,23 +208,55 @@ public class SqlUtilsTest {
 
     @Test
     public void testOldestFirstArchiveLogChangeSqlAdbMode() {
-        final String sqlStemAdb = "SELECT MIN(FIRST_CHANGE#) " +
-                "FROM (" +
-                "SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
+        String result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), null, true);
+        String expected = "SELECT MIN(FIRST_CHANGE#) " +
+                "FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
                 "FROM V$LOG " +
                 "UNION " +
                 "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                "AND A.STATUS='A' " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME)";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), null, true);
+        expected = "SELECT MIN(FIRST_CHANGE#) " +
+                "FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$LOG " +
+                "UNION " +
+                "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
                 "AND A.STATUS='A' " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME" +
-                "%s)";
+                " AND A.FIRST_TIME >= SYSDATE - (1/24))";
+        assertThat(result).isEqualTo(expected);
 
-        final String sqlStemAdbWithDestName = "SELECT MIN(FIRST_CHANGE#) " +
-                "FROM (" +
-                "SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), "LOG_ARCHIVE_DEST_3", true);
+        expected = "SELECT MIN(FIRST_CHANGE#) " +
+                "FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$LOG " +
+                "UNION " +
+                "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.DEST_ID IN (" +
+                "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS " +
+                "WHERE STATUS='VALID' " +
+                "AND TYPE='LOCAL' " +
+                "AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') " +
+                "AND A.STATUS='A' " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME)";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), "LOG_ARCHIVE_DEST_3", true);
+        expected = "SELECT MIN(FIRST_CHANGE#) " +
+                "FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
                 "FROM V$LOG " +
                 "UNION " +
                 "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
@@ -237,19 +269,8 @@ public class SqlUtilsTest {
                 "AND A.STATUS='A' " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME" +
-                "%s)";
-
-        String result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), null, true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdb, ""));
-
-        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), null, true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdb, " AND A.FIRST_TIME >= SYSDATE - (1/24)"));
-
-        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), "LOG_ARCHIVE_DEST_3", true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdbWithDestName, ""));
-
-        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), "LOG_ARCHIVE_DEST_3", true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdbWithDestName, " AND A.FIRST_TIME >= SYSDATE - (1/24)"));
+                " AND A.FIRST_TIME >= SYSDATE - (1/24))";
+        assertThat(result).isEqualTo(expected);
     }
 
     @Test
@@ -292,31 +313,29 @@ public class SqlUtilsTest {
 
     @Test
     public void testAllRedoThreadArchiveLogsSqlAdbMode() {
-        final String sqlStemAdb = "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# " +
+        String result = SqlUtils.allRedoThreadArchiveLogs(1, null, true);
+        String expected = "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
                 "AND A.STATUS='A' " +
-                "AND A.THREAD#=%d " +
+                "AND A.THREAD#=1 " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
                 "ORDER BY A.SEQUENCE# DESC";
+        assertThat(result).isEqualTo(expected);
 
-        final String sqlStemAdbWithDestName = "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# " +
+        result = SqlUtils.allRedoThreadArchiveLogs(2, "LOG_ARCHIVE_DEST_5", true);
+        expected = "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.DEST_ID IN (" +
                 "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_5') " +
                 "AND A.STATUS='A' " +
-                "AND A.THREAD#=%d " +
+                "AND A.THREAD#=2 " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
                 "ORDER BY A.SEQUENCE# DESC";
-
-        String result = SqlUtils.allRedoThreadArchiveLogs(1, null, true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdb, 1));
-
-        result = SqlUtils.allRedoThreadArchiveLogs(2, "LOG_ARCHIVE_DEST_5", true);
-        assertThat(result).isEqualTo(String.format(sqlStemAdbWithDestName, 2));
+        assertThat(result).isEqualTo(expected);
     }
 
     @Test
@@ -417,7 +436,9 @@ public class SqlUtilsTest {
 
     @Test
     public void testAllMinableLogsSqlAdbMode() {
-        final String onlineLogsStem = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
+        // ADB mode with null destination and archiveLogOnlyMode=false (includes UNION with online logs)
+        String result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, null, true);
+        String expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
                 "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
                 "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD " +
                 "FROM V$LOGFILE F, V$DATABASE D, V$LOG L " +
@@ -428,60 +449,118 @@ public class SqlUtilsTest {
                 "OR A.FIRST_CHANGE# IS NULL) " +
                 "AND L.STATUS != 'UNUSED' " +
                 "AND F.GROUP# = L.GROUP# " +
-                "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#";
-
-        final String archiveLogsStemAdb = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+                "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# " +
+                "UNION " +
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
                 "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
                 "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.NAME IS NOT NULL " +
                 "AND A.ARCHIVED = 'YES' " +
                 "AND A.STATUS = 'A' " +
-                "AND A.NEXT_CHANGE# > %d " +
+                "AND A.NEXT_CHANGE# > 10 " +
                 "AND A.DEST_ID IN (" +
-                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG) " +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
-                "%s" +
                 "ORDER BY 7";
+        assertThat(result).isEqualTo(expected);
 
-        final String archiveLogsStemAdbWithDestName = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+        // ADB mode with null destination and archiveLogOnlyMode=true (no UNION, archive logs only)
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), true, null, true);
+        expected = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
                 "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
                 "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD " +
                 "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
                 "WHERE A.NAME IS NOT NULL " +
                 "AND A.ARCHIVED = 'YES' " +
                 "AND A.STATUS = 'A' " +
-                "AND A.NEXT_CHANGE# > %d " +
+                "AND A.NEXT_CHANGE# > 10 " +
+                "AND A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                "ORDER BY 7";
+        assertThat(result).isEqualTo(expected);
+
+        // ADB mode with specific destination name (still uses V$ARCHIVE_DEST_STATUS)
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, "LOG_ARCHIVE_DEST_2", true);
+        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
+                "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
+                "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD " +
+                "FROM V$LOGFILE F, V$DATABASE D, V$LOG L " +
+                "LEFT JOIN V$ARCHIVED_LOG A " +
+                "ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# " +
+                "WHERE ((A.STATUS <> 'A' " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# AND A.RESETLOGS_TIME = D.RESETLOGS_TIME) " +
+                "OR A.FIRST_CHANGE# IS NULL) " +
+                "AND L.STATUS != 'UNUSED' " +
+                "AND F.GROUP# = L.GROUP# " +
+                "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# " +
+                "UNION " +
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+                "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
+                "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.NAME IS NOT NULL " +
+                "AND A.ARCHIVED = 'YES' " +
+                "AND A.STATUS = 'A' " +
+                "AND A.NEXT_CHANGE# > 10 " +
                 "AND A.DEST_ID IN (" +
                 "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_2') " +
                 "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                 "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
-                "%s" +
                 "ORDER BY 7";
-
-        final String combinedStemAdb = onlineLogsStem + " UNION " + archiveLogsStemAdb;
-        final String combinedStemAdbWithDestName = onlineLogsStem + " UNION " + archiveLogsStemAdbWithDestName;
-
-        // ADB mode with null destination and archiveLogOnlyMode=false (includes UNION with online logs)
-        String result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, null, true);
-        assertThat(result).isEqualTo(String.format(combinedStemAdb, 10, ""));
-
-        // ADB mode with null destination and archiveLogOnlyMode=true (no UNION, archive logs only)
-        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), true, null, true);
-        assertThat(result).isEqualTo(String.format(archiveLogsStemAdb, 10, ""));
-
-        // ADB mode with specific destination name (still uses V$ARCHIVE_DEST_STATUS)
-        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, "LOG_ARCHIVE_DEST_2", true);
-        assertThat(result).isEqualTo(String.format(combinedStemAdbWithDestName, 10, ""));
+        assertThat(result).isEqualTo(expected);
 
         // ADB mode with archive log retention and archiveLogOnlyMode=false
         result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L), false, null, true);
-        assertThat(result).isEqualTo(String.format(combinedStemAdb, 10, "AND A.FIRST_TIME >= SYSDATE - (1/24) "));
+        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
+                "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
+                "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD " +
+                "FROM V$LOGFILE F, V$DATABASE D, V$LOG L " +
+                "LEFT JOIN V$ARCHIVED_LOG A " +
+                "ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# " +
+                "WHERE ((A.STATUS <> 'A' " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# AND A.RESETLOGS_TIME = D.RESETLOGS_TIME) " +
+                "OR A.FIRST_CHANGE# IS NULL) " +
+                "AND L.STATUS != 'UNUSED' " +
+                "AND F.GROUP# = L.GROUP# " +
+                "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# " +
+                "UNION " +
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+                "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
+                "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.NAME IS NOT NULL " +
+                "AND A.ARCHIVED = 'YES' " +
+                "AND A.STATUS = 'A' " +
+                "AND A.NEXT_CHANGE# > 10 " +
+                "AND A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                "AND A.FIRST_TIME >= SYSDATE - (1/24) " +
+                "ORDER BY 7";
+        assertThat(result).isEqualTo(expected);
 
         // ADB mode with archive log retention and archiveLogOnlyMode=true
         result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L), true, null, true);
-        assertThat(result).isEqualTo(String.format(archiveLogsStemAdb, 10, "AND A.FIRST_TIME >= SYSDATE - (1/24) "));
+        expected = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+                "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
+                "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.NAME IS NOT NULL " +
+                "AND A.ARCHIVED = 'YES' " +
+                "AND A.STATUS = 'A' " +
+                "AND A.NEXT_CHANGE# > 10 " +
+                "AND A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                "AND A.FIRST_TIME >= SYSDATE - (1/24) " +
+                "ORDER BY 7";
+        assertThat(result).isEqualTo(expected);
     }
 
 }

@@ -50,9 +50,9 @@ public class SqlUtils {
     }
 
     public static String switchHistoryQuery(String archiveDestinationName, boolean autonomousDatabaseMode) {
-        return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode) + ")",
-                ARCHIVED_LOG_VIEW);
+        return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE) AND DEST_ID IN (%s)",
+                ARCHIVED_LOG_VIEW,
+                localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode));
     }
 
     public static String currentRedoNameQuery() {
@@ -238,9 +238,14 @@ public class SqlUtils {
      */
     private static String localArchiveLogDestinationsOnlyQuery(String archiveDestinationName, boolean autonomousDatabaseMode) {
         // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
-        // When no specific destination is requested in ADB mode, include all DEST_IDs (1, 2, etc).
+        // We query for DEST_IDs that have actual archive log files (NAME starts with '+' or '/'),
+        // excluding shipping/standby destinations that don't have physical files (e.g., 'oracle.rfs.shipping').
+        // This prevents duplicate sequence numbers from being returned.
         if (autonomousDatabaseMode && Strings.isNullOrEmpty(archiveDestinationName)) {
-            return String.format("SELECT DISTINCT DEST_ID FROM %s", ARCHIVED_LOG_VIEW);
+            final StringBuilder query = new StringBuilder(256);
+            query.append("SELECT DISTINCT DEST_ID FROM ").append(ARCHIVED_LOG_VIEW);
+            query.append(" WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')");
+            return query.toString();
         }
 
         final StringBuilder query = new StringBuilder(256);

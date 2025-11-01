@@ -234,6 +234,13 @@ public class LogFileCollector {
         }
 
         if (threadLogs == null || threadLogs.isEmpty()) {
+            // In ADB, multiple redo threads may be present in V$THREAD but not all are actively used.
+            // If a thread has no logs at all, we treat it as consistent in ADB mode since the thread
+            // is likely not being used for this specific database instance.
+            if (connection.isAutonomousDatabase()) {
+                LOGGER.debug("Redo thread {} has no logs in Autonomous Database mode, treating as consistent.", threadId);
+                return true;
+            }
             logException(String.format("Redo thread %d is inconsistent; enabled SCN %s checkpoint SCN %s reading from SCN %s, no logs found.",
                     threadId, enabledScn, checkpointScn, startScn));
             return false;
