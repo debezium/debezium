@@ -14,6 +14,9 @@
     <artifactId>quarkus-debezium-sqlserver-integration-tests</artifactId>
 
     <name>Quarkus Debezium :: Extension :: Sql Server :: Integration Tests</name>
+    <properties>
+        <docker.image>mcr.microsoft.com/mssql/server:2022-latest</docker.image>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -135,7 +138,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the SQL Server -->
-                            <name>mcr.microsoft.com/mssql/server:2022-latest</name>
+                            <name>${docker.image}</name>
                             <alias>sqlserver1</alias>
                             <run>
                                 <env>
@@ -164,7 +167,7 @@
                         </image>
                         <image>
                             <!-- A Docker image using the SQL Server -->
-                            <name>mcr.microsoft.com/mssql/server:2022-latest</name>
+                            <name>${docker.image}</name>
                             <alias>sqlserver2</alias>
                             <run>
                                 <env>

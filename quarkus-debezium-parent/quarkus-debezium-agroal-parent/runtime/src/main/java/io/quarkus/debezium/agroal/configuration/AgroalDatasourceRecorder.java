@@ -41,8 +41,7 @@ public class AgroalDatasourceRecorder {
         String password = ConfigProvider.getConfig().getConfigValue(PREFIX + DOT + name + PASSWORD).getValue();
 
         if (jdbcUrl == null) {
-            LOGGER.warn("JDBC URL is null");
-            return null;
+            throw new NullPointerException("JDBC url is null, please specify database url");
         }
 
         return createConfiguration(name, jdbcUrl, username, password, false, dbKind);

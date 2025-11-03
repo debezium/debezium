@@ -17,7 +17,7 @@ import io.debezium.jdbc.JdbcConfiguration;
 
 public class DatasourceParser {
 
-    private static final Logger logger = LoggerFactory.getLogger(DatasourceParser.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceParser.class);
     public static final String REGEX = "jdbc:[a-z]+://(?<hostname>[^:/;?]+)(:(?<port>\\d+))?([/;](?<dbname>[^?;]+))?";
     private static final Pattern pattern = Pattern.compile(REGEX);
     private final String value;
@@ -30,7 +30,7 @@ public class DatasourceParser {
         Matcher matcher = pattern.matcher(value);
 
         if (matcher.find()) {
-            logger.trace("Found datasource definition for {}", value);
+            LOGGER.trace("Found datasource definition for {}", value);
 
             String host = matcher.group(JdbcConfiguration.HOSTNAME.name());
             String port = matcher.group(JdbcConfiguration.PORT.name());
@@ -39,7 +39,7 @@ public class DatasourceParser {
             return Optional.of(new JdbcDatasource(host, port, database));
         }
 
-        logger.warn("Unable to parse datasource: {}", value);
+        LOGGER.warn("Unable to parse datasource: {}", value);
         return Optional.empty();
     }
 
