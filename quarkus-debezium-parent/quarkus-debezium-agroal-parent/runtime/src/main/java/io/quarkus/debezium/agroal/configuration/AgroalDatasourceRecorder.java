@@ -8,12 +8,11 @@ package io.quarkus.debezium.agroal.configuration;
 
 import java.util.function.Supplier;
 
-import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
