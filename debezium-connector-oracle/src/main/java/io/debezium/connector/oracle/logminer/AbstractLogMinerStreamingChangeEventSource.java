@@ -1972,7 +1972,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if no system change number was found
      */
     private Scn getFirstScnAvailableInLogs() throws SQLException {
-        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName)
+        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName, jdbcConnection.isAutonomousDatabase())
                 .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
     }
 
