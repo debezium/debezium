@@ -5,13 +5,5 @@
  */
 package io.quarkus.sample.app;
 
-import java.sql.SQLException;
-
-import org.junit.platform.suite.api.BeforeSuite;
-
 public class MySqlDebeziumSingleEngineTestSuiteIT implements QuarkusDebeziumSingleEngineTestSuite {
-    @BeforeSuite
-    public static void init() throws SQLException {
-        Scripts.apply(Scripts.Database.DEFAULT);
-    }
 }

@@ -16,6 +16,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.ext.ScriptUtils;
 import org.testcontainers.jdbc.JdbcDatabaseDelegate;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 public class MySqlResource {
 
@@ -25,13 +26,13 @@ public class MySqlResource {
             .withNetworkAliases("mysql")
             .withUsername("mysqluser")
             .withPassword("mysqlpwd")
-            .withDatabaseName("inventory")
             .waitingFor(new LogMessageWaitStrategy()
                     .withRegEx(".*(MySQL) init process done. Ready for start up.(?s)(.*)(mysqld): ready for connections..*")
                     .withTimes(1)
                     .withStartupTimeout(Duration.of(CI_CONTAINER_STARTUP_TIME * 3, ChronoUnit.SECONDS)))
             .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
-            .withConnectTimeoutSeconds(300);
+            .withConnectTimeoutSeconds(300)
+            .withCopyFileToContainer(MountableFile.forClasspathResource("mysql.cnf"), "/etc/mysql/conf.d/");
 
     public void start() throws Exception {
         MYSQL_CONTAINER.start();
@@ -41,7 +42,11 @@ public class MySqlResource {
                 "-uroot",
                 "-p" + MYSQL_CONTAINER.getPassword(),
                 "-e",
-                "GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'mysqluser'@'%';");
+                """
+                            CREATE DATABASE inventory;
+                            GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'mysqluser'@'%';
+                            GRANT ALL PRIVILEGES ON inventory.* TO 'mysqluser'@'%';
+                        """);
 
         // With all grants assigned, execute the init script.
         ScriptUtils.runInitScript(new JdbcDatabaseDelegate(MYSQL_CONTAINER, ""), "initialize-mysql-database.sql");
