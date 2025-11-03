@@ -13,6 +13,9 @@
     <artifactId>quarkus-debezium-mariadb-integration-tests</artifactId>
 
     <name>Quarkus Debezium :: Extension :: MariaDB :: Integration Tests</name>
+    <properties>
+        <docker.image>mirror.gcr.io/library/mariadb:11.4.3</docker.image>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -166,7 +169,7 @@
                                 </volumes>
                             </run>
                             <build>
-                                <from>mirror.gcr.io/library/mariadb:11.4.3</from>
+                                <from>${docker.image}</from>
                                 <runCmds>
                                     <run>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</run>
                                 </runCmds>
@@ -220,7 +223,7 @@
                                 </volumes>
                             </run>
                             <build>
-                                <from>mirror.gcr.io/library/mariadb:11.4.3</from>
+                                <from>${docker.image}</from>
                                 <runCmds>
                                     <run>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</run>
                                 </runCmds>
