@@ -249,6 +249,8 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
             metrics.incrementTotalChangesCount();
             metrics.incrementCommittedTransactionCount();
         }
+        metrics.setLastCommitEventCount(1000);
+        metrics.setLastCommitDuration(Duration.ofSeconds(1));
         assertThat(metrics.getTotalChangesCount()).isEqualTo(1000);
         assertThat(metrics.getNumberOfCommittedTransactions()).isEqualTo(1000);
         assertThat(metrics.getCommitThroughput()).isGreaterThanOrEqualTo(1_000);
@@ -281,13 +283,13 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
 
         assertThat(metrics.toString().contains("changesCount=1000")).isTrue();
 
-        metrics.setLastCommitDuration(Duration.ofMillis(100L));
-        assertThat(metrics.getLastCommitDurationInMilliseconds()).isEqualTo(100L);
-        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(100L);
+        metrics.setLastCommitDuration(Duration.ofMillis(2000L));
+        assertThat(metrics.getLastCommitDurationInMilliseconds()).isEqualTo(2000L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(3000L);
 
         metrics.setLastCommitDuration(Duration.ofMillis(50L));
-        assertThat(metrics.getMaxCommitDurationInMilliseconds()).isEqualTo(100L);
-        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(150L);
+        assertThat(metrics.getMaxCommitDurationInMilliseconds()).isEqualTo(2000L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(3050L);
 
         metrics.setOffsetScn(Scn.valueOf(10L));
         assertThat(metrics.getOldestScn()).isEqualTo("10");
