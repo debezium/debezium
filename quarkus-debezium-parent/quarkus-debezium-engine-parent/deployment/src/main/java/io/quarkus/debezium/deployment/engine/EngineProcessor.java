@@ -6,6 +6,9 @@
 
 package io.quarkus.debezium.deployment.engine;
 
+import static io.debezium.config.CommonConnectorConfig.TOPIC_NAMING_STRATEGY;
+import static io.debezium.embedded.EmbeddedEngineConfig.OFFSET_STORAGE;
+import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.POST_PROCESSOR;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.PREDICATE;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.TRANSFORM;
@@ -110,9 +113,9 @@ import io.quarkus.deployment.recording.RecorderContext;
 public class EngineProcessor {
 
     public static final List<String> PROPERTIES_WITH_CLASSES = List.of(
-            "schema.history.internal",
-            "topic.naming.strategy",
-            "offset.storage");
+            SCHEMA_HISTORY.name(),
+            TOPIC_NAMING_STRATEGY.name(),
+            OFFSET_STORAGE.name());
 
     @BuildStep
     void features(BuildProducer<FeatureBuildItem> producer, List<DebeziumExtensionNameBuildItem> debeziumExtensionNameBuildItems) {
