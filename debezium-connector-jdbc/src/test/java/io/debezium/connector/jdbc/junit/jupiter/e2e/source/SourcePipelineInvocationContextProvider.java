@@ -58,7 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.strimzi.test.container.StrimziKafkaContainer;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
  * The JDBC sink end to end pipeline context provider.
@@ -91,20 +91,20 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final Network network = Network.SHARED;
 
     private final RandomTableNameGenerator tableNameGenerator;
-    private final StrimziKafkaContainer kafkaContainer;
+    private final StrimziKafkaCluster kafkaCluster;
     private final DebeziumContainer connectContainer;
     private final Map<SourceType, JdbcDatabaseContainer<?>> sourceContainers;
 
     public SourcePipelineInvocationContextProvider() {
         this.tableNameGenerator = new RandomTableNameGenerator();
-        this.kafkaContainer = getKafkaContainer();
-        this.connectContainer = getKafkaConnectContainer(this.kafkaContainer);
+        this.kafkaCluster = getKafkaContainer();
+        this.connectContainer = getKafkaConnectContainer(this.kafkaCluster);
         this.sourceContainers = getSourceContainers();
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
-        this.kafkaContainer.start();
+    public void beforeAll(ExtensionContext context) {
+        this.kafkaCluster.start();
 
         // Create a stream of all containers to be started
         final Stream.Builder<Startable> startables = Stream.builder();
@@ -116,11 +116,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     }
 
     @Override
-    public void afterAll(ExtensionContext context) throws Exception {
+    public void afterAll(ExtensionContext context) {
         // Stop containers
         this.sourceContainers.values().forEach(GenericContainer::stop);
         this.connectContainer.stop();
-        this.kafkaContainer.stop();
+        this.kafkaCluster.stop();
     }
 
     @Override
@@ -289,7 +289,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
 
         final JdbcDatabaseContainer<?> sourceContainer = sourceContainers.get(sourceType);
-        final Source source = new Source(sourceType, sourceContainer, kafkaContainer, connectContainer, sourceOptions, tableNameGenerator);
+        final Source source = new Source(sourceType, sourceContainer, kafkaCluster, connectContainer, sourceOptions, tableNameGenerator);
 
         return new TestTemplateInvocationContext() {
             @Override
@@ -347,18 +347,25 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
     }
 
-    @SuppressWarnings("resource")
-    private StrimziKafkaContainer getKafkaContainer() {
-        return new StrimziKafkaContainer().withNetwork(network).withNetworkAliases("kafka");
+    private StrimziKafkaCluster getKafkaContainer() {
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder().build();
+
+        // update all nodes in kafkaCluster with proper setting
+        for (GenericContainer<?> kafkaNode : kafkaCluster.getNodes()) {
+            kafkaNode.withNetwork(network)
+                    .withNetworkAliases("kafka");
+        }
+
+        return kafkaCluster;
     }
 
     @SuppressWarnings("resource")
-    private DebeziumContainer getKafkaConnectContainer(StrimziKafkaContainer kafkaContainer) {
+    private DebeziumContainer getKafkaConnectContainer(StrimziKafkaCluster kafkaCluster) {
         return DebeziumContainer.nightly()
-                .withKafka(kafkaContainer)
+                .withKafka(kafkaCluster)
                 .withNetwork(network)
                 .withNetworkAliases("connect")
-                .dependsOn(kafkaContainer);
+                .dependsOn(kafkaCluster);
     }
 
     @SuppressWarnings("resource")

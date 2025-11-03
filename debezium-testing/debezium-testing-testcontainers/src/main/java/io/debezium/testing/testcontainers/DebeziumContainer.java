@@ -37,7 +37,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 import io.strimzi.test.container.StrimziKafkaCluster;
-import io.strimzi.test.container.StrimziKafkaContainer;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -113,12 +112,8 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         withExposedPorts(KAFKA_CONNECT_PORT);
     }
 
-    public DebeziumContainer withKafka(final StrimziKafkaContainer kafkaContainer) {
-        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getNetworkBootstrapServers());
-    }
-
     public DebeziumContainer withKafka(final StrimziKafkaCluster kafkaCluster) {
-        final StrimziKafkaContainer kafkaContainer = (StrimziKafkaContainer) kafkaCluster.getNodes().stream().findFirst().get();
+        final GenericContainer<?> kafkaContainer = kafkaCluster.getNodes().stream().findFirst().get();
         return withKafka(kafkaContainer.getNetwork(), kafkaCluster.getNetworkBootstrapServers());
     }
 
