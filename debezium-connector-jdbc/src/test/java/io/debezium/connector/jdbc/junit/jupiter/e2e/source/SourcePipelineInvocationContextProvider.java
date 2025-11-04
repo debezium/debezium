@@ -97,7 +97,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     public SourcePipelineInvocationContextProvider() {
         this.tableNameGenerator = new RandomTableNameGenerator();
-        this.kafkaCluster = getKafkaContainer();
+        this.kafkaCluster = getKafkaCluster();
         this.connectContainer = getKafkaConnectContainer(this.kafkaCluster);
         this.sourceContainers = getSourceContainers();
     }
@@ -347,8 +347,10 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
     }
 
-    private StrimziKafkaCluster getKafkaContainer() {
-        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder().build();
+    private StrimziKafkaCluster getKafkaCluster() {
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
 
         // update all nodes in kafkaCluster with proper setting
         for (GenericContainer<?> kafkaNode : kafkaCluster.getNodes()) {
