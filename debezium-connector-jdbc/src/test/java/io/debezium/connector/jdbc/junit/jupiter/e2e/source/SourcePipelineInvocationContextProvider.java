@@ -349,8 +349,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private StrimziKafkaCluster getKafkaCluster() {
         StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(1)
-            .build();
+                .withNumberOfBrokers(1)
+                .build();
 
         // update all nodes in kafkaCluster with proper setting
         for (GenericContainer<?> kafkaNode : kafkaCluster.getNodes()) {
