@@ -2,6 +2,57 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.Alpha2
+November 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471251)
+
+### New features since 3.4.0.Alpha1
+
+* Support for incremental snapshots in IBMi connector [DBZ-7958](https://issues.redhat.com/browse/DBZ-7958)
+* Add metadata to IBMi connector to handle multi-journal [DBZ-9291](https://issues.redhat.com/browse/DBZ-9291)
+* Add support for exclude keyspace from table name flag [DBZ-9522](https://issues.redhat.com/browse/DBZ-9522)
+* Support configuring how to apply dynamic partition routing in Azure Event Hubs sink [DBZ-9572](https://issues.redhat.com/browse/DBZ-9572)
+* Introduce transform to convert between EWKB and WKB formats [DBZ-9575](https://issues.redhat.com/browse/DBZ-9575)
+* Fix failed to initialize open lineage for vitess connector [DBZ-9613](https://issues.redhat.com/browse/DBZ-9613)
+* Expose total time emitting events during commits [DBZ-9637](https://issues.redhat.com/browse/DBZ-9637)
+* The LogMiner commit throughput metric is meaningless [DBZ-9639](https://issues.redhat.com/browse/DBZ-9639)
+* Standardize source catalog descriptions [DBZ-9642](https://issues.redhat.com/browse/DBZ-9642)
+* Debezium Extensions for Quarkus: support for MySQL [DBZ-9380](https://issues.redhat.com/browse/DBZ-9380)
+* Debezium Extensions for Quarkus: support for MariaDB [DBZ-9381](https://issues.redhat.com/browse/DBZ-9381)
+* Debezium Extensions for Quarkus: support for sqlserver [DBZ-9384](https://issues.redhat.com/browse/DBZ-9384)
+
+
+### Breaking changes since 3.4.0.Alpha1
+
+* Use direct query mode as the SQL Server default [DBZ-9394](https://issues.redhat.com/browse/DBZ-9394)
+* Include xdb and xmlparserv2 dependencies [DBZ-9587](https://issues.redhat.com/browse/DBZ-9587)
+
+
+### Fixes since 3.4.0.Alpha1
+
+* Pipeline page Issues [DBZ-9543](https://issues.redhat.com/browse/DBZ-9543)
+* DdlChanges not reset in schema history recovery [DBZ-9549](https://issues.redhat.com/browse/DBZ-9549)
+* Handle exceptions thrown from perfromCommit method to gracefully cleanup the coordinator during the stop call [DBZ-9617](https://issues.redhat.com/browse/DBZ-9617)
+* Table column metadata is not fetched when table name has a '/' character [DBZ-9620](https://issues.redhat.com/browse/DBZ-9620)
+* MySQL connector does not parse CREATE TABLE [DBZ-9623](https://issues.redhat.com/browse/DBZ-9623)
+* Debezium Server run.bat fails to execute on Windows [DBZ-9625](https://issues.redhat.com/browse/DBZ-9625)
+* Begin marker but no end marker for rollbacked transactions [DBZ-9628](https://issues.redhat.com/browse/DBZ-9628)
+* MariaDB fails to parse "CONVERT TO CHARSET <character-set>" [DBZ-9634](https://issues.redhat.com/browse/DBZ-9634)
+* Buffered event count set unnecessarily [DBZ-9638](https://issues.redhat.com/browse/DBZ-9638)
+
+
+### Other changes since 3.4.0.Alpha1
+
+* Enable Dependabot on debezium platform repo [DBZ-8994](https://issues.redhat.com/browse/DBZ-8994)
+* Update Oracle connector doc to specify unsupported Oracle 23ai features [DBZ-9402](https://issues.redhat.com/browse/DBZ-9402)
+* Migrate Surge.sh Preview Teardown from ubuntu-20.04 to ubuntu-latest [DBZ-9518](https://issues.redhat.com/browse/DBZ-9518)
+* Handle the form properties with dot present in their name [DBZ-9560](https://issues.redhat.com/browse/DBZ-9560)
+* Clarify case sensitive nature of signal.data.collection and table names in signals [DBZ-9621](https://issues.redhat.com/browse/DBZ-9621)
+* Remove Technology Preview label on MariaDB list entries in signaling doc [DBZ-9624](https://issues.redhat.com/browse/DBZ-9624)
+* Fix minor issues in the Platform UI dark mode [DBZ-9633](https://issues.redhat.com/browse/DBZ-9633)
+* Update to use only StrimziKafkaCluster [DBZ-9640](https://issues.redhat.com/browse/DBZ-9640)
+
+
+
 ## 3.4.0.Alpha1
 October 23rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466509)
 

@@ -74,6 +74,7 @@ Avinash Vishwakarma
 Aykut Farsak
 Aziza Kalmasova
 baabgai
+battmush
 Babur Duisenov
 Balázs Németh
 Balázs Sipos
@@ -143,6 +144,7 @@ Cyprien Etienne
 Cyril Scetbon
 Daan Gerits
 Daan Roosen
+Daniel Eriksson
 Daniel Petisme
 dario
 Dave Charron
@@ -406,6 +408,7 @@ Martin Tosney
 Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
+Mateusz Michalik
 Mathijs van den Worm
 Matt Bayley
 Matt Beary
@@ -443,6 +446,7 @@ Mostafa Ghadimi
 moyq5
 Muhammad Sufyian
 My Lang Pangzi
+Nagasree Valaboju
 Nancy Xu
 Nansen
 Naresh Gandi
