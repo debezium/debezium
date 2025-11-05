@@ -177,14 +177,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.QUERY, (event) -> handleQueryEvent(partition, effectiveOffsetContext, event));
-        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> {
-            TransactionPayloadEventData transactionPayloadEventData = event.getData();
-            // Loop over the uncompressed events in the transaction payload event and add the table map
-            // event in the map of table events
-            for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
-                handleEvent(partition, effectiveOffsetContext, context, uncompressedEvent);
-            }
-        });
+        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> handleTransactionPayload(partition, effectiveOffsetContext, context, event));
 
         if (!skippedOperations.contains(Envelope.Operation.CREATE)) {
             eventHandlers.put(EventType.WRITE_ROWS, (event) -> handleInsert(partition, effectiveOffsetContext, event));
@@ -805,6 +798,27 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         else {
             informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId);
+        }
+    }
+
+    /**
+     * Handle an event of type TRANSACTION_PAYLOAD_EVENT<p></p>
+     * <p>
+     * This method should be called whenever a transaction payload event is encountered by the mysql binlog connector.
+     * A Transaction payload event is propagated from the binlog connector when compression is turned on over binlog.
+     * This method loops over the individual events in the compressed binlog and calls handleEvent for each of them.
+     *
+     * @param partition     the partition; never null
+     * @param offsetContext the offset context; never null
+     * @param context
+     * @param event         the transaction payload event; never null
+     */
+    protected void handleTransactionPayload(P partition, O offsetContext, ChangeEventSourceContext context, Event event) {
+        TransactionPayloadEventData transactionPayloadEventData = event.getData();
+        // Loop over the uncompressed events in the transaction payload event and add the table map
+        // event in the map of table events
+        for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
+            handleEvent(partition, effectiveOffsetContext, context, uncompressedEvent);
         }
     }
 
