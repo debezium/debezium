@@ -2074,6 +2074,150 @@ Constant::
 If the mapping definition does not include the `header:` or `value:` prefixes, when {prodname} detects instances of the specified value in incoming messages, it treats them as constants, and uses them as-is.
 Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
 
+
+==== Apache Iceberg
+
+The {prodname} Apache Iceberg connector is a sink that runs in {prodname} Server. It consumes database change events from a source {prodname} connector and writes them to Apache Iceberg tables.
+This allows for direct replication of a Database (Change Data Capture events) to Iceberg tables on cloud storage or HDFS, eliminating the need for intermediate systems like ETL Tool, Spark or other streaming platforms.
+
+The {prodname} Iceberg connector supports both `upsert` and `append` modes for data replication. When event and key schema information is enabled, the destination Iceberg tables are automatically created upon the initial startup.
+
+The connector provides the following features:
+
+* Upsert and Append modes.
+* Optimizing batch size.
+* Customizable table naming.
+* Offset and Schema History storage in Iceberg.
+* Automatic schema evolution.
+
+[NOTE]
+====
+- It is recommended to use `ExtractNewRecordState` transformation (event flattening). Key features like `upsert` mode and automatic primary key detection depend on the flattened event structure produced by this SMT. Without it, the connector can only operate in a more limited append-only mode.
+
+- The Debezium Server sink for Apache Iceberg is a community-maintained, open-source project. Please note that it is maintained in a separate repository, which you can find here: link:https://github.com/memiiso/debezium-server-iceberg[Debezium Server Iceberg GitHub]
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[iceberg-type]]<<iceberg-type, `debezium.sink.type`>>
+|
+|Must be set to `iceberg`.
+
+|[[iceberg-catalog-name]]<<iceberg-catalog-name, `debezium.sink.iceberg.catalog-name`>>
+|`default`
+|User-specified Iceberg catalog name.
+
+|[[iceberg-warehouse]]<<iceberg-warehouse, `debezium.sink.iceberg.warehouse`>>
+|
+|Required. Root path of the Iceberg data warehouse (e.g., `s3a://my-bucket/warehouse`).
+
+|[[iceberg-io-impl]]<<iceberg-io-impl, `debezium.sink.iceberg.io-impl`>>
+|`org.apache.iceberg.io.ResolvingFileIO`
+|Iceberg FileIO implementation used to write data files.
+
+|[[iceberg-table-namespace]]<<iceberg-table-namespace, `debezium.sink.iceberg.table-namespace`>>
+|`default`
+|The namespace within the catalog to use for tables.
+
+|[[iceberg-table-prefix]]<<iceberg-table-prefix, `debezium.sink.iceberg.table-prefix`>>
+|``
+|An optional prefix to add to the names of all created Iceberg tables.
+
+|[[iceberg-destination-regexp]]<<iceberg-destination-regexp, `debezium.sink.iceberg.destination-regexp`>>
+|``
+|A regular expression used to rewrite the destination table name.
+
+|[[iceberg-destination-regexp-replace]]<<iceberg-destination-regexp-replace, `debezium.sink.iceberg.destination-regexp-replace`>>
+|``
+|The replacement string for the `destination-regexp` expression.
+
+|[[iceberg-destination-uppercase-table-names]]<<iceberg-destination-uppercase-table-names, `debezium.sink.iceberg.destination-uppercase-table-names`>>
+|`false`
+|If `true`, creates uppercase Iceberg table names.
+
+|[[iceberg-destination-lowercase-table-names]]<<iceberg-destination-lowercase-table-names, `debezium.sink.iceberg.destination-lowercase-table-names`>>
+|`false`
+|If `true`, creates lowercase Iceberg table names.
+
+|[[iceberg-table-mapper]]<<iceberg-table-mapper, `debezium.sink.iceberg.table-mapper`>>
+|`default-mapper`
+|The mapping strategy for source to destination table names. Only `default-mapper` is currently provided.
+
+|[[iceberg-upsert]]<<iceberg-upsert, `debezium.sink.iceberg.upsert`>>
+|`false`
+|If `true`, enables upsert mode. If `false`, uses append-only mode.
+
+|[[iceberg-upsert-keep-deletes]]<<iceberg-upsert-keep-deletes, `debezium.sink.iceberg.upsert-keep-deletes`>>
+|`true`
+|In upsert mode, if `true`, deleted rows are kept and marked with `__deleted=true` (soft delete). If `false`, they are physically deleted.
+
+|[[iceberg-upsert-dedup-column]]<<iceberg-upsert-dedup-column, `debezium.sink.iceberg.upsert-dedup-column`>>
+|`__source_ts_ns`
+|The column used to deduplicate records in upsert mode. The record with the highest value in this column is kept.
+
+|[[iceberg-upsert-op-field]]<<iceberg-upsert-op-field, `debezium.sink.iceberg.upsert-op-field`>>
+|`__op`
+|The field name that contains the operation type (`c`, `u`, `d`, `r`) for deduplication logic.
+
+|[[iceberg-write-format-default]]<<iceberg-write-format-default, `debezium.sink.iceberg.write.format.default`>>
+|`parquet`
+|Default file format for Iceberg tables. Can be `parquet`, `avro`, or `orc`.
+
+|[[iceberg-nested-as-variant]]<<iceberg-nested-as-variant, `debezium.sink.iceberg.nested-as-variant`>>
+|`false`
+|If `true`, all nested data is stored in Iceberg `variant` fields, allowing schema changes to be absorbed without schema evolution.
+
+|[[iceberg-allow-field-addition]]<<iceberg-allow-field-addition, `debezium.sink.iceberg.allow-field-addition`>>
+|`true`
+|If `true`, allows the connector to automatically add new columns to Iceberg tables when new fields appear in source events.
+
+|[[iceberg-create-identifier-fields]]<<iceberg-create-identifier-fields, `debezium.sink.iceberg.create-identifier-fields`>>
+|`true`
+|If `false`, the connector will not create identifier fields for primary keys in the Iceberg table. Required to be `false` for append-only consumption of nested events.
+
+|[[iceberg-preserve-required-property]]<<iceberg-preserve-required-property, `debezium.sink.iceberg.preserve-required-property`>>
+|`false`
+|If `true`, columns in the Iceberg table will preserve their original `required`/`optional` property from the source. By default, only primary key columns are marked as required.
+
+|[[iceberg-batch-size-wait]]<<iceberg-batch-size-wait, `debezium.sink.batch.batch-size-wait`>>
+|`NoBatchSizeWait`
+|The batch size wait strategy to control commit frequency.
+
+|[[iceberg-concurrent-uploads]]<<iceberg-concurrent-uploads, `debezium.sink.batch.concurrent-uploads`>>
+|`1`
+|The number of parallel threads to use for uploading data to Iceberg.
+
+|[[iceberg-concurrent-uploads-timeout-minutes]]<<iceberg-concurrent-uploads-timeout-minutes, `debezium.sink.batch.concurrent-uploads.timeout-minutes`>>
+|`60`
+|The timeout in minutes to wait for all parallel uploads to complete.
+
+|[[iceberg-offset-storage]]<<iceberg-offset-storage, `debezium.source.offset.storage`>>
+|`io.debezium.server.iceberg.offset.IcebergOffsetBackingStore`
+|Sets the offset backing store to use an Iceberg table.
+
+|[[iceberg-offset-storage-table-name]]<<iceberg-offset-storage-table-name, `debezium.source.offset.storage.iceberg.table-name`>>
+|`_debezium_offset_storage`
+|The name of the Iceberg table used to store connector offsets.
+
+|[[iceberg-schema-history-internal]]<<iceberg-schema-history-internal, `debezium.source.schema.history.internal`>>
+|`io.debezium.server.iceberg.history.IcebergSchemaHistory`
+|Sets the schema history to use an Iceberg table.
+
+|[[iceberg-schema-history-internal-table-name]]<<iceberg-schema-history-internal-table-name, `debezium.source.schema.history.internal.iceberg.table-name`>>
+|`_debezium_database_history_storage`
+|The name of the Iceberg table used to store database schema history.
+
+|[[iceberg-passthrough-properties]]<<iceberg-passthrough-properties, `debezium.sink.iceberg.{iceberg.prop.name}`>>
+|
+|Passes any property prefixed with `debezium.sink.iceberg.` directly to the Iceberg library configuration, removing the prefix. This can be used to configure underlying details like S3 access credentials, catalog properties, etc. See the link:https://iceberg.apache.org/docs/latest/configuration/[Iceberg documentation] for available properties.
+
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
