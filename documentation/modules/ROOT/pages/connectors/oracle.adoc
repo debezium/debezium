@@ -510,29 +510,57 @@ endif::community[]
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
+// Type: procedure
+// ModuleID: debezium-oracle-using-the-drop-transaction-signal-to-abandon-stale-transactions
+// Title: Using the drop-transaction signal to abandon stale transactions
 [id="oracle-drop-transaction-signal"]
 === Dropping a transaction
 
-The {prodname} Oracle connector includes a _drop-transaction_ signal that you can use to manually drop (abandon) a transaction from the LogMiner buffer at run time.
-This signal is useful for resolving situations where a long-running transaction is preventing advancement of the low watermark without generating any change events.
+You can use {prodname} signaling to send a `drop-transaction` signal to the connector at run time to remove a transaction from the LogMiner buffer.
+Removing a transaction can be helpful when a long-running transaction negatively affects connector performance.
 
-A drop-transaction signal works by removing the specified transaction from the connector's internal buffer and cleaning up any associated resources.
+A long-running transaction prevents the connector from processing subsequent change events.
+Further, the stalled transaction can result in excessive memory buffering, affect log mining continuity, and result in SCN (system change number) drift, a condition in which the connector’s current SCN falls behind the range that is available in the redo logs.
+
+During normal processing, {prodname} periodically flushes offsets to the Kafka Connect offset topic.
+If a transaction runs longer than the defined offset flush interval, the connector is unable to commit an offset.
+If the connector restarts after the last known offset is removed from the redo logs, it cannot find the resume point, which results in an error.
+
+By submitting a `drop-transaction` signal, you can avoid errors by removing a problem transaction from the connector's internal LogMiner buffer before it results in negative consequences.
+
+.Prerequisites
+* The connector is configured to use one of the available link:{debezium-signaling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* You have access to the connector log file and can identify the ID of the transaction that you want to drop.
 
 [IMPORTANT]
 ====
-When a transaction is dropped, any uncommitted changes in that transaction are abandoned and no change events are emitted for them.
-Use this signal only when you are certain that the transaction should not be processed.
+After you drop a transaction, the connector abandons uncommitted changes for that transaction and does not emit change events for them.
+Use the `drop-transaction` signal only when you are certain that the transaction should not be processed.
 ====
 
-.Configure drop-transaction signal
-
-You can set the following properties in the `data` component of a signal:
-
-For example, to drop a transaction with ID `1a.2b.001f`:
+.Procedure
+* Send a signal that includes the standard `id`, `type`, and `data` properties of a {prodname} signal to your preferred signaling channel.
+In the  `data` component of the signal, specify the ID of the transaction that you want to remove.
++
+For example, to drop a transaction with ID `1a.2b.001f`, send the signal based on your chosen signal channel:
++
+.Example SQL using the `source` signal channel
 [source,sql,indent=0,subs="+attributes"]
 ----
 INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{"transaction-id": "1a.2b.001f"}');
 ----
++
+.Example message payload using the `kafka` signal channel
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "type": "drop-transaction",
+  "data": {
+    "transaction-id": "1a.2b.001f"
+  }
+}
+----
+
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
