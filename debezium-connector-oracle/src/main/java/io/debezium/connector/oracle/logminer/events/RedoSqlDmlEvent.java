@@ -26,8 +26,8 @@ public class RedoSqlDmlEvent extends DmlEvent {
     }
 
     public RedoSqlDmlEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime,
-                           LogMinerDmlEntry dmlEntry, String redoSql) {
-        super(eventType, scn, tableId, rowId, rsId, changeTime, dmlEntry);
+                           Object[] oldValues, Object[] newValues, String redoSql) {
+        super(eventType, scn, tableId, rowId, rsId, changeTime, oldValues, newValues);
         this.redoSql = redoSql;
     }
 

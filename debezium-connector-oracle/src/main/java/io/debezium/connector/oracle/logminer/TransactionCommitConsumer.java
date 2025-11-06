@@ -536,11 +536,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private Object[] newValues(DmlEvent event) {
-        return event.getDmlEntry().getNewValues();
+        return event.getNewValues();
     }
 
     private Object[] oldValues(DmlEvent event) {
-        return event.getDmlEntry().getOldValues();
+        return event.getOldValues();
     }
 
     private void discardCurrentMergeState(ConstructionDetails details) {
