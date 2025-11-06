@@ -3091,6 +3091,7 @@ alter_table_partitioning
     | exchange_table_partition
     | coalesce_table_partition
     | alter_interval_partition
+    | rename_table_partition
     ;
 
 add_table_partition
@@ -3137,6 +3138,10 @@ coalesce_table_partition
 
 alter_interval_partition
     : SET INTERVAL '(' (constant | expression)? ')'
+    ;
+
+rename_table_partition
+    : RENAME (partition_extended_names | subpartition_extended_names) TO partition_name
     ;
 
 partition_extended_names

@@ -1,0 +1,2 @@
+alter table M_TRANSFER
+    RENAME PARTITION M_TR20220101 TO p_initial;
