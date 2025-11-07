@@ -4003,7 +4003,7 @@ endif::community[]
 
 `pgoutput` plugin::
 For connectors that use the `pgoutput` plug-in, add the `origin` parameter to the `slot.stream.params` property to specify whether a subscription requests the publisher to send all changes, or only local changes.
-
++
 For example to request the publisher to send all changes, that is, changes that originate locally on the publisher, and changes that were replicated to the publisher from another source, set the following value:
 
  origin=any
