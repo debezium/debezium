@@ -3991,34 +3991,22 @@ Valid parameters depend on the configured logical decoding plug-in.
 Parameters that are not relevant to the configured plug-in are ignored.
 
 ifdef::community[]
-Some valid `decoderbufs` plug-in parameters:: `include-xacts`, `write-in-chunks`, `chunk-size`
-+
-These options can help to prevent memory-related problems when the plugin handles large transactions.
-+
-For example,
-+
- include-xacts=true;write-in-chunks=true;chunk-size=65536
+`decoderbufs` plugin::
+If the connector uses the `decoderbufs` plug-in, you can set the `debug-mode` parameter to instruct a replication slot to log logical decoding debug messages.
+When {prodname} sends the SQL command to create a replication slot, it passes the `debug-mode` parameter.
+For example:
 
+ debug-mode=true
+
+NOTE: To enable viewing of debug messages, you must set the PostgreSQL logging level (https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-MIN-MESSAGES[`log_min_messsages`]) to DEBUG1 or higher.
 endif::community[]
 
-Some valid `pgoutput` plug-in parameters:: `publication_names`, `messages`, `binary`, `streaming`, `two_phase`, `origin`
-+
-Use these options to customize streaming behavior related to transaction boundaries, multi-phase commits, and replication filtering.
-+
-For example,
-+
- publicationnames=dbzpublication;messages=true;binary=true;two_phase=true;origin=any
+`pgoutput` plugin::
+For connectors that use the `pgoutput` plug-in, add the `origin` parameter to the `slot.stream.params` property to specify whether a subscription requests the publisher to send all changes, or only local changes.
 
+For example to request the publisher to send all changes, that is, changes that originate locally on the publisher, and changes that were replicated to the publisher from another source, set the following value:
 
-[NOTE]
-====
-The parameters that are available for use with the `pgoutput` plug-in depend on the `proto_version`, which defines the version of the logical streaming replication protocol, and which is specified when you create the replication slot.
-If you configure {prodname} to create replication slots automatically, the value of `proto_version` is hardcoded to `1`.
-This version of the protocol does not support streaming of large in-progress transactions, or the use of two-phase commits.
-To take advantage of those features, create slots manually and set the `proto_version` to a higher value.
-For more information, see the https://www.postgresql.org/docs/18/protocol-logical-replication.html[PostgreSQL documentation].
-====
-
+ origin=any
 
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`
