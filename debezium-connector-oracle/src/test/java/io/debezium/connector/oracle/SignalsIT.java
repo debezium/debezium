@@ -7,16 +7,10 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
-import java.math.BigInteger;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import javax.management.JMException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -32,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.spi.DropTransactionAction;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
@@ -211,7 +206,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'After-Signal', 88.88, TO_DATE('2024-01-02', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
-        waitForCurrentScnToHaveBeenSeenByConnector();
+        OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
 
         // Should receive 2 records (the first uncommitted transaction + the After-Signal transaction)
         SourceRecords records = consumeRecordsByTopic(3);
@@ -254,26 +249,4 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
     }
 
-    private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
-        try (OracleConnection admin = TestHelper.adminConnection(true)) {
-            final Scn scn = admin.getCurrentScn();
-            Awaitility.await()
-                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                    .until(() -> {
-                        final BigInteger scnValue = getStreamingMetric("CurrentScn");
-                        if (scnValue == null) {
-                            return false;
-                        }
-                        return new Scn(scnValue).compareTo(scn) > 0;
-                    });
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T getStreamingMetric(String metricName) throws JMException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        return (T) mbeanServer.getAttribute(objectName, metricName);
-    }
 }
