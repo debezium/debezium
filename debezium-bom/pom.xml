@@ -38,7 +38,7 @@
         <version.groovy>4.0.17</version.groovy>
         <version.graalvm.js>23.0.2</version.graalvm.js>
         <!-- Wasm -->
-        <version.chicory>1.4.0</version.chicory>
+        <version.chicory>1.5.3</version.chicory>
 
         <!-- Storages -->
 
