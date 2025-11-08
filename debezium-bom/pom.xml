@@ -36,7 +36,7 @@
 
         <!-- Scripting -->
         <version.groovy>4.0.17</version.groovy>
-        <version.graalvm.js>23.0.2</version.graalvm.js>
+        <version.graalvm.js>25.0.1</version.graalvm.js>
         <!-- Wasm -->
         <version.chicory>1.5.3</version.chicory>
 
@@ -326,7 +326,7 @@
             </dependency>
             <dependency>
                 <groupId>org.graalvm.js</groupId>
-                <artifactId>js</artifactId>
+                <artifactId>js-language</artifactId>
                 <version>${version.graalvm.js}</version>
             </dependency>
             <dependency>
