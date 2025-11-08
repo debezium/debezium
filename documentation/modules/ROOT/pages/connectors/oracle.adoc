@@ -2139,12 +2139,14 @@ For more information, see the _Semantic type and Notes_ column in the following 
 |Semantic type (schema name) and Notes
 
 |`BINARY_FLOAT`
-|`FLOAT32`
-|n/a
+|`FLOAT32` / `STRING`
+|When the `binary.decimal.handling.mode` property is set to `string`, the connector represents `BINARY_FLOAT` values as their formatted string representation with schema type `STRING`.
+This is required if such columns may contain infinity or not-a-number non-numeric constant values.
 
 |`BINARY_DOUBLE`
-|`FLOAT64`
-|n/a
+|`FLOAT64` / `STRING`
+|When the `binary.decimal.handling.mode` property is set to `string`, the connector represents `BINARY_DOUBLE` values as their formatted string representation with schema type `STRING`.
+This is required if such columns may contain infinity or not-a-number non-numeric constant values.
 
 |`DECIMAL[(P, S)]`
 |`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
@@ -4087,6 +4089,16 @@ You can set one of the following options:
   Using `double` values is easier, but can result in a loss of precision.
 `string`:: Encodes values as formatted strings.
   Using the `string` option is easier to consume, but results in a loss of semantic information about the real type.
+  For more information, see <<oracle-numeric-types>>.
+
+|[[oracle-property-binary-decimal-handling-mode]]<<oracle-property-binary-decimal-handling-mode, `+binary.decimal.handling.mode+`>>
+|`numeric`
+| Specifies how the connector should handle binary floating point values for `BINARY_FLOAT` and `BINARY_DOUBLE` columns.
+You can set one of the following options:
+
+`numeric` (default): Uses `FLOAT32` for `BINARY_FLOAT` and `FLOAT64` for `BINARY_DOUBLE` columns.
+`string`: Encodes values as formatted strings.
+  Using the `string` option is mandatory if any `BINARY_FLOAT` or `BINARY_DOUBLE` columns contain infinity or not-a-number non-numeric constants.
   For more information, see <<oracle-numeric-types>>.
 
 |[[oracle-property-interval-handling-mode]]<<oracle-property-interval-handling-mode, `+interval.handling.mode+`>>
