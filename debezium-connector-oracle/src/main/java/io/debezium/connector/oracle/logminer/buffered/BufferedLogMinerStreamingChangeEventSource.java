@@ -35,6 +35,7 @@ import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction.ProcessType;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider;
@@ -256,7 +257,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected LogMinerCache<String, String> getProcessedTransactionsCache() {
+    protected LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return cacheProvider.getProcessedTransactionsCache();
     }
 
@@ -328,6 +329,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     protected void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
+
+            // The internal.log.mining.buffer.memory.legacy.transaction.start property is only applicable for
+            // heap-based caches; however when its set the START event will not be provided, and therefore we
+            // attempt to do the filtering for username and client id at commit time. That means that events
+            // for the transaction will get buffered. The default behavior is the internal property is not
+            // enabled, so START events are observed, and can be used to filter entire transactions upfront,
+            // preventing the need to buffer the transaction to only later discard it.
+            if (isUserNameSkipped(event.getUserName()) || isClientIdSkipped(event.getClientId())) {
+                markTransactionSkipped(event.getTransactionId(), event.getScn());
+                return;
+            }
+
             final Transaction transaction = getTransactionCache().getTransaction(transactionId);
             if (transaction == null) {
                 getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
@@ -344,7 +357,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     protected void handleCommitEvent(LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
         if (isRecentlyProcessed(transactionId)) {
-            LOGGER.debug("\tTransaction is already committed, skipped.");
+            LOGGER.debug("Transaction {} has already been committed or was marked for skip.", transactionId);
             return;
         }
 
@@ -663,12 +676,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!minCacheScn.isNull()) {
             abandonTransactions(getConfig().getLogMiningTransactionRetention());
-
-            getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+            getProcessedTransactionsCache().removeIf(entry -> entry.getValue().getStartScn().compareTo(minCacheScn) < 0);
             getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
         else {
-            getSchemaChangesCache().removeIf(e -> true);
+            getProcessedTransactionsCache().clear();
+            getSchemaChangesCache().clear();
         }
 
         if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
@@ -702,6 +715,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setOffsetScn(getOffsetContext().getScn());
             return new ProcessResult(miningSessionStartScn, endScn);
         }
+    }
+
+    /**
+     * Marks the specific transaction as skipped.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param eventScn the transaction's starting system change number, should not be {@code null}
+     */
+    protected void markTransactionSkipped(String transactionId, Scn eventScn) {
+        getProcessedTransactionsCache().put(
+                transactionId,
+                new ProcessedTransaction(transactionId, eventScn, ProcessType.SKIPPED));
     }
 
     /**
@@ -831,7 +856,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @return true if the transaction should be skipped and not dispatched, false otherwise
      */
     private boolean isTransactionSkippedAtCommit(Transaction transaction) {
-        // todo: can this be moved to earlier in the processing loop to avoid buffering?
+        // As mentioned in the handleStartEvent method, internal.log.mining.buffer.memory.legacy.transaction.start
+        // restores legacy behavior to omit providing START events to the connector when using heap-based caches.
+        // In these cases, the transaction will be buffered regardless, and therefore we still need to check if we
+        // can skip the transaction at commit-time, although this is not always reliable. That's because Oracle
+        // only guarantees providing the USERNAME and CLIENT_ID fields if and only if the START event is present
+        // in the mining step. So for full reliability, it's best to leave the internal configuration set to its
+        // default of false to guarantee transactions are skipped for username and client id values.
         return transaction != null && (isUserNameSkipped(transaction.getUserName()) || isClientIdSkipped(transaction.getClientId()));
     }
 
@@ -854,7 +885,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getTransactionCache().removeAbandonedTransaction(transactionId);
 
         if (getConfig().isLobEnabled()) {
-            getProcessedTransactionsCache().put(transactionId, eventScn.toString());
+            getProcessedTransactionsCache().put(
+                    transactionId,
+                    new ProcessedTransaction(transactionId, eventScn, ProcessType.PROCESSED));
         }
     }
 

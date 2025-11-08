@@ -5,6 +5,9 @@
         <serializer type="io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction">
             io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.EhcacheTransactionSerializer
         </serializer>
+        <serializer type="io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction">
+            io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.ProcessedTransactionSerializer
+        </serializer>
         <serializer type="io.debezium.connector.oracle.logminer.events.LogMinerEvent">
             io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.LogMinerEventSerializer
         </serializer>
@@ -32,7 +35,7 @@
     <cache alias="processed-transactions">
         <!-- Debezium specifically sets the key/value types -->
         <key-type>java.lang.String</key-type>
-        <value-type>java.lang.String</value-type>
+        <value-type>io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction</value-type>
         ${log.mining.buffer.ehcache.processedtransactions.config}
     </cache>
 

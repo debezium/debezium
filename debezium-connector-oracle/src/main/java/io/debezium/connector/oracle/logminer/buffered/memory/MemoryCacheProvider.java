@@ -12,6 +12,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction;
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in memory
@@ -24,7 +25,7 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryCacheProvider.class);
 
     private final MemoryLogMinerTransactionCache transactionCache;
-    private final MemoryBasedLogMinerCache<String, String> processedTransactionsCache;
+    private final MemoryBasedLogMinerCache<String, ProcessedTransaction> processedTransactionsCache;
     private final MemoryBasedLogMinerCache<String, String> schemaChangesCache;
 
     public MemoryCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -46,7 +47,7 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 

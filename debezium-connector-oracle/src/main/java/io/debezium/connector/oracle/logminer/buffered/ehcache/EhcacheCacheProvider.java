@@ -39,6 +39,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
 /**
@@ -54,7 +55,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private final boolean dropBufferOnStop;
     private final CacheManager cacheManager;
     private final EhcacheLogMinerTransactionCache transactionCache;
-    private final EhcacheLogMinerCache<String, String> processedTransactionsCache;
+    private final EhcacheLogMinerCache<String, ProcessedTransaction> processedTransactionsCache;
     private final EhcacheLogMinerCache<String, String> schemaChangesCache;
 
     public EhcacheCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -81,7 +82,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
@@ -174,9 +175,9 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 evictionListener);
     }
 
-    private EhcacheLogMinerCache<String, String> createProcessedTransactionCache(EhcacheEvictionListener evictionListener) {
+    private EhcacheLogMinerCache<String, ProcessedTransaction> createProcessedTransactionCache(EhcacheEvictionListener evictionListener) {
         return new EhcacheLogMinerCache<>(
-                getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class, evictionListener),
+                getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, ProcessedTransaction.class, evictionListener),
                 PROCESSED_TRANSACTIONS_CACHE_NAME,
                 evictionListener);
     }
