@@ -157,12 +157,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
         final LogMiningQueryFilterMode queryFilterMode = connectorConfig.getLogMiningQueryFilterMode();
         if (LogMiningQueryFilterMode.NONE.equals(queryFilterMode)) {
-            // No filters get applied
-            return EMPTY;
+            return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (Strings.isNullOrEmpty(includeList) && Strings.isNullOrEmpty(excludeList)) {
-            // No table filters provided, nothing to apply
-            return EMPTY;
+            return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
             final List<String> includeTableList = getTableIncludeExcludeListAsInValueList(includeList);
@@ -173,6 +171,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             predicate.append("(TABLE_NAME IS NULL OR ");
             if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
+
+            if (includeTableList.isEmpty()) {
+                predicate.append("TABLE_NAME NOT LIKE 'MLOG$%' OR ");
             }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
@@ -206,6 +208,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             predicate.append("(TABLE_NAME IS NULL OR ");
             if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
+
+            if (includeTableList.isEmpty()) {
+                predicate.append("TABLE_NAME NOT LIKE 'MLOG$%' OR ");
             }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {

@@ -314,7 +314,7 @@ public class LogMinerQueryBuilderTest {
         final String excludeList = config.tableExcludeList();
         if (config.getLogMiningQueryFilterMode().equals(LogMiningQueryFilterMode.NONE) ||
                 (Strings.isNullOrEmpty(includeList) && Strings.isNullOrEmpty(excludeList))) {
-            return "";
+            return " AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (config.getLogMiningQueryFilterMode().equals(LogMiningQueryFilterMode.IN)) {
             // Use IN-clauses
@@ -326,10 +326,17 @@ public class LogMinerQueryBuilderTest {
                 inClause = getIn(fieldName, getTableIncludeOrExclude(excludeList, false), true, true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
+
+            String result = " AND (TABLE_NAME IS NULL OR ";
             if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
-                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + inClause + ")";
+                result += "TABLE_NAME LIKE 'OBJ#% OR ";
             }
-            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + inClause + ")";
+
+            if (Strings.isNullOrEmpty(includeList)) {
+                result += "TABLE_NAME NOT LIKE 'MLOG$%' OR ";
+            }
+
+            return result + signalDataClause + inClause + ")";
         }
         else {
             // Regular Expressions
@@ -341,10 +348,17 @@ public class LogMinerQueryBuilderTest {
                 regExpLikeClause = getRegexpLike(fieldName, getTableIncludeOrExclude(excludeList, true), true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
+
+            String result = " AND (TABLE_NAME IS NULL OR ";
             if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
-                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + regExpLikeClause + ")";
+                result += "TABLE_NAME LIKE 'OBJ#%' OR ";
             }
-            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + regExpLikeClause + ")";
+
+            if (Strings.isNullOrEmpty(includeList)) {
+                result += "TABLE_NAME NOT LIKE 'MLOG$%' OR ";
+            }
+
+            return result + signalDataClause + regExpLikeClause + ")";
         }
     }
 
