@@ -754,6 +754,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(1)
             .withDescription("Adjusts the LAST_REDO_SCN from V$THREAD by this value.");
 
+    public static final Field LOG_MINING_HASH_AREA_SIZE = Field.createInternal("log.mining.hash.area.size")
+            .withDisplayName("Hash Area Size")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("Specifies the maximum memory in bytes the LogMiner session can use for performing SQL join operations. " +
+                    "Setting this to 0 (the default) uses the database's default HASH_AREA_SIZE.");
+
+    public static final Field LOG_MINING_SORT_AREA_SIZE = Field.createInternal("log.mining.sort.area.size")
+            .withDisplayName("Sort Area Size")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("Specifies the maximum memory in bytes the LogMiner session can use for performing SQL sort operations. " +
+                    "Setting this to 0 (the default) uses the database's default SORT_AREA_SIZE.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -842,7 +862,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READONLY_HOSTNAME,
                     LEGACY_DECIMAL_HANDLING_STRATEGY,
                     LOG_MINING_USE_CTE_QUERY,
-                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT)
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT,
+                    LOG_MINING_HASH_AREA_SIZE,
+                    LOG_MINING_SORT_AREA_SIZE)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -922,6 +944,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningUseCteQuery;
     private final String readonlyHostname;
     private final Integer logMiningRedoThreadScnAdjustment;
+    private final Long logMiningHashAreaSize;
+    private final Long logMiningSortAreaSize;
     private final ArchiveDestinationNameResolver destinationNameResolver;
 
     private final String openLogReplicatorSource;
@@ -1003,6 +1027,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
         this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
+        this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
+        this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -2160,6 +2186,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Integer getLogMiningRedoThreadScnAdjustment() {
         return logMiningRedoThreadScnAdjustment;
+    }
+
+    /**
+     * The LogMiner mining connection's hash area size.
+     */
+    public Long getLogMiningHashAreaSize() {
+        return logMiningHashAreaSize;
+    }
+
+    /**
+     * The LogMiner mining connection's sort area size.
+     */
+    public Long getLogMiningSortAreaSize() {
+        return logMiningSortAreaSize;
     }
 
     @Override
