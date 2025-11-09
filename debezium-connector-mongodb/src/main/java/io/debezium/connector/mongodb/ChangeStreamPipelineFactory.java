@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -150,16 +151,16 @@ class ChangeStreamPipelineFactory {
         // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
         var dbFilters = Optional.<Bson> empty()
                 .or(() -> filterConfig.getDbIncludeList()
-                        .map(value -> Filters.regex("event.ns.db", value.replaceAll(",", "|"), "i")))
+                        .map(value -> Filters.regex("event.ns.db", commaSeparatedToRegex(value), "i")))
                 .or(() -> filterConfig.getDbExcludeList()
-                        .map(value -> Filters.regex("event.ns.db", "(?!" + value.replaceAll(",", "|") + ")", "i")));
+                        .map(value -> Filters.regex("event.ns.db", "(?!" + commaSeparatedToRegex(value) + ")", "i")));
 
         // Collection filters
         var collectionsFilters = Optional.<Bson> empty()
                 .or(() -> filterConfig.getCollectionIncludeList()
-                        .map(value -> Filters.regex("namespace", value.replaceAll(",", "|"), "i")))
+                        .map(value -> Filters.regex("namespace", commaSeparatedToRegex(value), "i")))
                 .or(() -> filterConfig.getCollectionExcludeList()
-                        .map(value -> Filters.regex("namespace", "(?!" + value.replaceAll(",", "|") + ")", "i")));
+                        .map(value -> Filters.regex("namespace", "(?!" + commaSeparatedToRegex(value) + ")", "i")));
 
         return andFilters(
                 dbFilters,
@@ -346,5 +347,24 @@ class ChangeStreamPipelineFactory {
                 .filter(not(String::isEmpty))
                 .map(ChangeStreamPipelineFactory::namespaceBson)
                 .collect(toList());
+    }
+
+    /**
+     * Converts a comma-separated list of values to a regex pattern by splitting on commas,
+     * trimming whitespace from each part, and joining with pipe (|) characters.
+     * This handles cases where multiline YAML configurations result in spaces after commas.
+     *
+     * @param input the comma-separated input string
+     * @return the regex pattern with values joined by pipes, with no spaces
+     */
+    private static String commaSeparatedToRegex(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        return Stream.of(input.split(LIST_DELIMITER))
+                .map(String::trim)
+                .filter(not(String::isEmpty))
+                .collect(joining("|"));
     }
 }
