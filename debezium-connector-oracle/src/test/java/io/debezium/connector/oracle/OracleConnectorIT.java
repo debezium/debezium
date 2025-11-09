@@ -6261,4 +6261,51 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.dropTable(connection, "locations");
         }
     }
+
+    @Test
+    @FixFor("DBZ-9660")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "LogMiner Specific")
+    public void shouldApplyHashSortAreaSizesToLogMinerSession() throws Exception {
+        TestHelper.dropTable(connection, "dbz9660");
+        try {
+            connection.execute("CREATE TABLE dbz9660 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz9660");
+
+            connection.execute("INSERT INTO dbz9660 values (1, 'snapshot')");
+
+            LogInterceptor interceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9660")
+                    .with(OracleConnectorConfig.LOG_MINING_HASH_AREA_SIZE, "10485760")
+                    .with(OracleConnectorConfig.LOG_MINING_SORT_AREA_SIZE, "10485760")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz9660 values (2, 'stream')");
+
+            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.DBZ9660");
+            assertThat(records).hasSize(2);
+
+            final SourceRecord snapshot = records.get(0);
+            final Struct afterSnapshot = ((Struct) snapshot.value()).getStruct(FieldName.AFTER);
+            assertThat(afterSnapshot.get("ID")).isEqualTo(1);
+            assertThat(afterSnapshot.get("DATA")).isEqualTo("snapshot");
+
+            final SourceRecord stream = records.get(1);
+            final Struct afterStream = ((Struct) stream.value()).getStruct(FieldName.AFTER);
+            assertThat(afterStream.get("ID")).isEqualTo(2);
+            assertThat(afterStream.get("DATA")).isEqualTo("stream");
+
+            assertThat(interceptor.containsMessage("Setting LogMiner connection HASH_AREA_SIZE=10485760")).isTrue();
+            assertThat(interceptor.containsMessage("Setting LogMiner connection SORT_AREA_SIZE=10485760")).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz9660");
+        }
+    }
 }

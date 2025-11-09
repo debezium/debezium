@@ -1028,6 +1028,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         // This makes sure that specific LogMiner attributes are serialized in a consistent format
         // to minimize the various permutations needed in the value converters.
         setNlsSessionParameters();
+
+        setHashSortArea();
     }
 
     /**
@@ -1736,6 +1738,25 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
         jdbcConnection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
+    }
+
+    /**
+     * Sets the hash/sort area for the mining session.
+     *
+     * @throws SQLException the hash/sort area
+     */
+    private void setHashSortArea() throws SQLException {
+        final long hashAreaSize = getConfig().getLogMiningHashAreaSize();
+        if (hashAreaSize > 0) {
+            LOGGER.debug("Setting LogMiner connection HASH_AREA_SIZE={}", hashAreaSize);
+            jdbcConnection.executeWithoutCommitting("ALTER SESSION SET HASH_AREA_SIZE = " + hashAreaSize);
+        }
+
+        final long sortAreaSize = getConfig().getLogMiningSortAreaSize();
+        if (sortAreaSize > 0) {
+            LOGGER.debug("Setting LogMiner connection SORT_AREA_SIZE={}", sortAreaSize);
+            jdbcConnection.executeWithoutCommitting("ALTER SESSION SET SORT_AREA_SIZE = " + sortAreaSize);
+        }
     }
 
     /**
