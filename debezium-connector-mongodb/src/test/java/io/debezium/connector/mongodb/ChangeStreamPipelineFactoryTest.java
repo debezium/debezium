@@ -158,6 +158,102 @@ public class ChangeStreamPipelineFactoryTest {
         assertPipelineStagesEquals(pipeline.getStages(), USER_PIPELINE);
     }
 
+    @Test
+    public void testCollectionIncludeListWithSpacesAfterCommas() {
+
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of("db1.col1, db2.col2 , db3.col3"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        // Verify the regex pattern in the pipeline doesn't have spaces after pipes
+        var pattern = extractNamespaceRegexPattern(pipeline);
+        assertThat(pattern).isEqualTo("db1.col1|db2.col2|db3.col3");
+        assertThat(pattern).doesNotContain("| ");
+    }
+
+    @Test
+    public void testCollectionIncludeListWithMultipleSpaces() {
+        // Test case with multiple spaces and mixed formatting
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of("db1.col1, db2.col2 , db3.col3"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pattern = extractNamespaceRegexPattern(pipeline);
+        // Verify all spaces are trimmed and no spaces after pipes
+        assertThat(pattern).isEqualTo("db1.col1|db2.col2|db3.col3");
+        assertThat(pattern).doesNotContain("| ");
+        assertThat(pattern).doesNotContain(" |");
+    }
+
+    @Test
+    public void testDatabaseIncludeListWithSpacesAfterCommas() {
+        // Test case for database include list with spaces after commas
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.getDbIncludeList())
+                .willReturn(Optional.of("db1, db2, db3"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pattern = extractDatabaseRegexPattern(pipeline);
+        // Verify no space after pipe character
+        assertThat(pattern).isEqualTo("db1|db2|db3");
+        assertThat(pattern).doesNotContain("| ");
+    }
+
+    @Test
+    public void testCollectionExcludeListWithSpacesAfterCommas() {
+        // Test case for collection exclude list with spaces after commas
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.getCollectionExcludeList())
+                .willReturn(Optional.of("db1.col1, db2.col2"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pattern = extractNamespaceRegexPattern(pipeline);
+        // Verify negative lookahead pattern doesn't have spaces after pipes
+        assertThat(pattern).startsWith("(?!");
+        assertThat(pattern).endsWith(")");
+        var innerPattern = pattern.substring(3, pattern.length() - 1);
+        assertThat(innerPattern).isEqualTo("db1.col1|db2.col2");
+        assertThat(innerPattern).doesNotContain("| ");
+    }
+
     @SafeVarargs
     private List<String> mergeStages(List<String>... stages) {
         return Stream.of(stages)
@@ -250,5 +346,137 @@ public class ChangeStreamPipelineFactoryTest {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Extracts the namespace regex pattern from the change stream pipeline.
+     * Handles different pipeline structures (with or without $or wrapper).
+     */
+    private static String extractNamespaceRegexPattern(ChangeStreamPipeline pipeline) {
+        var stages = pipeline.getStages();
+        var matchStage = stages.stream()
+                .filter(stage -> stage.toBsonDocument().containsKey("$match"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No $match stage found in pipeline"));
+
+        var matchDoc = matchStage.toBsonDocument().getDocument("$match");
+        var andArray = matchDoc.getArray("$and");
+        
+        // Recursively search for namespace regex pattern
+        for (var andElement : andArray) {
+            var pattern = findNamespacePatternInDocument(andElement.asDocument());
+            if (pattern != null) {
+                return pattern;
+            }
+        }
+        
+        throw new AssertionError("No namespace regex pattern found in pipeline");
+    }
+
+    /**
+     * Recursively searches for namespace regex pattern in a BSON document.
+     */
+    private static String findNamespacePatternInDocument(org.bson.BsonDocument doc) {
+        // Check if namespace is directly in this document
+        if (doc.containsKey("namespace")) {
+            var namespaceValue = doc.get("namespace");
+            if (namespaceValue.isDocument()) {
+                var namespaceDoc = namespaceValue.asDocument();
+                if (namespaceDoc.containsKey("$regularExpression")) {
+                    return namespaceDoc.getDocument("$regularExpression")
+                            .getString("pattern").getValue();
+                }
+            }
+        }
+        
+        // Check if it's wrapped in $or
+        if (doc.containsKey("$or")) {
+            var orArray = doc.getArray("$or");
+            for (var orElement : orArray) {
+                var pattern = findNamespacePatternInDocument(orElement.asDocument());
+                if (pattern != null) {
+                    return pattern;
+                }
+            }
+        }
+        
+        // Check if it's wrapped in $and (nested)
+        if (doc.containsKey("$and")) {
+            var andArray = doc.getArray("$and");
+            for (var andElement : andArray) {
+                var pattern = findNamespacePatternInDocument(andElement.asDocument());
+                if (pattern != null) {
+                    return pattern;
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Extracts the database regex pattern from the change stream pipeline.
+     * Handles different pipeline structures (with or without $or wrapper).
+     */
+    private static String extractDatabaseRegexPattern(ChangeStreamPipeline pipeline) {
+        var stages = pipeline.getStages();
+        var matchStage = stages.stream()
+                .filter(stage -> stage.toBsonDocument().containsKey("$match"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No $match stage found in pipeline"));
+
+        var matchDoc = matchStage.toBsonDocument().getDocument("$match");
+        var andArray = matchDoc.getArray("$and");
+        
+        // Recursively search for database regex pattern
+        for (var andElement : andArray) {
+            var pattern = findDatabasePatternInDocument(andElement.asDocument());
+            if (pattern != null) {
+                return pattern;
+            }
+        }
+        
+        throw new AssertionError("No database regex pattern found in pipeline");
+    }
+
+    /**
+     * Recursively searches for database regex pattern in a BSON document.
+     */
+    private static String findDatabasePatternInDocument(org.bson.BsonDocument doc) {
+        // Check if event.ns.db is directly in this document
+        if (doc.containsKey("event.ns.db")) {
+            var dbValue = doc.get("event.ns.db");
+            if (dbValue.isDocument()) {
+                var dbDoc = dbValue.asDocument();
+                if (dbDoc.containsKey("$regularExpression")) {
+                    return dbDoc.getDocument("$regularExpression")
+                            .getString("pattern").getValue();
+                }
+            }
+        }
+        
+        // Check if it's wrapped in $or
+        if (doc.containsKey("$or")) {
+            var orArray = doc.getArray("$or");
+            for (var orElement : orArray) {
+                var pattern = findDatabasePatternInDocument(orElement.asDocument());
+                if (pattern != null) {
+                    return pattern;
+                }
+            }
+        }
+        
+        // Check if it's wrapped in $and (nested)
+        if (doc.containsKey("$and")) {
+            var andArray = doc.getArray("$and");
+            for (var andElement : andArray) {
+                var pattern = findDatabasePatternInDocument(andElement.asDocument());
+                if (pattern != null) {
+                    return pattern;
+                }
+            }
+        }
+        
+        return null;
     }
 }
