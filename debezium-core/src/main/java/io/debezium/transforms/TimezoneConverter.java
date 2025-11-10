@@ -361,12 +361,14 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             String schemaName = field.schema().name();
 
-            if (schemaName == null) {
+            boolean isEpochType = field.schema().type() == Schema.Type.INT64;
+
+            if (schemaName == null && !isEpochType) {
                 continue;
             }
 
-            boolean isUnsupportedLogicalType = UNSUPPORTED_LOGICAL_NAMES.contains(schemaName);
-            boolean supportedLogicalType = SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
+            boolean isUnsupportedLogicalType = schemaName != null && UNSUPPORTED_LOGICAL_NAMES.contains(schemaName);
+            boolean supportedLogicalType = schemaName != null && SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
             boolean shouldIncludeField = type == Type.ALL
                     || (type == Type.INCLUDE && fields.contains(field.name()))
                     || (type == Type.EXCLUDE && !fields.contains(field.name()));
@@ -376,7 +378,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 continue;
             }
 
-            if (shouldIncludeField && supportedLogicalType) {
+            if (shouldIncludeField && (supportedLogicalType || isEpochType)) {
                 if (value.get(field) != null) {
                     handleValueForField(value, field);
                 }
@@ -387,8 +389,40 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private void handleValueForField(Struct struct, org.apache.kafka.connect.data.Field field) {
         String fieldName = field.name();
         Schema schema = field.schema();
-        Object newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
+        Object fieldValue = struct.get(fieldName);
+        Object newValue = fieldValue;
+        if (fieldValue != null) {
+            if (schema.name() != null) {
+                newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
+            }
+            else if (schema.name() == null && schema.type() == Schema.Type.INT64) {
+                newValue = getEpochWithTimezone(fieldName, fieldValue);
+            }
+        }
         struct.put(fieldName, newValue);
+    }
+
+    private Long getEpochWithTimezone(String fieldName, Object fieldValue) {
+        Long epochValue = (Long) fieldValue;
+        ZoneId zoneId = ZoneId.of(convertedTimezone);
+        long scaleFactor;
+
+        if (fieldName.endsWith("ts_us")) {
+            scaleFactor = 1_000;
+        }
+        else if (fieldName.endsWith("ts_ns")) {
+            scaleFactor = 1_000_000;
+        }
+        else {
+            scaleFactor = 1;
+        }
+
+        long epochMillis = epochValue / scaleFactor;
+
+        ZoneOffset offset = zoneId.getRules().getOffset(Instant.ofEpochMilli(epochMillis));
+        long convertedMillis = epochMillis + offset.getTotalSeconds() * 1000L;
+
+        return convertedMillis * scaleFactor;
     }
 
     private Struct getStruct(Struct struct, String structName) {

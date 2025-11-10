@@ -892,4 +892,58 @@ public class TimezoneConverterTest {
         assertThat(transformedSource.get("ts_ms")).isEqualTo(123456789);
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
     }
+
+    @Test
+    public void testEpochTimezoneConversion() {
+        final TimezoneConverter<SourceRecord> transform = new TimezoneConverter<>();
+        Map<String, String> config = new HashMap<>();
+        config.put("include.list", "source:customers:source.ts_ms,customers:source.ts_ns,customers:source.ts_us,customers:order_date_zoned_time");
+        config.put("converted.timezone", "Asia/Kolkata");
+        transform.configure(config);
+
+        Schema sourceSchema = SchemaBuilder.struct()
+                .name("source")
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("ts_us", Schema.INT64_SCHEMA)
+                .field("ts_ns", Schema.INT64_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct source = new Struct(sourceSchema)
+                .put("ts_ms", 1762652621071L)
+                .put("ts_ns", 1762652621071088000L)
+                .put("ts_us", 1762652621071088L)
+                .put("table", "customers");
+
+        final Struct before = new Struct(recordSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Amy Rose");
+        before.put("order_date_zoned_time", "11:00:00.123456789+00:00");
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload);
+
+        SourceRecord result = transform.apply(record);
+
+        Struct resultStruct = (Struct) result.value();
+        Struct transformedSource = resultStruct.getStruct("source");
+        final Struct transformedAfter = resultStruct.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:30:00.123456789+05:30");
+        assertThat(transformedSource.getInt64("ts_ms")).isEqualTo(1762672421071L);
+        assertThat(transformedSource.getInt64("ts_ns")).isEqualTo(1762672421071000000L);
+        assertThat(transformedSource.getInt64("ts_us")).isEqualTo(1762672421071000L);
+    }
 }
