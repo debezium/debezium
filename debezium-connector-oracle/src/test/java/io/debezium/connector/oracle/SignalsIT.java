@@ -21,9 +21,11 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.spi.DropTransactionAction;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
@@ -47,6 +49,9 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
+
+    @Rule
+    public TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
