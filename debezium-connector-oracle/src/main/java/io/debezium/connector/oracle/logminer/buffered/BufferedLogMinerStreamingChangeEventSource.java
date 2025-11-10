@@ -686,7 +686,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
-            return new ProcessResult(miningSessionStartScn, miningSessionStartScn);
+            return new ProcessResult(miningSessionStartScn, getConfig().isLobEnabled() ? miningSessionStartScn : endScn);
         }
         else {
             // Cache has no values
