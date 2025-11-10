@@ -119,9 +119,8 @@ public class SqlUtils {
         // SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED,
         // L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD
         // FROM V$LOGFILE F, V$LOG L
-        // LEFT JOIN V$ARCHIVED_LOG A
-        // ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE#
-        // WHERE (A.FIRST_CHANGE# IS NULL OR A.STATUS <> 'A')
+        // WHERE
+        // AND L.STATUS = 'CURRENT'
         // AND F.GROUP# = L.GROUP#
         // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#
         //
@@ -162,14 +161,8 @@ public class SqlUtils {
             sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ");
             sb.append(DATABASE_VIEW).append(" D, ");
             sb.append(LOG_VIEW).append(" L ");
-            sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
-            sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
-            sb.append("WHERE ((");
-            sb.append("A.STATUS <> 'A' ");
-            sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
-            sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME) ");
-            sb.append("OR A.FIRST_CHANGE# IS NULL) ");
-            sb.append("AND L.STATUS != 'UNUSED' ");
+            sb.append("WHERE ");
+            sb.append("L.STATUS = 'CURRENT' ");
             sb.append("AND F.GROUP# = L.GROUP# ");
             sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# ");
             sb.append("UNION ");
