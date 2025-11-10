@@ -126,12 +126,8 @@ public class SqlUtilsTest {
                 "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
                 "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD " +
                 "FROM V$LOGFILE F, V$DATABASE D, V$LOG L " +
-                "LEFT JOIN V$ARCHIVED_LOG A " +
-                "ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# " +
-                "WHERE ((A.STATUS <> 'A' " +
-                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# AND A.RESETLOGS_TIME = D.RESETLOGS_TIME) " +
-                "OR A.FIRST_CHANGE# IS NULL) " +
-                "AND L.STATUS != 'UNUSED' " +
+                "WHERE " +
+                "L.STATUS = 'CURRENT' " +
                 "AND F.GROUP# = L.GROUP# " +
                 "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#";
 

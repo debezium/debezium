@@ -142,11 +142,16 @@ public class LogFileCollector {
         // DBZ-3563
         // To avoid duplicate log files (ORA-01289 cannot add duplicate logfile)
         // Remove the archive log which has the same sequence number and redo thread number.
-        for (LogFile redoLog : onlineLogFiles) {
-            archiveLogFiles.removeIf(archiveLog -> {
-                if (archiveLog.equals(redoLog)) {
-                    LOGGER.debug("Removing redo thread {} archive log {} with duplicate sequence {} with redo log {}",
-                            archiveLog.getThread(), archiveLog.getFileName(), archiveLog.getSequence(), redoLog.getFileName());
+        // - 2025/11/09
+        // The SQL query previously deduplicated the data set during the join, favoring archive logs
+        // instead of redo logs, therefore there was rarely a reason for this deduplication. But,
+        // with the recent change to minimize query costs, the deduplication was removed, and should
+        // now apply that here again, thus lets favor archive over redo with the same sequences.
+        for (LogFile archiveLog : archiveLogFiles) {
+            onlineLogFiles.removeIf(redoLog -> {
+                if (redoLog.equals(archiveLog)) {
+                    LOGGER.debug("Removing redo thread {} redo log {} with duplicate sequence {} with archive log {}",
+                            redoLog.getThread(), redoLog.getFileName(), redoLog.getSequence(), archiveLog.getFileName());
                     return true;
                 }
                 return false;
