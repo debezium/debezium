@@ -2228,6 +2228,9 @@ It is possible to capture changes in a PostgreSQL database that is running in li
   For example, `grant rds_replication to _<my_user>_`. You must have `superuser` access to grant the `rds_replication` role to a user.
   To enable accounts other than the master account to create an initial snapshot, you must grant `SELECT` permission to the accounts on the tables to be captured.
   For more information about security for PostgreSQL logical replication, see the link:https://www.postgresql.org/docs/current/logical-replication-security.html[PostgreSQL documentation].
+* To use AWS IAM Authentication, set `database.connection.factory.class` to `io.debezium.connector.postgresql.connection.PostgresAwsIamConnectionFactory`, and add the
+  link:https://github.com/aws/aws-advanced-jdbc-wrapper[AWS Advanced JDBC Wrapper] in your classpath. More documentation
+  link:https://github.com/aws/aws-advanced-jdbc-wrapper/blob/main/docs/using-the-jdbc-driver/using-plugins/UsingTheIamAuthenticationPlugin.md[here].
 
 [[postgresql-on-azure]]
 ==== PostgreSQL on Azure
@@ -3175,6 +3178,10 @@ If the publication already exists, either for all tables or configured with a su
 |[[postgresql-property-database-dbname]]<<postgresql-property-database-dbname, `+database.dbname+`>>
 |No default
 |The name of the PostgreSQL database from which to stream the changes.
+
+|[[postgresql-property-database-connection-class-factory]]<<postgresql-property-database-connection-class-factory, `+database.connection.factory.class+`>>
+|No default
+|The name of the ConnectionFactory. For example, can be used to handle AWS IAM Authentication (see xref:postgresql-on-amazon-rds[here]).
 
 |[[postgresql-property-topic-prefix]]<<postgresql-property-topic-prefix, `+topic.prefix+`>>
 |No default
