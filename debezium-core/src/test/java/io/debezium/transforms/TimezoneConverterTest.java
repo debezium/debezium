@@ -856,6 +856,14 @@ public class TimezoneConverterTest {
         converter.configure(props);
 
         final Struct before = new Struct(recordSchema);
+
+        Schema sourceSchema = SchemaBuilder.struct()
+                .name("source")
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("lsn", Schema.INT32_SCHEMA)
+                .build();
+
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
@@ -864,7 +872,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 1234567890L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -889,7 +897,7 @@ public class TimezoneConverterTest {
         final Struct transformedSource = transformedValue.getStruct(Envelope.FieldName.SOURCE);
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedSource.get("ts_ms")).isEqualTo(123456789);
+        assertThat(transformedSource.get("ts_ms")).isEqualTo(1245367890L);
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
     }
 
@@ -897,7 +905,7 @@ public class TimezoneConverterTest {
     public void testEpochTimezoneConversion() {
         final TimezoneConverter<SourceRecord> transform = new TimezoneConverter<>();
         Map<String, String> config = new HashMap<>();
-        config.put("include.list", "source:customers:source.ts_ms,customers:source.ts_ns,customers:source.ts_us,customers:order_date_zoned_time");
+        config.put("include.list", "source:customers:source.ts_ms,customers:source.ts_ns,customers:source.ts_us,customers:source.random,customers:order_date_zoned_time");
         config.put("converted.timezone", "Asia/Kolkata");
         transform.configure(config);
 
@@ -907,12 +915,14 @@ public class TimezoneConverterTest {
                 .field("ts_us", Schema.INT64_SCHEMA)
                 .field("ts_ns", Schema.INT64_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
+                .field("random", Schema.INT64_SCHEMA)
                 .build();
 
         Struct source = new Struct(sourceSchema)
                 .put("ts_ms", 1762652621071L)
                 .put("ts_ns", 1762652621071088000L)
                 .put("ts_us", 1762652621071088L)
+                .put("random", 125L)
                 .put("table", "customers");
 
         final Struct before = new Struct(recordSchema);
@@ -943,7 +953,8 @@ public class TimezoneConverterTest {
 
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:30:00.123456789+05:30");
         assertThat(transformedSource.getInt64("ts_ms")).isEqualTo(1762672421071L);
-        assertThat(transformedSource.getInt64("ts_ns")).isEqualTo(1762672421071000000L);
-        assertThat(transformedSource.getInt64("ts_us")).isEqualTo(1762672421071000L);
+        assertThat(transformedSource.getInt64("ts_ns")).isEqualTo(1762672421071088000L);
+        assertThat(transformedSource.getInt64("ts_us")).isEqualTo(1762672421071088L);
+        assertThat(transformedSource.getInt64("random")).isEqualTo(125L);
     }
 }
