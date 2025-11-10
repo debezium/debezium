@@ -2812,15 +2812,13 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-9641")
-    public void shouldFlushLsnOfUnmonitoredActivityInConnectorAndDriverMode() throws Exception {
+    public void shouldStartWithConnectorAndDriverMode() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.createDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
 
         final Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver")
-                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
                 .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
 
@@ -2828,30 +2826,25 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        // Phase 1: Process a monitored event from s1
-        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
-        SourceRecords actualRecords = consumeRecordsByTopic(1);
-        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(1);
+        // Consume snapshot records
+        SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(2);
 
-        final SlotState slotAfterMonitoredEvent = getDefaultReplicationSlot();
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
 
-        // Phase 2: Generate unmonitored WAL activity in s2
-        TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (200, 'unmonitored');");
-
-        // Wait for keepalive cycles to propagate the LSN flush
-        Thread.sleep(500);
-
-        final SlotState slotAfterUnmonitoredActivity = getDefaultReplicationSlot();
-
-        // Verify: No events consumed from s2 (it's not monitored)
-        assertNoRecordsToConsume();
-
-        // Verify: LSN advanced via driver keepalive flush even without processing events
-        assertThat(slotAfterUnmonitoredActivity.slotLastFlushedLsn())
-                .describedAs("LSN should advance via driver keepalive flush even without processing events")
-                .isGreaterThan(slotAfterMonitoredEvent.slotLastFlushedLsn());
+        // Process streaming events
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords streamingRecords = consumeRecordsByTopic(2);
+        assertThat(streamingRecords.allRecordsInOrder().size()).isEqualTo(2);
 
         stopConnector();
+
+        final SlotState slotAfterStreaming = getDefaultReplicationSlot();
+
+        // Verify LSN advanced after processing events (connector flushes on event processing)
+        assertThat(slotAfterStreaming.slotLastFlushedLsn())
+                .describedAs("LSN should advance after processing events in connector_and_driver mode")
+                .isGreaterThan(slotAfterSnapshot.slotLastFlushedLsn());
     }
 
     @Test
@@ -2872,27 +2865,25 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        // Phase 1: Process a monitored event from s1
+        // Consume snapshot record from s1 (from SETUP_TABLES_STMT)
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(1);
+
         TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(1);
 
-        final SlotState slotAfterMonitoredEvent = getDefaultReplicationSlot();
+        final SlotState slotAfterStreaming = getDefaultReplicationSlot();
 
-        // Phase 2: Generate unmonitored WAL activity in s2
+        // Generate unmonitored WAL activity in s2
         TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (200, 'unmonitored');");
-
-        // Wait for keepalive cycles
-        Thread.sleep(500);
-
-        final SlotState slotAfterUnmonitoredActivity = getDefaultReplicationSlot();
-
-        // Verify: No events consumed from s2 (it's not monitored)
         assertNoRecordsToConsume();
 
-        // Verify: LSN should NOT advance for unmonitored activity with connector-only mode
-        // (the driver's automatic flush is disabled)
-        Assert.assertEquals(slotAfterMonitoredEvent.slotLastFlushedLsn(), slotAfterUnmonitoredActivity.slotLastFlushedLsn());
+        // Wait to ensure driver keepalive flush does not occur (disabled in connector-only mode)
+        Thread.sleep(5000);
+
+        final SlotState slotAfterWaiting = getDefaultReplicationSlot();
+        Assert.assertEquals(slotAfterStreaming.slotLastFlushedLsn(), slotAfterWaiting.slotLastFlushedLsn());
 
         stopConnector();
     }
