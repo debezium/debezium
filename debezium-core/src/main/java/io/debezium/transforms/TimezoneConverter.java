@@ -40,6 +40,7 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.time.Conversions;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
@@ -118,6 +119,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             io.debezium.time.Time.SCHEMA_NAME,
             org.apache.kafka.connect.data.Date.LOGICAL_NAME,
             org.apache.kafka.connect.data.Time.LOGICAL_NAME);
+    private static final List<String> SUPPORTED_EPOCH_FIELDS = List.of("ts_ms", "ts_us", "ts_ns");
 
     @Override
     public ConfigDef config() {
@@ -361,8 +363,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             String schemaName = field.schema().name();
 
-            boolean isEpochType = field.schema().type() == Schema.Type.INT64;
-
+            boolean isEpochType = isEpochType(field);
             if (schemaName == null && !isEpochType) {
                 continue;
             }
@@ -386,6 +387,10 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         }
     }
 
+    private boolean isEpochType(org.apache.kafka.connect.data.Field field) {
+        return SUPPORTED_EPOCH_FIELDS.contains(field.name());
+    }
+
     private void handleValueForField(Struct struct, org.apache.kafka.connect.data.Field field) {
         String fieldName = field.name();
         Schema schema = field.schema();
@@ -395,7 +400,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             if (schema.name() != null) {
                 newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
             }
-            else if (schema.name() == null && schema.type() == Schema.Type.INT64) {
+            else if (schema.name() == null && isEpochType(field)) {
                 newValue = getEpochWithTimezone(fieldName, fieldValue);
             }
         }
@@ -405,24 +410,33 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private Long getEpochWithTimezone(String fieldName, Object fieldValue) {
         Long epochValue = (Long) fieldValue;
         ZoneId zoneId = ZoneId.of(convertedTimezone);
-        long scaleFactor;
+        Instant instant = null;
 
-        if (fieldName.endsWith("ts_us")) {
-            scaleFactor = 1_000;
+        switch (fieldName) {
+            case "ts_ms":
+                instant = Instant.ofEpochMilli(epochValue);
+                break;
+            case "ts_us":
+                instant = Conversions.toInstantFromMicros(epochValue);
+                break;
+            case "ts_ns":
+                instant = Conversions.toInstantFromNanos(epochValue);
+                break;
         }
-        else if (fieldName.endsWith("ts_ns")) {
-            scaleFactor = 1_000_000;
+
+        ZoneOffset offset = zoneId.getRules().getOffset(instant);
+        assert instant != null;
+        Instant convertedInstant = instant.plusSeconds(offset.getTotalSeconds());
+
+        switch (fieldName) {
+            case "ts_ms":
+                return convertedInstant.toEpochMilli();
+            case "ts_us":
+                return Conversions.toEpochMicros(convertedInstant);
+            case "ts_ns":
+                return Conversions.toEpochNanos(convertedInstant);
         }
-        else {
-            scaleFactor = 1;
-        }
-
-        long epochMillis = epochValue / scaleFactor;
-
-        ZoneOffset offset = zoneId.getRules().getOffset(Instant.ofEpochMilli(epochMillis));
-        long convertedMillis = epochMillis + offset.getTotalSeconds() * 1000L;
-
-        return convertedMillis * scaleFactor;
+        return epochValue;
     }
 
     private Struct getStruct(Struct struct, String structName) {
