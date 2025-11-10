@@ -159,7 +159,7 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOfTrimmed(String input, char delimiter, Function<String, T> factory) {
-        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
+        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory, true);
     }
 
     /**
