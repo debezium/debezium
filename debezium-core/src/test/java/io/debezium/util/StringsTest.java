@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -473,5 +474,49 @@ public class StringsTest {
     public void convertDotAndUnderscoreStringToCamelCaseShouldHandleMultipleConsecutiveSeparators() {
         assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello__world..universe"))
                 .isEqualTo("helloWorldUniverse");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldTrimWhitespace() {
+        // Test with spaces after commas (like multiline YAML)
+        List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3", Function.identity());
+        assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldHandleLeadingWhitespace() {
+        List<String> result = Strings.listOfTrimmed(" db1, db2, db3", Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldHandleTrailingWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1 , db2 , db3 ", Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldReturnEmptyListForNull() {
+        List<String> result = Strings.listOfTrimmed((String) null, Function.identity());
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldFilterNullResults() {
+        List<String> result = Strings.listOfTrimmed("db1, , db3", s -> s.isEmpty() ? null : s);
+        assertThat(result).containsExactly("db1", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCustomDelimiterShouldTrimWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1| db2 | db3", '|', Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCustomSplitterShouldTrimWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3",
+                s -> s.split(","), Function.identity());
+        assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
     }
 }
