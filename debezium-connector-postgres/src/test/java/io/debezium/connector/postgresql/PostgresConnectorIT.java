@@ -2727,6 +2727,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-5811")
+    // Tests deprecated SHOULD_FLUSH_LSN_IN_SOURCE_DB property for backward compatibility
     public void shouldNotAckLsnOnSource() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.createDefaultReplicationSlot();
@@ -2765,6 +2766,135 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
         Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+    }
+
+    @Test
+    @FixFor({ "DBZ-5811", "DBZ-9641" })
+    public void shouldNotAckLsnOnSourceInManualFlushMode() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final SlotState slotAtTheBeginning = getDefaultReplicationSlot();
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "manual")
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        stopConnector();
+
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
+        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+        stopConnector();
+
+        final SlotState slotAfterIncremental = getDefaultReplicationSlot();
+        Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldFlushLsnOfUnmonitoredActivityInConnectorAndDriverMode() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver")
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // Phase 1: Process a monitored event from s1
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(1);
+
+        final SlotState slotAfterMonitoredEvent = getDefaultReplicationSlot();
+
+        // Phase 2: Generate unmonitored WAL activity in s2
+        TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (200, 'unmonitored');");
+
+        // Wait for keepalive cycles to propagate the LSN flush
+        Thread.sleep(500);
+
+        final SlotState slotAfterUnmonitoredActivity = getDefaultReplicationSlot();
+
+        // Verify: No events consumed from s2 (it's not monitored)
+        assertNoRecordsToConsume();
+
+        // Verify: LSN advanced via driver keepalive flush even without processing events
+        assertThat(slotAfterUnmonitoredActivity.slotLastFlushedLsn())
+                .describedAs("LSN should advance via driver keepalive flush even without processing events")
+                .isGreaterThan(slotAfterMonitoredEvent.slotLastFlushedLsn());
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldNotFlushLsnOfUnmonitoredActivityInConnectorMode() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector")
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // Phase 1: Process a monitored event from s1
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(1);
+
+        final SlotState slotAfterMonitoredEvent = getDefaultReplicationSlot();
+
+        // Phase 2: Generate unmonitored WAL activity in s2
+        TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (200, 'unmonitored');");
+
+        // Wait for keepalive cycles
+        Thread.sleep(500);
+
+        final SlotState slotAfterUnmonitoredActivity = getDefaultReplicationSlot();
+
+        // Verify: No events consumed from s2 (it's not monitored)
+        assertNoRecordsToConsume();
+
+        // Verify: LSN should NOT advance for unmonitored activity with connector-only mode
+        // (the driver's automatic flush is disabled)
+        Assert.assertEquals(slotAfterMonitoredEvent.slotLastFlushedLsn(), slotAfterUnmonitoredActivity.slotLastFlushedLsn());
+
+        stopConnector();
     }
 
     @Test

@@ -1239,7 +1239,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field LSN_FLUSH_MODE = Field.create("lsn.flush.mode")
             .withDisplayName("LSN flush mode")
-            .withEnum(LsnFlushMode.class, LsnFlushMode.CONNECTOR)
+            .withEnum(LsnFlushMode.class)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 100))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
@@ -1567,12 +1567,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         if (newModeValue != null) {
             mode = LsnFlushMode.parse(newModeValue);
         }
-        Boolean deprecatedBoolean = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
-        if (mode == null && deprecatedBoolean != null) {
+        if (mode == null && config.hasKey(SHOULD_FLUSH_LSN_IN_SOURCE_DB)) {
             LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
                     SHOULD_FLUSH_LSN_IN_SOURCE_DB.name(), LSN_FLUSH_MODE.name());
-            mode = deprecatedBoolean ? LsnFlushMode.CONNECTOR : LsnFlushMode.MANUAL;
+            boolean deprecatedValue = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+            mode = deprecatedValue ? LsnFlushMode.CONNECTOR : LsnFlushMode.MANUAL;
         }
+
         if (mode == null) {
             mode = LsnFlushMode.CONNECTOR; // Use default
         }
