@@ -1150,6 +1150,81 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(false)
             .withValidation(Field::isBoolean);
 
+    /**
+     * Modes for LSN flushing strategy
+     */
+    public enum LsnFlushMode implements EnumeratedValue {
+        /**
+         * Debezium manages LSN flushing (standard behavior).
+         *
+         * Replaces deprecated configuration option flush.lsn.source with a value of true.
+         */
+        CONNECTOR("connector"),
+
+        /**
+         * LSN flushing is externally managed.
+         *
+         * Replaces deprecated configuration option flush.lsn.source with a value of false.
+         */
+        MANUAL("manual"),
+
+        /**
+         * Both Debezium and pgjdbc driver manage LSN flushing.
+         *  - Debezium flushes LSN when processing events
+         *  - pgjdbc automatically flushes using server keepalive messages during idle periods.
+         */
+        CONNECTOR_AND_DRIVER("connector_and_driver");
+
+        private final String value;
+
+        LsnFlushMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LsnFlushMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LsnFlushMode option : LsnFlushMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static LsnFlushMode parse(String value, String defaultValue) {
+            LsnFlushMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * @deprecated Replaced by {@link #LSN_FLUSH_MODE}
+     */
+    @Deprecated
     public static final Field SHOULD_FLUSH_LSN_IN_SOURCE_DB = Field.create("flush.lsn.source")
             .withDisplayName("Boolean to determine if Debezium should flush LSN in the source database")
             .withType(Type.BOOLEAN)
@@ -1157,9 +1232,23 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
-                    "Boolean to determine if Debezium should flush LSN in the source postgres database. If set to false, user will have to flush the LSN manually outside Debezium.")
+                    "(Deprecated) Boolean to determine if Debezium should flush LSN in the source postgres database. " +
+                            "Use 'lsn.flush.mode' instead. A value of 'true' maps to 'connector' mode, 'false' maps to 'manual' mode.")
             .withDefault(Boolean.TRUE)
-            .withValidation(Field::isBoolean, PostgresConnectorConfig::validateFlushLsnSource);
+            .withValidation(Field::isBoolean);
+
+    public static final Field LSN_FLUSH_MODE = Field.create("lsn.flush.mode")
+            .withDisplayName("LSN flush mode")
+            .withEnum(LsnFlushMode.class, LsnFlushMode.CONNECTOR)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 99))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Determines the LSN flushing strategy. Options include: " +
+                            "'connector' (default) for Debezium managed LSN flushing (replaces deprecated flush.lsn.source=true); " +
+                            "'manual' for externally managed LSN flushing (replaces deprecated flush.lsn.source=false); " +
+                            "'connector_and_driver' to enable both Debezium LSN flushing and pgjdbc automatic flush " +
+                            "using server keepalive LSN, which prevents WAL growth on low-activity databases.");
 
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
@@ -1178,7 +1267,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SchemaRefreshMode schemaRefreshMode;
-    private final boolean flushLsnOnSource;
+    private final LsnFlushMode lsnFlushMode;
     private final ReplicaIdentityMapper replicaIdentityMapper;
     private final LsnFlushTimeoutAction lsnFlushTimeoutAction;
 
@@ -1203,7 +1292,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
-        this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+        this.lsnFlushMode = resolveLsnFlushMode(config);
         final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
@@ -1310,8 +1399,26 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
+    /**
+     * Get the LSN flush mode.
+     *
+     * @return the configured LSN flush mode (resolved from lsn.flush.mode or deprecated flush.lsn.source)
+     */
+    public LsnFlushMode getLsnFlushMode() {
+        return lsnFlushMode;
+    }
+
+    /**
+     * Check if Debezium should flush LSN in the source database.
+     * This method works with both the new lsn.flush.mode property and the deprecated flush.lsn.source property.
+     *
+     * Returns true for CONNECTOR and CONNECTOR_AND_DRIVER modes (Debezium manages flushing).
+     * Returns false for MANUAL mode (externally managed, no automatic flushing).
+     *
+     * @return true if Debezium should manage LSN flushing (CONNECTOR or CONNECTOR_AND_DRIVER mode), false otherwise
+     */
     public boolean isFlushLsnOnSource() {
-        return flushLsnOnSource;
+        return lsnFlushMode == LsnFlushMode.CONNECTOR || lsnFlushMode == LsnFlushMode.CONNECTOR_AND_DRIVER;
     }
 
     public boolean isPublishViaPartitionRoot() {
@@ -1395,7 +1502,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     XMIN_FETCH_INTERVAL,
                     // Use this connector's implementation rather than common connector's flavor
                     SKIPPED_OPERATIONS,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB)
+                    LSN_FLUSH_MODE,
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB) // Deprecated, for backward compatibility
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
                     SOURCE_INFO_STRUCT_MAKER)
@@ -1453,12 +1561,40 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return 0;
     }
 
-    private static int validateFlushLsnSource(Configuration config, Field field, Field.ValidationOutput problems) {
-        if (config.getString(PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB, "true").equalsIgnoreCase("false")) {
-            LOGGER.warn("Property '" + PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB.name()
-                    + "' is set to 'false', the LSN will not be flushed to the database source and WAL logs will not be cleared. User is expected to handle this outside Debezium.");
+    private LsnFlushMode resolveLsnFlushMode(Configuration config) {
+        // Check if new property is set
+        String newModeValue = config.getString(LSN_FLUSH_MODE);
+        if (newModeValue != null) {
+            LsnFlushMode mode = LsnFlushMode.parse(newModeValue);
+            if (mode != null) {
+                logLsnFlushModeInfo(mode);
+                return mode;
+            }
         }
-        return 0;
+
+        // Fall back to deprecated property
+        Boolean oldValue = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+        if (oldValue != null) {
+            LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB.name(), LSN_FLUSH_MODE.name());
+            LsnFlushMode mode = oldValue ? LsnFlushMode.CONNECTOR : LsnFlushMode.MANUAL;
+            logLsnFlushModeInfo(mode);
+            return mode;
+        }
+
+        // Use default
+        return LsnFlushMode.CONNECTOR;
+    }
+
+    private static void logLsnFlushModeInfo(LsnFlushMode mode) {
+        if (mode == LsnFlushMode.MANUAL) {
+            LOGGER.warn(
+                    "LSN flush mode is set to 'manual', the LSN will not be flushed to the database source and WAL logs will not be cleared. User is expected to handle this outside Debezium.");
+        }
+        else if (mode == LsnFlushMode.CONNECTOR_AND_DRIVER) {
+            LOGGER.info(
+                    "LSN flush mode is set to 'connector_and_driver', enabling BOTH Debezium LSN flushing AND pgjdbc automatic flush using server keepalive messages to prevent WAL growth on low-activity databases.");
+        }
     }
 
     protected static int validateReplicaAutoSetField(Configuration config, Field field, Field.ValidationOutput problems) {
