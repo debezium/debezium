@@ -378,37 +378,48 @@ public final class TestHelper {
                         .build()));
     }
 
-    protected static void createDefaultReplicationSlot() {
+    protected static void createReplicationSlot(String slotName, String pluginName) {
         try {
             execute(String.format(
                     "SELECT * FROM pg_create_logical_replication_slot('%s', '%s')",
-                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
-                    decoderPlugin().getPostgresPluginName()));
+                    slotName,
+                    pluginName));
         }
         catch (Exception e) {
             LOGGER.debug("Error while creating default replication slot", e);
         }
     }
 
-    protected static SlotState getDefaultReplicationSlot() {
+    protected static void createDefaultReplicationSlot() {
+        createReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME, decoderPlugin().getPostgresPluginName());
+    }
+
+    protected static SlotState getReplicationSlot(String slotName, String pluginName) {
         try (PostgresConnection connection = create()) {
-            return connection.getReplicationSlotState(ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
-                    decoderPlugin().getPostgresPluginName());
+            return connection.getReplicationSlotState(slotName, pluginName);
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void dropDefaultReplicationSlot() {
+    protected static SlotState getDefaultReplicationSlot() {
+        return getReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME, decoderPlugin().getPostgresPluginName());
+    }
+
+    public static void dropReplicationSlot(String slotName) {
         try {
-            execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
+            execute("SELECT pg_drop_replication_slot('" + slotName + "')");
         }
         catch (Exception e) {
-            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"debezium\" does not exist")) {
+            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"" + slotName + "\" does not exist")) {
                 throw e;
             }
         }
+    }
+
+    public static void dropDefaultReplicationSlot() {
+        dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
     }
 
     public static void dropPublication() {
