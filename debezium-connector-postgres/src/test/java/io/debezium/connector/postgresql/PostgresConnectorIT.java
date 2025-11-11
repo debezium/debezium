@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.getDefaultReplicationSlot;
+import static io.debezium.connector.postgresql.TestHelper.getReplicationSlot;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
@@ -71,6 +72,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
@@ -2850,40 +2852,115 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-9641")
     public void shouldNotFlushLsnOfUnmonitoredActivityInConnectorMode() throws Exception {
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.createDefaultReplicationSlot();
+        String slotName = "pgjdbc_keepalive_slot";
+        String pluginName = "pgoutput";
+        TestHelper.dropReplicationSlot(slotName);
         TestHelper.execute(SETUP_TABLES_STMT);
 
         final Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector")
+                .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                .with(PostgresConnectorConfig.PLUGIN_NAME, pluginName)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR.getValue())
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
-                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        // Consume snapshot record from s1 (from SETUP_TABLES_STMT)
-        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
-        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(1);
+        final SlotState slotBefore = getReplicationSlot(slotName, pluginName);
 
-        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
-        SourceRecords actualRecords = consumeRecordsByTopic(1);
-        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(1);
+        Lsn preActivityserverWalLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            preActivityserverWalLsn = Lsn.valueOf(walLocation);
+        }
+        // Generate unmonitored WAL activity
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
 
-        final SlotState slotAfterStreaming = getDefaultReplicationSlot();
+        Lsn postActivityserverWalLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            postActivityserverWalLsn = Lsn.valueOf(walLocation);
+        }
+        TimeUnit.SECONDS.sleep(5);
+        assertThat(postActivityserverWalLsn)
+                .describedAs("Physical WAL activity should have advanced the server LSN")
+                .isGreaterThan(preActivityserverWalLsn);
 
-        // Generate unmonitored WAL activity in s2
-        TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (200, 'unmonitored');");
-        assertNoRecordsToConsume();
+        final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
 
-        // Wait to ensure driver keepalive flush does not occur (disabled in connector-only mode)
-        Thread.sleep(5000);
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityserverWalLsn);
 
-        final SlotState slotAfterWaiting = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAfterStreaming.slotLastFlushedLsn(), slotAfterWaiting.slotLastFlushedLsn());
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("LSN should not advanced due to unmonitored activity in connector mode")
+                .isEqualTo(slotBefore.slotLastFlushedLsn());
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("Slot LSN should be behind server LSN as pgjdbc keep alive flushing is disabled")
+                .isLessThan(postActivityserverWalLsn);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldFlushLsnOfUnmonitoredActivityInConnectorAndDriverMode() throws Exception {
+        String slotName = "pgjdbc_keepalive_slot";
+        String pluginName = "pgoutput";
+        TestHelper.dropReplicationSlot(slotName);
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                .with(PostgresConnectorConfig.PLUGIN_NAME, pluginName)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final SlotState slotBefore = getReplicationSlot(slotName, pluginName);
+
+        Lsn preActivityserverWalLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            preActivityserverWalLsn = Lsn.valueOf(walLocation);
+        }
+        // Generate unmonitored WAL activity
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+
+        Lsn postActivityserverWalLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            postActivityserverWalLsn = Lsn.valueOf(walLocation);
+        }
+        TimeUnit.SECONDS.sleep(5);
+        assertThat(postActivityserverWalLsn)
+                .describedAs("Physical WAL activity should have advanced the server LSN")
+                .isGreaterThan(preActivityserverWalLsn);
+
+        final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
+
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityserverWalLsn);
+
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("Slot LSN should have advanced been advanced by pgjdbc driver flushing of unmonitored activity")
+                .isGreaterThan(slotBefore.slotLastFlushedLsn());
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("Slot LSN should match match server LSN as pgjdbc keep alive flushing is enabled")
+                .isEqualTo(postActivityserverWalLsn);
 
         stopConnector();
     }
