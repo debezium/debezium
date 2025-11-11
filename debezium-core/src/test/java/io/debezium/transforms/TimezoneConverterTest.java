@@ -932,11 +932,13 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
-        SourceRecord result = converter.apply(record);
+        VerifyRecord.isValid(record);
+        final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
-        Struct resultStruct = (Struct) result.value();
-        Struct transformedSource = resultStruct.getStruct("source");
-        final Struct transformedAfter = resultStruct.getStruct(Envelope.FieldName.AFTER);
+        Struct transformedValue = (Struct) transformedRecord.value();
+        Struct transformedSource = transformedValue.getStruct("source");
+        final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:30:00.123456789+05:30");
         assertThat(transformedSource.getInt64("ts_ms")).isEqualTo(1762672421071L);
