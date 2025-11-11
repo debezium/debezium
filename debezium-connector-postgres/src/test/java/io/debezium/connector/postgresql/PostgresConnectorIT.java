@@ -2871,10 +2871,10 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final SlotState slotBefore = getReplicationSlot(slotName, pluginName);
 
-        Lsn preActivityserverWalLsn;
+        Lsn preActivityServerLsn;
         try (PostgresConnection conn = TestHelper.create()) {
             long walLocation = conn.currentXLogLocation();
-            preActivityserverWalLsn = Lsn.valueOf(walLocation);
+            preActivityServerLsn = Lsn.valueOf(walLocation);
         }
         // Generate unmonitored WAL activity
         TestHelper.execute("CHECKPOINT;");
@@ -2882,30 +2882,30 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.execute("CHECKPOINT;");
         TestHelper.execute("SELECT pg_switch_wal();");
 
-        Lsn postActivityserverWalLsn;
+        Lsn postActivityServerLsn;
         try (PostgresConnection conn = TestHelper.create()) {
             long walLocation = conn.currentXLogLocation();
-            postActivityserverWalLsn = Lsn.valueOf(walLocation);
+            postActivityServerLsn = Lsn.valueOf(walLocation);
         }
 
         Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
-            assertThat(postActivityserverWalLsn)
+            assertThat(postActivityServerLsn)
                     .describedAs("Physical WAL activity should have advanced the server LSN")
-                    .isGreaterThan(preActivityserverWalLsn);
+                    .isGreaterThan(preActivityServerLsn);
         });
 
         TimeUnit.SECONDS.sleep(5); // Wait to ensure pgjdbc driver doesn't flush LSN
         final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
 
-        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
-                slotAfter.slotLastFlushedLsn(), postActivityserverWalLsn);
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityServerLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
 
         assertThat(slotAfter.slotLastFlushedLsn())
                 .describedAs("LSN should not advanced due to unmonitored activity in connector mode")
                 .isEqualTo(slotBefore.slotLastFlushedLsn());
         assertThat(slotAfter.slotLastFlushedLsn())
                 .describedAs("Slot LSN should be behind server LSN as pgjdbc keep alive flushing is disabled")
-                .isLessThan(postActivityserverWalLsn);
+                .isLessThan(postActivityServerLsn);
 
         stopConnector();
     }
@@ -2932,10 +2932,10 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final SlotState slotBefore = getReplicationSlot(slotName, pluginName);
 
-        Lsn preActivityserverWalLsn;
+        Lsn preActivityServerLsn;
         try (PostgresConnection conn = TestHelper.create()) {
             long walLocation = conn.currentXLogLocation();
-            preActivityserverWalLsn = Lsn.valueOf(walLocation);
+            preActivityServerLsn = Lsn.valueOf(walLocation);
         }
         // Generate unmonitored WAL activity
         TestHelper.execute("CHECKPOINT;");
@@ -2943,35 +2943,34 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.execute("CHECKPOINT;");
         TestHelper.execute("SELECT pg_switch_wal();");
 
-        Lsn postActivityserverWalLsn;
+        Lsn postActivityServerLsn;
         try (PostgresConnection conn = TestHelper.create()) {
             long walLocation = conn.currentXLogLocation();
-            postActivityserverWalLsn = Lsn.valueOf(walLocation);
+            postActivityServerLsn = Lsn.valueOf(walLocation);
         }
 
         Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
-            assertThat(postActivityserverWalLsn)
+            assertThat(postActivityServerLsn)
                     .describedAs("Physical WAL activity should have advanced the server LSN")
-                    .isGreaterThan(preActivityserverWalLsn);
+                    .isGreaterThan(preActivityServerLsn);
         });
 
-        Awaitility.await().atMost(Duration.ofSeconds(65)) // Wait long enough for server keepalive (default 60s)
+        Awaitility.await().atMost(Duration.ofSeconds(65)) // Completes in low seconds, but we should wait > 60 seconds for wal_sender_timeout
                 .pollInterval(Duration.ofMillis(500))
-                .until(() -> {
+                .untilAsserted(() -> {
                     SlotState currentSlot = getReplicationSlot(slotName, pluginName);
-                    return currentSlot.slotLastFlushedLsn().asLong() > slotBefore.slotLastFlushedLsn().asLong();
+                    assertThat(currentSlot.slotLastFlushedLsn())
+                            .describedAs("Slot LSN should have advanced been advanced by pgjdbc driver flushing of unmonitored activity")
+                            .isGreaterThan(slotBefore.slotLastFlushedLsn());
                 });
         final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
 
-        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
-                slotAfter.slotLastFlushedLsn(), postActivityserverWalLsn);
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityServerLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
 
         assertThat(slotAfter.slotLastFlushedLsn())
-                .describedAs("Slot LSN should have advanced been advanced by pgjdbc driver flushing of unmonitored activity")
-                .isGreaterThan(slotBefore.slotLastFlushedLsn());
-        assertThat(slotAfter.slotLastFlushedLsn())
                 .describedAs("Slot LSN should match match server LSN as pgjdbc keep alive flushing is enabled")
-                .isEqualTo(postActivityserverWalLsn);
+                .isEqualTo(postActivityServerLsn);
 
         stopConnector();
     }
