@@ -40,7 +40,10 @@ public class TimezoneConverterTest {
     protected final Schema sourceSchema = SchemaBuilder.struct().optional()
             .field("table", Schema.STRING_SCHEMA)
             .field("lsn", Schema.INT32_SCHEMA)
-            .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
+            .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("random", Schema.OPTIONAL_INT64_SCHEMA)
             .build();
     protected final Schema recordSchema = SchemaBuilder.struct().optional()
             .field("id", Schema.INT8_SCHEMA)
@@ -75,7 +78,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "orders");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -107,7 +110,7 @@ public class TimezoneConverterTest {
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
 
         assertThat(transformedSource.get("table")).isEqualTo("orders");
-        assertThat(transformedSource.get("ts_ms")).isEqualTo(123456789);
+        assertThat(transformedSource.get("ts_ms")).isEqualTo(123456789L);
     }
 
     @Test
@@ -126,7 +129,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "orders");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -169,7 +172,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "orders");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -214,7 +217,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -258,7 +261,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -301,7 +304,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -344,7 +347,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -388,7 +391,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -432,7 +435,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -476,7 +479,7 @@ public class TimezoneConverterTest {
 
         customersSource.put("table", "customers1");
         customersSource.put("lsn", 1);
-        customersSource.put("ts_ms", 123456789);
+        customersSource.put("ts_ms", 123456789L);
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -511,7 +514,7 @@ public class TimezoneConverterTest {
 
         ordersSource.put("table", "orders1");
         ordersSource.put("lsn", 1);
-        ordersSource.put("ts_ms", 123456789);
+        ordersSource.put("ts_ms", 123456789L);
 
         final Envelope ordersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -546,7 +549,7 @@ public class TimezoneConverterTest {
 
         otherSource.put("table", "other1");
         otherSource.put("lsn", 1);
-        otherSource.put("ts_ms", 123456789);
+        otherSource.put("ts_ms", 123456789L);
 
         final Envelope otherEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -589,7 +592,7 @@ public class TimezoneConverterTest {
 
         customersSource.put("table", "customers1");
         customersSource.put("lsn", 1);
-        customersSource.put("ts_ms", 123456789);
+        customersSource.put("ts_ms", 123456789L);
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -624,7 +627,7 @@ public class TimezoneConverterTest {
 
         ordersSource.put("table", "orders1");
         ordersSource.put("lsn", 1);
-        ordersSource.put("ts_ms", 123456789);
+        ordersSource.put("ts_ms", 123456789L);
 
         final Envelope ordersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -698,7 +701,7 @@ public class TimezoneConverterTest {
         final Struct customersSource = new Struct(sourceSchema);
         customersSource.put("table", "customers");
         customersSource.put("lsn", 1);
-        customersSource.put("ts_ms", 123456789);
+        customersSource.put("ts_ms", 123456789L);
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -731,7 +734,7 @@ public class TimezoneConverterTest {
         final Struct inventorySource = new Struct(sourceSchema);
         inventorySource.put("table", "inventory");
         inventorySource.put("lsn", 1);
-        inventorySource.put("ts_ms", 123456789);
+        inventorySource.put("ts_ms", 123456789L);
 
         final Envelope inventoryEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -778,7 +781,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -825,7 +828,7 @@ public class TimezoneConverterTest {
 
         source.put("table", "customers");
         source.put("lsn", 1);
-        source.put("ts_ms", 123456789);
+        source.put("ts_ms", 123456789L);
 
         final Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
@@ -856,14 +859,6 @@ public class TimezoneConverterTest {
         converter.configure(props);
 
         final Struct before = new Struct(recordSchema);
-
-        Schema sourceSchema = SchemaBuilder.struct()
-                .name("source")
-                .field("table", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("lsn", Schema.INT32_SCHEMA)
-                .build();
-
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
@@ -903,27 +898,19 @@ public class TimezoneConverterTest {
 
     @Test
     public void testEpochTimezoneConversion() {
-        final TimezoneConverter<SourceRecord> transform = new TimezoneConverter<>();
-        Map<String, String> config = new HashMap<>();
-        config.put("include.list", "source:customers:source.ts_ms,customers:source.ts_ns,customers:source.ts_us,customers:source.random,customers:order_date_zoned_time");
-        config.put("converted.timezone", "Asia/Kolkata");
-        transform.configure(config);
+        Map<String, String> props = new HashMap<>();
+        props.put("include.list", "source:customers:source.ts_ms,customers:source.ts_ns,customers:source.ts_us,customers:source.random,customers:order_date_zoned_time");
+        props.put("converted.timezone", "Asia/Kolkata");
+        converter.configure(props);
 
-        Schema sourceSchema = SchemaBuilder.struct()
-                .name("source")
-                .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("ts_us", Schema.INT64_SCHEMA)
-                .field("ts_ns", Schema.INT64_SCHEMA)
-                .field("table", Schema.STRING_SCHEMA)
-                .field("random", Schema.INT64_SCHEMA)
-                .build();
+        Struct source = new Struct(sourceSchema);
 
-        Struct source = new Struct(sourceSchema)
-                .put("ts_ms", 1762652621071L)
-                .put("ts_ns", 1762652621071088000L)
-                .put("ts_us", 1762652621071088L)
-                .put("random", 125L)
-                .put("table", "customers");
+        source.put("ts_ms", 1762652621071L);
+        source.put("ts_ns", 1762652621071088000L);
+        source.put("ts_us", 1762652621071088L);
+        source.put("random", 125L);
+        source.put("lsn", 1);
+        source.put("table", "customers");
 
         final Struct before = new Struct(recordSchema);
 
@@ -945,7 +932,7 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
-        SourceRecord result = transform.apply(record);
+        SourceRecord result = converter.apply(record);
 
         Struct resultStruct = (Struct) result.value();
         Struct transformedSource = resultStruct.getStruct("source");
