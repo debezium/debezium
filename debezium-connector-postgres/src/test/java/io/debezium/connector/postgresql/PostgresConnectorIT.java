@@ -2887,11 +2887,14 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             long walLocation = conn.currentXLogLocation();
             postActivityserverWalLsn = Lsn.valueOf(walLocation);
         }
-        TimeUnit.SECONDS.sleep(5);
-        assertThat(postActivityserverWalLsn)
-                .describedAs("Physical WAL activity should have advanced the server LSN")
-                .isGreaterThan(preActivityserverWalLsn);
 
+        Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            assertThat(postActivityserverWalLsn)
+                    .describedAs("Physical WAL activity should have advanced the server LSN")
+                    .isGreaterThan(preActivityserverWalLsn);
+        });
+
+        TimeUnit.SECONDS.sleep(5); // Wait to ensure pgjdbc driver doesn't flush LSN
         final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
 
         logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
@@ -2945,11 +2948,19 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             long walLocation = conn.currentXLogLocation();
             postActivityserverWalLsn = Lsn.valueOf(walLocation);
         }
-        TimeUnit.SECONDS.sleep(5);
-        assertThat(postActivityserverWalLsn)
-                .describedAs("Physical WAL activity should have advanced the server LSN")
-                .isGreaterThan(preActivityserverWalLsn);
 
+        Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            assertThat(postActivityserverWalLsn)
+                    .describedAs("Physical WAL activity should have advanced the server LSN")
+                    .isGreaterThan(preActivityserverWalLsn);
+        });
+
+        Awaitility.await().atMost(Duration.ofSeconds(65)) // Wait long enough for server keepalive (default 60s)
+                .pollInterval(Duration.ofMillis(500))
+                .until(() -> {
+                    SlotState currentSlot = getReplicationSlot(slotName, pluginName);
+                    return currentSlot.slotLastFlushedLsn().asLong() > slotBefore.slotLastFlushedLsn().asLong();
+                });
         final SlotState slotAfter = getReplicationSlot(slotName, pluginName);
 
         logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityserverWalLsn,
