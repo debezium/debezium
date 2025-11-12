@@ -1247,7 +1247,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Determines the LSN flushing strategy. Options include: " +
                             "'connector' (default) for Debezium managed LSN flushing (replaces deprecated flush.lsn.source=true); " +
                             "'manual' for externally managed LSN flushing (replaces deprecated flush.lsn.source=false); " +
-                            "'connector_and_driver' to enable both Debezium LSN flushing and pgjdbc automatic flush " +
+                            "'connector_and_driver' for Debezium managed LSN flushing with the pgjdbc driver flushing unmonitored LSNs" +
                             "using server keepalive LSN, which prevents WAL growth on low-activity databases.")
             .withValidation(PostgresConnectorConfig::validateLsnFlushMode);
 
@@ -1586,11 +1586,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         switch (mode) {
             case CONNECTOR ->
                 LOGGER.info(
-                        "Using LSN flush mode 'connector': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is DISABLED; consider using heartbeat events to prevent WAL growth on low-activity databases.");
+                        "Using LSN flush mode 'connector': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is DISABLED; consider using heartbeat.action.query to prevent WAL growth on low-activity databases.");
             case MANUAL -> LOGGER.warn(
                     "Using LSN flush mode 'manual': LSN will NOT be flushed to the database and WAL logs will NOT be cleared automatically. User is responsible for external LSN management.");
             case CONNECTOR_AND_DRIVER -> LOGGER.info(
-                    "Using LSN flush mode 'connector_and_driver': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is ENABLED and will automatically flush LSN on server keepalive messages, preventing WAL growth on low-activity databases without requiring heartbeat events.");
+                    "Using LSN flush mode 'connector_and_driver': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is ENABLED and will automatically flush unmonitored LSNs to prevent WAL growth on low-activity databases.");
         }
     }
 
