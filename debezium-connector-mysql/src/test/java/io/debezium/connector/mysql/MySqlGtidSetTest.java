@@ -155,6 +155,23 @@ public class MySqlGtidSetTest {
     }
 
     @Test
+    public void shouldSubtractOnlyGTIDSetsInLeftOperand() {
+        String gtidStr1 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-20,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:5-8:12-18:25-55:60-65";
+        String gtidStr2 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-21,"
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200:3400-3800:4500";
+
+        String diff = "036d85a9-64e5-11e6-9b48-42010af0000c:21,"
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200:3400-3800:4500";
+        MySqlGtidSet gtidSet1 = new MySqlGtidSet(gtidStr1);
+        MySqlGtidSet gtidSet2 = new MySqlGtidSet(gtidStr2);
+
+        MySqlGtidSet gtidSetDiff = gtidSet2.subtract(gtidSet1);
+        MySqlGtidSet expectedDiff = new MySqlGtidSet(diff);
+        assertThat(gtidSetDiff).isEqualTo(expectedDiff);
+    }
+
+    @Test
     public void removeInterval() {
         Interval interval1 = new Interval(3, 7);
         Interval interval2 = new Interval(2, 5);
