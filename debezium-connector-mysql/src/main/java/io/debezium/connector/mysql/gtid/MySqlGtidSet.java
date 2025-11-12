@@ -317,6 +317,9 @@ public class MySqlGtidSet implements GtidSet {
         }
 
         public UUIDSet subtract(UUIDSet other) {
+            if (other == null) {
+                return this;
+            }
             if (!uuid.equals(other.getUUID())) {
                 throw new IllegalArgumentException("UUIDSet subtraction is supported only within a single server UUID");
             }
