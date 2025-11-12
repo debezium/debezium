@@ -408,35 +408,21 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     }
 
     private Long getEpochWithTimezone(String fieldName, Object fieldValue) {
-        Long epochValue = (Long) fieldValue;
-        ZoneId zoneId = ZoneId.of(convertedTimezone);
-        Instant instant = null;
-
-        switch (fieldName) {
-            case "ts_ms":
-                instant = Instant.ofEpochMilli(epochValue);
-                break;
-            case "ts_us":
-                instant = Conversions.toInstantFromMicros(epochValue);
-                break;
-            case "ts_ns":
-                instant = Conversions.toInstantFromNanos(epochValue);
-                break;
+        if (!(fieldValue instanceof Long epochValue)) {
+            throw new DebeziumException("Epoch field value should be a %s".formatted(Long.class.getName()));
         }
 
-        ZoneOffset offset = zoneId.getRules().getOffset(instant);
-        assert instant != null;
-        Instant convertedInstant = instant.plusSeconds(offset.getTotalSeconds());
+        return switch (fieldName) {
+            case "ts_ms" -> getConvertedInstant(Instant.ofEpochMilli(epochValue)).toEpochMilli();
+            case "ts_us" -> Conversions.toEpochMicros(getConvertedInstant(Conversions.toInstantFromMicros(epochValue)));
+            case "ts_ns" -> Conversions.toEpochNanos(getConvertedInstant(Conversions.toInstantFromNanos(epochValue)));
+            default -> throw new DebeziumException("An unsupported epoch field detected: " + fieldName);
+        };
+    }
 
-        switch (fieldName) {
-            case "ts_ms":
-                return convertedInstant.toEpochMilli();
-            case "ts_us":
-                return Conversions.toEpochMicros(convertedInstant);
-            case "ts_ns":
-                return Conversions.toEpochNanos(convertedInstant);
-        }
-        return epochValue;
+    private Instant getConvertedInstant(Instant value) {
+        final ZoneId zoneId = ZoneId.of(convertedTimezone);
+        return value.plusSeconds(zoneId.getRules().getOffset(value).getTotalSeconds());
     }
 
     private Struct getStruct(Struct struct, String structName) {
