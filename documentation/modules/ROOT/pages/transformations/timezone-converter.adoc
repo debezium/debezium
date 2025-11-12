@@ -52,11 +52,6 @@ The `include.list` and `exclude.list` configuration options are mutually exclusi
 
 The SMT also allows conversion of event metadata fields in the source information block, such as `ts_ms` to the target timezone. In order to convert the metadata fields, you must include the `source` prefix in the `fieldname` of the `include.list` or `exclude.list` configuration option.
 
-[NOTE]
-====
-If the schema for timestamp fields in the source information block, like `ts_ms`, is currently set to `INT64`, which is not a timestamp type, future releases aim to support the conversion of such fields by introducing compatibility for a timestamp schema.
-====
-
 // Type: concept
 // Title: Example: Basic {prodname} timezone converter SMT configuration
 // ModuleID: example-basic-debezium-timezone-converter-smt-configuration
