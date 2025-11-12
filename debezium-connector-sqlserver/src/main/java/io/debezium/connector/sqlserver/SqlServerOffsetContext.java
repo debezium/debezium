@@ -20,7 +20,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
 
