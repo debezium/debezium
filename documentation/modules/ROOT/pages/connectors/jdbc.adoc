@@ -310,6 +310,38 @@ You can customize the CP30 connection pool by setting properties in the hibernat
 In the preceding example, the setting of the hibernate.c3p0.idle_test_period property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
+[[jdbc-changing-how-table-names-are-resolved]]
+=== Changing how table names are resolved
+
+The {prodname} JDBC sink connector uses a `io.debezium.sink.naming.CollectionNamingStrategy` to control how an event is mapped to a target table.
+The default behavior is to use the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property and apply the following rules:
+
+* Replace all occurrences of `.` with `_` in the event's topic name.
+* Replace any reference to `+${topic}+` in the `collection.name.format` with the sanitized topic name.
+* Replace any reference to `+${source.<fieldName>}+` in the `collection.name.format` with the appropriate field value from the `source` block.
+
+While this behavior covers many use cases, this may not always be ideal in all situations.
+In some cases, you may wish to directly map the event's topic name to the table name, without any sanitization.
+This can be accomplished by setting the xref:jdbc-property-collection-naming-strategy[`collection.naming.strategy`] to use a passthrough implementation.
+For example:
+
+.Example using the passthrough collection naming strategy
+[source,json]
+----
+{
+  "collection.naming.strategy": "io.debezium.sink.naming.PassthroughCollectionNamingStrategy"
+}
+----
+
+The passthrough naming strategy applies the following simplified rules:
+
+* Replace any reference to `+${topic}+` in the `collection.name.format` with the event's topic name, without sanitization.
+* Ignore any reference to `+${source.<fieldName>}+` in the `collection.name.format`.
+
+If neither of these solutions provide the behavior needed, you can also implement your own `io.debezium.sink.naming.CollectionNamingStrategy`.
+The custom implementation should be placed alongside the {prodname} JDBC sink connector files.
+Be sure to set the xref:jdbc-property-collection-naming-strategy[`collection.naming.strategy`] to the fully qualified class name of the custom implementation.
+
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-connector-maps-data-types
 // Title: How the {prodname} JDBC connector maps data types
