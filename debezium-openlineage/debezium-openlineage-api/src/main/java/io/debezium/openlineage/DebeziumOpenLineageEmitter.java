@@ -190,6 +190,7 @@ public class DebeziumOpenLineageEmitter {
     }
 
     private static boolean isOpenLineageDisabled(ConnectorContext connectorContext) {
-        return !Boolean.parseBoolean(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_ENABLED));
+        // If config is null, it means that context was created from headers, so we assume OpenLineage is enabled
+        return connectorContext.config() != null && !Boolean.parseBoolean(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_ENABLED));
     }
 }
