@@ -217,6 +217,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
+                if (isConnected() && !isValid()) {
+                    reconnect();
+                }
                 // Unless the autocommit is disabled the SELECT publication query will stay running
                 Connection conn = pgConnection();
                 conn.setAutoCommit(false);
