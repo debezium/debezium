@@ -388,21 +388,31 @@ For example:
 ----
 public interface SignalChannelReader {
 
-    String name(); // <1>
+    String name();
 
-    void init(CommonConnectorConfig connectorConfig); // <2>
+    void init(CommonConnectorConfig connectorConfig);
 
-    List<SignalRecord> read(); // <3>
+    List<SignalRecord> read();
 
-    void close(); // <4>
+    void close();
 }
 ----
-<1> The name of the reader.
+
+The following list describes the purpose of the lines in the preceding example:
+
+`String name();`::
+The name of the reader.
 To enable {prodname} to use the channel, specify this name in the connector's `signal.enabled.channels` property.
-<2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Reads signal from the channel.
+
+`void init(CommonConnectorConfig connectorConfig);`::
+Initializes specific configuration, variables, or connections that the channel requires.
+
+`List<SignalRecord> read();`::
+Reads signal from the channel.
 The `SignalProcessor` class calls this method to retrieve the signal to process.
-<4> Closes all allocated resources.
+
+`void close();`::
+Closes all allocated resources.
 {prodname} calls this methods when the connector is stopped.
 
 //   Type: concept
@@ -417,10 +427,14 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 <dependency>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-core</artifactId>
-    <version>${version.debezium}</version> // <1>
+    <version>${version.debezium}</version>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+where:
+
+`<version>${version.debezium}</version>`::
+`${version.debezium}` represents the version of the {prodname} connector.
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
 

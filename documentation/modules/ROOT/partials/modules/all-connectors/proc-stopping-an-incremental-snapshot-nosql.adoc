@@ -29,48 +29,40 @@ For example,
 +
 [source,bash,indent=0,subs="+attributes"]
 ----
-db.debeziumSignal.insert({ // <1>
-"type" : "stop-snapshot", // <2> <3>
+db.debeziumSignal.insert({
+"type" : "stop-snapshot",
 "data" : {
-"data-collections" ["\"public\".\"Collection1\"", "\"public\".\"Collection2\""], // <4>
-"type": "incremental"} // <5>
+"data-collections" ["\"public\".\"Collection1\"", "\"public\".\"Collection2\""],
+"type": "incremental"}
 });
 ----
 +
 The values of the `id`, `type`, and `data` parameters in the signal command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
-The following table describes the parameters in the example:
+The following list describes the parameters in the example:
 +
-.Descriptions of fields in an insert command for sending a stop incremental snapshot document to the signaling {data-collection}
-[cols="1,2,6",options="header"]
-|===
-|Item|Value |Description
+signalDataCollection::
+value::: `db.debeziumSignal.insert`
+Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
-|1
-|`db.debeziumSignal`
-|Specifies the fully-qualified name of the signaling {data-collection} on the source database.
+type::
+value::: `stop-snapshot`
+The `type` parameter specifies the operation that the signal is intended to trigger.
 
-|2
-|null
-|The insert method in the preceding example omits use of the optional `_id` parameter.
-Because the document does not explicitly assign a value for the parameter, the arbitrary id that MongoDB automatically assigns to the document becomes the `id` identifier for the signal request. +
-Use this string to identify logging messages to entries in the signaling {data-collection}.
-{prodname} does not use this identifier string.
+id::
+value::: `null`
+In the preceding example, the signal omits the optional `_id` parameter.
+Because the document does not explicitly assign a value to the parameter, MongoDB automatically assigns an arbitrary id to the document.
+This `id` becomes the identifier for the signal request.
+{prodname} does not use this identifier string; however you can use the `id` to collate log messages with documents in the signaling {data-collection}.
 
-|3
-|`stop-snapshot`
-| The `type` parameter specifies the operation that the signal is intended to trigger. +
+data.data-collections::
+value::: `public.Collection1, public.Collection2`
+An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions that designate the names of the {data-collection}s that you want to remove from the snapshot.
+The regular expressions in the array match the fully-qualified names of {data-collection}s in the format `database.collection`.
 
-|4
-|`data-collections`
-|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
-The array lists regular expressions that match {data-collection}s by their fully-qualified names in the format `database.collection`.
-
-If you omit the `data-collections` array from the `data` field, the signal stops the entire incremental snapshot that is in progress.
-
-|5
-|`incremental`
-|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped. +
-Currently, the only valid option is `incremental`. +
+data.type::
+value::: `incremental`
+A required component in the `data` field of a stop snapshot signal that specifies the type of snapshot operation that is to be stopped.
+Currently, the only valid option is `incremental`.
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
-|===
