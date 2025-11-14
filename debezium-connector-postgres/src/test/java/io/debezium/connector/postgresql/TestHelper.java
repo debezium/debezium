@@ -378,48 +378,37 @@ public final class TestHelper {
                         .build()));
     }
 
-    protected static void createReplicationSlot(String slotName, String pluginName) {
+    protected static void createDefaultReplicationSlot() {
         try {
             execute(String.format(
                     "SELECT * FROM pg_create_logical_replication_slot('%s', '%s')",
-                    slotName,
-                    pluginName));
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
+                    decoderPlugin().getPostgresPluginName()));
         }
         catch (Exception e) {
             LOGGER.debug("Error while creating default replication slot", e);
         }
     }
 
-    protected static void createDefaultReplicationSlot() {
-        createReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME, decoderPlugin().getPostgresPluginName());
-    }
-
-    protected static SlotState getReplicationSlot(String slotName, String pluginName) {
+    protected static SlotState getDefaultReplicationSlot() {
         try (PostgresConnection connection = create()) {
-            return connection.getReplicationSlotState(slotName, pluginName);
+            return connection.getReplicationSlotState(ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
+                    decoderPlugin().getPostgresPluginName());
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected static SlotState getDefaultReplicationSlot() {
-        return getReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME, decoderPlugin().getPostgresPluginName());
-    }
-
-    public static void dropReplicationSlot(String slotName) {
+    public static void dropDefaultReplicationSlot() {
         try {
-            execute("SELECT pg_drop_replication_slot('" + slotName + "')");
+            execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
         }
         catch (Exception e) {
-            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"" + slotName + "\" does not exist")) {
+            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"debezium\" does not exist")) {
                 throw e;
             }
         }
-    }
-
-    public static void dropDefaultReplicationSlot() {
-        dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
     }
 
     public static void dropPublication() {
@@ -505,6 +494,31 @@ public final class TestHelper {
             catch (ConditionTimeoutException e) {
                 fail("Expected no open transactions but there was at least one.");
             }
+        }
+    }
+
+    protected static int setAndGetWalSenderTimeout(int seconds) throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute("ALTER SYSTEM SET wal_sender_timeout = '" + seconds + "s';", "SELECT pg_reload_conf();");
+            return connection.queryAndMap(
+                    "SELECT setting FROM pg_settings WHERE name = 'wal_sender_timeout';",
+                    rs -> {
+                        if (rs.next()) {
+                            String valueInMs = rs.getString(1);
+                            LOGGER.info("wal_sender_timeout has been set to `{}` milliseconds", valueInMs);
+                            return Integer.parseInt(valueInMs) / 1000;
+                        }
+                        throw new SQLException("Could not query wal_sender_timeout from pg_settings");
+                    });
+        }
+    }
+
+    protected static void resetWalSenderTimeout() {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.execute("ALTER SYSTEM RESET wal_sender_timeout;", "SELECT pg_reload_conf();");
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not reset wal_sender_timeout to default value", e);
         }
     }
 
