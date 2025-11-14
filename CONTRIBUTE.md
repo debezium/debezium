@@ -12,7 +12,7 @@ You can reach us here:
 * [User chat](https://debezium.zulipchat.com/#narrow/stream/302529-users)
 * [Developers chat](https://debezium.zulipchat.com/#narrow/stream/302533-dev) - Only for internal development subjects
 * [Google Group](https://groups.google.com/forum/#!forum/debezium)
-* [Jira](https://issues.redhat.com/projects/DBZ/)
+* [GitHub Issues](https://github.com/debezium/debezium/issues)
 
 ## Install the tools
 
