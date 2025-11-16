@@ -16,6 +16,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
 import org.bson.BsonTimestamp;
@@ -279,5 +280,74 @@ public class SourceInfoTest {
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);
+    }
+
+    @SuppressWarnings("unchecked")
+    private MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> mockEventChangeStreamCursorWithWallTime(long wallTimeMs) {
+        final var cursor = mock(MongoChangeStreamCursor.class);
+
+        final var event = new ChangeStreamDocument<BsonDocument>(
+                OperationType.INSERT.getValue(), // operation type
+                CHANGE_RESUME_TOKEN, // resumeToken
+                BsonDocument.parse("{db: \"test\", coll: \"names\"}"), // namespaceDocument
+                null, // destinationNamespaceDocument
+                null, // fullDocument
+                null, // fullDocumentBeforeChange
+                new BsonDocument("_id", new BsonObjectId(new ObjectId("635019a078be67426d7cf4d2"))), // documentKey
+                CHANGE_TIMESTAMP, // clusterTime
+                null, // updateDescription
+                null, // txnNumber
+                null, // lsid
+                new BsonDateTime(wallTimeMs), // wallTime
+                null, // spiltEvent
+                null // extraElements
+        );
+        when(cursor.tryNext()).thenReturn(event);
+        return cursor;
+    }
+
+    @Test
+    public void timestampShouldPreferWallTimeOverClusterTime() {
+        // Given: wallTime is available (e.g., MongoDB 6.0+)
+        final long wallTimeMs = 1704067200000L; // 2024-01-01 00:00:00 UTC in milliseconds
+        final var cursor = mockEventChangeStreamCursorWithWallTime(wallTimeMs);
+
+        // When: processing the change stream event
+        source.initEvent(cursor);
+        source.readEvent(new CollectionId("test", "names"), wallTimeMs);
+
+        // Then: timestamp() should return wallTime, not clusterTime
+        final Instant timestamp = source.timestamp();
+        assertThat(timestamp).isNotNull();
+        assertThat(timestamp.toEpochMilli()).isEqualTo(wallTimeMs);
+
+        // Verify that source.ts_ms in struct uses wallTime
+        final Struct struct = source.struct();
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(wallTimeMs);
+
+        // Verify it's NOT using clusterTime
+        final long clusterTimeMs = CHANGE_TIMESTAMP.getTime() * 1000L;
+        assertThat(timestamp.toEpochMilli()).isNotEqualTo(clusterTimeMs);
+    }
+
+    @Test
+    public void timestampShouldFallbackToClusterTimeWhenWallTimeIsNotAvailable() {
+        // Given: wallTime is null (e.g., MongoDB < 6.0 or not provided)
+        final var cursor = mockEventChangeStreamCursor(); // This has null wallTime
+
+        // When: processing the change stream event
+        source.initEvent(cursor);
+        source.readEvent(new CollectionId("test", "names"), 0L); // wallTime = 0L means not available
+
+        // Then: timestamp() should fall back to clusterTime
+        final Instant timestamp = source.timestamp();
+        assertThat(timestamp).isNotNull();
+        // clusterTime is in seconds, so convert to milliseconds for comparison
+        final long expectedClusterTimeMs = CHANGE_TIMESTAMP.getTime() * 1000L;
+        assertThat(timestamp.toEpochMilli()).isEqualTo(expectedClusterTimeMs);
+
+        // Verify that source.ts_ms in struct uses clusterTime
+        final Struct struct = source.struct();
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(expectedClusterTimeMs);
     }
 }

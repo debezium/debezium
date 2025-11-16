@@ -285,6 +285,11 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected Instant timestamp() {
+        // Prefer wallTime (actual database change time) over clusterTime when available (version 6.0 and onwards)
+        if (wallTime != 0L) {
+            return Instant.ofEpochMilli(wallTime);
+        }
+        // Fall back to position timestamp (clusterTime)
         var time = position().getTime();
         return (time == -1) ? null : Instant.ofEpochSecond(time);
     }
