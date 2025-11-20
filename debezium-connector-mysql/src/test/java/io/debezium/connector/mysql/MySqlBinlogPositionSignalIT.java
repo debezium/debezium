@@ -107,8 +107,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
 
         // Send signal to skip to the position before value3 and value4
+        // Use action: continue since we'll manually restart the connector
         String signalData = String.format(
-                "{\"binlog_filename\": \"%s\", \"binlog_position\": %d}",
+                "{\"binlog_filename\": \"%s\", \"binlog_position\": %d, \"action\": \"continue\"}",
                 binlogFile, binlogPos);
 
         connection.execute(
@@ -188,7 +189,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
 
         // Send signal to skip to the GTID set before value3 and value4
-        String signalData = "{\"gtid_set\": \"" + gtidSet + "\"}";
+        // Use action: continue since we'll manually restart the connector
+        String signalData = "{\"gtid_set\": \"" + gtidSet + "\", \"action\": \"continue\"}";
 
         connection.execute(
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
