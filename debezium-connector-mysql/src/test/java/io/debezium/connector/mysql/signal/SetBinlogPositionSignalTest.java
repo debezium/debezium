@@ -63,14 +63,14 @@ public class SetBinlogPositionSignalTest {
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
                 partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
-        // When/Then
-        assertThatThrownBy(() -> signal.arrived(payload))
-                .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("Restarting connector to apply new position");
+        // When
+        boolean result = signal.arrived(payload);
 
-        // Verify the offset was updated
+        // Then
+        assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+        verify(changeEventSourceCoordinator).stop(); // Default action is STOP
     }
 
     @Test
@@ -84,14 +84,14 @@ public class SetBinlogPositionSignalTest {
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
                 partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
-        // When/Then
-        assertThatThrownBy(() -> signal.arrived(payload))
-                .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("Restarting connector to apply new position");
+        // When
+        boolean result = signal.arrived(payload);
 
-        // Verify the offset was updated
+        // Then
+        assertThat(result).isTrue();
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+        verify(changeEventSourceCoordinator).stop(); // Default action is STOP
     }
 
     @Test
@@ -196,5 +196,93 @@ public class SetBinlogPositionSignalTest {
         assertThatThrownBy(() -> signal.arrived(payload))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("No offset context available");
+    }
+
+    @Test
+    public void shouldStopConnectorWithStopAction() throws Exception {
+        // Given
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"stop\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(changeEventSourceCoordinator).stop();
+    }
+
+    @Test
+    public void shouldContinueConnectorWithContinueAction() throws Exception {
+        // Given
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"continue\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(offsetContext).setBinlogStartPoint("mysql-bin.000003", 1234L);
+        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+        // Verify that stop() was NOT called
+        verify(changeEventSourceCoordinator, org.mockito.Mockito.never()).stop();
+    }
+
+    @Test
+    public void shouldStopConnectorWithRestartAction() throws Exception {
+        // Given - RESTART is reserved for future use, should behave like STOP
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"restart\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(changeEventSourceCoordinator).stop();
+    }
+
+    @Test
+    public void shouldDefaultToStopActionWhenActionNotSpecified() throws Exception {
+        // Given
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(changeEventSourceCoordinator).stop(); // Should default to STOP
+    }
+
+    @Test
+    public void shouldDefaultToStopActionWhenInvalidActionSpecified() throws Exception {
+        // Given
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"invalid\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(changeEventSourceCoordinator).stop(); // Should default to STOP
     }
 }
