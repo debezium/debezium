@@ -62,6 +62,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
     @Test
     public void shouldSkipToBinlogPositionViaSignal() throws Exception {
         // Setup database
+        DATABASE.createAndInitialize();
         connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
         connection.execute(
                 "DROP TABLE IF EXISTS test_table",
@@ -147,10 +148,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
     @Test
     public void shouldSkipToGtidSetViaSignal() throws Exception {
-        // Setup connection if not already done
-        if (connection == null) {
-            connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
-        }
+        // Setup database
+        DATABASE.createAndInitialize();
+        connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
 
         // Skip this test if GTID mode is not enabled
         if (!isGtidModeEnabled()) {
