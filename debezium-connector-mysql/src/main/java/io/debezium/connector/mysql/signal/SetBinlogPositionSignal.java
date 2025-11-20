@@ -29,10 +29,15 @@ import io.debezium.util.Strings;
  *
  * The signal expects data in one of these formats:
  * 1. For binlog file/position:
- *    {"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}
+ *    {"binlog_filename": "mysql-bin.000003", "binlog_position": 1234, "action": "stop"}
  *
  * 2. For GTID:
- *    {"gtid_set": "server-uuid:1-100,other-uuid:1-50"}
+ *    {"gtid_set": "server-uuid:1-100,other-uuid:1-50", "action": "continue"}
+ *
+ * The "action" field controls connector behavior after offset modification:
+ * - "stop" (default): Automatically stop the connector after updating the offset
+ * - "continue": Don't stop the connector, continue processing with the current position
+ * - "restart": (Reserved for future use) Automatically restart the connector
  *
  * @author Debezium Authors
  */
@@ -42,9 +47,16 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
 
     public static final String NAME = "set-binlog-position";
 
+    public enum Action {
+        STOP,
+        CONTINUE,
+        RESTART
+    }
+
     private static final String BINLOG_FILENAME_KEY = "binlog_filename";
     private static final String BINLOG_POSITION_KEY = "binlog_position";
     private static final String GTID_SET_KEY = "gtid_set";
+    private static final String ACTION_KEY = "action";
 
     private final EventDispatcher<P, ? extends DataCollectionId> eventDispatcher;
     private final ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator;
@@ -74,6 +86,7 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             final String binlogFilename = data.getString(BINLOG_FILENAME_KEY);
             final Long binlogPosition = data.getLong(BINLOG_POSITION_KEY);
             final String gtidSet = data.getString(GTID_SET_KEY);
+            final Action action = parseAction(data.getString(ACTION_KEY));
 
             // Validate the signal data
             validateSignalData(binlogFilename, binlogPosition, gtidSet);
@@ -97,7 +110,20 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             // Force a new offset commit to persist the change
             eventDispatcher.alwaysDispatchHeartbeatEvent(signalPayload.partition, offsetContext);
 
-            LOGGER.info("Successfully updated binlog position. New offset: {}. Connector restart required to apply new position.", offsetContext);
+            // Handle the action
+            switch (action) {
+                case STOP:
+                    LOGGER.info("Successfully updated binlog position. New offset: {}. Stopping connector to apply new position.", offsetContext);
+                    changeEventSourceCoordinator.stop();
+                    break;
+                case CONTINUE:
+                    LOGGER.info("Successfully updated binlog position. New offset: {}. Continuing connector operation.", offsetContext);
+                    break;
+                case RESTART:
+                    LOGGER.warn("RESTART action is reserved for future use. Treating as STOP. New offset: {}", offsetContext);
+                    changeEventSourceCoordinator.stop();
+                    break;
+            }
 
             return true;
 
@@ -109,6 +135,20 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
         catch (Exception e) {
             LOGGER.error("Failed to process {} signal", NAME, e);
             throw new DebeziumException("Failed to set binlog position", e);
+        }
+    }
+
+    private Action parseAction(String actionStr) {
+        if (Strings.isNullOrEmpty(actionStr)) {
+            return Action.STOP; // Default action
+        }
+
+        try {
+            return Action.valueOf(actionStr.toUpperCase());
+        }
+        catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid action '{}', defaulting to STOP", actionStr);
+            return Action.STOP;
         }
     }
 
