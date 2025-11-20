@@ -13,12 +13,21 @@ The `set-binlog-position` signal allows you to dynamically change the binlog rea
 
 When the signal is received, the connector:
 1. Updates its internal offset to the specified binlog position or GTID set
-2. Commits the new offset to the offset storage
-3. Restarts itself to begin streaming from the new position
+2. Commits the new offset to the offset storage via a heartbeat event
+3. Takes the specified action (stop, continue, or restart)
+
+## Prerequisites
+
+**Important**: The connector must have `heartbeat.interval.ms` configured for the offset changes to be persisted. Without heartbeat events, the new offset will not be committed to offset storage until the next change event is processed.
+
+Example configuration:
+```properties
+heartbeat.interval.ms=10000
+```
 
 ## Signal Format
 
-The signal supports two formats:
+The signal supports two formats with an optional `action` field:
 
 ### Binlog File and Position
 
@@ -27,7 +36,8 @@ The signal supports two formats:
   "type": "set-binlog-position",
   "data": {
     "binlog_filename": "mysql-bin.000003",
-    "binlog_position": 1234
+    "binlog_position": 1234,
+    "action": "stop"
   }
 }
 ```
@@ -38,10 +48,19 @@ The signal supports two formats:
 {
   "type": "set-binlog-position",
   "data": {
-    "gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"
+    "gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100",
+    "action": "continue"
   }
 }
 ```
+
+### Action Field
+
+The `action` field controls connector behavior after the offset is updated:
+
+- **`stop`** (default): Automatically stops the connector after updating the offset. You must manually restart the connector for the new position to take effect.
+- **`continue`**: Updates the offset without stopping the connector. The connector continues processing, but will only use the new position after a restart.
+- **`restart`**: Reserved for future use. Currently behaves the same as `stop`.
 
 ## Sending the Signal
 
@@ -67,13 +86,18 @@ Write the signal to the configured signal file.
 
 ## Important Considerations
 
-1. **Data Loss Risk**: Skipping binlog positions means you will miss any changes in the skipped range.
+1. **Heartbeat Configuration Required**: You must configure `heartbeat.interval.ms` for offset changes to be persisted. See Prerequisites section above.
 
-2. **Schema Consistency**: The connector uses the current schema, not the schema at the specified position. Ensure no schema changes occurred between the current position and target position.
+2. **Data Loss Risk**: Skipping binlog positions means you will miss any changes in the skipped range.
 
-3. **Restart Required**: The connector must restart to apply the new position, causing a brief interruption.
+3. **Schema Consistency**: The connector uses the current schema, not the schema at the specified position. Ensure no schema changes occurred between the current position and target position.
 
-4. **One-Time Operation**: Unlike configuration properties, this signal performs a one-time position adjustment.
+4. **Restart Behavior**:
+   - With `action: stop` (default), the connector stops automatically and you must manually restart it.
+   - With `action: continue`, the connector continues running but the new position only takes effect after a restart.
+   - A connector restart is always required for the new position to take effect.
+
+5. **One-Time Operation**: Unlike configuration properties, this signal performs a one-time position adjustment.
 
 ## Example Use Cases
 
