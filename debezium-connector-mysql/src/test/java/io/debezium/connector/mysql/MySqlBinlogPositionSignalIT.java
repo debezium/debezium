@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +19,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
+import io.debezium.connector.binlog.util.TestHelper;
+import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.connector.mysql.signal.SetBinlogPositionSignal;
-import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -28,20 +30,20 @@ import io.debezium.util.Testing;
  *
  * @author Debezium Authors
  */
-public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTest {
+public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySqlConnector> implements MySqlCommon {
 
     private static final String SERVER_NAME = "binlog_signal_test";
     private static final String SIGNAL_TABLE = "debezium_signal";
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog-signal.txt").toAbsolutePath();
+    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "signal_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private MySqlTestConnection connection;
 
     @Before
     public void beforeEach() throws SQLException {
         stopConnector();
-        connection = MySqlTestConnection.forTestDatabase("mysql", Map.of("protocol", "jdbc:mysql"));
-        connection.connect();
-
         initializeConnectorTestFramework();
         Testing.Files.delete(OFFSET_STORE_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
         Testing.Print.enable();
     }
 
@@ -60,10 +62,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     @Test
     public void shouldSkipToBinlogPositionViaSignal() throws Exception {
         // Setup database
+        connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
         connection.execute(
-                "DROP DATABASE IF EXISTS signal_test",
-                "CREATE DATABASE signal_test",
-                "USE signal_test",
+                "DROP TABLE IF EXISTS test_table",
                 "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
                 "CREATE TABLE " + SIGNAL_TABLE + " (" +
                         "id varchar(255) PRIMARY KEY, " +
@@ -72,20 +73,14 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                         ")");
 
         // Start connector
-        Configuration config = Configuration.create()
-                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
-                .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
-                .with(MySqlConnectorConfig.USER, "mysqluser")
-                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+        Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "signal_test")
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
-                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
+                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
-                .with("schema.history.internal.file.filename", Testing.Files.createTestingPath("schema-history.txt").toString())
-                .with("database.connectionTimeZone", "US/Samoa")
+                .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
                 .build();
 
         start(MySqlConnector.class, config);
@@ -101,7 +96,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(SERVER_NAME + ".signal_test.test_table")).hasSize(2);
+        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
 
         // Insert more data that we'll skip
         connection.execute(
@@ -132,7 +127,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
         waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
-        consumeAvailableRecords(record -> {});
+        consumeAvailableRecords(record -> {
+        });
 
         // Stop and restart the connector to apply the new binlog position
         stopConnector();
@@ -140,7 +136,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Verify we only get record 5 (skipped 3 and 4)
         records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + ".signal_test.test_table");
+        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
 
         Struct value = (Struct) tableRecords.get(0).value();
@@ -151,6 +147,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
     @Test
     public void shouldSkipToGtidSetViaSignal() throws Exception {
+        // Setup connection if not already done
+        if (connection == null) {
+            connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
+        }
+
         // Skip this test if GTID mode is not enabled
         if (!isGtidModeEnabled()) {
             Testing.print("GTID mode not enabled, skipping test");
@@ -159,9 +160,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Setup database
         connection.execute(
-                "DROP DATABASE IF EXISTS signal_test",
-                "CREATE DATABASE signal_test",
-                "USE signal_test",
+                "DROP TABLE IF EXISTS test_table",
                 "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
                 "CREATE TABLE " + SIGNAL_TABLE + " (" +
                         "id varchar(255) PRIMARY KEY, " +
@@ -170,20 +169,14 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                         ")");
 
         // Start connector
-        Configuration config = Configuration.create()
-                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
-                .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
-                .with(MySqlConnectorConfig.USER, "mysqluser")
-                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+        Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18766)
                 .with(MySqlConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "signal_test")
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
-                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
+                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
-                .with("schema.history.internal.file.filename", Testing.Files.createTestingPath("schema-history-gtid.txt").toString())
-                .with("database.connectionTimeZone", "US/Samoa")
+                .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
                 .build();
 
         start(MySqlConnector.class, config);
@@ -199,7 +192,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(SERVER_NAME + ".signal_test.test_table")).hasSize(2);
+        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
 
         // Insert more data that we'll skip
         connection.execute(
@@ -224,7 +217,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
         waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
-        consumeAvailableRecords(record -> {});
+        consumeAvailableRecords(record -> {
+        });
 
         // Stop and restart the connector to apply the new GTID position
         stopConnector();
@@ -232,7 +226,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
 
         // Verify we only get record 5 (skipped 3 and 4)
         records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + ".signal_test.test_table");
+        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
 
         Struct value = (Struct) tableRecords.get(0).value();
