@@ -61,22 +61,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
     @Test
     public void shouldSkipToBinlogPositionViaSignal() throws Exception {
-        // Setup database - create it manually since we don't need a DDL file
-        connection = (MySqlTestConnection) getTestDatabaseConnection("mysql"); // Connect to default database first
-        connection.execute(
-                "CREATE DATABASE IF NOT EXISTS " + DATABASE.getDatabaseName(),
-                "USE " + DATABASE.getDatabaseName());
-        connection.close();
-
-        // Now connect to the new database
+        // Setup database
+        DATABASE.createAndInitialize();
         connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
-        connection.execute(
-                "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
-                "CREATE TABLE " + SIGNAL_TABLE + " (" +
-                        "id varchar(255) PRIMARY KEY, " +
-                        "type varchar(32) NOT NULL, " +
-                        "data text NULL" +
-                        ")");
 
         // Start connector
         Configuration config = DATABASE.defaultConfig()
@@ -153,29 +140,15 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
     @Test
     public void shouldSkipToGtidSetViaSignal() throws Exception {
-        // Setup database - create it manually since we don't need a DDL file
-        connection = (MySqlTestConnection) getTestDatabaseConnection("mysql"); // Connect to default database first
+        // Setup database
+        DATABASE.createAndInitialize();
+        connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
 
         // Skip this test if GTID mode is not enabled
         if (!isGtidModeEnabled()) {
             Testing.print("GTID mode not enabled, skipping test");
             return;
         }
-
-        connection.execute(
-                "CREATE DATABASE IF NOT EXISTS " + DATABASE.getDatabaseName(),
-                "USE " + DATABASE.getDatabaseName());
-        connection.close();
-
-        // Now connect to the new database
-        connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
-        connection.execute(
-                "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(100))",
-                "CREATE TABLE " + SIGNAL_TABLE + " (" +
-                        "id varchar(255) PRIMARY KEY, " +
-                        "type varchar(32) NOT NULL, " +
-                        "data text NULL" +
-                        ")");
 
         // Start connector
         Configuration config = DATABASE.defaultConfig()
