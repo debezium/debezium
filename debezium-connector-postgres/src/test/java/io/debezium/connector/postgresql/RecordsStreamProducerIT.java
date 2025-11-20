@@ -3930,6 +3930,71 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.dropPublication();
     }
 
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Case-sensitive duplicate column detection is specific to pgoutput's RELATION message handling")
+    public void shouldFailOnTableWithCaseSensitiveDuplicateColumns() throws Exception {
+        // Create table with quoted identifiers that differ only by case
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_case_columns;" +
+                        "CREATE TABLE test_case_columns (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Start connector in streaming-only mode (no snapshot)
+        // This ensures the connector will process the RELATION message from the replication stream
+        startConnector(config -> config
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        // Wait for streaming to start
+        waitForStreamingToStart();
+
+        // Insert data to trigger RELATION message
+        TestHelper.execute("INSERT INTO test_case_columns (duration, \"Duration\") VALUES (100, 'test');");
+
+        // Wait for the connector to shutdown due to the exception
+        // The DebeziumException is thrown in the background change event producer thread,
+        // which causes the engine to stop
+        waitForEngineShutdown();
+    }
+
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Case-sensitive duplicate column detection is specific to pgoutput's RELATION message handling")
+    public void shouldFailOnTableWithCaseSensitiveDuplicateColumnsAfterSnapshot() throws Exception {
+        // Create table with quoted identifiers that differ only by case
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_case_columns_snap;" +
+                        "CREATE TABLE test_case_columns_snap (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Insert data before starting connector - will be captured during snapshot
+        TestHelper.execute("INSERT INTO test_case_columns_snap (duration, \"Duration\") VALUES (100, 'test');");
+
+        // Start connector with snapshot mode (INITIAL) - this should complete snapshot successfully
+        startConnector(config -> config
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns_snap")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                true);
+
+        // Wait for snapshot to complete
+        waitForStreamingToStart();
+
+        // Insert new data to trigger a RELATION message during streaming phase
+        // This is when the validation should catch the duplicate columns
+        TestHelper.execute("INSERT INTO test_case_columns_snap (duration, \"Duration\") VALUES (200, 'test2');");
+
+        // Wait for the connector to shutdown due to the exception
+        // The DebeziumException is thrown in the background change event producer thread,
+        // which causes the engine to stop
+        waitForEngineShutdown();
+    }
+
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
         assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
 
