@@ -14,8 +14,7 @@ public class DebeziumConfigFacetTest {
     public void testSensitiveValuesAreMaskedByDefault() {
         Map<String, String> config = Map.of(
                 "database.hostname", "localhost",
-                "database.password", "secret123",
-                "database.port", "3306"
+                "database.password", "secret123"
         );
 
         DebeziumConfigFacet facet = new DebeziumConfigFacet(URI.create("http://test"), config);
