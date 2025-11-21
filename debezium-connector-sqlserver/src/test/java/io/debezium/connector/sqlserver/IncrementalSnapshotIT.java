@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -12,7 +14,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -218,5 +222,82 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Flaky("DBZ-5393")
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
         super.stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
+    }
+
+    @Test
+    public void snapshotWithMultipleDatabases() throws Exception {
+        Testing.Print.enable();
+
+        TestHelper.createTestDatabase(TestHelper.TEST_DATABASE_2);
+
+        try (SqlServerConnection connection2 = TestHelper.testConnection(TestHelper.TEST_DATABASE_2)) {
+
+            connection2.execute(
+                    "CREATE TABLE b (pk int primary key, bb int)",
+                    "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
+            TestHelper.enableTableCdc(connection2, "b");
+            TestHelper.enableTableCdc(connection2, "debezium_signal");
+            TestHelper.adjustCdcPollingInterval(connection2, POLLING_INTERVAL);
+
+            for (int i = 1; i <= 10; i++) {
+                connection.execute(String.format("INSERT INTO a VALUES (%d, %d)", i, i * 10));
+                connection2.execute(String.format("INSERT INTO b VALUES (%d, %d)", i, i * 100));
+            }
+
+            Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
+
+            final Configuration config = TestHelper.defaultConnectorConfig()
+                    .with(SqlServerConnectorConfig.DATABASE_NAMES, TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal")
+                    .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 5)
+                    .build();
+
+            start(SqlServerConnector.class, config);
+            assertConnectorIsRunning();
+
+            TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
+            TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_2);
+            TestHelper.waitForStreamingStarted();
+
+            connection.execute(String.format(
+                    "INSERT INTO debezium_signal VALUES ('signal-1', 'execute-snapshot', " +
+                            "'{\"data-collections\": [\"%s.dbo.a\"]}')",
+                    TestHelper.TEST_DATABASE_1));
+
+            final int expectedRecordsCount = 10;
+            SourceRecords records = consumeRecordsByTopic(expectedRecordsCount + 7);
+
+            List<org.apache.kafka.connect.source.SourceRecord> tableARecords = records.recordsForTopic(
+                    "server1." + TestHelper.TEST_DATABASE_1 + ".dbo.a");
+            assertThat(tableARecords).hasSize(expectedRecordsCount);
+
+            for (int i = 0; i < expectedRecordsCount; i++) {
+                org.apache.kafka.connect.data.Struct value = (org.apache.kafka.connect.data.Struct) tableARecords.get(i).value();
+                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(i + 1);
+                assertThat(value.getStruct("after").getInt32("aa")).isEqualTo((i + 1) * 10);
+                assertThat(tableARecords.get(i).sourcePartition().get("server")).isEqualTo("server1");
+                assertThat(tableARecords.get(i).sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_1);
+            }
+
+            connection.execute(String.format(
+                    "INSERT INTO debezium_signal VALUES ('signal-2', 'execute-snapshot', " +
+                            "'{\"data-collections\": [\"%s.dbo.b\"]}')",
+                    TestHelper.TEST_DATABASE_2));
+
+            records = consumeRecordsByTopic(expectedRecordsCount + 7, 5);
+
+            List<org.apache.kafka.connect.source.SourceRecord> tableBRecords = records.recordsForTopic(
+                    "server1." + TestHelper.TEST_DATABASE_2 + ".dbo.b");
+            assertThat(tableBRecords).hasSize(expectedRecordsCount);
+
+            for (int i = 0; i < expectedRecordsCount; i++) {
+                org.apache.kafka.connect.data.Struct value = (org.apache.kafka.connect.data.Struct) tableBRecords.get(i).value();
+                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(i + 1);
+                assertThat(value.getStruct("after").getInt32("bb")).isEqualTo((i + 1) * 100);
+                assertThat(tableBRecords.get(i).sourcePartition().get("server")).isEqualTo("server1");
+                assertThat(tableBRecords.get(i).sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_2);
+            }
+        }
     }
 }
