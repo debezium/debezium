@@ -497,6 +497,31 @@ public final class TestHelper {
         }
     }
 
+    protected static int setAndGetWalSenderTimeout(int seconds) throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute("ALTER SYSTEM SET wal_sender_timeout = '" + seconds + "s';", "SELECT pg_reload_conf();");
+            return connection.queryAndMap(
+                    "SELECT setting FROM pg_settings WHERE name = 'wal_sender_timeout';",
+                    rs -> {
+                        if (rs.next()) {
+                            String valueInMs = rs.getString(1);
+                            LOGGER.info("wal_sender_timeout has been set to `{}` milliseconds", valueInMs);
+                            return Integer.parseInt(valueInMs) / 1000;
+                        }
+                        throw new SQLException("Could not query wal_sender_timeout from pg_settings");
+                    });
+        }
+    }
+
+    protected static void resetWalSenderTimeout() {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.execute("ALTER SYSTEM RESET wal_sender_timeout;", "SELECT pg_reload_conf();");
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not reset wal_sender_timeout to default value", e);
+        }
+    }
+
     private static List<String> getOpenIdleTransactions(PostgresConnection connection) throws SQLException {
         int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
         return connection.queryAndMap(

@@ -1048,13 +1048,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                                          BiFunction<ChainedLogicalStreamBuilder, Function<Integer, Boolean>, ChainedLogicalStreamBuilder> configurator)
             throws SQLException {
         assert lsn != null;
+
+        boolean enableDriverKeepaliveFlush = (connectorConfig.getLsnFlushMode() == PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER);
+        LOGGER.info("Starting replication stream from LSN {} with automaticFlush={} (mode={})", lsn, enableDriverKeepaliveFlush, connectorConfig.getLsnFlushMode());
+
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
                 .getReplicationAPI()
                 .replicationStream()
                 .logical()
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
-                .withAutomaticFlush(false)
+                .withAutomaticFlush(enableDriverKeepaliveFlush)
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 
