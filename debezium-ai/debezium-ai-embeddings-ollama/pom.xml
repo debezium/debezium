@@ -55,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>ollama</artifactId>
+            <artifactId>testcontainers-ollama</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
