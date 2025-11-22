@@ -8,8 +8,11 @@ package io.debezium.openlineage.facets;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import io.openlineage.client.OpenLineage;
+import io.debezium.openlineage.OpenLineageConfig;
 
 public class DebeziumConfigFacet implements OpenLineage.RunFacet {
 
@@ -32,15 +35,38 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
      */
     private static final String CONFIG_LINE_FORMAT = "%s=%s";
 
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final String MASK_VALUE = "********";
+
     private final URI producer;
     private final List<String> configs;
 
     public DebeziumConfigFacet(URI producer, Map<String, String> configurations) {
         this.producer = producer;
 
-        this.configs = configurations.entrySet().stream()
+        Map<String, String> sanitizedConfig = sanitizedConfiguration(configurations);
+        this.configs = sanitizedConfig.entrySet().stream()
                 .map(e -> String.format(CONFIG_LINE_FORMAT, e.getKey(), e.getValue()))
                 .toList();
+    }
+
+    private Map<String, String> sanitizedConfiguration(Map<String, String> configurations) {
+        String customPattern = configurations.get(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN);
+        Pattern sensitivePattern;
+        if (customPattern != null && !customPattern.trim().isEmpty()) {
+            String combinedPattern = PASSWORD_PATTERN.pattern() + "|" + customPattern;
+            sensitivePattern = Pattern.compile(combinedPattern, Pattern.CASE_INSENSITIVE);
+        } else {
+            sensitivePattern = PASSWORD_PATTERN;
+        }
+
+        return configurations.entrySet()
+                .stream().
+                collect(Collectors.toMap(Map.Entry::getKey,
+                        e -> sensitivePattern.matcher(e.getKey()).matches() ? MASK_VALUE : e.getValue()
+                ));
     }
 
     @Override
