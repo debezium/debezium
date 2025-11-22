@@ -454,28 +454,28 @@
 
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>jdbc</artifactId>
+      <artifactId>testcontainers-jdbc</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>mysql</artifactId>
+      <artifactId>testcontainers-mysql</artifactId>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>mongodb</artifactId>
+      <artifactId>testcontainers-mongodb</artifactId>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>testcontainers-postgresql</artifactId>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>mssqlserver</artifactId>
+      <artifactId>testcontainers-mssqlserver</artifactId>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>db2</artifactId>
+      <artifactId>testcontainers-db2</artifactId>
     </dependency>
 
     <dependency>
@@ -488,7 +488,7 @@
 
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>oracle-xe</artifactId>
+      <artifactId>testcontainers-oracle-xe</artifactId>
     </dependency>
 
     <dependency>

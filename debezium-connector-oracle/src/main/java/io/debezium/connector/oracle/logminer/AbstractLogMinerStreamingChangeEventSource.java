@@ -913,9 +913,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                             if (upperBoundsScnTimestamp.isPresent()) {
                                 long deltaTime = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), upperBoundsScnTimestamp.get());
                                 if (deltaTime < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                                    LOGGER.warn(
-                                            "Detected possible SCN gap, using upperBounds SCN, startSCN {}, prevEndSCN {}, timestamp {}, upperBounds SCN {} timestamp {}.",
-                                            lowerBoundsScn, previousUpperBounds, prevEndScnTimestamp.get(), maximumScn, upperBoundsScnTimestamp.get());
+                                    LOGGER.debug(
+                                            "SCN delta {} is less than {} within a time window of {} milliseconds. " +
+                                                    "This could indicate a high volume of changes or an unusual increase in the SCN over the time window. " +
+                                                    "Using upperbounds SCN {} at timestamp {} (start SCN {}, previous end SCN {} at timestamp {}).",
+                                            deltaScn,
+                                            connectorConfig.getLogMiningScnGapDetectionGapSizeMin(),
+                                            connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs(),
+                                            maximumScn,
+                                            upperBoundsScnTimestamp.get(),
+                                            lowerBoundsScn,
+                                            previousUpperBounds,
+                                            prevEndScnTimestamp.get());
                                     result = maximumScn;
                                 }
                             }
