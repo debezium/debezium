@@ -40,7 +40,7 @@
         <!-- Apicurion container properties -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
-        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
+        <apicurio.image>quay.io/apicurio/apicurio-registry</apicurio.image>
 
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
@@ -280,7 +280,7 @@
                                     <color>blue</color>
                                 </log>
                                 <wait>
-                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <log>.*Using the following RegistryStorage.*</log>
                                     <time>${apicurio.init.timeout}</time>
                                 </wait>
                             </run>
