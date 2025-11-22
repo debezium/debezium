@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+import io.debezium.DebeziumException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -318,11 +319,19 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         List<ColumnMetaData> columns = new ArrayList<>();
         Set<String> columnNames = new HashSet<>();
+        Set<String> seenLowercaseColumnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
+
+            if (!seenLowercaseColumnNames.add(columnName.toLowerCase())) {
+                throw new DebeziumException(
+                        String.format(
+                                "Schema: '%s', Table '%s' has columns differing only by case. Column name: '%s'",
+                                schemaName, tableName, columnName));
+            }
 
             final PostgresType postgresType = typeRegistry.get(columnType);
             boolean key = isColumnInPrimaryKey(schemaName, tableName, columnName, primaryKeyColumns);
