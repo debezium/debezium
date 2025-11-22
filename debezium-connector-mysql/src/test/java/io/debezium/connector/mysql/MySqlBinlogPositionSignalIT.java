@@ -65,6 +65,12 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         DATABASE.createAndInitialize();
         connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
 
+        // Skip this test if GTID mode is enabled (binlog file/position doesn't work with GTID)
+        if (isGtidModeEnabled()) {
+            Testing.print("GTID mode enabled, skipping test (use shouldSkipToGtidSetViaSignal instead)");
+            return;
+        }
+
         // Start connector
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
