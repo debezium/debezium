@@ -133,10 +133,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 continue;
             }
 
-            if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
+            final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
+            if (miningSessionRestartRequired || checkLogSwitchOccurredAndUpdate()) {
                 // Mining session is active, so end the current session and restart if necessary
                 endMiningSession();
-                if (getConfig().isLogMiningRestartConnection()) {
+                if (miningSessionRestartRequired || getConfig().isLogMiningRestartConnection()) {
                     prepareJdbcConnection(true);
                 }
 
