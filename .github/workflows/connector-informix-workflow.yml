@@ -27,12 +27,12 @@ jobs:
 
     steps:
       - name: Checkout (Debezium Core)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout (Informix)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-informix
           path: informix
