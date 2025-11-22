@@ -90,18 +90,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
         // Insert some data
-        connection.execute(
-                "INSERT INTO test_table VALUES (1, 'value1')",
-                "INSERT INTO test_table VALUES (2, 'value2')");
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
 
         // Insert more data that we'll skip
-        connection.execute(
-                "INSERT INTO test_table VALUES (3, 'value3')",
-                "INSERT INTO test_table VALUES (4, 'value4')");
+        connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
+        connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
 
         // Get current binlog position AFTER the records we want to skip
         // This position will be after records 3 and 4, so when we restart the connector
@@ -177,18 +175,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
         // Insert some data
-        connection.execute(
-                "INSERT INTO test_table VALUES (1, 'value1')",
-                "INSERT INTO test_table VALUES (2, 'value2')");
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
 
         // Insert more data that we'll skip
-        connection.execute(
-                "INSERT INTO test_table VALUES (3, 'value3')",
-                "INSERT INTO test_table VALUES (4, 'value4')");
+        connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
+        connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
 
         // Get current GTID set AFTER the records we want to skip
         String gtidSet = getCurrentGtidSet();
