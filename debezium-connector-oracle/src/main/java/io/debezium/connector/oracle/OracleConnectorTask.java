@@ -88,7 +88,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         jdbcConnection = connectionFactory.mainConnection();
 
-        LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getBanner());
+        LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getVersion());
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
