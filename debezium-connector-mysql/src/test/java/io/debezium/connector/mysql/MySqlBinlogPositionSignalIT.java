@@ -80,6 +80,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
                 .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
+                .with("heartbeat.interval.ms", 1000)  // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
@@ -166,6 +167,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
                 .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
+                .with("heartbeat.interval.ms", 1000)  // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
