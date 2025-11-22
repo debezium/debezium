@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import io.openlineage.client.OpenLineage;
 import io.debezium.openlineage.OpenLineageConfig;
 
+import static io.debezium.config.CommonConfigurationPatterns.PASSWORD_PATTERN;
+
 public class DebeziumConfigFacet implements OpenLineage.RunFacet {
 
     public static final String FACET_KEY_NAME = "debezium_config";
@@ -35,9 +37,6 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
      */
     private static final String CONFIG_LINE_FORMAT = "%s=%s";
 
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile(".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret",
-            Pattern.CASE_INSENSITIVE);
-
     private static final String MASK_VALUE = "********";
 
     private final URI producer;
@@ -46,14 +45,15 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
     public DebeziumConfigFacet(URI producer, Map<String, String> configurations) {
         this.producer = producer;
 
-        Map<String, String> sanitizedConfig = sanitizedConfiguration(configurations);
+        Map<String, String> sanitizedConfig = maskConfiguration(configurations);
         this.configs = sanitizedConfig.entrySet().stream()
                 .map(e -> String.format(CONFIG_LINE_FORMAT, e.getKey(), e.getValue()))
                 .toList();
     }
 
-    private Map<String, String> sanitizedConfiguration(Map<String, String> configurations) {
+    private Map<String, String> maskConfiguration(Map<String, String> configurations) {
         String customPattern = configurations.get(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN);
+
         Pattern sensitivePattern;
         if (customPattern != null && !customPattern.trim().isEmpty()) {
             String combinedPattern = PASSWORD_PATTERN.pattern() + "|" + customPattern;
