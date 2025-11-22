@@ -66,6 +66,15 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
+                <!--
+                    As this is provided at runtime and tests need a later version,
+                    this specifies to allow tests to use the later version supplied
+                    by testcontainers.
+                -->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -136,6 +145,11 @@
         <dependency>
             <groupId>io.strimzi</groupId>
             <artifactId>strimzi-test-container</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
