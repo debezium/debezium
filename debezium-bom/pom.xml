@@ -13,7 +13,7 @@
 
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>7.0.1</version.confluent.platform>
+        <version.confluent.platform>7.0.16</version.confluent.platform>
 
         <!-- Connectors -->
         <version.dropwizard>4.0.1</version.dropwizard>
@@ -71,7 +71,7 @@
         <version.assertj>3.27.5</version.assertj>
         <version.jmh>1.21</version.jmh>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.20.6</version.testcontainers>
+        <version.testcontainers>2.0.2</version.testcontainers>
         <version.jsonpath>2.9.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>

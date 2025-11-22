@@ -136,10 +136,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 flushStrategy.flush(getCurrentScn());
 
-                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate() || sessionStartScnChanged) {
+                final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
+                if (miningSessionRestartRequired || checkLogSwitchOccurredAndUpdate() || sessionStartScnChanged) {
                     // Mining session is active, so end the current session and restart if necessary
                     endMiningSession();
-                    if (getConfig().isLogMiningRestartConnection()) {
+                    if (miningSessionRestartRequired || getConfig().isLogMiningRestartConnection()) {
                         prepareJdbcConnection(true);
                     }
 
