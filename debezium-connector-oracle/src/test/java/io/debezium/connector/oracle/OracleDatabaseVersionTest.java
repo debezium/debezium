@@ -62,6 +62,13 @@ public class OracleDatabaseVersionTest {
         assertOracleVersion(version, 23, 4, 0, 23, 10, banner);
     }
 
+    @Test
+    public void shouldParseOracle23AiDatabase() throws Exception {
+        String banner = "Oracle AI Database 26ai Free Release 23.26.0.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.0.0.0";
+        OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
+        assertOracleVersion(version, 23, 26, 0, 0, 0, banner);
+    }
+
     private void assertOracleVersion(
                                      OracleDatabaseVersion actual,
                                      int expectedMajor,
