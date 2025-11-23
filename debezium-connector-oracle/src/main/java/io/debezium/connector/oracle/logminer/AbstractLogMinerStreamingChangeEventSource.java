@@ -1858,7 +1858,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
         return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
             while (rs.next()) {
-                if ("YES".equalsIgnoreCase(rs.getString(2))) {
+                final String value = rs.getString(2);
+                // YES - ADD SUPPLEMENTAL LOG DATA
+                // IMPLICIT - ADD SUPPLEMENTAL LOG DATA SUBSET DATABASE REPLICATION (Requires OGG)
+                if ("YES".equalsIgnoreCase(value) || "IMPLICIT".equalsIgnoreCase(value)) {
                     return true;
                 }
             }
