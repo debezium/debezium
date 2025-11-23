@@ -5,16 +5,16 @@
  */
 package io.debezium.openlineage.facets;
 
+import static io.debezium.config.CommonConfigurationPatterns.PASSWORD_PATTERN;
+
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import io.openlineage.client.OpenLineage;
 import io.debezium.openlineage.OpenLineageConfig;
-
-import static io.debezium.config.CommonConfigurationPatterns.PASSWORD_PATTERN;
+import io.openlineage.client.OpenLineage;
 
 public class DebeziumConfigFacet implements OpenLineage.RunFacet {
 
@@ -58,15 +58,14 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
         if (customPattern != null && !customPattern.trim().isEmpty()) {
             String combinedPattern = PASSWORD_PATTERN.pattern() + "|" + customPattern;
             sensitivePattern = Pattern.compile(combinedPattern, Pattern.CASE_INSENSITIVE);
-        } else {
+        }
+        else {
             sensitivePattern = PASSWORD_PATTERN;
         }
 
         return configurations.entrySet()
-                .stream().
-                collect(Collectors.toMap(Map.Entry::getKey,
-                        e -> sensitivePattern.matcher(e.getKey()).matches() ? MASK_VALUE : e.getValue()
-                ));
+                .stream().collect(Collectors.toMap(Map.Entry::getKey,
+                        e -> sensitivePattern.matcher(e.getKey()).matches() ? MASK_VALUE : e.getValue()));
     }
 
     @Override

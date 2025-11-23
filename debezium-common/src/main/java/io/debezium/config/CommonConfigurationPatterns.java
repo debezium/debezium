@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 public final class CommonConfigurationPatterns {
 
-    public static final Pattern PASSWORD_PATTERN = Pattern.compile(".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret",
+    public static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            ".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret",
             Pattern.CASE_INSENSITIVE);
 }
