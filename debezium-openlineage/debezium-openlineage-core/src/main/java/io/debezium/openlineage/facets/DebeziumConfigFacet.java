@@ -45,8 +45,8 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
     public DebeziumConfigFacet(URI producer, Map<String, String> configurations) {
         this.producer = producer;
 
-        Map<String, String> sanitizedConfig = maskConfiguration(configurations);
-        this.configs = sanitizedConfig.entrySet().stream()
+        Map<String, String> maskedConfig = maskConfiguration(configurations);
+        this.configs = maskedConfig.entrySet().stream()
                 .map(e -> String.format(CONFIG_LINE_FORMAT, e.getKey(), e.getValue()))
                 .toList();
     }
