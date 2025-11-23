@@ -645,6 +645,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!getBatchMetrics().hasJdbcRows()) {
             // When no rows are processed, don't advance the SCN
+            // But always emit a heartbeat event in case the CTE query returned no data.
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+
             return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
         }
 
