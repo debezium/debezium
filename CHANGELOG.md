@@ -2,6 +2,35 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.5.Final
+November 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12470127)
+
+### New features since 3.2.4.Final
+
+None
+
+
+### Breaking changes since 3.2.4.Final
+
+None
+
+
+### Fixes since 3.2.4.Final
+
+* Can bind a LONG value only for insert into a LONG column [DBZ-8276](https://issues.redhat.com/browse/DBZ-8276)
+* Heartbeat stops when using CTE query in Oracle connector [DBZ-9443](https://issues.redhat.com/browse/DBZ-9443)
+* SQL Server connector is unable to resume incremental snapshot after restart [DBZ-9533](https://issues.redhat.com/browse/DBZ-9533)
+* Table column metadata is not fetched when table name has a '/' character [DBZ-9620](https://issues.redhat.com/browse/DBZ-9620)
+* MySQL connector does not parse CREATE TABLE [DBZ-9623](https://issues.redhat.com/browse/DBZ-9623)
+* Oracle low watermark read calculation is too conservative when LOB is disabled [DBZ-9664](https://issues.redhat.com/browse/DBZ-9664)
+
+
+### Other changes since 3.2.4.Final
+
+* Update Oracle connector doc to specify unsupported Oracle 23ai features [DBZ-9402](https://issues.redhat.com/browse/DBZ-9402)
+
+
+
 ## 3.2.4.Final
 October 7th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469391)
 
