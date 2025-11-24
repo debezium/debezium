@@ -70,6 +70,7 @@ Ashmeet Lamba
 Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
+Auke van Leeuwen
 Avinash Vishwakarma
 Aykut Farsak
 Aziza Kalmasova
@@ -271,6 +272,7 @@ Hesjona Hilaj
 Hidetomi Umaki
 Himanshu Mishra
 Hoa Le
+Hong Xia
 Horia Chiorean
 Hossein Torabi
 Hubert Dulay
@@ -509,6 +511,7 @@ Praveen Burgu
 Preethi Sadagopan
 pushpavanthar
 Qishang Zhong
+rptroberts
 Raf Liwoch
 Rafael Câmara
 Raghava Ponnam
