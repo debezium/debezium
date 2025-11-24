@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
@@ -294,7 +296,7 @@ public final class TestHelper {
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         return new PostgresSchema(
-                null, // TODO
+                new CdcSourceTaskContext<>(config.getConfig(), config, Map.of()),
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
                 getPostgresValueConverter(typeRegistry, config), new CustomConverterRegistry(Collections.emptyList()));

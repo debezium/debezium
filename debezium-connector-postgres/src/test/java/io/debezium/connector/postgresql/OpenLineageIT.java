@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -293,6 +294,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
         assertThat(runningEvents).hasSize(7);
 
+        assertThat(runningEvents.get(0).getRun().getRunId()).isEqualTo(runningEvents.get(5).getRun().getRunId());
+
         assertCorrectOutputDataset(runningEvents.get(5).getOutputs(), "test_server.s1.a", List.of("before;STRUCT",
                 "before.pk;INT32",
                 "before.aa;INT32",
@@ -352,6 +355,48 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "ts_us;INT64",
                 "ts_ns;INT64"));
 
+    }
+
+    @Test
+    public void runIdMustChangeUponRestart() {
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        Optional<OpenLineage.RunEvent> runEvent = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.START)
+                .findFirst();
+
+        assertThat(runEvent).isPresent();
+
+        UUID firstRunId = runEvent.get().getRun().getRunId();
+
+        stopConnector();
+
+        debeziumTestTransport.clear();
+
+        assertConnectorNotRunning();
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        runEvent = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.START)
+                .findFirst();
+
+        assertThat(runEvent).isPresent();
+
+        UUID secondRunId = runEvent.get().getRun().getRunId();
+
+        assertThat(firstRunId).isNotEqualTo(secondRunId);
     }
 
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedName, List<String> expectedFields) {
