@@ -80,7 +80,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
                 .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
-                .with("heartbeat.interval.ms", 1000)  // Required for signal offset persistence
+                .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
@@ -88,6 +88,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for snapshot to complete
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
+
+        // Wait for streaming to be fully running before inserting data
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
@@ -165,7 +168,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
                 .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
-                .with("heartbeat.interval.ms", 1000)  // Required for signal offset persistence
+                .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
@@ -173,6 +176,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for snapshot to complete
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
+
+        // Wait for streaming to be fully running before inserting data
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
