@@ -3945,8 +3945,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Start connector in streaming-only mode (no snapshot)
         // This ensures the connector will process the RELATION message from the replication stream
         startConnector(config -> config
-                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
                 false);
 
         // Wait for streaming to start
@@ -3978,8 +3978,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Start connector with snapshot mode (INITIAL) - this should complete snapshot successfully
         startConnector(config -> config
-                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns_snap")
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns_snap")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
                 true);
 
         // Wait for snapshot to complete
