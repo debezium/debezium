@@ -74,19 +74,17 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Start connector
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
-                .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
                 .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot to complete
+        // Wait for snapshot to complete (completes immediately with NO_DATA mode)
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
         // Wait for streaming to be fully running before inserting data
@@ -97,13 +95,20 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
         connection.commit();
 
+        // Give connector time to process binlog events
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
+        String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        Testing.print("Expected topic: " + expectedTopic);
+        Testing.print("Actual topics: " + records.topics());
+        assertThat(records.recordsForTopic(expectedTopic)).hasSize(2);
 
         // Insert more data that we'll skip
         connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
         connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
+        connection.commit();
 
         // Get current binlog position AFTER the records we want to skip
         // This position will be after records 3 and 4, so when we restart the connector
@@ -114,6 +119,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Insert data we want to capture after the skip
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        connection.commit();
 
         // Send signal to skip to the position before value3 and value4
         // Use action: continue since we'll manually restart the connector
@@ -163,19 +169,17 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Start connector
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18766)
-                .with(MySqlConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
-                .with("schema.history.internal.file.filename", SCHEMA_HISTORY_PATH.toString())
                 .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
                 .build();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot to complete
+        // Wait for snapshot to complete (completes immediately with NO_DATA mode)
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
         // Wait for streaming to be fully running before inserting data
@@ -186,19 +190,27 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
         connection.commit();
 
+        // Give connector time to process binlog events
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table")).hasSize(2);
+        String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        Testing.print("Expected topic: " + expectedTopic);
+        Testing.print("Actual topics: " + records.topics());
+        assertThat(records.recordsForTopic(expectedTopic)).hasSize(2);
 
         // Insert more data that we'll skip
         connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
         connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
+        connection.commit();
 
         // Get current GTID set AFTER the records we want to skip
         String gtidSet = getCurrentGtidSet();
 
         // Insert data we want to capture after the skip
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        connection.commit();
 
         // Send signal to skip to the GTID set before value3 and value4
         // Use action: continue since we'll manually restart the connector
