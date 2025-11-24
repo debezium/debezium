@@ -95,6 +95,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
         connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
+        connection.commit();
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
@@ -183,6 +184,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
         connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
+        connection.commit();
 
         // Consume the insert events
         SourceRecords records = consumeRecordsByTopic(2);
