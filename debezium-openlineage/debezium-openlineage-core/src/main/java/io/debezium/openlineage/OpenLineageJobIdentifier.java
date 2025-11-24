@@ -16,6 +16,7 @@ public record OpenLineageJobIdentifier(String namespace, String name) {
      */
     private static final String JOB_NAME_FORMAT = "%s.%s";
 
+    // TODO change job name adding NAME from connect.
     public static OpenLineageJobIdentifier from(ConnectorContext connectorContext, DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration) {
 
         return new OpenLineageJobIdentifier(debeziumOpenLineageConfiguration.job().namespace(),
