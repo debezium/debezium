@@ -249,8 +249,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
 
         // Verify we only get record 5 (skipped 3 and 4)
-        // Account for heartbeat messages during streaming
-        records = consumeRecordsByTopic(2);
+        // Account for heartbeat and snapshot messages in GTID mode
+        records = consumeRecordsByTopic(4);
         List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
 
