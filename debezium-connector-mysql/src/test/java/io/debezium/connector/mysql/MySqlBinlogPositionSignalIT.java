@@ -90,6 +90,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Wait for streaming to be fully running before inserting data
         waitForStreamingRunning("mysql", SERVER_NAME);
 
+        // Consume any initial heartbeat messages to ensure binlog reader is fully ready
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed initial record: " + record.topic());
+        });
+
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
         connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
@@ -184,6 +189,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for streaming to be fully running before inserting data
         waitForStreamingRunning("mysql", SERVER_NAME);
+
+        // Consume any initial heartbeat messages to ensure binlog reader is fully ready
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed initial record: " + record.topic());
+        });
 
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
