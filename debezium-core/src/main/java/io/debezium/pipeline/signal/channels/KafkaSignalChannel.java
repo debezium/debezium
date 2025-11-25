@@ -14,12 +14,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +100,29 @@ public class KafkaSignalChannel implements SignalChannelReader {
             BOOTSTRAP_SERVERS,
             SIGNAL_POLL_TIMEOUT_MS,
             GROUP_ID);
+
+    private static final Field SECURITY_PROTOCOL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.security.protocol")
+            .withDisplayName("Kafka security protocol")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security protocol")
+            .withDefault("PLAINTEXT");
+
+    private static final Field SASL_MECHANISM = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.sasl.mechanism")
+            .withDisplayName("Kafka security SASL mechanism")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security SASL mechanism")
+            .withDefault("PLAIN");
+
+    private static final Field SASL_JAAS_CONFIG = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.sasl.jaas.config")
+            .withDisplayName("Kafka security SASL mechanism")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security SASL mechanism");
 
     private Optional<SignalRecord> processSignal(ConsumerRecord<String, String> record) {
 
@@ -178,6 +203,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
                 .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        if (signalConfig.getString(SECURITY_PROTOCOL).equals("SASL_SSL")) {
+            confBuilder.with(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, signalConfig.getString(SECURITY_PROTOCOL));
+            confBuilder.with(SaslConfigs.SASL_MECHANISM, signalConfig.getString(SASL_MECHANISM));
+            confBuilder.with(SaslConfigs.SASL_JAAS_CONFIG, signalConfig.getString(SASL_JAAS_CONFIG));
+        }
 
         return confBuilder
                 .build();
