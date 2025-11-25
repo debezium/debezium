@@ -10,3 +10,6 @@ CREATE TABLE debezium_signal (
     type VARCHAR(32) NOT NULL,
     data TEXT NULL
 );
+
+-- Insert initial test data to populate the table before snapshot
+INSERT INTO test_table VALUES (0, 'initial');
