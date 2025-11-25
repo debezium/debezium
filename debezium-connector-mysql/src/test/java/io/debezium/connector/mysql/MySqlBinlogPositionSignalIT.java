@@ -190,13 +190,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot to complete - tables are empty so snapshot should be quick
+        // Wait for snapshot to complete (schema only with NO_DATA mode)
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
-
-        // Consume any snapshot records (should be none since tables are empty)
-        consumeAvailableRecords(record -> {
-            Testing.print("Consumed snapshot record: " + record.topic());
-        });
 
         // Wait for streaming to be fully running
         waitForStreamingRunning("mysql", SERVER_NAME);
