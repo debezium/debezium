@@ -74,6 +74,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Start connector - use NO_DATA mode to skip initial snapshot data
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
@@ -169,6 +171,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Start connector with INITIAL snapshot mode
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18766)
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
