@@ -25,7 +25,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -57,6 +56,8 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
+import io.debezium.util.ThreadNameContext;
+import io.debezium.util.Threads;
 
 /**
  * An abstract implementation of {@link SnapshotChangeEventSource} for binlog-based connectors.
@@ -80,6 +81,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private long globalLockAcquiredAt = -1;
     private long tableLockAcquiredAt = -1;
+    private final ThreadNameContext threadNameContext;
 
     public BinlogSnapshotChangeEventSource(BinlogConnectorConfig connectorConfig,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -99,6 +101,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
         this.preSnapshotAction = preSnapshotAction;
+        this.threadNameContext = ThreadNameContext.from(connectorConfig);
     }
 
     @Override
@@ -197,7 +200,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 else {
                     int snapshotMaxThreads = connectionPool.size();
                     LOGGER.info("Creating delayed schema snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
-                    ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+                    ExecutorService executorService = Threads.newFixedThreadPool(
+                            BinlogSnapshotChangeEventSource.class,
+                            connectorConfig.getLogicalName(),
+                            "delayed-schema-snapshot",
+                            threadNameContext,
+                            snapshotMaxThreads);
                     try {
                         createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false, executorService);
                     }
@@ -306,7 +314,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (!connectorConfig.getSnapshotLockingStrategy().isLockingEnabled()) {
             int snapshotMaxThreads = connectionPool.size();
             LOGGER.info("Creating schema snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
-            executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+            executorService = Threads.newFixedThreadPool(
+                    BinlogSnapshotChangeEventSource.class,
+                    connectorConfig.getLogicalName(),
+                    "schema-snapshot",
+                    threadNameContext,
+                    snapshotMaxThreads);
         }
         try {
             for (String database : databases) {

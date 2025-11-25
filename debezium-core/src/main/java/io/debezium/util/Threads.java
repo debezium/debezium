@@ -301,22 +301,7 @@ public class Threads {
 
             @Override
             public Thread newThread(Runnable r) {
-                String threadNamePattern = threadNameContext.getThreadNamePattern();
-                String connectorName = threadNameContext.getConnectorName();
-                String taskId = threadNameContext.getTaskId();
-                String threadName = threadNamePattern
-                        .replace("${debezium}-", DEBEZIUM_THREAD_NAME_PREFIX)
-                        .replace("${connector.class.simple}", component.getSimpleName().toLowerCase())
-                        .replace("${topic.prefix}", componentId)
-                        .replace("${functionality}", name);
-
-                // Replace optional placeholder if present
-                if (threadName.contains("${connector.name}")) {
-                    threadName = threadName.replace("${connector.name}", connectorName != null ? connectorName : "");
-                }
-                if (threadName.contains("${task.id}")) {
-                    threadName = threadName.replace("${task.id}", taskId != null ? taskId : "");
-                }
+                String threadName = buildThreadName(component, componentId, name, threadNameContext);
                 if (indexed) {
                     threadName += "-" + index.getAndIncrement();
                 }
@@ -375,6 +360,41 @@ public class Threads {
                                                                             boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(
                 threadFactory(component, componentId, name, threadNameContext, false, daemon));
+    }
+
+    /**
+     * Builds a thread name using the configured ThreadNameContext pattern.
+     * This method is used by both ThreadFactory and for renaming threads that were created outside the factory.
+     *
+     * @param component - the source or sink component class
+     * @param componentId - the identifier to differentiate between component instances
+     * @param name - the name/functionality of the thread
+     * @param threadNameContext - the context containing naming pattern and variables
+     * @return the constructed thread name following the configured pattern
+     */
+    public static String buildThreadName(Class<?> component,
+                                         String componentId,
+                                         String name,
+                                         ThreadNameContext threadNameContext) {
+        String threadNamePattern = threadNameContext.getThreadNamePattern();
+        String connectorName = threadNameContext.getConnectorName();
+        String taskId = threadNameContext.getTaskId();
+
+        String threadName = threadNamePattern
+                .replace("${debezium}-", DEBEZIUM_THREAD_NAME_PREFIX)
+                .replace("${connector.class.simple}", component.getSimpleName().toLowerCase())
+                .replace("${topic.prefix}", componentId)
+                .replace("${functionality}", name);
+
+        // Replace optional placeholder if present
+        if (threadName.contains("${connector.name}")) {
+            threadName = threadName.replace("${connector.name}", connectorName != null ? connectorName : "");
+        }
+        if (threadName.contains("${task.id}")) {
+            threadName = threadName.replace("${task.id}", taskId != null ? taskId : "");
+        }
+
+        return threadName;
     }
 
     /**

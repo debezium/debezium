@@ -21,12 +21,10 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
@@ -36,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.storage.jdbc.RetriableConnection;
+import io.debezium.util.ThreadNameContext;
+import io.debezium.util.Threads;
 
 /**
  * Implementation of OffsetBackingStore that saves data to database table.
@@ -79,8 +79,16 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
     @Override
     public synchronized void start() {
-        executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(
-                this.getClass().getSimpleName() + "-%d", false));
+        ThreadNameContext threadNameContext = new ThreadNameContext(
+                "jdbc-offset-store",
+                "${debezium}-${connector.class.simple}-${topic.prefix}-${functionality}-${connector.name}-${task.id}",
+                "0");
+        executor = Threads.newSingleThreadExecutor(
+                JdbcOffsetBackingStore.class,
+                "jdbc-offset-store",
+                "offset-commit",
+                threadNameContext,
+                false);
 
         LOGGER.info("Starting JdbcOffsetBackingStore db '{}'", config.getJdbcUrl());
         try {

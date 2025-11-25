@@ -370,6 +370,37 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
+    public void shouldRenameBinaryLogClientThreads() throws Exception {
+        config = simpleConfig().build();
+        start(getConnectorClass(), config);
+
+        // Wait for connector to start and create BinaryLogClient threads
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
+
+        // Wait for thread renaming to complete (happens asynchronously after connection)
+        final String expectedPrefix = "debezium-binlogstreamingchangeeventsource-"
+                + DATABASE.getServerName() + "-binlog-client";
+        // Wait until all the threads are created and renamed
+        Thread.sleep(5000L);
+
+        // Verify renamed threads exist
+        final long debeziumThreadCount = Thread.getAllStackTraces().keySet().stream()
+                .filter(t -> t.getName().startsWith(expectedPrefix))
+                .count();
+
+        assertThat(debeziumThreadCount).isGreaterThanOrEqualTo(2);
+
+        // Verify no old "blc-" threads remain
+        final long blcThreadCount = Thread.getAllStackTraces().keySet().stream()
+                .filter(t -> t.getName().startsWith("blc-"))
+                .count();
+
+        assertThat(blcThreadCount).isEqualTo(0);
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-342")
     public void shouldHandleMySQLTimeCorrectly() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")

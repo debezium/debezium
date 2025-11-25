@@ -28,7 +28,6 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,6 +66,7 @@ import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
+import io.debezium.util.ThreadNameContext;
 
 /**
  * Base class for {@link SnapshotChangeEventSource} for relational databases with or without a schema history.
@@ -93,6 +93,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final SnapshotterService snapshotterService;
     protected Queue<JdbcConnection> connectionPool;
     private final TableId signalDataCollectionTableId;
+    private final ThreadNameContext threadNameContext;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
@@ -108,6 +109,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.snapshotterService = snapshotterService;
+        this.threadNameContext = ThreadNameContext.from(connectorConfig);
 
         if (!Strings.isNullOrBlank(connectorConfig.getSignalingDataCollectionId())) {
             this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionId());
@@ -479,7 +481,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         int snapshotMaxThreads = connectionPool.size();
         LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
-        ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+        ExecutorService executorService = Threads.newFixedThreadPool(
+                RelationalSnapshotChangeEventSource.class,
+                connectorConfig.getLogicalName(),
+                "snapshot-data",
+                threadNameContext,
+                snapshotMaxThreads);
         CompletionService<Void> completionService = new ExecutorCompletionService<>(executorService);
 
         Map<TableId, String> queryTables = new HashMap<>();

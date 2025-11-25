@@ -129,6 +129,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final float heartbeatIntervalFactor = 0.8f;
+    private final ThreadNameContext threadNameContext;
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -163,6 +164,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.client = createBinaryLogClient(taskContext, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
+        this.threadNameContext = ThreadNameContext.from(connectorConfig);
     }
 
     @Override
@@ -312,6 +314,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                             metronome.pause();
                         }
                     }
+                    // Rename any BinlogClientThreads as per ThreadNamePattern that are created and named in binlogClient
+                    renameBinaryLogClientThreads();
                 }
                 catch (TimeoutException e) {
                     // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
@@ -382,6 +386,41 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         return isGtidModeEnabled;
     }
 
+    /**
+     * The mysql-binlog-connector-java library creates some threads directly with different thread names
+     * Renames BinaryLogClient threads that were created outside ThreadFactory.
+     */
+    private void renameBinaryLogClientThreads() {
+        binaryLogClientThreads.entrySet().stream()
+                .filter(e -> e.getValue().getName().startsWith("blc-"))
+                .forEach(e -> renameThread(e.getKey(), e.getValue()));
+    }
+
+    /**
+     * Renames a single BinaryLogClient thread and updates its map entry.
+     *
+     * @param oldMapKey the current map key
+     * @param thread the thread to rename
+     */
+    private void renameThread(String oldMapKey, Thread thread) {
+        final String oldThreadName = thread.getName();
+        // There are three threads created by BinaryLogClient that are to be renamed accordingly
+        // There are blc-, blc-keepalive, blc-disconnect
+        final String threadType = oldThreadName.contains("keepalive") ? "-keepalive"
+                : oldThreadName.contains("disconnect") ? "-disconnect"
+                        : "";
+
+        final String newThreadName = Threads.buildThreadName(
+                BinlogStreamingChangeEventSource.class,
+                connectorConfig.getLogicalName(),
+                "binlog-client" + threadType,
+                threadNameContext);
+        thread.setName(newThreadName);
+        final String newMapKey = newThreadName + "-" + thread.getId();
+        binaryLogClientThreads.remove(oldMapKey);
+        binaryLogClientThreads.put(newMapKey, thread);
+    }
+
     // todo: perhaps refactor back out to a binary log configurator instance?
     protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
                                                     BinlogConnectorConfig connectorConfig,
@@ -391,13 +430,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         final ThreadNameContext threadNameContext = ThreadNameContext.from(connectorConfig);
         client.setThreadFactory(
                 Threads.threadFactory(
-                        getConnectorClass(),
+                        BinlogStreamingChangeEventSource.class,
                         connectorConfig.getLogicalName(),
                         "binlog-client",
                         threadNameContext,
                         false,
                         false,
-                        x -> clientThreads.put(x.getName(), x)));
+                        x -> {
+                            clientThreads.put(x.getName() + "-" + x.getId(), x);
+                        }));
         client.setServerId(connectorConfig.getServerId());
 
         client.setSSLMode(sslModeFor(connectorConfig.getSslMode()));
