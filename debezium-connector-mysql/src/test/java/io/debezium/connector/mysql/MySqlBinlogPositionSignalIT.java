@@ -211,19 +211,20 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         Testing.print("Actual topics: " + records.topics());
         assertThat(records.recordsForTopic(expectedTopic)).hasSize(2);
 
+        // Get current GTID set BEFORE the records we want to skip
+        // This will be the position we jump to, skipping id=3,4
+        String gtidSet = getCurrentGtidSet();
+
         // Insert more data that we'll skip
         connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
         connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
         connection.commit();
 
-        // Get current GTID set AFTER the records we want to skip
-        String gtidSet = getCurrentGtidSet();
-
         // Insert data we want to capture after the skip
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
 
-        // Send signal to skip to the GTID set before value3 and value4
+        // Send signal to skip to the captured GTID set (after value1,2 but before value3,4,5)
         // Use action: continue since we'll manually restart the connector
         String signalData = "{\"gtid_set\": \"" + gtidSet + "\", \"action\": \"continue\"}";
 
