@@ -79,6 +79,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_table"))
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -102,8 +103,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Give connector time to process binlog events
         waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Consume the insert events
-        SourceRecords records = consumeRecordsByTopic(2);
+        // Consume the insert events (account for heartbeat messages)
+        SourceRecords records = consumeRecordsByTopic(4);
         String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
         Testing.print("Expected topic: " + expectedTopic);
         Testing.print("Actual topics: " + records.topics());
@@ -178,6 +179,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_table"))
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -206,8 +208,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Give connector time to process binlog events
         waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Consume the insert events
-        SourceRecords records = consumeRecordsByTopic(2);
+        // Consume the insert events (account for heartbeat messages)
+        SourceRecords records = consumeRecordsByTopic(4);
         String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
         Testing.print("Expected topic: " + expectedTopic);
         Testing.print("Actual topics: " + records.topics());
