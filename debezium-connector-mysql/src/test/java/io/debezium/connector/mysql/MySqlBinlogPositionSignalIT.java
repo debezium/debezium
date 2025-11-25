@@ -71,10 +71,10 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
             return;
         }
 
-        // Start connector
+        // Start connector with INITIAL snapshot mode
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -84,16 +84,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot to complete (completes immediately with NO_DATA mode)
+        // Wait for snapshot to complete - tables are empty so snapshot should be quick
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
-        // Wait for streaming to be fully running before inserting data
-        waitForStreamingRunning("mysql", SERVER_NAME);
-
-        // Consume any initial heartbeat messages to ensure binlog reader is fully ready
+        // Consume any snapshot records (should be none since tables are empty)
         consumeAvailableRecords(record -> {
-            Testing.print("Consumed initial record: " + record.topic());
+            Testing.print("Consumed snapshot record: " + record.topic());
         });
+
+        // Wait for streaming to be fully running
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
@@ -171,10 +171,10 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
             return;
         }
 
-        // Start connector
+        // Start connector with INITIAL snapshot mode
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SERVER_ID, 18766)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -184,16 +184,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
-        // Wait for snapshot to complete (completes immediately with NO_DATA mode)
+        // Wait for snapshot to complete - tables are empty so snapshot should be quick
         waitForSnapshotToBeCompleted("mysql", SERVER_NAME);
 
-        // Wait for streaming to be fully running before inserting data
-        waitForStreamingRunning("mysql", SERVER_NAME);
-
-        // Consume any initial heartbeat messages to ensure binlog reader is fully ready
+        // Consume any snapshot records (should be none since tables are empty)
         consumeAvailableRecords(record -> {
-            Testing.print("Consumed initial record: " + record.topic());
+            Testing.print("Consumed snapshot record: " + record.topic());
         });
+
+        // Wait for streaming to be fully running
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Insert some data
         connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
