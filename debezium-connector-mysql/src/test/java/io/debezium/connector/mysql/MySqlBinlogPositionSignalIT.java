@@ -216,13 +216,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
         connection.commit();
 
-        // Wait for and consume the records we want to skip (id=3,4)
-        // This ensures they are processed before we capture the GTID set
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
-        consumeAvailableRecords(record -> {
-        });
+        // Give time for the connector to process and commit id=3,4 to ensure
+        // they get their own GTID transactions before we capture the set
+        Thread.sleep(2000);
 
-        // Get current GTID set AFTER the records we want to skip have been consumed
+        // Get current GTID set AFTER the records we want to skip
         String gtidSet = getCurrentGtidSet();
 
         // Insert data we want to capture after the skip
