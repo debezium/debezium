@@ -172,14 +172,14 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
             return;
         }
 
-        // Start connector with INITIAL snapshot mode
+        // Start connector - use NO_DATA mode to skip initial snapshot data
         Configuration config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
                 .with(MySqlConnectorConfig.SERVER_ID, 18766)
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_table"))
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
@@ -249,9 +249,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
 
         // Verify we only get record 5 (skipped 3 and 4)
-        // Wait for records and consume all available
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
-        records = consumeAvailableRecordsByTopic();
+        // Account for heartbeat messages during streaming
+        records = consumeRecordsByTopic(2);
         List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
 
