@@ -329,8 +329,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             if (!seenLowercaseColumnNames.add(columnName.toLowerCase())) {
                 throw new DebeziumException(
                         String.format(
-                                "Schema: '%s', Table '%s' has columns differing only by case. Column name: '%s'",
-                                schemaName, tableName, columnName));
+                                "Table '%s' has columns that differ only by case. " +
+                                        "Column name: '%s'. " +
+                                        "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
+                                        "Please rename one of the duplicate columns before running Debezium.",
+                                tableId, columnName));
             }
 
             final PostgresType postgresType = typeRegistry.get(columnType);
