@@ -139,9 +139,9 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
             final Configuration config = DATABASE.defaultConfig()
                     .build();
             schema = getSchema(config);
-        schema.initializeStorage();
-        final P partition = initializePartition(connectorConfig, config);
-        final O offset = initializeOffset(connectorConfig);
+            schema.initializeStorage();
+            final P partition = initializePartition(connectorConfig, config);
+            final O offset = initializeOffset(connectorConfig);
 
             // Set up the server ...
             offset.setBinlogStartPoint("binlog.001", 400);

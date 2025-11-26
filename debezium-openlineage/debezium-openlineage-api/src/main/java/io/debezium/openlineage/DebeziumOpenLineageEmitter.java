@@ -46,21 +46,7 @@ public class DebeziumOpenLineageEmitter {
     // Thread-safe map to store emitters per connector
     private static final ConcurrentHashMap<String, LineageEmitter> emitters = new ConcurrentHashMap<>();
 
-    private static final NoOpLineageEmitter noOpLineageEmitter = new NoOpLineageEmitter();
-
-    /**
-     * Removes the emitter for the specified connector.
-     * Should be called when a connector is stopped or destroyed.
-     *
-     * @param connectorContext The context the connector
-     */
-    public static void cleanup(ConnectorContext connectorContext) {
-        getEmitter(connectorContext).close();
-        LineageEmitter removed = emitters.remove(connectorContext.toEmitterKey());
-        if (removed != null) {
-            LOGGER.debug("Cleaned up emitter for connector {}", connectorContext);
-        }
-    }
+    private static volatile NoOpLineageEmitter noOpLineageEmitter;
 
     /**
      * Emits a lineage event for the given source task state.
@@ -121,9 +107,23 @@ public class DebeziumOpenLineageEmitter {
         return ConnectorContext.from(config, connectorName, runId);
     }
 
+    /**
+     * Removes the emitter for the specified connector.
+     * Should be called when a connector is stopped or destroyed.
+     *
+     * @param connectorContext The context the connector
+     */
+    public static void cleanup(ConnectorContext connectorContext) {
+        getEmitter(connectorContext).close();
+        LineageEmitter removed = emitters.remove(connectorContext.toEmitterKey());
+        if (removed != null) {
+            LOGGER.debug("Cleaned up emitter for connector {}", connectorContext);
+        }
+    }
+
     private static LineageEmitter getEmitter(ConnectorContext connectorContext) {
         if (isOpenLineageDisabled(connectorContext)) {
-            return noOpLineageEmitter;
+            return getNoOpLineageEmitter();
         }
 
         LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
@@ -160,6 +160,17 @@ public class DebeziumOpenLineageEmitter {
         LOGGER.debug("Emitter instance for connector {}: {}", connectorContext.connectorName(), emitter);
 
         return emitter;
+    }
+
+    private static NoOpLineageEmitter getNoOpLineageEmitter() {
+        if (noOpLineageEmitter == null) {
+            synchronized (DebeziumOpenLineageEmitter.class) {
+                if (noOpLineageEmitter == null) {
+                    noOpLineageEmitter = new NoOpLineageEmitter();
+                }
+            }
+        }
+        return noOpLineageEmitter;
     }
 
     private static boolean isOpenLineageDisabled(ConnectorContext connectorContext) {
