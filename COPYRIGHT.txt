@@ -70,6 +70,7 @@ Ashmeet Lamba
 Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
+Auke van Leeuwen
 Avinash Vishwakarma
 Aykut Farsak
 Aziza Kalmasova
@@ -109,6 +110,7 @@ César Martínez
 Cao Manh Dat
 Chad Marmon
 Chai Stofkoper
+Chaitra Dalawai
 Chao Tian
 Choi Jang Ho
 Chungeun Choi
@@ -139,6 +141,7 @@ Cliff Wheadon
 Cody Holmes
 Collin Van Dyck
 Connor Szczepaniak
+Conor Gallagher
 Cory Harper
 Cyprien Etienne
 Cyril Scetbon
@@ -256,6 +259,7 @@ Juanma Barea
 Julien Roy
 Jun Zhao
 Hady Willi
+Hagar Yasser
 Hang Ruan
 Hans-Peter Grahsl
 Haris Bin Saif
@@ -271,6 +275,7 @@ Hesjona Hilaj
 Hidetomi Umaki
 Himanshu Mishra
 Hoa Le
+Hong Xia
 Horia Chiorean
 Hossein Torabi
 Hubert Dulay
@@ -509,6 +514,7 @@ Praveen Burgu
 Preethi Sadagopan
 pushpavanthar
 Qishang Zhong
+rptroberts
 Raf Liwoch
 Rafael Câmara
 Raghava Ponnam
@@ -531,6 +537,7 @@ Rotem Adhoh
 Sagar Rao
 Sahan Dilshan
 Sahap Asci
+Sumit Jha
 Sylvain Marty
 René Kerner
 Ricardo Rosales
@@ -670,6 +677,7 @@ Yannick Eisenschmidt
 yangrong688
 yangsanity
 Yashashree Chopada
+Yauheni Ramanovich
 Yevhenii Lopatenko
 Yilong Chang
 Yiming Liu
