@@ -3938,9 +3938,43 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Case-sensitive duplicate column detection is specific to pgoutput's RELATION message handling")
-    public void shouldFailOnTableWithCaseSensitiveDuplicateColumns() throws Exception {
-        // Create table with quoted identifiers that differ only by case
+    public void shouldFailDuringSnapshotForCaseSensitiveDuplicateColumns_snapshot_initial() {
+        // IMPORTANT: Create table BEFORE starting connector
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_snapshot_case_dup;" +
+                        "CREATE TABLE test_snapshot_case_dup (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Insert data that would be snapshotted
+        TestHelper.execute("INSERT INTO test_snapshot_case_dup (duration, \"Duration\") VALUES (100, 'test');");
+
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_snapshot_case_dup")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
+        waitForEngineShutdown();
+
+        // Verify no corrupted snapshot data was emitted
+        assertEquals(0, consumeAvailableRecords(record -> {
+        }));
+    }
+
+    @Test
+    public void shouldFailOnTableWithCaseSensitiveDuplicateColumns_snapshot_nodata() {
+        // Create table BEFORE starting connector
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_case_columns;" +
                         "CREATE TABLE test_case_columns (" +
@@ -3949,56 +3983,83 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         "  \"Duration\" TEXT" +
                         ");");
 
-        // Start connector in streaming-only mode (no snapshot)
-        // This ensures the connector will process the RELATION message from the replication stream
-        startConnector(config -> config
+        // Start connector with NO_DATA (streaming only)
+        // With Layer 1: This will ALSO fail during schema read now
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
-                false);
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
 
-        // Wait for streaming to start
-        waitForStreamingToStart();
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
 
-        // Insert data to trigger RELATION message
-        TestHelper.execute("INSERT INTO test_case_columns (duration, \"Duration\") VALUES (100, 'test');");
-
-        // Wait for the connector to shutdown due to the exception
-        // The DebeziumException is thrown in the background change event producer thread,
-        // which causes the engine to stop
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
         waitForEngineShutdown();
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Case-sensitive duplicate column detection is specific to pgoutput's RELATION message handling")
-    public void shouldFailOnTableWithCaseSensitiveDuplicateColumnsAfterSnapshot() throws Exception {
-        // Create table with quoted identifiers that differ only by case
+    public void shouldFailOnAlterTableAddingCaseSensitiveDuplicateColumn() throws Exception {
+        // Step 1: Create table WITHOUT duplicate columns
         TestHelper.execute(
-                "DROP TABLE IF EXISTS test_case_columns_snap;" +
-                        "CREATE TABLE test_case_columns_snap (" +
+                "DROP TABLE IF EXISTS test_alter_case;" +
+                        "CREATE TABLE test_alter_case (" +
                         "  pk SERIAL PRIMARY KEY, " +
-                        "  duration INTEGER, " +
-                        "  \"Duration\" TEXT" +
+                        "  duration INTEGER" +
                         ");");
 
-        // Insert data before starting connector - will be captured during snapshot
-        TestHelper.execute("INSERT INTO test_case_columns_snap (duration, \"Duration\") VALUES (100, 'test');");
+        // Step 2: Insert initial data
+        TestHelper.execute("INSERT INTO test_alter_case (duration) VALUES (100);");
 
-        // Start connector with snapshot mode (INITIAL) - this should complete snapshot successfully
+        // Step 3: Start connector - should succeed (no duplicates yet)
         startConnector(config -> config
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns_snap")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_alter_case")
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
-                true);
+                true); // Wait for snapshot to complete
 
-        // Wait for snapshot to complete
+        // Step 4: Wait for streaming to start
         waitForStreamingToStart();
 
-        // Insert new data to trigger a RELATION message during streaming phase
-        // This is when the validation should catch the duplicate columns
-        TestHelper.execute("INSERT INTO test_case_columns_snap (duration, \"Duration\") VALUES (200, 'test2');");
+        // Step 6: NOW ALTER TABLE to add duplicate column during streaming
+        // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
+        TestHelper.execute("ALTER TABLE test_alter_case ADD COLUMN \"Duration\" TEXT;");
 
-        // Wait for the connector to shutdown due to the exception
-        // The DebeziumException is thrown in the background change event producer thread,
-        // which causes the engine to stop
+        // Step 7: Insert a record to trigger RELATION message processing
+        // The INSERT causes pgoutput to send a RELATION message with the new schema
+        // handleRelationMessage() is called and Layer 2 validation runs
+        TestHelper.execute("INSERT INTO test_alter_case (duration, \"Duration\") VALUES (200, 'test');");
+
+        // Step 8: Wait for some time to allow RELATION message processing
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        // Step 9: Connector should fail due to Layer 2 validation in handleRelationMessage()
+        waitForEngineShutdown();
+    }
+
+    @Test
+    public void shouldFailOnRenameColumnCreatingDuplicate() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_rename;" +
+                        "CREATE TABLE test_rename (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  status TEXT" +
+                        ");");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_rename")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                false);
+
+        // Rename status to "Duration" (now conflicts with "duration")
+        TestHelper.execute("ALTER TABLE test_rename RENAME COLUMN status TO \"Duration\";");
+        TestHelper.execute("INSERT INTO test_rename (duration, \"Duration\") VALUES (100, 'test');");
+
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
         waitForEngineShutdown();
     }
 
