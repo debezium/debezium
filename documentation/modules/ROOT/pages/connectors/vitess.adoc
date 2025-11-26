@@ -67,6 +67,11 @@ As a result, the connector is unable to read the entire history of the database 
 For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database.
 You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
++
+When starting from an empty GTID, you can control which tables are copied during the snapshot phase by setting
+the xref:{link-vitess-connector}#vitess-property-snapshot-include-collection-list[`snapshot.include.collection.list` connector
+configuration property] to specify a comma-separated list of table patterns. If this property is not set or is empty,
+all tables are copied during the snapshot phase.
 
 [NOTE]
 ====
@@ -1657,6 +1662,21 @@ When the connector starts, if it does not detect a value in its offsets topic, i
 `never`::
 When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
 
+|[[vitess-property-snapshot-include-collection-list]]<<vitess-property-snapshot-include-collection-list,`+snapshot.include.collection.list+`>>
+|none
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy. +
+
+The connector uses this property to determine which tables should be copied during the snapshot phase (VStream when starting from an empty GTID.
+Table names must be specified in the format `keyspace.table`. You can use regular expressions to match multiple tables. For example:
+`test_keyspace.numeric_.\*,test_keyspace.string_.*`
+
+If this property is not set or is empty, all tables are copied during the snapshot phase.
+
+This property only applies when `snapshot.mode` is set to `initial` or the connector resumes from an empty GTID.
+
+When starting from a non-empty GTID (such as `current`, or a valid binlog position),
+the copy phase is skipped regardless of this setting.
+
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
 |You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values: +
@@ -1767,7 +1787,7 @@ You can configure the connector to skip the following types of operations:
 * `t` (truncate)
 
 Because the {prodname} Vitess connector never emits `truncate` events to data change topics, setting the default `t` option has the same effect as setting the property to `none`.
-That is, the connector streams all `insert`, `update`, and `delete` operations. 
+That is, the connector streams all `insert`, `update`, and `delete` operations.
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
