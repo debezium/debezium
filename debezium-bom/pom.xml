@@ -59,6 +59,7 @@
 
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
+        <version.docling>0.1.4</version.docling>
 
         <!-- Open Lineage -->
         <version.openlineage>1.31.0</version.openlineage>
@@ -595,6 +596,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-serve-api</artifactId>
+                <version>${version.docling}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-serve-client</artifactId>
+                <version>${version.docling}</version>
+            </dependency>
 
             <!-- Testing utilities -->
             <dependency>
@@ -603,6 +614,12 @@
                 <version>${version.testcontainers}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-testcontainers</artifactId>
+                <version>${version.docling}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
