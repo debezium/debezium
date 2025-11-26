@@ -2,6 +2,62 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.Beta1
+November 26th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471552)
+
+### New features since 3.4.0.Alpha2
+
+* Implement AWS IAM Authent in debezium-connector-postgres [DBZ-7297](https://issues.redhat.com/browse/DBZ-7297)
+* Oracle minimal supplemental logging 'SUBSET DATABASE REPLICATION' option [DBZ-7341](https://issues.redhat.com/browse/DBZ-7341)
+* ConvertTimezone SMT should support source info block fields [DBZ-9372](https://issues.redhat.com/browse/DBZ-9372)
+* Allow Oracle transactions to be abandoned using signal [DBZ-9552](https://issues.redhat.com/browse/DBZ-9552)
+* `slot.stream.options` documentation misleading [DBZ-9566](https://issues.redhat.com/browse/DBZ-9566)
+* Empty configuration properties behavior should be consistent [DBZ-9647](https://issues.redhat.com/browse/DBZ-9647)
+* Allow LogMiner hash/sort area session parameters to be configurable [DBZ-9660](https://issues.redhat.com/browse/DBZ-9660)
+* Always exclude materialized view log tables from LogMiner capture [DBZ-9661](https://issues.redhat.com/browse/DBZ-9661)
+* The LogMiner minable logs query can be optimized to remove the left join [DBZ-9662](https://issues.redhat.com/browse/DBZ-9662)
+* Remove the SCN gap detection logic [DBZ-9672](https://issues.redhat.com/browse/DBZ-9672)
+* Introduce a pass-through collection naming strategy [DBZ-9679](https://issues.redhat.com/browse/DBZ-9679)
+* MongoDB connector: Use wallTime for source.ts_ms accuracy [DBZ-9683](https://issues.redhat.com/browse/DBZ-9683)
+* Support tables to copy flag [DBZ-9696](https://issues.redhat.com/browse/DBZ-9696)
+
+
+### Breaking changes since 3.4.0.Alpha2
+
+* Postgres: Make the pgjdbc keepalive LSN flush configurable to prevent WAL growth [DBZ-9641](https://issues.redhat.com/browse/DBZ-9641)
+
+
+### Fixes since 3.4.0.Alpha2
+
+* Heartbeat stops when using CTE query in Oracle connector [DBZ-9443](https://issues.redhat.com/browse/DBZ-9443)
+* Debezium Informix connector 3.2.3.Final throws IllegalStateException: DebeziumOpenLineageEmitter not initialized during stop/restart, even when openlineage.integration.enabled. Connector should not call emitter if disabled. [DBZ-9504](https://issues.redhat.com/browse/DBZ-9504)
+* SQL Server connector is unable to resume incremental snapshot after restart [DBZ-9533](https://issues.redhat.com/browse/DBZ-9533)
+* Skipped events counter not handled correctly for compressed transactions [DBZ-9564](https://issues.redhat.com/browse/DBZ-9564)
+* Validation for a Kafka target fails [DBZ-9645](https://issues.redhat.com/browse/DBZ-9645)
+* Oracle does not support renaming partitions using alter table [DBZ-9651](https://issues.redhat.com/browse/DBZ-9651)
+* Debezium Server configuration import creates invalid pipelines [DBZ-9652](https://issues.redhat.com/browse/DBZ-9652)
+* MongoDB connector: Whitespace in collection.include.list causes incorrect regex pattern in change streams [DBZ-9657](https://issues.redhat.com/browse/DBZ-9657)
+* Oracle low watermark read calculation is too conservative when LOB is disabled [DBZ-9664](https://issues.redhat.com/browse/DBZ-9664)
+* Debezium Oracle restarting mining session too frequently [DBZ-9680](https://issues.redhat.com/browse/DBZ-9680)
+* Debezium Oracle connector fails to parse Oracle database version [DBZ-9681](https://issues.redhat.com/browse/DBZ-9681)
+* MySQLGTIDSet Subtractions Fail on UUIDSet that exist only in the Left Operand [DBZ-9682](https://issues.redhat.com/browse/DBZ-9682)
+* Connection list shows connection of all source/destination [DBZ-9685](https://issues.redhat.com/browse/DBZ-9685)
+* Incorrect documentation about storing state in JDBC [DBZ-9692](https://issues.redhat.com/browse/DBZ-9692)
+* Snapshot SQL Override Spaces [DBZ-9695](https://issues.redhat.com/browse/DBZ-9695)
+* NPE during sending to HTTP sink [DBZ-9698](https://issues.redhat.com/browse/DBZ-9698)
+
+
+### Other changes since 3.4.0.Alpha2
+
+* Provide the table explorer table component [DBZ-9318](https://issues.redhat.com/browse/DBZ-9318)
+* Refactor metrics logic in tests [DBZ-9579](https://issues.redhat.com/browse/DBZ-9579)
+* Oracle SignalsIT shouldDropTransactionViaSignal fails in unbuffered mode [DBZ-9665](https://issues.redhat.com/browse/DBZ-9665)
+* Update testcontainers to 2.0.2 [DBZ-9699](https://issues.redhat.com/browse/DBZ-9699)
+* The debezium-connector-oracle README is outdated [DBZ-9700](https://issues.redhat.com/browse/DBZ-9700)
+* IntelliJ IDEA doesn't recognize generated sources [DBZ-9701](https://issues.redhat.com/browse/DBZ-9701)
+
+
+
 ## 3.4.0.Alpha2
 November 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471251)
 
