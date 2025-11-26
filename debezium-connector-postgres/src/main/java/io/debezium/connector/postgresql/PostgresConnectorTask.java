@@ -365,7 +365,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     protected Optional<ErrorHandler> getErrorHandler() {
-        return Optional.of(errorHandler);
+        return Optional.ofNullable(errorHandler);
     }
 
     @Override
