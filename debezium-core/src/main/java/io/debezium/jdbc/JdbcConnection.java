@@ -1319,6 +1319,10 @@ public class JdbcConnection implements AutoCloseable {
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+
+        // Track case-insensitive column names per table
+        Map<TableId, Set<String>> lowercaseColumnNamesByTable = new HashMap<>();
+
         String tableNamePattern = createPatternFromName(tableName, metadata.getSearchStringEscape());
         String schemaNamePattern = createPatternFromName(schemaName, metadata.getSearchStringEscape());
         try (ResultSet columnMetadata = metadata.getColumns(catalogName, schemaNamePattern, tableNamePattern, null)) {
@@ -1332,6 +1336,22 @@ public class JdbcConnection implements AutoCloseable {
                 if (viewIds.contains(tableId) ||
                         (tableFilter != null && !tableFilter.isIncluded(tableId))) {
                     continue;
+                }
+
+                final String columnName = columnMetadata.getString(4);
+
+                // Validate no case-sensitive duplicate columns
+                Set<String> seenLowercaseNames = lowercaseColumnNamesByTable.computeIfAbsent(tableId, t -> new HashSet<>());
+                String lowercaseColumnName = columnName.toLowerCase();
+
+                if (!seenLowercaseNames.add(lowercaseColumnName)) {
+                    throw new DebeziumException(
+                            String.format(
+                                    "Table '%s' has columns that differ only by case. " +
+                                            "Column name: '%s'. " +
+                                            "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
+                                            "Please rename one of the duplicate columns before running Debezium.",
+                                    tableId, columnName));
                 }
 
                 // add all included columns
