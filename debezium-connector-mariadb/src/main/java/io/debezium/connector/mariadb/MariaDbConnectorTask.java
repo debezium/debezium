@@ -321,7 +321,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     @Override
     protected Optional<ErrorHandler> getErrorHandler() {
-        return Optional.of(errorHandler);
+        return Optional.ofNullable(errorHandler);
     }
 
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
