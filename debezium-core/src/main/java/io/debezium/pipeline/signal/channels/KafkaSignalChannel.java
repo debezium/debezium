@@ -14,12 +14,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +95,64 @@ public class KafkaSignalChannel implements SignalChannelReader {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Consumer group id for the signal topic")
             .withDefault("kafka-signal");
+
+    private static final Field SECURITY_PROTOCOL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.security.protocol")
+            .withDisplayName("Kafka security protocol")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security protocol")
+            .withDefault("PLAINTEXT");
+
+    private static final Field SASL_MECHANISM = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.sasl.mechanism")
+            .withDisplayName("Kafka security SASL mechanism")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security SASL mechanism")
+            .withDefault("PLAIN");
+
+    private static final Field SASL_JAAS_CONFIG = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.sasl.jaas.config")
+            .withDisplayName("Kafka security SASL mechanism")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Kafka security SASL mechanism");
+
+    public static final Field SSL_KEY_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.ssl.key.password")
+            .withDisplayName("SSL Key Password")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("SSL Key Password");
+
+    public static final Field SSL_KEYSTORE_LOCATION = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.ssl.keystore.location")
+            .withDisplayName("SSL Keystore Location")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("SSL Keystore Location");
+
+    public static final Field SSL_KEYSTORE_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.ssl.keystore.password")
+            .withDisplayName("SSL Keystore Password")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("SSL Keystore Password");
+
+    public static final Field SSL_TRUSTSTORE_LOCATION = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.ssl.truststore.location")
+            .withDisplayName("SSL Truststore Location")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("SSL Truststore Location");
+
+    public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.ssl.truststore.password")
+            .withDisplayName("SSL Truststore Password")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("SSL Truststore Password");
 
     private static final Field.Set ALL_FIELDS = Field.setOf(
             SIGNAL_TOPIC,
@@ -178,6 +239,20 @@ public class KafkaSignalChannel implements SignalChannelReader {
                 .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        if (signalConfig.getString(SECURITY_PROTOCOL).equals("SASL_SSL")) {
+            confBuilder.with(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, signalConfig.getString(SECURITY_PROTOCOL));
+            confBuilder.with(SaslConfigs.SASL_MECHANISM, signalConfig.getString(SASL_MECHANISM));
+            confBuilder.with(SaslConfigs.SASL_JAAS_CONFIG, signalConfig.getString(SASL_JAAS_CONFIG));
+        }
+        else if (signalConfig.getString(SECURITY_PROTOCOL).equals("SSL")) {
+            confBuilder.with(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, signalConfig.getString(SECURITY_PROTOCOL));
+            confBuilder.with(SslConfigs.SSL_KEY_PASSWORD_CONFIG, signalConfig.getString(SSL_KEY_PASSWORD));
+            confBuilder.with(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, signalConfig.getString(SSL_TRUSTSTORE_LOCATION));
+            confBuilder.with(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, signalConfig.getString(SSL_TRUSTSTORE_PASSWORD));
+            confBuilder.with(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, signalConfig.getString(SSL_KEYSTORE_LOCATION));
+            confBuilder.with(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, signalConfig.getString(SSL_KEYSTORE_PASSWORD));
+        }
 
         return confBuilder
                 .build();
