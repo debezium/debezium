@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.openlineage.client.OpenLineage;
-import io.openlineage.client.utils.UUIDUtils;
 
 /**
  * Context holder for OpenLineage operations, encapsulating the necessary components
@@ -59,11 +58,11 @@ public class OpenLineageContext {
      * @param jobIdentifier the identifier for the job being tracked
      * @throws IllegalArgumentException if any parameter is null
      */
-    public OpenLineageContext(OpenLineage openLineage, DebeziumOpenLineageConfiguration configuration, OpenLineageJobIdentifier jobIdentifier) {
+    public OpenLineageContext(OpenLineage openLineage, DebeziumOpenLineageConfiguration configuration, OpenLineageJobIdentifier jobIdentifier, UUID runId) {
         this.openLineage = openLineage;
         this.configuration = configuration;
         this.jobIdentifier = jobIdentifier;
-        runUuid = UUIDUtils.generateNewUUID();
+        this.runUuid = runId;
     }
 
     /**

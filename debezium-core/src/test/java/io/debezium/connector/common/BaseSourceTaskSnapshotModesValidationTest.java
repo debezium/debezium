@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,6 +32,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
 import io.debezium.function.LogPositionValidator;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -272,6 +274,11 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         @SuppressWarnings("unchecked")
         final ChangeEventSourceCoordinator<Partition, OffsetContext> coordinator = mock(ChangeEventSourceCoordinator.class);
+
+        @Override
+        public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+            return new CdcSourceTaskContext<>(config, new TestRelationalDatabaseConfig(config, null, null, 1), "0", Map.of());
+        }
 
         @Override
         protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {

@@ -16,6 +16,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
@@ -42,13 +44,14 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
     private final KeyMapper customKeysMapper;
+    private final CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext;
 
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
 
     protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-                                       boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+                                       boolean tableIdCaseInsensitive, KeyMapper customKeysMapper, CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         this.config = config;
 
         this.topicNamingStrategy = topicNamingStrategy;
@@ -60,6 +63,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
         this.tables = new Tables(tableIdCaseInsensitive);
+        this.taskContext = taskContext;
     }
 
     @Override
@@ -134,7 +138,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), DebeziumTaskState.RUNNING,
+            DebeziumOpenLineageEmitter.emit(
+                    DebeziumOpenLineageEmitter.connectorContext(taskContext.getRawConfig().asMap(), config.getConnectorName(), taskContext.getRunId()),
+                    DebeziumTaskState.RUNNING,
                     List.of(extractDatasetMetadata(table)));
         }
     }

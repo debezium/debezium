@@ -31,6 +31,7 @@ import com.mongodb.internal.VisibleForTesting;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.connector.common.UUIDUtils;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.openlineage.ConnectorContext;
@@ -70,8 +71,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
-            DebeziumOpenLineageEmitter.init(connectorContext);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(), props);
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
             mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter(), connectorContext);

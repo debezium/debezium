@@ -10,6 +10,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.Test;
 
@@ -28,7 +29,8 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag1=value1,tag2=value2",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner1=teamA,owner2=teamB");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
         assertTrue(result.enabled());
         assertEquals("/etc/debezium/openlineage.yml", result.config().path());
@@ -50,7 +52,8 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag=value",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner=value");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
         assertEquals("test-connector", result.job().namespace());
     }
@@ -63,7 +66,8 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, "some-namespace",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
         assertFalse(result.enabled());
         assertTrue(result.job().tags().isEmpty());
@@ -80,6 +84,6 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tagOnlyNoEquals",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "");
 
-        DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
     }
 }
