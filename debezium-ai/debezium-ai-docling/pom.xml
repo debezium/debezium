@@ -57,6 +57,12 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -65,6 +71,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipITs}</skipTests>
+                    <systemPropertyVariables>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <id>integration-test</id>
