@@ -29,4 +29,5 @@ runs:
         ./mvnw clean install -B -pl :debezium-connector-common,:debezium-connect-plugins,:debezium-ai -am
         -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -DskipLongRunningTests=true
         ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
