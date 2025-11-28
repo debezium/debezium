@@ -2,6 +2,49 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.3.2.Final
+November 28th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12470519)
+
+### New features since 3.3.1.Final
+
+None
+
+
+### Breaking changes since 3.3.1.Final
+
+None
+
+
+### Fixes since 3.3.1.Final
+
+* Can bind a LONG value only for insert into a LONG column [DBZ-8276](https://issues.redhat.com/browse/DBZ-8276)
+* Heartbeat stops when using CTE query in Oracle connector [DBZ-9443](https://issues.redhat.com/browse/DBZ-9443)
+* Debezium Informix connector 3.2.3.Final throws IllegalStateException: DebeziumOpenLineageEmitter not initialized during stop/restart, even when openlineage.integration.enabled. Connector should not call emitter if disabled. [DBZ-9504](https://issues.redhat.com/browse/DBZ-9504)
+* SQL Server connector is unable to resume incremental snapshot after restart [DBZ-9533](https://issues.redhat.com/browse/DBZ-9533)
+* DdlChanges not reset in schema history recovery [DBZ-9549](https://issues.redhat.com/browse/DBZ-9549)
+* Timestamp values cause NPE in Postgres on JDK23+ [DBZ-9558](https://issues.redhat.com/browse/DBZ-9558)
+* Skipped events counter not handled correctly for compressed transactions [DBZ-9564](https://issues.redhat.com/browse/DBZ-9564)
+* Handle exceptions thrown from perfromCommit method to gracefully cleanup the coordinator during the stop call [DBZ-9617](https://issues.redhat.com/browse/DBZ-9617)
+* Table column metadata is not fetched when table name has a '/' character [DBZ-9620](https://issues.redhat.com/browse/DBZ-9620)
+* MySQL connector does not parse CREATE TABLE [DBZ-9623](https://issues.redhat.com/browse/DBZ-9623)
+* Debezium Server run.bat fails to execute on Windows [DBZ-9625](https://issues.redhat.com/browse/DBZ-9625)
+* Begin marker but no end marker for rollbacked transactions [DBZ-9628](https://issues.redhat.com/browse/DBZ-9628)
+* MariaDB fails to parse "CONVERT TO CHARSET <character-set>" [DBZ-9634](https://issues.redhat.com/browse/DBZ-9634)
+* Oracle does not support renaming partitions using alter table [DBZ-9651](https://issues.redhat.com/browse/DBZ-9651)
+* MongoDB connector: Whitespace in collection.include.list causes incorrect regex pattern in change streams [DBZ-9657](https://issues.redhat.com/browse/DBZ-9657)
+* Oracle low watermark read calculation is too conservative when LOB is disabled [DBZ-9664](https://issues.redhat.com/browse/DBZ-9664)
+* Debezium Oracle restarting mining session too frequently [DBZ-9680](https://issues.redhat.com/browse/DBZ-9680)
+* Debezium Oracle connector fails to parse Oracle database version [DBZ-9681](https://issues.redhat.com/browse/DBZ-9681)
+* MySQLGTIDSet Subtractions Fail on UUIDSet that exist only in the Left Operand [DBZ-9682](https://issues.redhat.com/browse/DBZ-9682)
+* NPE during sending to HTTP sink [DBZ-9698](https://issues.redhat.com/browse/DBZ-9698)
+
+
+### Other changes since 3.3.1.Final
+
+* Improve Informix pom to be similar to the debezium/debezium ones.  [DBZ-9576](https://issues.redhat.com/browse/DBZ-9576)
+
+
+
 ## 3.3.1.Final
 October 15th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469927)
 
