@@ -4,7 +4,7 @@
 
 // Duplicate values for the preview that are defined in another repository in the Antora playbook
 :prodname: Debezium
-:jira-url: 'https://issues.redhat.com'
+:issues-url: 'https://github.com/debezium/dbz/issues'
 
 // Define attributes that are used downstream so that an editor known that they exist and doesn't show them in warnings.
 :product!:
