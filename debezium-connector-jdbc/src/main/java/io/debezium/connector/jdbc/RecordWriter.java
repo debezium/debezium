@@ -133,6 +133,12 @@ public class RecordWriter {
 
     private int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
         for (String fieldName : fieldNames) {
+
+            // TODO: Remove this workaround after fixing the root cause in the schema generation
+            if (fieldName.equals("nick_name_")) {
+                fieldName = "nick_name$";
+            }
+
             final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
 
             Object value;
