@@ -70,10 +70,12 @@ Ashmeet Lamba
 Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
+Auke van Leeuwen
 Avinash Vishwakarma
 Aykut Farsak
 Aziza Kalmasova
 baabgai
+battmush
 Babur Duisenov
 Balázs Németh
 Balázs Sipos
@@ -108,6 +110,7 @@ César Martínez
 Cao Manh Dat
 Chad Marmon
 Chai Stofkoper
+Chaitra Dalawai
 Chao Tian
 Choi Jang Ho
 Chungeun Choi
@@ -126,6 +129,7 @@ Christian Jacob Mencias
 Christian Posta
 Christian Seki
 Christian Stein
+Christoph Moench-Tegeder
 Christopher Burch
 Christopher Sang
 Chuck Ha
@@ -137,11 +141,13 @@ Cliff Wheadon
 Cody Holmes
 Collin Van Dyck
 Connor Szczepaniak
+Conor Gallagher
 Cory Harper
 Cyprien Etienne
 Cyril Scetbon
 Daan Gerits
 Daan Roosen
+Daniel Eriksson
 Daniel Petisme
 dario
 Dave Charron
@@ -253,6 +259,7 @@ Juanma Barea
 Julien Roy
 Jun Zhao
 Hady Willi
+Hagar Yasser
 Hang Ruan
 Hans-Peter Grahsl
 Haris Bin Saif
@@ -268,6 +275,7 @@ Hesjona Hilaj
 Hidetomi Umaki
 Himanshu Mishra
 Hoa Le
+Hong Xia
 Horia Chiorean
 Hossein Torabi
 Hubert Dulay
@@ -387,6 +395,7 @@ MaoXiang Pan
 Marc Zbyszynski
 Marcelo Avancini
 Marci
+Marcin Piatek
 Marek Winkler
 Mario Fiore Vitale
 Mario Mueller
@@ -396,6 +405,7 @@ Mark Drilling
 Mark Ducommun
 Mark Lambert
 Markus Kull
+Maros Orsak
 Micro Huang
 Martin Medek
 Martin Sillence
@@ -403,6 +413,7 @@ Martin Tosney
 Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
+Mateusz Michalik
 Mathijs van den Worm
 Matt Bayley
 Matt Beary
@@ -440,6 +451,7 @@ Mostafa Ghadimi
 moyq5
 Muhammad Sufyian
 My Lang Pangzi
+Nagasree Valaboju
 Nancy Xu
 Nansen
 Naresh Gandi
@@ -502,6 +514,7 @@ Praveen Burgu
 Preethi Sadagopan
 pushpavanthar
 Qishang Zhong
+rptroberts
 Raf Liwoch
 Rafael Câmara
 Raghava Ponnam
@@ -524,6 +537,7 @@ Rotem Adhoh
 Sagar Rao
 Sahan Dilshan
 Sahap Asci
+Sumit Jha
 Sylvain Marty
 René Kerner
 Ricardo Rosales
@@ -663,6 +677,7 @@ Yannick Eisenschmidt
 yangrong688
 yangsanity
 Yashashree Chopada
+Yauheni Ramanovich
 Yevhenii Lopatenko
 Yilong Chang
 Yiming Liu
@@ -735,3 +750,4 @@ Artyom Dubinin
 Giovanni Panice
 j88753452-lab
 Pierre-Yves Péton
+Jiang Zhu
