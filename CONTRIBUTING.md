@@ -122,9 +122,9 @@ Before you make any changes, be sure to switch to the `main` branch and pull the
     $ git pull upstream main
     $ mvn clean install
 
-Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `dbz1234`):
+Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `dbz#1234`):
 
-    $ git checkout -b dbz1234
+    $ git checkout -b dbz#1234
 
 This branch exists locally and it is there you should make all of your proposed changes for the issue. As you'll soon see, it will ultimately correspond to a single pull request that the Debezium committers will review and merge (or reject) as a whole. (Some issues are big enough that you may want to make several separate but incremental sets of changes. In that case, you can create subsequent topic branches for the same issue by appending a short suffix to the branch name.)
 
@@ -191,7 +191,7 @@ If its been more than a day or so since you created your topic branch, we recomm
 
     $ git checkout main
     $ git pull upstream main
-    $ git checkout dbz1234
+    $ git checkout dbz#1234
     $ git rebase main
 
 If your changes are compatible with the latest changes on `main`, this will complete and there's nothing else to do. However, if your changes affect the same files/lines as other changes have since been merged into the `main` branch, then your changes conflict with the other recent changes on `main`, and you will have to resolve them. The git output will actually tell you you need to do (e.g., fix a particular file, stage the file, and then run `git rebase --continue`), but if you have questions consult Git or GitHub documentation or spend some time reading about Git rebase conflicts on the Internet.
@@ -208,7 +208,7 @@ Any documentation update should be part of the pull request you submit for the c
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
 
-    $ git push origin dbz1234
+    $ git push origin dbz#1234
 
 Then, in a browser go to your forked repository, and you should see a small section near the top of the page with a button labeled "Contribute". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and a button "Open pull request" will apper. Click it and GitHub will present you the "Comparing changes" page, where you can view all changes that you are about to submit. With all revised, click in "Create pull request" and a short form will be given, that you should fill out with information about your pull request. The title should start with the GitHub issue and end with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
 
@@ -216,11 +216,11 @@ At this point, you can switch to another issue and another topic branch. The Deb
 
 If the reviewers ask you to make additional changes, simply switch to your topic branch for that pull request:
 
-    $ git checkout dbz1234
+    $ git checkout dbz#1234
 
 and then make the changes on that branch and either add a new commit or ammend your previous commits. When you've addressed the reviewers' concerns, push your changes to your `origin` repository:
 
-    $ git push origin dbz1234
+    $ git push origin dbz#1234
 
 GitHub will automatically update the pull request with your latest changes, but we ask that you go to the pull request and add a comment summarizing what you did. This process may continue until the reviewers are satisfied.
 
@@ -228,11 +228,11 @@ By the way, please don't take offense if the reviewers ask you to make additiona
 
 Once your pull request has been merged, feel free to delete your topic branch both in your local repository:
 
-    $ git branch -d dbz1234
+    $ git branch -d dbz#1234
 
 and in your fork:
 
-    $ git push origin :dbz1234
+    $ git push origin :dbz#1234
 
 (This last command is a bit strange, but it basically is pushing an empty branch (the space before the `:` character) to the named branch. Pushing an empty branch is the same thing as removing it.)
 
