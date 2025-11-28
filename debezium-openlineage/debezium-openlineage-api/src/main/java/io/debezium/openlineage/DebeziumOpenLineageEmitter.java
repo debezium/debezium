@@ -54,12 +54,12 @@ public class DebeziumOpenLineageEmitter {
      * OpenLineage context and emitter if OpenLineage integration is enabled in the configuration.
      * The initialization is thread-safe and ensures each connector has its own emitter instance.
      *
-     * @param configuration The Debezium connector configuration containing OpenLineage settings
+     * @param configuration The Debezium connector configuration containing OpenLineage settings (should be pre-masked)
      * @param connectorTypeName The name of the connector used for event attribution
      */
     public static void init(Map<String, String> configuration, String connectorTypeName) {
 
-        LOGGER.debug("Calling init for connector {} and config {}", connectorTypeName, configuration);
+        LOGGER.debug("Calling init for connector {} with pre-masked config {}", connectorTypeName, configuration);
 
         ConnectorContext connectorContext = ConnectorContext.from(configuration, connectorTypeName);
         init(connectorContext);

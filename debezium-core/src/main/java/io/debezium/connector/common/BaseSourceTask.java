@@ -239,7 +239,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
-            DebeziumOpenLineageEmitter.init(props, connectorName());
+            DebeziumOpenLineageEmitter.init(getMaskedConfigurationMap(props), connectorName());
             DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
@@ -304,6 +304,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return config.withMaskedPasswords();
+    }
+
+    protected Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
     /**
