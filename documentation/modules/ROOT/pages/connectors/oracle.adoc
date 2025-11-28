@@ -2000,7 +2000,7 @@ endif::product[]
 
 ifdef::community[]
 Support for further data types is planned for subsequent releases.
-Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that might be missing.
+Please file a {issues-url}[GitHub issue] for any specific types that might be missing.
 endif::community[]
 
 [id="oracle-unsupported-types"]
@@ -5715,7 +5715,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
 Create an https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/xstream-out-concepts.html[XStream Outbound server].
 ifdef::community[]
-(given the right privileges, this might be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+(given the right privileges, this might be done automatically by the connector going forward, see https://issues.redhat.com/browse//browse/DBZ-721[DBZ-721]):
 endif::community[]
 
 .Create an XStream Outbound Server
@@ -6037,7 +6037,7 @@ An example of an ORA-25191 exception might look like this:
 ORA-25191: cannot reference overflow table of an index-organized table
 ```
 +
-If an ORA-25191 exception is thrown, please raise a Jira issue with the details about the table and it's mappings, related to other parent tables, etc.
+If an ORA-25191 exception is thrown, please raise a GitHub issue with the details about the table and it's mappings, related to other parent tables, etc.
 As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
 
 

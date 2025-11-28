@@ -24,8 +24,8 @@
     </scm>
 
     <issueManagement>
-        <system>jira</system>
-        <url>https://issues.redhat.com/browse/DBZ</url>
+        <system>GitHub Issues</system>
+        <url>https://github.com/debezium/dbz/issues</url>
     </issueManagement>
 
     <licenses>
