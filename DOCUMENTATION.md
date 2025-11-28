@@ -63,7 +63,7 @@ Should a documentation page need to reference attributes, e.g. version numbers, 
 
 The general rule is if an attribute changes frequently or is related to a specific version or subset of versions of Debezium, it likely belongs in the `antora.yml` file in this repository.  If the attribute changes infrequent or is not specific to a given version of Debezium, its easier to maintain that in the various playbook files in the Debezium website repository.
 
-Lets say we need to add an attribute that points to our JIRA issue for issue links,
+Lets say we need to add an attribute that points to our GitHub issue for issue links,
 that would be an example of an attrbute that would be defined in the playbook.
 But if we needed to add an attribute that points to a specific version of a Maven artifact or reference a specific version of a dependency,
 that's more appropriate for the `antora.yml` component descriptor located in this repository.
@@ -91,7 +91,7 @@ asciidoc:
   attributes:
     prodname: 'Debezium'
     context: 'debezium'
-    jira-url: 'https://issues.redhat.com'
+    issues-url: 'https://github.com/debezium/dbz/issues'
     # because of how handlebars templates work with page.attributes, this must be prefixed with "page-"
     page-copyright-year: '2020'
 ```
