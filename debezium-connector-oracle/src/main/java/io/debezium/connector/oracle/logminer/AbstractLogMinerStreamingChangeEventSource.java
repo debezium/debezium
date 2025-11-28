@@ -115,6 +115,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
     private final String archiveDestinationName;
+    private final boolean autonomousDatabaseMode;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -153,6 +154,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(jdbcConnection);
+        this.autonomousDatabaseMode = jdbcConnection.isAutonomousDatabase();
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -851,7 +853,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception is thrown
      */
     protected Scn calculateUpperBounds(Scn lowerBoundsScn, Scn previousUpperBounds, Scn currentScn) throws SQLException {
-        final Scn maximumScn = getConfig().isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn() : currentScn;
+        final Scn maximumScn = connectorConfig.isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn() : currentScn;
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
@@ -1126,7 +1128,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(jdbcConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(archiveDestinationName),
+                    SqlUtils.switchHistoryQuery(archiveDestinationName, autonomousDatabaseMode),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -1142,7 +1144,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurs
      */
     protected void prepareLogsForMining(boolean postMiningSessionEnded, Scn lowerBoundsScn) throws SQLException {
-        if (!useContinuousMining) {
+        if (!useContinuousMining && !autonomousDatabaseMode) {
             sessionContext.removeAllLogFilesFromSession();
         }
 
@@ -1153,8 +1155,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         currentLogFiles = logCollector.getLogs(lowerBoundsScn);
 
         if (!useContinuousMining) {
-            for (LogFile logFile : currentLogFiles) {
-                sessionContext.addLogFile(logFile.getFileName());
+            if (!autonomousDatabaseMode) {
+                // In ADB mode, LogMiner automatically finds logs
+                for (LogFile logFile : currentLogFiles) {
+                    sessionContext.addLogFile(logFile.getFileName());
+                }
             }
 
             currentRedoLogSequences = currentLogFiles.stream()
@@ -1839,7 +1844,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseAllSupplementalLoggingEnabled() throws SQLException {
-        return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(), rs -> {
+        return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 if ("YES".equalsIgnoreCase(rs.getString(2))) {
                     return true;
@@ -1856,7 +1861,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
-        return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
+        return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 final String value = rs.getString(2);
                 // YES - ADD SUPPLEMENTAL LOG DATA
@@ -2002,7 +2007,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if no system change number was found
      */
     private Scn getFirstScnAvailableInLogs() throws SQLException {
-        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName)
+        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName, jdbcConnection.isAutonomousDatabase())
                 .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
     }
 
