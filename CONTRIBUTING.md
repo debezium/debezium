@@ -12,7 +12,7 @@ You can reach us here:
 * [User chat](https://debezium.zulipchat.com/#narrow/stream/302529-users)
 * [Developers chat](https://debezium.zulipchat.com/#narrow/stream/302533-dev) - Only for internal development subjects
 * [Google Group](https://groups.google.com/forum/#!forum/debezium)
-* [Jira](https://issues.redhat.com/projects/DBZ/)
+* [GitHub Issues](https://github.com/debezium/dbz/issues)
 
 ## Install the tools
 
@@ -34,10 +34,10 @@ See the links above for installation instructions on your platform. You can veri
 
 Debezium uses [GitHub](GitHub.com) for its primary code repository and for pull-requests, so if you don't already have a GitHub account you'll need to [join](https://github.com/join).
 
-### Jira account
+### GitHub account
 
-Debezium uses the [Red Hat Jira](https://issues.redhat.com/) instance for issue tracking.
-If you don't have an account yet, you can create one for free by clicking "Log In" and then signing up with Red Hat's SSO service.
+Debezium uses the [GitHub Issues](https://github.com/debezium/dbz/issues) instance for issue tracking.
+If you don't have an account yet, you can create one for free by clicking "Sign Up".
 
 ## Working with the codebase
 
@@ -111,10 +111,10 @@ See the [Configure your Docker environment](README.md#configure-your-docker-envi
 
 ## Making changes
 
-Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [Jira](https://issues.redhat.com/projects/DBZ/) project. If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
+Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our project dedicated for [GitHub Issues](https://github.com/debezium/dbz/issues). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
 If you are going to work on a specific issue and it's your first contribution,
 please add a short comment to the issue, so other people know you're working on it.
-If you are contributing repeatedly, ask in our [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev) for the 'developer' Jira role so you can assign issues to yourself.
+If you are contributing repeatedly, ask in our [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev) for the 'committer' GitHub role so you can assign issues to yourself.
 
 Before you make any changes, be sure to switch to the `main` branch and pull the latest commits on the `main` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
@@ -122,9 +122,9 @@ Before you make any changes, be sure to switch to the `main` branch and pull the
     $ git pull upstream main
     $ mvn clean install
 
-Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `DBZ-1234`):
+Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `dbz1234`):
 
-    $ git checkout -b DBZ-1234
+    $ git checkout -b dbz1234
 
 This branch exists locally and it is there you should make all of your proposed changes for the issue. As you'll soon see, it will ultimately correspond to a single pull request that the Debezium committers will review and merge (or reject) as a whole. (Some issues are big enough that you may want to make several separate but incremental sets of changes. In that case, you can create subsequent topic branches for the same issue by appending a short suffix to the branch name.)
 
@@ -138,14 +138,14 @@ Committing is as simple as:
 
     $ git commit .
 
-which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the Jira issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
+which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the GitHub issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
-    DBZ-1234 Expanded the MySQL integration test and correct a unit test.
+    debezium/dbz#1234 Expanded the MySQL integration test and correct a unit test.
 
 If that phrase is not sufficient to explain your changes, then the first line should be followed by a blank line and one or more paragraphs with additional details. For example:
 
 ```
-DBZ-1235 Added support for ingesting data from PostgreSQL.
+debezium/dbz#1234 Added support for ingesting data from PostgreSQL.
 
 The new ingest library supports PostgreSQL 9.4 or later. It requires a small plugin to be installed
 on the database server, and the database to be configured so that the ingest component can connect
@@ -153,7 +153,7 @@ to the database and use logical decoding to read the transaction log. Several ne
 integration test were added.
 ```
 
-As an exception, commits for trivial documentation changes which don't warrant the creation of a Jira issue can be prefixed with `[docs]`, for example:
+As an exception, commits for trivial documentation changes which don't warrant the creation of a GitHub issue can be prefixed with `[docs]`, for example:
 
 ```
 [docs] Typo fix in Postgres connector documentation
@@ -191,7 +191,7 @@ If its been more than a day or so since you created your topic branch, we recomm
 
     $ git checkout main
     $ git pull upstream main
-    $ git checkout DBZ-1234
+    $ git checkout dbz1234
     $ git rebase main
 
 If your changes are compatible with the latest changes on `main`, this will complete and there's nothing else to do. However, if your changes affect the same files/lines as other changes have since been merged into the `main` branch, then your changes conflict with the other recent changes on `main`, and you will have to resolve them. The git output will actually tell you you need to do (e.g., fix a particular file, stage the file, and then run `git rebase --continue`), but if you have questions consult Git or GitHub documentation or spend some time reading about Git rebase conflicts on the Internet.
@@ -208,21 +208,19 @@ Any documentation update should be part of the pull request you submit for the c
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
 
-    $ git push origin DBZ-1234
+    $ git push origin dbz1234
 
-Then, in a browser go to your forked repository, and you should see a small section near the top of the page with a button labeled "Contribute". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and a button "Open pull request" will apper. Click it and GitHub will present you the "Comparing changes" page, where you can view all changes that you are about to submit. With all revised, click in "Create pull request" and a short form will be given, that you should fill out with information about your pull request. The title should start with the Jira issue and end with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
-
-When completed, press the "Create" button and copy the URL to the new pull request. Go to the corresponding Jira issue and record the pull request by pasting the URL into the "Pull request" field. (Be sure to not overwrite any URLs that were already in this field; this is how a single issue is bound to multiple pull requests.) Also, please add a Jira comment with a clear description of what you changed. You might even use the commit message (except for the first line).
+Then, in a browser go to your forked repository, and you should see a small section near the top of the page with a button labeled "Contribute". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and a button "Open pull request" will apper. Click it and GitHub will present you the "Comparing changes" page, where you can view all changes that you are about to submit. With all revised, click in "Create pull request" and a short form will be given, that you should fill out with information about your pull request. The title should start with the GitHub issue and end with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
 
 At this point, you can switch to another issue and another topic branch. The Debezium committers will be notified of your new pull request, and will review it in short order. They may ask questions or make remarks using line notes or comments on the pull request. (By default, GitHub will send you an email notification of such changes, although you can control this via your GitHub preferences.)
 
 If the reviewers ask you to make additional changes, simply switch to your topic branch for that pull request:
 
-    $ git checkout DBZ-1234
+    $ git checkout dbz1234
 
 and then make the changes on that branch and either add a new commit or ammend your previous commits. When you've addressed the reviewers' concerns, push your changes to your `origin` repository:
 
-    $ git push origin DBZ-1234
+    $ git push origin dbz1234
 
 GitHub will automatically update the pull request with your latest changes, but we ask that you go to the pull request and add a comment summarizing what you did. This process may continue until the reviewers are satisfied.
 
@@ -230,11 +228,11 @@ By the way, please don't take offense if the reviewers ask you to make additiona
 
 Once your pull request has been merged, feel free to delete your topic branch both in your local repository:
 
-    $ git branch -d DBZ-1234
+    $ git branch -d dbz1234
 
 and in your fork:
 
-    $ git push origin :DBZ-1234
+    $ git push origin :dbz1234
 
 (This last command is a bit strange, but it basically is pushing an empty branch (the space before the `:` character) to the named branch. Pushing an empty branch is the same thing as removing it.)
 
@@ -253,10 +251,10 @@ The project currently builds its jobs in two environments:
 
 Here's a quick check list for a good pull request (PR):
 
-* Discussed and approved on Jira, chat or the mailing list
-* A Jira associated with your PR (include the Jira issue number in commit comment)
+* Discussed and approved on GitHub Issues, chat or the mailing list
+* A GitHub Issue associated with your PR (include the GitHub issue number in commit comment)
 * One feature/change per PR
-* No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate Jira issue)
+* No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate GitHub issue)
 * New/changed features have been documented
 * A full build completes successfully
 * Do a rebase on upstream `main`
