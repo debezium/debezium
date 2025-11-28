@@ -198,12 +198,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                     : documentReader.read(signalRecord.getData());
 
             if (knownPartition != null) {
-                // Source signal: We know the partition from CDC event
-                // TODO the problem here is that since we have just one signal data collection
-                // we use then as partition and offsets the one related to the database where the signal data collection reside.
-                // This lead to events emitted with a wrong partition/offset.
-                // An idea could be to add the id used in the execute-snapshot signal during while emitting open/close signal as a metadata.
-                // In this case if we maintain a map of id and related partition we could identify the right one.
                 O offset = partitionOffsets.get(knownPartition);
                 if (offset != null) {
                     LOGGER.info("Processing source signal '{}' for partition {}", signalRecord.getId(), knownPartition);

@@ -249,7 +249,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             final Configuration config = TestHelper.defaultConnectorConfig()
                     .with(SqlServerConnectorConfig.DATABASE_NAMES, TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
                     .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                    .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal")
+                    .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION,
+                            String.join(",", TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal",
+                                    TestHelper.TEST_DATABASE_2 + ".dbo.debezium_signal"))
                     .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 5)
                     .build();
 
@@ -280,7 +282,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 assertThat(tableARecords.get(i).sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_1);
             }
 
-            connection.execute(String.format(
+            connection2.execute(String.format(
                     "INSERT INTO debezium_signal VALUES ('signal-2', 'execute-snapshot', " +
                             "'{\"data-collections\": [\"%s.dbo.b\"]}')",
                     TestHelper.TEST_DATABASE_2));
