@@ -62,13 +62,19 @@ public class RelationalTableFilters implements DataCollectionFilters {
         Predicate<TableId> finalTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? tablePredicate.and(systemTablesFilter::isIncluded)
                 : tablePredicate;
-        String signalDataCollection = config.getString(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION);
-        if (signalDataCollection != null) {
-            TableId signalDataCollectionTableId = TableId.parse(signalDataCollection, useCatalogBeforeSchema);
-            if (!finalTablePredicate.test(signalDataCollectionTableId)) {
-                final Predicate<TableId> signalDataCollectionPredicate = Selectors.tableSelector()
-                        .includeTables(tableIdMapper.toString(signalDataCollectionTableId), tableIdMapper).build();
-                finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
+
+        // Add signal data collection tables to the filter
+        java.util.List<String> signalDataCollections = config.getList(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION);
+        if (signalDataCollections != null && !signalDataCollections.isEmpty()) {
+            for (String signalDataCollection : signalDataCollections) {
+                if (signalDataCollection != null && !signalDataCollection.trim().isEmpty()) {
+                    TableId signalDataCollectionTableId = TableId.parse(signalDataCollection.trim(), useCatalogBeforeSchema);
+                    if (!finalTablePredicate.test(signalDataCollectionTableId)) {
+                        final Predicate<TableId> signalDataCollectionPredicate = Selectors.tableSelector()
+                                .includeTables(tableIdMapper.toString(signalDataCollectionTableId), tableIdMapper).build();
+                        finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
+                    }
+                }
             }
         }
         this.tableFilter = TableFilter.cached(finalTablePredicate::test);
