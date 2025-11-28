@@ -35,7 +35,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         extends AbstractIncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
-    private final String signalWindowStatement;
     private SignalMetadata signalMetadata;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -46,8 +45,54 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            DataChangeEventListener<P> dataChangeEventListener,
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
-                + " VALUES (?, ?, ?)";
+    }
+
+    /**
+     * Get the appropriate signal table name for the current incremental snapshot data collection.
+     * For multi-database connectors with multiple signal tables, this method matches the signal table
+     * to the database of the table being snapshotted.
+     */
+    protected String getSignalTableNameForCurrentSnapshot() {
+        if (connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            return null;
+        }
+
+        // If only one signal table configured, use it
+        if (connectorConfig.getSignalingDataCollectionIds().size() == 1) {
+            return getSignalTableName(connectorConfig.getSignalingDataCollectionIds().get(0));
+        }
+
+        // Multiple signal tables: match to the current snapshot target database
+        if (context != null && context.currentDataCollectionId() != null) {
+            String targetDatabase = getDatabaseName(context.currentDataCollectionId().getId());
+
+            for (String signalCollection : connectorConfig.getSignalingDataCollectionIds()) {
+                String signalDatabase = getDatabaseName(signalCollection);
+                if (targetDatabase != null && targetDatabase.equals(signalDatabase)) {
+                    return getSignalTableName(signalCollection);
+                }
+            }
+        }
+
+        // Fallback to first signal table
+        LOGGER.warn("Could not match signal table to snapshot target database, using first signal table");
+        return getSignalTableName(connectorConfig.getSignalingDataCollectionIds().get(0));
+    }
+
+    /**
+     * Extract the database name from a data collection ID or signal collection string.
+     * Subclasses may override this to provide connector-specific logic.
+     */
+    protected String getDatabaseName(Object dataCollectionId) {
+        if (dataCollectionId instanceof io.debezium.relational.TableId) {
+            return ((io.debezium.relational.TableId) dataCollectionId).catalog();
+        }
+        if (dataCollectionId instanceof String) {
+            // Parse as TableId to extract catalog/database
+            io.debezium.relational.TableId tableId = io.debezium.relational.TableId.parse((String) dataCollectionId);
+            return tableId.catalog();
+        }
+        return null;
     }
 
     @Override
@@ -66,9 +111,16 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowOpen() throws SQLException {
+        String signalTableName = getSignalTableNameForCurrentSnapshot();
+        if (signalTableName == null) {
+            LOGGER.warn("No signal table configured, cannot emit window open signal");
+            return;
+        }
+
+        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
         signalMetadata = new SignalMetadata(Instant.now(), null);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
+            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
             x.setString(3, signalMetadata.metadataString());
@@ -78,9 +130,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
+        String signalTableName = getSignalTableNameForCurrentSnapshot();
+        if (signalTableName == null) {
+            LOGGER.warn("No signal table configured, cannot emit window close signal");
+            return;
+        }
 
-        String signalTableName = getSignalTableName(connectorConfig.getSignalingDataCollectionId());
-
+        LOGGER.trace("Emitting close window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
 
         watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());

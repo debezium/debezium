@@ -22,7 +22,6 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory<SqlServerPartition, SqlServerOffsetContext> {
 
@@ -80,7 +79,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
                                                                                                                                                   NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
-        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
         final SignalBasedIncrementalSnapshotChangeEventSource<SqlServerPartition, TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<>(
