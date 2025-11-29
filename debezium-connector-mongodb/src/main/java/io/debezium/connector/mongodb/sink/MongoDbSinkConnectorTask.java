@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.openlineage.OpenLineageConfig;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -170,8 +171,8 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         return result;
     }
 
-    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props){
-        return Configuration.from(props).withMaskedPasswords().asMap();
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)

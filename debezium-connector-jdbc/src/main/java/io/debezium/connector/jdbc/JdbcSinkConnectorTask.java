@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import io.debezium.config.Configuration;
+import io.debezium.openlineage.OpenLineageConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -260,8 +261,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
         return previousPutException;
     }
 
-    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props){
-        return Configuration.from(props).withMaskedPasswords().asMap();
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     /**

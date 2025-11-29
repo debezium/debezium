@@ -15,6 +15,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_C
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -208,6 +209,22 @@ public class ConfigurationTest {
         assertThat(config.toString().contains("warning")).isFalse();
         assertThat(config.withMaskedPasswords().getString("column.password")).isEqualTo("********");
         assertThat(config.getString("column.password")).isEqualTo("warning");
+    }
+
+    @Test
+    public void shouldSupportCustomMaskingPattern() {
+        Map<String, String> props = Map.of(
+                "database.password", "secret123",
+                "api.token", "token456",
+                "custom.credential", "cred789",
+                "normal.config", "value",
+                "openlineage.integration.sanitize.pattern", ".*\\.token$|.*\\.credential$");
+
+        Configuration masked = Configuration.fromWithCustomMasking(props, "openlineage.integration.sanitize.pattern");
+        assertThat(masked.getString("database.password")).isEqualTo("********");
+        assertThat(masked.getString("api.token")).isEqualTo("********");
+        assertThat(masked.getString("custom.credential")).isEqualTo("********");
+        assertThat(masked.getString("normal.config")).isEqualTo("value");
     }
 
     /**

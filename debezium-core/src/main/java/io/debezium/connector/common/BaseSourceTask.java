@@ -44,6 +44,7 @@ import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
@@ -307,7 +308,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     protected Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
-        return Configuration.from(props).withMaskedPasswords().asMap();
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     /**
