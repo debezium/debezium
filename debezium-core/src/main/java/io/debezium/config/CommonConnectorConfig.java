@@ -1358,8 +1358,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription(
-                    "Customer regular expression pattern for identifying additional configuration keys containing sensitive data that should be masked " +
-                            "in OpenLineage metadata. Used in addition to the default password pattern.");
+                    "Custom regex pattern to mask additional sensitive configuration keys when emitting OpenLineage metadata.");
 
     /**
      * Configuration field for enabling or disabling extended Debezium context headers.
