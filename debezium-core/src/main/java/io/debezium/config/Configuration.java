@@ -980,6 +980,27 @@ public interface Configuration {
     }
 
     /**
+     * Obtain a configuration instance from the supplied properties while applying default password masking
+     * and an optional custom masking pattern.
+     *
+     * <p>If the {@code customPatternKey} entry exists in the supplied properties and contains a non-empty
+     * regular expression, that pattern is combined with the default password-masking pattern so that both
+     * are used to mask sensitive fields. Otherwise, only the default password masking is applied.</p>
+     *
+     * @param properties the configuration properties; may be null
+     * @param customPatternKey the key whose value defines an additional masking pattern; may be null
+     * @return the configuration with masking applied; never null
+     */
+    static Configuration fromWithCustomMasking(Map<String, String> properties, String customPatternKey) {
+        Configuration config = Configuration.from(properties);
+        String customPattern = (customPatternKey != null && properties != null) ? properties.get(customPatternKey) : null;
+        if (customPattern != null && !customPattern.trim().isEmpty()) {
+            return config.withMasked(PASSWORD_PATTERN.pattern() + "|" + customPattern);
+        }
+        return config.withMaskedPasswords();
+    }
+
+    /**
      * Obtain an editor for a copy of this configuration.
      *
      * @return a builder that is populated with this configuration's key-value pairs; never null

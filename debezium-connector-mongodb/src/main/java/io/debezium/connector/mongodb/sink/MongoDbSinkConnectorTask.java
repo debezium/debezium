@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.openlineage.OpenLineageConfig;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -70,7 +71,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), getMaskedConfigurationMap(props));
             DebeziumOpenLineageEmitter.init(connectorContext);
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
@@ -168,6 +169,10 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             }
         }
         return result;
+    }
+
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)

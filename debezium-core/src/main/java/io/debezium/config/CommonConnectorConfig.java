@@ -1329,6 +1329,38 @@ public abstract class CommonConnectorConfig {
             .withDescription("The Kafka bootstrap server address used as input/output namespace/");
 
     /**
+     * Configuration field for specifying a custom sanitization pattern for masking sensitive
+     * configuration values in OpenLineage metadata.
+     *
+     * <p>This field allows users to define an additional regular expression pattern that
+     * identifies configuration keys containing sensitive information. Any key matching this
+     * pattern will have its value masked before being included in OpenLineage metadata.</p>
+     *
+     * <p>The custom pattern is applied in addition to Debezium's default password masking
+     * behavior, enabling users to extend masking to other sensitive fields such as tokens,
+     * API keys, or credentials.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.sanitize.pattern}<br>
+     * <strong>Type:</strong> String <br>
+     * <strong>Format:</strong> Regular expression<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * openlineage.integration.sanitize.pattern=.*\.token$|.*\.credential$
+     * }</pre>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN)
+            .withDisplayName("Custom pattern for masking sensitive configuration in OpenLineage")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 48))
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription(
+                    "Custom regex pattern to mask additional sensitive configuration keys when emitting OpenLineage metadata.");
+
+    /**
      * Configuration field for enabling or disabling extended Debezium context headers.
      *
      * <p>This field controls whether Debezium includes additional context headers in CDC events
@@ -1433,6 +1465,7 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
                     OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER,
+                    OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN,
                     EXTENDED_HEADERS_ENABLED,
                     GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION)

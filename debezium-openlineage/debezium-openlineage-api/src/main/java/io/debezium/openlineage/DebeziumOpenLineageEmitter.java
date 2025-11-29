@@ -53,6 +53,7 @@ public class DebeziumOpenLineageEmitter {
      * This method must be called before any emission methods are used. It sets up the
      * OpenLineage context and emitter if OpenLineage integration is enabled in the configuration.
      * The initialization is thread-safe and ensures each connector has its own emitter instance.
+     * Configuration values are automatically masked for security before being included in OpenLineage metadata.
      *
      * @param configuration The Debezium connector configuration containing OpenLineage settings
      * @param connectorTypeName The name of the connector used for event attribution
@@ -184,7 +185,7 @@ public class DebeziumOpenLineageEmitter {
         LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
         LOGGER.debug("Available emitters {}", emitters);
         if (emitter == null) {
-            throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext + ". Call init() first.");
+            throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext.toEmitterKey() + ". Call init() first.");
         }
         return emitter;
     }

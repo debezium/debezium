@@ -44,6 +44,7 @@ import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
@@ -239,7 +240,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
-            DebeziumOpenLineageEmitter.init(props, connectorName());
+            DebeziumOpenLineageEmitter.init(getMaskedConfigurationMap(props), connectorName());
             DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
@@ -304,6 +305,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return config.withMaskedPasswords();
+    }
+
+    protected Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     /**

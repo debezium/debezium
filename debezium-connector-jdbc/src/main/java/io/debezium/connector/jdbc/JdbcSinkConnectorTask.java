@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import io.debezium.config.Configuration;
+import io.debezium.openlineage.OpenLineageConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -110,7 +112,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), getMaskedConfigurationMap(props));
             DebeziumOpenLineageEmitter.init(connectorContext);
 
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
@@ -257,6 +259,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
     @VisibleForTesting
     public Throwable getLastProcessingException() {
         return previousPutException;
+    }
+
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.fromWithCustomMasking(props, OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_SANITIZE_PATTERN).asMap();
     }
 
     /**
