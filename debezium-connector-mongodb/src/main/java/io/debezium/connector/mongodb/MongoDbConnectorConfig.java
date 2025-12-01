@@ -1469,7 +1469,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     @Override
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
         final CollectionId id = (CollectionId) dataCollectionId;
-        return getSignalingDataCollectionId() != null
-                && Objects.equals(CollectionId.parse(getSignalingDataCollectionId()), id);
+        return getSignalingDataCollectionIds().stream()
+                .map(CollectionId::parse)
+                .anyMatch(signalId -> Objects.equals(signalId, id));
     }
 }
