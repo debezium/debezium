@@ -30,7 +30,6 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
@@ -135,7 +134,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         }
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
-        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(

@@ -32,7 +32,6 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 /**
  * @author Chris Cranford
@@ -135,7 +134,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         }
 
         // If no data collection id is provided, don't return an instance as the implement requires the table
-        if (Strings.isNullOrBlank(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
 

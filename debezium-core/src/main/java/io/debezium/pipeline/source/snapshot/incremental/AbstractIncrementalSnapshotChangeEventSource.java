@@ -208,7 +208,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * Update low watermark for the incremental snapshot chunk
      */
-    protected abstract void emitWindowOpen() throws SQLException;
+    protected abstract void emitWindowOpen(P partition, OffsetContext offsetContext) throws SQLException;
 
     /**
      * Update high watermark for the incremental snapshot chunk
@@ -259,7 +259,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // This commit should be unnecessary and might be removed later
             jdbcConnection.commit();
             context.startNewChunk();
-            emitWindowOpen();
+            emitWindowOpen(partition, offsetContext);
             LOGGER.trace("Window open emitted");
             while (context.snapshotRunning()) {
 
@@ -477,6 +477,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds,
                 snapshotConfiguration.getAdditionalConditions(),
                 snapshotConfiguration.getSurrogateKey());
+
+        validateSignalTableConfiguration(newDataCollectionIds);
+
         if (shouldReadChunk) {
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
@@ -490,6 +493,56 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
             readChunk(partition, offsetContext);
         }
+    }
+
+    /**
+     * Validates that signal table configuration is appropriate for the tables being snapshotted.
+     * For multi-database connectors with a single signal table, warns if tables from different
+     * databases are being snapshotted.
+     */
+    protected void validateSignalTableConfiguration(List<DataCollection<T>> dataCollections) {
+
+        if (connectorConfig.getSignalingDataCollectionIds().size() != 1) {
+            // Either no signal tables or multiple signal tables configured - no validation needed
+            return;
+        }
+
+        // This means that for multitask connector cross signaling is not permitted.
+        String signalTableId = connectorConfig.getSignalingDataCollectionIds().get(0);
+        String signalDatabase = getDatabaseName(signalTableId);
+
+        if (signalDatabase == null) {
+            return;
+        }
+
+        // Check if any data collection is from a different database than the signal table
+        for (DataCollection<T> dataCollection : dataCollections) {
+            String targetDatabase = getDatabaseName(dataCollection.getId());
+            if (targetDatabase != null && !targetDatabase.equals(signalDatabase)) {
+                LOGGER.warn("Incremental snapshot for table '{}' in database '{}' is using signal table from database '{}'. " +
+                        "This may result in incorrect partition/offset context in emitted events. " +
+                        "For multi-database connectors, configure one signal table per database using a comma-separated list " +
+                        "in 'signal.data.collection' property (e.g., 'db1.dbo.debezium_signal,db2.dbo.debezium_signal').",
+                        dataCollection.getId(), targetDatabase, signalDatabase);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Extract the database name from a data collection ID.
+     * Default implementation handles TableId, subclasses may override.
+     */
+    protected String getDatabaseName(Object dataCollectionId) {
+
+        if (dataCollectionId instanceof io.debezium.relational.TableId) {
+            return ((io.debezium.relational.TableId) dataCollectionId).catalog();
+        }
+        if (dataCollectionId instanceof String) {
+            io.debezium.relational.TableId tableId = io.debezium.relational.TableId.parse((String) dataCollectionId);
+            return tableId.catalog();
+        }
+        return null;
     }
 
     @Override

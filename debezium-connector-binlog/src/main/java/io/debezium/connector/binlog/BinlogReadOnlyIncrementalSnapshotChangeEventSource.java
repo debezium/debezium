@@ -113,7 +113,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    protected void emitWindowOpen() {
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) {
         updateLowWatermark();
     }
 

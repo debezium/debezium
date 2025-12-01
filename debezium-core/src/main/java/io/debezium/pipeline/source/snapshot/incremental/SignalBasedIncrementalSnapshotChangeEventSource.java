@@ -10,6 +10,7 @@ import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.LoggingContext;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
@@ -48,49 +50,45 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     /**
-     * Get the appropriate signal table name for the current incremental snapshot data collection.
+     * Get the appropriate signal table name for the given partition.
      * For multi-database connectors with multiple signal tables, this method matches the signal table
-     * to the database of the table being snapshotted.
+     * to the database of the partition.
+     *
+     * @param partition the partition for which to get the signal table
+     * @return the signal table name, or null if not configured
      */
-    protected String getSignalTableNameForCurrentSnapshot() {
-        if (connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
-            return null;
-        }
+    protected String getSignalTableNameForPartition(Partition partition) {
 
-        // If only one signal table configured, use it
         if (connectorConfig.getSignalingDataCollectionIds().size() == 1) {
             return getSignalTableName(connectorConfig.getSignalingDataCollectionIds().get(0));
         }
 
-        // Multiple signal tables: match to the current snapshot target database
-        if (context != null && context.currentDataCollectionId() != null) {
-            String targetDatabase = getDatabaseName(context.currentDataCollectionId().getId());
-
-            for (String signalCollection : connectorConfig.getSignalingDataCollectionIds()) {
-                String signalDatabase = getDatabaseName(signalCollection);
-                if (targetDatabase != null && targetDatabase.equals(signalDatabase)) {
-                    return getSignalTableName(signalCollection);
-                }
-            }
+        String partitionDatabase = getDatabaseNameFromPartition(partition);
+        if (partitionDatabase == null) {
+            return null;
         }
 
-        // Fallback to first signal table
-        LOGGER.warn("Could not match signal table to snapshot target database, using first signal table");
-        return getSignalTableName(connectorConfig.getSignalingDataCollectionIds().get(0));
+        return connectorConfig.getSignalingDataCollectionIds().stream()
+                .filter(signalCollection -> partitionDatabase.equals(getDatabaseName(signalCollection)))
+                .map(this::getSignalTableName)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
-     * Extract the database name from a data collection ID or signal collection string.
-     * Subclasses may override this to provide connector-specific logic.
+     * Extract the database name from a partition.
+     * Default implementation tries to use AbstractPartition's databaseName field via reflection.
+     * Subclasses should override this for connector-specific partition types.
+     *
+     * @param partition the partition
+     * @return the database name, or null if it cannot be determined
      */
-    protected String getDatabaseName(Object dataCollectionId) {
-        if (dataCollectionId instanceof io.debezium.relational.TableId) {
-            return ((io.debezium.relational.TableId) dataCollectionId).catalog();
-        }
-        if (dataCollectionId instanceof String) {
-            // Parse as TableId to extract catalog/database
-            io.debezium.relational.TableId tableId = io.debezium.relational.TableId.parse((String) dataCollectionId);
-            return tableId.catalog();
+    protected String getDatabaseNameFromPartition(Partition partition) {
+        // Default implementation: try to extract from relational AbstractPartition
+        if (partition instanceof io.debezium.relational.AbstractPartition) {
+            // Access the protected field via the source partition
+            Map<String, String> loggingContext = partition.getLoggingContext();
+            return loggingContext.get(LoggingContext.DATABASE_NAME);
         }
         return null;
     }
@@ -110,10 +108,10 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowOpen() throws SQLException {
-        String signalTableName = getSignalTableNameForCurrentSnapshot();
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) throws SQLException {
+        String signalTableName = getSignalTableNameForPartition(partition);
         if (signalTableName == null) {
-            LOGGER.warn("No signal table configured, cannot emit window open signal");
+            LOGGER.warn("Not able to determine signal table, cannot emit window open signal");
             return;
         }
 
@@ -129,10 +127,10 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
-        String signalTableName = getSignalTableNameForCurrentSnapshot();
+    protected void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception {
+        String signalTableName = getSignalTableNameForPartition(partition);
         if (signalTableName == null) {
-            LOGGER.warn("No signal table configured, cannot emit window close signal");
+            LOGGER.warn("Not able to detect signal table, cannot emit window close signal");
             return;
         }
 
