@@ -109,8 +109,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.snapshotProgressListener = snapshotProgressListener;
         this.snapshotterService = snapshotterService;
 
-        if (!Strings.isNullOrBlank(connectorConfig.getSignalingDataCollectionId())) {
-            this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionId());
+        if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         }
         else {
             this.signalDataCollectionTableId = null;
@@ -324,7 +324,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
 
         String tableIncludeList = connectorConfig.tableIncludeList();
-        String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
+        List<String> signalingDataCollections = connectorConfig.getSignalingDataCollectionIds();
 
         List<Pattern> captureTablePatterns = new ArrayList<>();
         if (!Strings.isNullOrBlank(tableIncludeList)) {
@@ -334,7 +334,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             captureTablePatterns.add(MATCH_ALL_PATTERN);
         }
 
-        if (!Strings.isNullOrBlank(signalingDataCollection)) {
+        for (String signalingDataCollection : signalingDataCollections) {
             captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
         }
 
