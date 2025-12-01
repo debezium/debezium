@@ -320,8 +320,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     }
 
     private static Optional<TableId> getSignalDataCollectionId(OracleConnectorConfig connectorConfig) {
-        if (!Strings.isNullOrEmpty(connectorConfig.getSignalingDataCollectionId())) {
-            return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionId()));
+        if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0)));
         }
         return Optional.empty();
     }

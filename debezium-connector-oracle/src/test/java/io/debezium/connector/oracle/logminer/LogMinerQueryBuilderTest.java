@@ -357,8 +357,8 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getSignalDataCollectionTableClause(OracleConnectorConfig config) {
-        if (!Strings.isNullOrEmpty(config.getSignalingDataCollectionId())) {
-            final TableId tableId = TableId.parse(config.getSignalingDataCollectionId());
+        if (!config.getSignalingDataCollectionIds().isEmpty()) {
+            final TableId tableId = TableId.parse(config.getSignalingDataCollectionIds().get(0));
 
             boolean foundMatch = false;
             final List<Pattern> includeList = Strings.listOfRegex(config.tableIncludeList(), Pattern.CASE_INSENSITIVE);

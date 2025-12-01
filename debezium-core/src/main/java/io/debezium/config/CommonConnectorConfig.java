@@ -2033,14 +2033,6 @@ public abstract class CommonConnectorConfig {
         return fieldNameAdjustmentMode.createAdjuster();
     }
 
-    /**
-     * @deprecated Use {@link #getSignalingDataCollectionIds()} instead
-     */
-    @Deprecated
-    public String getSignalingDataCollectionId() {
-        return signalingDataCollections.isEmpty() ? null : signalingDataCollections.get(0);
-    }
-
     public List<String> getSignalingDataCollectionIds() {
         return signalingDataCollections;
     }
