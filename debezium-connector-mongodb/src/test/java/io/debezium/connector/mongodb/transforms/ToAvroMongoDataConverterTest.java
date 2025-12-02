@@ -22,8 +22,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.confluent.connect.avro.AvroData;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
@@ -42,8 +42,8 @@ public class ToAvroMongoDataConverterTest {
     private AvroData avroData;
     private MongoDataConverter converter;
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeEach
+    void setup() throws Exception {
         record = getFile("complex_objects.json");
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("complex");
@@ -52,7 +52,7 @@ public class ToAvroMongoDataConverterTest {
     }
 
     @Test
-    public void shouldCreateStructWithNestedObject() {
+    void shouldCreateStructWithNestedObject() {
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 

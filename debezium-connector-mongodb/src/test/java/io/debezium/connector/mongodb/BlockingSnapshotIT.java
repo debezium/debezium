@@ -36,9 +36,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -63,21 +63,21 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
     private static final String DOCUMENT_ID = "_id";
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config().build());
 
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
     @Test
-    public void executeBlockingSnapshot() throws Exception {
+    void executeBlockingSnapshot() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -103,7 +103,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void executeBlockingSnapshotWhileStreaming() throws Exception {
+    void executeBlockingSnapshotWhileStreaming() throws Exception {
         // Testing.Debug.enable();
 
         populateDataCollection();
@@ -135,7 +135,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void executeBlockingSnapshotWithAdditionalCondition() throws Exception {
+    void executeBlockingSnapshotWithAdditionalCondition() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection(dataCollectionNames().get(1));
@@ -158,7 +158,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
     @FixFor("DBZ-7903")
     @Test
-    public void aFailedBlockingSnapshotShouldNotCauseInitialSnapshotOnRestart() throws Exception {
+    void aFailedBlockingSnapshotShouldNotCauseInitialSnapshotOnRestart() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection(dataCollectionNames().get(0));

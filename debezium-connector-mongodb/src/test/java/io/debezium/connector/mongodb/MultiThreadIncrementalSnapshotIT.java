@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 
@@ -34,7 +34,7 @@ public class MultiThreadIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     @Test
-    public void multiThreadingSnapshot() throws Exception {
+    void multiThreadingSnapshot() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -50,7 +50,7 @@ public class MultiThreadIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     @Test
-    public void multiThreadSnapshotWithRestart() throws Exception {
+    void multiThreadSnapshotWithRestart() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();

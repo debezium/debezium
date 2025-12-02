@@ -17,7 +17,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import io.debezium.config.Configuration;
@@ -27,7 +27,7 @@ import io.debezium.data.Envelope;
 public class MongoDbConnectorConfigTest {
 
     @Test
-    public void parseSignallingMessage() {
+    void parseSignallingMessage() {
         Schema schema = new SchemaBuilder(Schema.Type.STRUCT).field("after", Schema.STRING_SCHEMA).build();
         Struct struct = new Struct(schema);
         struct.put("after", "{\"_id\":\"test-1\"," +
@@ -46,7 +46,7 @@ public class MongoDbConnectorConfigTest {
     }
 
     @Test
-    public void parseCursorPipeline() {
+    void parseCursorPipeline() {
         verifyCursorPipelineValidateError("This is not valid JSON pipeline",
                 "Change stream pipeline JSON is invalid: JSON reader was expecting a value but found 'This'.");
         verifyCursorPipelineValidateError("{$match: {}}", "Change stream pipeline JSON is invalid: Cannot cast org.bson.Document to java.util.List");
