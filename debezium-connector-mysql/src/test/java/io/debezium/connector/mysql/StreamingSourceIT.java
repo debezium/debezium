@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.binlog.BinlogStreamingSourceIT;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
@@ -34,7 +34,7 @@ public class StreamingSourceIT extends BinlogStreamingSourceIT<MySqlConnector> i
     @FixFor("DBZ-1208")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldFailOnUnknownTlsProtocol() {
+    void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
@@ -61,7 +61,7 @@ public class StreamingSourceIT extends BinlogStreamingSourceIT<MySqlConnector> i
     @FixFor("DBZ-1208")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldAcceptTls12() throws Exception {
+    void shouldAcceptTls12() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
