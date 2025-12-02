@@ -13,7 +13,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class EnumSetTest {
     @Test

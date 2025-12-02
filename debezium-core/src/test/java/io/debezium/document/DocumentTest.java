@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 
@@ -28,7 +28,7 @@ public class DocumentTest {
     private Map<Path, Value> found = new LinkedHashMap<>();
     private Iterator<Map.Entry<Path, Value>> iterator;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         doc = null;
         found = new LinkedHashMap<>();
