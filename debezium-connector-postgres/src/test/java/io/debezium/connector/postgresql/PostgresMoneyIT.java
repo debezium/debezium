@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -31,14 +31,14 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
  */
 public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         initializeConnectorTestFramework();
         TestHelper.dropAllSchemas();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

@@ -50,13 +50,13 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
@@ -130,18 +130,18 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -149,7 +149,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateConnectorConfigDef() {
+    void shouldValidateConnectorConfigDef() {
         connector = new PostgresConnector();
         ConfigDef configDef = connector.config();
         assertThat(configDef).isNotNull();
@@ -157,7 +157,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotStartWithInvalidConfiguration() throws Exception {
+    void shouldNotStartWithInvalidConfiguration() throws Exception {
         // use an empty configuration which should be invalid because of the lack of DB connection details
         Configuration config = Configuration.create().build();
 
@@ -171,7 +171,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateMinimalConfiguration() throws Exception {
+    void shouldValidateMinimalConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig().build();
         Config validateConfig = new PostgresConnector().validate(config.asMap());
         validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
@@ -179,7 +179,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
+    void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
         // Start with a clean slate and create database objects
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication();
@@ -214,7 +214,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateConfiguration() throws Exception {
+    void shouldValidateConfiguration() throws Exception {
         // use an empty configuration which should be invalid because of the lack of DB connection details
         Configuration config = Configuration.create().build();
         PostgresConnector connector = new PostgresConnector();
@@ -258,7 +258,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateReplicationSlotName() throws Exception {
+    void shouldValidateReplicationSlotName() throws Exception {
         Configuration config = Configuration.create()
                 .with(PostgresConnectorConfig.SLOT_NAME, "xx-aa")
                 .build();
@@ -269,7 +269,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldSupportSSLParameters() throws Exception {
+    void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,
@@ -295,7 +295,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceEventsWithInitialSnapshot() throws Exception {
+    void shouldProduceEventsWithInitialSnapshot() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
@@ -372,7 +372,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldConsumeMessagesFromSnapshotOld() throws Exception {
+    void shouldConsumeMessagesFromSnapshotOld() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         final int recordCount = 100;
 
@@ -492,7 +492,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReceiveChangesForChangeColumnDefault() throws Exception {
+    void shouldReceiveChangesForChangeColumnDefault() throws Exception {
         // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         TestHelper.create().dropReplicationSlot(slotName);
@@ -648,7 +648,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
+    void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
         // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         try (PostgresConnection conn = TestHelper.create()) {
@@ -842,7 +842,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldIgnoreViews() throws Exception {
+    void shouldIgnoreViews() throws Exception {
         TestHelper.execute(
                 SETUP_TABLES_STMT +
                         "CREATE VIEW s1.myview AS SELECT * from s1.a;");
@@ -878,7 +878,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldLimitDecoderLog() throws Exception {
+    void shouldLimitDecoderLog() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(AbstractMessageDecoder.class);
         TestHelper.execute(
                 SETUP_TABLES_STMT +
@@ -940,7 +940,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
+    void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
         // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -962,7 +962,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
+    void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
         // Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
@@ -983,7 +983,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceEventsWhenAlwaysTakingSnapshots() throws InterruptedException {
+    void shouldProduceEventsWhenAlwaysTakingSnapshots() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
@@ -1011,7 +1011,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldResumeSnapshotIfFailingMidstream() throws Exception {
+    void shouldResumeSnapshotIfFailingMidstream() throws Exception {
         // insert another set of rows so we can stop at certain point
         CountDownLatch latch = new CountDownLatch(1);
         String setupStmt = SETUP_TABLES_STMT + INSERT_STMT;
@@ -1083,7 +1083,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentity() throws Exception {
+    void shouldUpdateReplicaIdentity() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1115,7 +1115,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityWithRegExp() throws Exception {
+    void shouldUpdateReplicaIdentityWithRegExp() throws Exception {
 
         TestHelper.executeDDL("postgres_create_multiple_tables.ddl");
 
@@ -1146,7 +1146,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotUpdateReplicaIdentityWithRegExpDuplicated() throws Exception {
+    void shouldNotUpdateReplicaIdentityWithRegExpDuplicated() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1174,7 +1174,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
+    void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1203,7 +1203,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
+    void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1240,7 +1240,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
+    void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnection.class);
@@ -1268,7 +1268,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
+    void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1302,7 +1302,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTakeExcludeListFiltersIntoAccount() throws Exception {
+    void shouldTakeExcludeListFiltersIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
@@ -1342,7 +1342,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
+    void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
@@ -1440,7 +1440,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldRemoveWhiteSpaceCharsOld() throws Exception {
+    void shouldRemoveWhiteSpaceCharsOld() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
@@ -2176,7 +2176,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void testStreamingPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2211,7 +2211,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void testSnapshotPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2234,7 +2234,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws InterruptedException {
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws InterruptedException {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -3263,7 +3263,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
+    void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
         // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -3812,7 +3812,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldFailWhenReadOnlyIsNotSupported() {
+    void shouldFailWhenReadOnlyIsNotSupported() {
 
         PostgresDatabaseVersionResolver databaseVersionResolver = new PostgresDatabaseVersionResolver();
 

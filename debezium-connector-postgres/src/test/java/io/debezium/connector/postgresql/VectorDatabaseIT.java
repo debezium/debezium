@@ -13,9 +13,9 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -34,8 +34,8 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
     @Rule
     public final SkipTestRule skipTest = new SkipTestRule();
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // ensure the slot is deleted for each test
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
@@ -49,7 +49,7 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldSnapshotAndStreamData() throws Exception {
+    void shouldSnapshotAndStreamData() throws Exception {
         // Testing.Print.enable();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
@@ -85,7 +85,7 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamData() throws Exception {
+    void shouldStreamData() throws Exception {
         // Testing.Print.enable();
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)

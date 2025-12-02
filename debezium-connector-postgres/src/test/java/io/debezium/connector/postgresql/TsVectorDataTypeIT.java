@@ -10,9 +10,9 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -31,8 +31,8 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
     @Rule
     public final SkipTestRule skipTest = new SkipTestRule();
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
 
         System.setProperty(PostgresConnectorConfig.PLUGIN_NAME.name(), PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.name());
 
@@ -50,7 +50,7 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldSnapshotAndStreamTsvectorData() throws Exception {
+    void shouldSnapshotAndStreamTsvectorData() throws Exception {
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -77,7 +77,7 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamTsvectorDataAfterUpdate() throws Exception {
+    void shouldStreamTsvectorDataAfterUpdate() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());
@@ -99,7 +99,7 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamTsvectorDataWithTriggerBasedUpdate() throws Exception {
+    void shouldStreamTsvectorDataWithTriggerBasedUpdate() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());

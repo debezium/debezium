@@ -17,9 +17,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -66,8 +66,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
-    @Before
-    @Override
+    @BeforeEach
     public void beforeEach() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
