@@ -41,7 +41,8 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             "history_data VARCHAR(65000)," +
             "history_data_seq INTEGER," +
             "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
+            "record_insert_seq INTEGER NOT NULL," +
+            "PRIMARY KEY (id)" +
             ")";
 
     /**
