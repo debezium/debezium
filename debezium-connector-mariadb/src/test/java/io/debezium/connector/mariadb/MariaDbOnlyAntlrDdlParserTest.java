@@ -13,8 +13,8 @@ import java.util.Properties;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
@@ -100,7 +100,7 @@ public class MariaDbOnlyAntlrDdlParserTest {
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         listener = new SimpleDdlParserListener();
         converters = getValueConverters();

@@ -34,9 +34,9 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -87,8 +87,8 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         DATABASE_CUSTOM_SNAPSHOT.createAndInitialize();
@@ -97,8 +97,8 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -115,7 +115,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the MySQL server.
      */
     @Test
-    public void shouldNotStartWithInvalidConfiguration() {
+    void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(KafkaSchemaHistory.TOPIC, "myserver")
@@ -133,7 +133,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldFailToValidateInvalidConfiguration() {
+    void shouldFailToValidateInvalidConfiguration() {
         final Configuration config = Configuration.create()
                 .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
@@ -142,7 +142,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldValidateAcceptableConfiguration() {
+    void shouldValidateAcceptableConfiguration() {
         final Configuration config = Configuration.create().build();
         assertValidConfiguration(validateConfiguration(config));
     }
@@ -284,12 +284,12 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, 18765);
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingSnapshotOld() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingSnapshotOld() throws SQLException, InterruptedException {
         shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, 18775);
     }
 
@@ -701,7 +701,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     protected abstract void assertBinlogPosition(long offsetPosition, long beforeInsertsPosition);
 
     @Test
-    public void shouldUseOverriddenSelectStatementDuringSnapshotting() throws SQLException, InterruptedException {
+    void shouldUseOverriddenSelectStatementDuringSnapshotting() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -748,7 +748,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws SQLException, InterruptedException {
+    void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -1071,7 +1071,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldHandleIncludedTables() throws SQLException, InterruptedException {
+    void shouldHandleIncludedTables() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         final String tables = String.format("%s.customers, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
@@ -1154,7 +1154,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
@@ -1352,7 +1352,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
+    void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
@@ -2510,7 +2510,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+    void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
 
         try {
             config = DATABASE.defaultConfig()
@@ -2740,7 +2740,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    public void taskStartShouldNotWaitOnSchemaHistoryRecovery() throws InterruptedException {
+    void taskStartShouldNotWaitOnSchemaHistoryRecovery() throws InterruptedException {
         // Introduce a delay of 10 seconds in recovering every record in schema history. This is
         // done to increase the time taken to recovery schema history.
         Configuration config = DATABASE.defaultConfig()

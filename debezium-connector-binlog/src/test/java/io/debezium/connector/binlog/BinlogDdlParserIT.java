@@ -11,10 +11,10 @@ import java.nio.file.Path;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -40,16 +40,16 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     @Rule
     public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -66,7 +66,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
-    public void parseTableWithVisibleColumns() throws Exception {
+    void parseTableWithVisibleColumns() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("SELECT VERSION();");
@@ -95,7 +95,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
-    public void parseTableWithInVisibleColumns() throws Exception {
+    void parseTableWithInVisibleColumns() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("SELECT VERSION();");
@@ -124,7 +124,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
-    public void parseTableCreatedWithTableStatement() throws Exception {
+    void parseTableCreatedWithTableStatement() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("CREATE TABLE table1 (" +

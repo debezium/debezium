@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -40,35 +40,35 @@ public abstract class BinlogSnapshotParallelSourceIT<C extends SourceConnector> 
         return super.simpleConfig().with(BinlogConnectorConfig.SNAPSHOT_MAX_THREADS, 3);
     }
 
-    @Ignore
+    @Disabled
     @Test
     @Override
     public void shouldSnapshotTablesInRowCountOrderAsc() {
 
     }
 
-    @Ignore
+    @Disabled
     @Test
     @Override
     public void shouldSnapshotTablesInRowCountOrderDesc() {
 
     }
 
-    @Ignore
+    @Disabled
     @Test
     @Override
     public void shouldSnapshotTablesInLexicographicalOrder() {
 
     }
 
-    @Ignore
+    @Disabled
     @Test
     @Override
     public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() {
 
     }
 
-    @Ignore
+    @Disabled
     @Test
     @Override
     public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeListWithConflictingNames() {
@@ -82,7 +82,7 @@ public abstract class BinlogSnapshotParallelSourceIT<C extends SourceConnector> 
     }
 
     @Test
-    public void shouldParallelCreateSnapshotSchema() throws Exception {
+    void shouldParallelCreateSnapshotSchema() throws Exception {
         List<String> includeDatabases = Collect.arrayListOf(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName());
         config = simpleConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)

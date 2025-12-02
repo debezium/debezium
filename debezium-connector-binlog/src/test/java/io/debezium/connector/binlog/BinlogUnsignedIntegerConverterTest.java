@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Omar Al-Safi
@@ -17,31 +17,31 @@ import org.junit.Test;
 public class BinlogUnsignedIntegerConverterTest {
 
     @Test
-    public void shouldConvertSignedBinlogTinyintToUnsigned() {
+    void shouldConvertSignedBinlogTinyintToUnsigned() {
         assertEquals((short) 255, BinlogUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
         assertEquals((short) 255, BinlogUnsignedIntegerConverter.convertUnsignedTinyint((short) 255));
     }
 
     @Test
-    public void shouldConvertSignedBinlogSmallintToUnsigned() {
+    void shouldConvertSignedBinlogSmallintToUnsigned() {
         assertEquals(65535, BinlogUnsignedIntegerConverter.convertUnsignedSmallint(-1));
         assertEquals(65535, BinlogUnsignedIntegerConverter.convertUnsignedSmallint(65535));
     }
 
     @Test
-    public void shouldConvertSignedBinlogMediumintToUnsigned() {
+    void shouldConvertSignedBinlogMediumintToUnsigned() {
         assertEquals(16777215, BinlogUnsignedIntegerConverter.convertUnsignedMediumint(-1));
         assertEquals(16777215, BinlogUnsignedIntegerConverter.convertUnsignedMediumint(16777215));
     }
 
     @Test
-    public void shouldConvertSignedBinlogIntToUnsigned() {
+    void shouldConvertSignedBinlogIntToUnsigned() {
         assertEquals(4294967295L, BinlogUnsignedIntegerConverter.convertUnsignedInteger(-1L));
         assertEquals(4294967295L, BinlogUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
     }
 
     @Test
-    public void shouldConvertSignedBinlogBigintToUnsigned() {
+    void shouldConvertSignedBinlogBigintToUnsigned() {
         assertEquals(new BigDecimal("18446744073709551615"), BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-1")));
         assertEquals(new BigDecimal("18446744073709551615"), BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("18446744073709551615")));
     }

@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -26,11 +27,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,8 +84,8 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     @Rule
     public SkipTestRule skipTest = new SkipTestRule();
 
-    @Before
-    public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
+    @BeforeEach
+    void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
         events.clear();
 
         // Connect the normal SQL client ...
@@ -96,8 +97,8 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
         config = conn.config();
     }
 
-    @After
-    public void afterEach() throws IOException, SQLException {
+    @AfterEach
+    void afterEach() throws IOException, SQLException {
         events.clear();
         try {
             if (client != null) {
@@ -156,18 +157,20 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
         counters.reset();
     }
 
-    @Ignore
-    @Test(expected = ServerException.class)
-    public void shouldFailToConnectToInvalidBinlogFile() throws Exception {
-        Print.enable();
-        startClient(client -> {
-            client.setBinlogFilename("invalid-mysql-binlog.filename.000001");
+    @Disabled
+    @Test
+    void shouldFailToConnectToInvalidBinlogFile() throws Exception {
+        assertThrows(ServerException.class, () -> {
+            Print.enable();
+            startClient(client -> {
+                client.setBinlogFilename("invalid-mysql-binlog.filename.000001");
+            });
         });
     }
 
-    @Ignore
+    @Disabled
     @Test
-    public void shouldReadMultipleBinlogFiles() throws Exception {
+    void shouldReadMultipleBinlogFiles() throws Exception {
         Print.enable();
         startClient(client -> {
             client.setBinlogFilename("mysql-bin.000001");
@@ -176,7 +179,7 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
+    void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
         String sslMode = System.getProperty("database.ssl.mode", "disabled");
 
         // not running this test with SSL, there's enough coverage of that elsewhere and setting up
@@ -208,7 +211,7 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldCaptureMultipleWriteUpdateDeleteEvents() throws Exception {
+    void shouldCaptureMultipleWriteUpdateDeleteEvents() throws Exception {
         String sslMode = System.getProperty("database.ssl.mode", "disabled");
 
         // not running this test with SSL, there's enough coverage of that elsewhere and setting up
@@ -255,7 +258,7 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldCaptureMultipleWriteUpdateDeletesInSingleEvents() throws Exception {
+    void shouldCaptureMultipleWriteUpdateDeletesInSingleEvents() throws Exception {
         String sslMode = System.getProperty("database.ssl.mode", "disabled");
 
         // not running this test with SSL, there's enough coverage of that elsewhere and setting up
@@ -308,9 +311,9 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
      *
      * @throws Exception if there are problems
      */
-    @Ignore
+    @Disabled
     @Test
-    public void shouldCaptureQueryEventData() throws Exception {
+    void shouldCaptureQueryEventData() throws Exception {
         // Testing.Print.enable();
         startClient(client -> {
             client.setBinlogFilename("mysql-bin.000001");
@@ -328,7 +331,7 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldQueryInformationSchema() throws Exception {
+    void shouldQueryInformationSchema() throws Exception {
         // long tableId = writeRows.getTableId();
         // BitSet columnIds = writeRows.getIncludedColumns();
         //

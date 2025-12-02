@@ -17,9 +17,9 @@ import java.sql.Statement;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -46,8 +46,8 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         RO_DATABASE.createAndInitialize();
@@ -55,8 +55,8 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -66,7 +66,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    public void shouldCorrectlyManageRollback() throws SQLException, InterruptedException {
+    void shouldCorrectlyManageRollback() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -134,7 +134,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    public void shouldProcessSavepoint() throws SQLException, InterruptedException {
+    void shouldProcessSavepoint() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -195,7 +195,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    public void shouldProcessLargeTransaction() throws SQLException, InterruptedException {
+    void shouldProcessLargeTransaction() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -266,7 +266,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
 
     @FixFor("DBZ-411")
     @Test
-    public void shouldProcessRolledBackSavepoint() throws SQLException, InterruptedException {
+    void shouldProcessRolledBackSavepoint() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
