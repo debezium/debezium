@@ -14,9 +14,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
@@ -33,8 +33,8 @@ public abstract class BinlogSchemaNameAdjustmentModeIT<C extends SourceConnector
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("adjustment1", "schema_name_adjustment")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Before
-    public void beforeEach() throws SQLException {
+    @BeforeEach
+    void beforeEach() throws SQLException {
         stopConnector();
         DATABASE.createAndInitialize();
 
@@ -42,8 +42,8 @@ public abstract class BinlogSchemaNameAdjustmentModeIT<C extends SourceConnector
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -53,14 +53,14 @@ public abstract class BinlogSchemaNameAdjustmentModeIT<C extends SourceConnector
     }
 
     @Test
-    public void shouldAdjustNamesForAvro() throws InterruptedException {
+    void shouldAdjustNamesForAvro() throws InterruptedException {
         Struct data = consume(SchemaNameAdjustmentMode.AVRO);
 
         assertThat(data.schema().name()).contains("name_adjustment");
     }
 
     @Test
-    public void shouldNotAdjustNames() throws InterruptedException {
+    void shouldNotAdjustNames() throws InterruptedException {
         skipAvroValidation();
         Struct data = consume(SchemaNameAdjustmentMode.NONE);
 

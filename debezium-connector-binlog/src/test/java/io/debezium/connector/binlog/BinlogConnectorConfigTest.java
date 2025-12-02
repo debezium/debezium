@@ -14,7 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Field;
 
@@ -24,7 +24,7 @@ import io.debezium.config.Field;
 public abstract class BinlogConnectorConfigTest<C extends SourceConnector> implements BinlogConnectorTest<C> {
 
     @Test
-    public void shouldReturnConfigurationDefinition() {
+    void shouldReturnConfigurationDefinition() {
         assertConfigDefIsValid(getConnectorInstance(), getAllFields());
     }
 

@@ -13,9 +13,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -35,16 +35,16 @@ public abstract class BinlogCustomSnapshotterIT<C extends SourceConnector> exten
     private final UniqueDatabase DATABASE_CUSTOM_SNAPSHOT = TestHelper.getUniqueDatabase("myServer1", "custom_snapshot")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE_CUSTOM_SNAPSHOT.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -54,7 +54,7 @@ public abstract class BinlogCustomSnapshotterIT<C extends SourceConnector> exten
     }
 
     @Test
-    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+    void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
         final String pkField = "pk";
 
         Configuration config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()

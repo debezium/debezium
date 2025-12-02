@@ -11,7 +11,7 @@ import static org.junit.Assert.assertTrue;
 
 import javax.xml.bind.DatatypeConverter;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.data.geometry.Point;
 
@@ -21,7 +21,7 @@ import io.debezium.data.geometry.Point;
 public class BinlogGeometryTest {
 
     @Test
-    public void shouldConvertMySqlBytesToPoint() throws Exception {
+    void shouldConvertMySqlBytesToPoint() throws Exception {
         byte[] mysqlBytes = DatatypeConverter.parseHexBinary("000000000101000000e3a59bc420f01b4015a143a69d383240");
         // This represents 'POINT(6.9845 18.22115554)'
         BinlogGeometry geom = BinlogGeometry.fromBytes(mysqlBytes);
@@ -33,7 +33,7 @@ public class BinlogGeometryTest {
     }
 
     @Test
-    public void shouldConvertMySqlBytesToLine() throws Exception {
+    void shouldConvertMySqlBytesToLine() throws Exception {
         byte[] mysqlBytes = DatatypeConverter.parseHexBinary("E6100000010200000002000000E3A59BC420F01B4015A143A69D38324000000000000000000000000000000000");
         // This represents 'SRID=4326;LINESTRING(6.9845 18.22115554, 0 0)'
         BinlogGeometry geom = BinlogGeometry.fromBytes(mysqlBytes);
@@ -43,7 +43,7 @@ public class BinlogGeometryTest {
     }
 
     @Test
-    public void shouldConvertMySqlBytesToPolygon() throws Exception {
+    void shouldConvertMySqlBytesToPolygon() throws Exception {
         byte[] mysqlBytes = DatatypeConverter.parseHexBinary(
                 "E61000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000");
         // This represents 'SRID=4326;POLYGON((0 0, 1 1, 1 0, 0 0))'
@@ -56,7 +56,7 @@ public class BinlogGeometryTest {
     }
 
     @Test
-    public void shouldConvertMySqlBytesToGeomCollection() throws Exception {
+    void shouldConvertMySqlBytesToGeomCollection() throws Exception {
         byte[] mysqlBytes = DatatypeConverter.parseHexBinary(
                 "730C00000107000000020000000101000000000000000000F03F000000000000F03F01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");
         // This represents 'SRID=3187;GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))'
@@ -68,7 +68,7 @@ public class BinlogGeometryTest {
     }
 
     @Test
-    public void shouldConvertMySqlBytesToMultiGeometry() throws Exception {
+    void shouldConvertMySqlBytesToMultiGeometry() throws Exception {
         byte[] mysqlBytes = DatatypeConverter
                 .parseHexBinary("000000000104000000020000000101000000000000000000F03F000000000000F03F010100000000000000000000400000000000000040");
         // This represents 'MULTIPOINT(1 1, 2 2)''
