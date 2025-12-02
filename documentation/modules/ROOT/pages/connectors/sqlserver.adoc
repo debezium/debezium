@@ -3353,6 +3353,7 @@ The connector will read the table contents in multiple batches of this size. Def
 |[[sqlserver-property-guardrail-collections-max]]<<sqlserver-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
 |Specifies the maximum number of tables that the connector can capture.
+This limit applies not only to tables being captured for data changes but also to any tables whose schemas are tracked as part of schema history.
 Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
