@@ -2820,13 +2820,13 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // There are multiple databases with several tables (more than guardrail limit)
         // Configuring with guardrail limit of 2 tables, but capturing data for only 1 table
         Configuration config = DATABASE.defaultConfig()
-            .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-            .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-            .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
-            .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-            .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
-            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
-            .build();
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
+                .build();
 
         // The connector should continue to run even after exceeding the guardrail limit
         logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
@@ -2850,13 +2850,13 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // There are 4 tables in the captured database (more than guardrail limit)
         // Configuring with guardrail limit of 2 tables, but capturing data for only 1 table
         Configuration config = DATABASE.defaultConfig()
-            .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-            .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-            .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
-            .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-            .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
-            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
-            .build();
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
+                .build();
 
         // The connector should continue to run even after exceeding the guardrail limit
         logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");

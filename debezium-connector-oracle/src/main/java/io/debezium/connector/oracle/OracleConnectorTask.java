@@ -338,11 +338,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
             if (isValidatingAllTables) {
                 tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
-                    .map(TableId::toString)
-                    .collect(java.util.stream.Collectors.toList());
+                        .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
+                        .map(TableId::toString)
+                        .collect(java.util.stream.Collectors.toList());
                 LOGGER.info("Validating guardrail limits against {} tables present in {}", tableNames.size(),
-                    schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
+                        schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
             }
             else {
                 tableNames = allTableIds.stream()

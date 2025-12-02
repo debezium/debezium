@@ -347,11 +347,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
             if (isValidatingAllTables) {
                 tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
-                    .map(TableId::toString)
-                    .collect(Collectors.toList());
+                        .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
+                        .map(TableId::toString)
+                        .collect(Collectors.toList());
                 LOGGER.info("Validating guardrail limits against {} tables present in {}", tableNames.size(),
-                    schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
+                        schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
             }
             else {
                 tableNames = allTableIds.stream()
