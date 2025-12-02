@@ -15,6 +15,7 @@ import io.debezium.util.Collect;
 
 /**
  * Configuration options specific for JDBC schema history storage.
+ * A random change
  *
  * @author Jiri Pechanec
  *
