@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class OracleConnectorConfigTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfigTest.class);
 
     @Test
-    public void validXtreamNoUrl() throws Exception {
+    void validXtreamNoUrl() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -54,7 +54,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validLogminerNoUrl() throws Exception {
+    void validLogminerNoUrl() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -70,7 +70,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validXtreamWithUrl() throws Exception {
+    void validXtreamWithUrl() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -86,7 +86,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validLogminerWithUrl() throws Exception {
+    void validLogminerWithUrl() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -102,7 +102,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validUrlTNS() throws Exception {
+    void validUrlTNS() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -119,7 +119,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void invalidNoHostnameNoUri() throws Exception {
+    void invalidNoHostnameNoUri() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -134,7 +134,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validBatchDefaults() throws Exception {
+    void validBatchDefaults() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
@@ -147,7 +147,7 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validSleepDefaults() throws Exception {
+    void validSleepDefaults() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()

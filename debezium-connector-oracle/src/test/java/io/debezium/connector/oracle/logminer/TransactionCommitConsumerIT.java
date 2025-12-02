@@ -13,10 +13,10 @@ import java.util.List;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -50,14 +50,14 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
 
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.dropAllTables();
     }
 
-    @AfterClass
-    public static void afterClass() throws SQLException {
+    @AfterAll
+    static void afterClass() throws SQLException {
         if (connection != null) {
             connection.close();
         }

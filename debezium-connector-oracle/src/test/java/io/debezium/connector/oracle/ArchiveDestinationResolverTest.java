@@ -9,7 +9,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.ARCHIVE_DESTINA
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -25,7 +25,7 @@ public class ArchiveDestinationResolverTest {
 
     @FixFor("DBZ-9041")
     @Test
-    public void shouldLogUsingArchiveDestinationName() throws Exception {
+    void shouldLogUsingArchiveDestinationName() throws Exception {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
 
@@ -43,7 +43,7 @@ public class ArchiveDestinationResolverTest {
 
     @FixFor("DBZ-9041")
     @Test
-    public void shouldLogNoValidDestinationDetected() {
+    void shouldLogNoValidDestinationDetected() {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
 
         final Configuration config = Configuration.create().with(ARCHIVE_DESTINATION_NAME, "D1,D2").build();
@@ -60,7 +60,7 @@ public class ArchiveDestinationResolverTest {
 
     @FixFor("DBZ-9041")
     @Test
-    public void shouldResolveDestinationAsNullWhenNoDestinationSpecified() {
+    void shouldResolveDestinationAsNullWhenNoDestinationSpecified() {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(Configuration.empty());
@@ -69,7 +69,7 @@ public class ArchiveDestinationResolverTest {
 
     @FixFor("DBZ-9041")
     @Test
-    public void shouldResolveDestinationNameFromListOfValidAndInvalidOptions() throws Exception {
+    void shouldResolveDestinationNameFromListOfValidAndInvalidOptions() throws Exception {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
 
