@@ -23,8 +23,8 @@ import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
@@ -41,8 +41,8 @@ public class MongoDataConverterTest {
     private SchemaBuilder builder;
     private MongoDataConverter converter;
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeEach
+    void setup() throws Exception {
         record = getFile("restaurants5.json");
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("pub");
@@ -50,7 +50,7 @@ public class MongoDataConverterTest {
     }
 
     @Test
-    public void shouldCreateCorrectStructFromInsertJson() {
+    void shouldCreateCorrectStructFromInsertJson() {
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
@@ -88,7 +88,7 @@ public class MongoDataConverterTest {
     }
 
     @Test
-    public void shouldCreateCorrectSchemaFromInsertJson() {
+    void shouldCreateCorrectSchemaFromInsertJson() {
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 

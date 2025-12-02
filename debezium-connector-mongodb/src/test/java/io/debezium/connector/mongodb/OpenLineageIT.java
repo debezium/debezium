@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -35,7 +35,7 @@ import io.openlineage.client.OpenLineage;
 
 public class OpenLineageIT extends AbstractMongoConnectorIT {
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Debug.disable();
         Print.disable();
@@ -45,7 +45,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageStartEvent() throws InterruptedException {
+    void shouldProduceOpenLineageStartEvent() throws InterruptedException {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 
@@ -101,7 +101,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageInputDataset() throws Exception {
+    void shouldProduceOpenLineageInputDataset() throws Exception {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 
@@ -156,7 +156,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageInputDatasetEvenWhenNoSnapstho() throws Exception {
+    void shouldProduceOpenLineageInputDatasetEvenWhenNoSnapstho() throws Exception {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 

@@ -8,8 +8,8 @@ package io.debezium.connector.mongodb;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.assertj.core.api.AbstractStringAssert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.schema.TopicSelector;
@@ -24,14 +24,14 @@ public class TopicSelectorTest {
     private TopicSelector<CollectionId> noPrefix;
     private TopicSelector<CollectionId> withPrefix;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         noPrefix = MongoDbTopicSelector.defaultSelector(null, "__debezium-heartbeat");
         withPrefix = MongoDbTopicSelector.defaultSelector("prefix", "__debezium-heartbeat");
     }
 
     @Test
-    public void shouldHandleCollectionIdWithDatabaseAndCollection() {
+    void shouldHandleCollectionIdWithDatabaseAndCollection() {
         assertTopic(noPrefix, dbAndCollection("db", "coll")).isEqualTo("db.coll");
         assertTopic(withPrefix, dbAndCollection("db", "coll")).isEqualTo("prefix.db.coll");
     }

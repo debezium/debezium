@@ -14,11 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -55,23 +55,23 @@ public class AbstractShardedMongoConnectorIT extends AbstractAsyncEngineConnecto
         return MongoClients.create(mongo.getConnectionString());
     }
 
-    @BeforeClass
-    public static void beforeAll() {
+    @BeforeAll
+    static void beforeAll() {
         Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.mongoDbShardedCluster();
         mongo.start();
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         stopConnector();
         initializeConnectorTestFramework();
@@ -85,7 +85,7 @@ public class AbstractShardedMongoConnectorIT extends AbstractAsyncEngineConnecto
         });
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
     }

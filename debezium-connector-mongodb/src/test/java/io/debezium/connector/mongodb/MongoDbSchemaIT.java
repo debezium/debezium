@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -22,7 +22,7 @@ public class MongoDbSchemaIT {
     private MongoDbTaskContext taskContext;
 
     @Test
-    public void shouldAlwaysProduceCollectionSchema() {
+    void shouldAlwaysProduceCollectionSchema() {
         config = TestHelper.getConfiguration();
         DebeziumOpenLineageEmitter.init(config.asMap(), "mongodb");
         taskContext = new MongoDbTaskContext(config);
