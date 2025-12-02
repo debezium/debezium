@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
@@ -118,6 +119,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String returnedIdentifierName(String queriedID) {
         return queriedID.toUpperCase();
+    }
+
+    @Override
+    protected Optional<String> physicalRowIdentifierSurrogateKey() {
+        return Optional.of("ROWID");
     }
 
     @Override

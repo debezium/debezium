@@ -274,7 +274,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
                 if (context.maximumKey().isEmpty()) {
-                    currentTable = refreshTableSchema(currentTable);
+                    currentTable = chunkQueryBuilder.prepareTable(context, refreshTableSchema(currentTable));
                     Object[] maximumKey;
                     try {
                         maximumKey = jdbcConnection.queryAndMap(
@@ -388,6 +388,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 return true;
             }
         }
+        currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
         if (chunkQueryBuilder.getQueryColumns(context, currentTable).isEmpty()) {
             warnAndSkip(currentTableId, partition, offsetContext, NO_PRIMARY_KEY, "Incremental snapshot for table '{}' skipped because the table has no primary keys");
             return true;

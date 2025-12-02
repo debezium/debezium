@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -69,6 +71,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected String returnedIdentifierName(String queriedID) {
         return queriedID;
+    }
+
+    protected Optional<String> physicalRowIdentifierSurrogateKey() {
+        return Optional.empty();
     }
 
     protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
@@ -1056,6 +1062,50 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         consumedLines.clear();
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "\"aa\"",
+                tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void snapshotWithPhysicalRowIdentifierSurrogateKey() throws Exception {
+        Optional<String> surrogateKey = physicalRowIdentifierSurrogateKey();
+        Assumptions.assumeTrue(surrogateKey.isPresent(), "Physical row identifier surrogate key not provided");
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "\"" + surrogateKey.get() + "\"", tableDataCollectionId());
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void snapshotWithAdditionalConditionWithPhysicalRowIdentifierSurrogateKey() throws Exception {
+        Optional<String> surrogateKey = physicalRowIdentifierSurrogateKey();
+        Assumptions.assumeTrue(surrogateKey.isPresent(), "Physical row identifier surrogate key not provided");
+
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        int expectedCount = 10, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        consumeRecords(ROW_COUNT + expectedCount);
+        consumedLines.clear();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)),
+                "\"" + surrogateKey.get() + "\"",
                 tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
