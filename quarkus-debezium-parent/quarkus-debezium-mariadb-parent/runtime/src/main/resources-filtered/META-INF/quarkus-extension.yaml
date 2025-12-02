@@ -11,4 +11,4 @@ metadata:
   - "integration"
   - "cdc"
   - "mariadb"
-  status: "experimental"
+  status: "stable"

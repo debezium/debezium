@@ -11,4 +11,4 @@ metadata:
   - "integration"
   - "cdc"
   - "sqlserver"
-  status: "experimental"
+  status: "stable"
