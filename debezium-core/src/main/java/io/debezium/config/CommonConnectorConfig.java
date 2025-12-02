@@ -8,6 +8,7 @@ package io.debezium.config;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -1698,24 +1699,49 @@ public abstract class CommonConnectorConfig {
      * Validates that the number of captured tables/collections does not exceed the configured guardrail limit.
      * Takes the appropriate action (warn or fail) based on the guardrail configuration.
      *
-     * @param tableCount the number of tables/collections that will be captured
-     * @param tableNames the names of tables/collections for logging (can be null)
+     * @param tableNames the names of tables/collections for logging
      * @throws DebeziumException if the guardrail limit is exceeded and the action is set to FAIL
      */
-    public void validateGuardrailLimits(int tableCount, java.util.Collection<String> tableNames) {
+    public void validateGuardrailLimits(Collection<String> tableNames) {
+        validateGuardrailLimits(tableNames, false);
+    }
+
+    /**
+     * Validates that the number of captured tables/collections does not exceed the configured guardrail limit.
+     * Takes the appropriate action (warn or fail) based on the guardrail configuration.
+     * This overload is for schema-history based connectors to provide enhanced error messages.
+     *
+     * @param tableNames the names of tables/collections for logging
+     * @param isHistorizedSchemaValidatingAllTables true if this is a historized schema connector validating all tables
+     *        (not just captured tables) due to store.only.captured.tables.ddl=false
+     * @throws DebeziumException if the guardrail limit is exceeded and the action is set to FAIL
+     */
+    public void validateGuardrailLimits(Collection<String> tableNames, boolean isHistorizedSchemaValidatingAllTables) {
         int maxTables = getGuardrailCollectionsMax();
+        int tableCount = tableNames.size();
 
         if (tableCount > maxTables) {
             String message = String.format(
                     "Guardrail limit exceeded: %d tables/collections configured for capture, but maximum allowed is %d.",
                     tableCount, maxTables);
 
+            if (isHistorizedSchemaValidatingAllTables) {
+                message += " Since 'schema.history.internal.store.only.captured.tables.ddl' is set to 'false', " +
+                        "schemas of all the tables in the database are being captured. " +
+                        "To reduce memory usage and validate only captured tables, consider setting " +
+                        "'schema.history.internal.store.only.captured.tables.ddl=true' or " +
+                        "'schema.history.internal.store.only.captured.databases.ddl=true'. " +
+                        "WARNING: Changing these settings means the connector will NOT be able to automatically start " +
+                        "capturing changes from tables that were not originally included in 'table.include.list'. " +
+                        "You would need to do schema history recovery to add those tables later.";
+            }
+
             // Log table list at debug level for troubleshooting
             if (tableNames != null && LOGGER.isDebugEnabled()) {
                 String tableList = tableNames.stream()
                         .sorted()
                         .collect(java.util.stream.Collectors.joining(", "));
-                LOGGER.debug("Tables/Collections configured for capture: {}", tableList);
+                LOGGER.trace("Tables/Collections configured for capture: {}", tableList);
             }
 
             if (getGuardrailCollectionsLimitAction() == GuardrailCollectionsLimitAction.FAIL) {
