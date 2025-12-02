@@ -125,7 +125,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                                 "record_insert_ts TIMESTAMP NOT NULL," +
                                 "record_insert_seq INTEGER NOT NULL," +
-                                "PRIMARY KEY (id)"
+                                "PRIMARY KEY (id)" +
                                 ")")
                 .with("offset.storage.jdbc.offset.table.select",
                         "SELECT id, offset_key, offset_val FROM %s " +
@@ -160,7 +160,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                                 "record_insert_ts TIMESTAMP NOT NULL," +
                                 "record_insert_seq INTEGER NOT NULL," +
-                                "PRIMARY KEY (id)"
+                                "PRIMARY KEY (id)" +
                                 ")")
                 .with("offset.storage.jdbc.table.select",
                         "SELECT id, offset_key, offset_val FROM %s " +
