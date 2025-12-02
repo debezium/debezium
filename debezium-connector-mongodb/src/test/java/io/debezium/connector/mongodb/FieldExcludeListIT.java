@@ -16,7 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -36,7 +36,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     private static final String SERVER_NAME = "serverX";
 
     @Test
-    public void shouldNotExcludeFieldsForEventOfOtherCollection() throws InterruptedException {
+    void shouldNotExcludeFieldsForEventOfOtherCollection() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -49,7 +49,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForReadEvent() throws InterruptedException {
+    void shouldExcludeFieldsForReadEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -70,7 +70,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeMissingFieldsForReadEvent() throws InterruptedException {
+    void shouldNotExcludeMissingFieldsForReadEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -83,7 +83,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForReadEvent() throws InterruptedException {
+    void shouldExcludeNestedFieldsForReadEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -112,7 +112,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedMissingFieldsForReadEvent() throws InterruptedException {
+    void shouldNotExcludeNestedMissingFieldsForReadEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -129,7 +129,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForInsertEvent() throws InterruptedException {
+    void shouldExcludeFieldsForInsertEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -150,7 +150,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeMissingFieldsForInsertEvent() throws InterruptedException {
+    void shouldNotExcludeMissingFieldsForInsertEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -163,7 +163,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForInsertEvent() throws InterruptedException {
+    void shouldExcludeNestedFieldsForInsertEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -192,7 +192,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedMissingFieldsForInsertEvent() throws InterruptedException {
+    void shouldNotExcludeNestedMissingFieldsForInsertEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -209,7 +209,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForUpdateEvent() throws InterruptedException {
+    void shouldExcludeFieldsForUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -239,7 +239,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeMissingFieldsForUpdateEvent() throws InterruptedException {
+    void shouldNotExcludeMissingFieldsForUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -278,7 +278,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    void shouldExcludeNestedFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -338,7 +338,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedMissingFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    void shouldNotExcludeNestedMissingFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -405,7 +405,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -492,7 +492,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedFieldsForUpdateEventWithArrayOfArrays() throws InterruptedException {
+    void shouldNotExcludeNestedFieldsForUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -589,7 +589,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForSetTopLevelFieldUpdateEvent() throws InterruptedException {
+    void shouldExcludeFieldsForSetTopLevelFieldUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -621,7 +621,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForUnsetTopLevelFieldUpdateEvent() throws InterruptedException {
+    void shouldExcludeFieldsForUnsetTopLevelFieldUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -656,7 +656,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -708,7 +708,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -784,7 +784,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+    void shouldNotExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -870,7 +870,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -914,7 +914,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -960,7 +960,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+    void shouldNotExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1018,7 +1018,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+    void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1064,7 +1064,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1102,7 +1102,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1141,7 +1141,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
+    void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1185,7 +1185,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1239,7 +1239,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+    void shouldNotExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1288,7 +1288,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+    void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1330,7 +1330,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+    void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // TODO Fix for oplog
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1368,7 +1368,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForDeleteEvent() throws InterruptedException {
+    void shouldExcludeFieldsForDeleteEvent() throws InterruptedException {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 
@@ -1403,7 +1403,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldExcludeFieldsForDeleteTombstoneEvent() throws InterruptedException {
+    void shouldExcludeFieldsForDeleteTombstoneEvent() throws InterruptedException {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 

@@ -27,10 +27,10 @@ import javax.management.ObjectName;
 
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -68,7 +68,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
     protected MongoDbTaskContext context;
     protected LogInterceptor logInterceptor;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Debug.disable();
         Print.disable();
@@ -76,21 +76,21 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
         initializeConnectorTestFramework();
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
         TestHelper.cleanDatabases(mongo);
     }
 
-    @BeforeClass
-    public static void beforeAll() {
+    @BeforeAll
+    static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
         mongo.start();
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
