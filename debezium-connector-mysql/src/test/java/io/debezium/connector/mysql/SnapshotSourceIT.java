@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
@@ -73,32 +74,34 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
         connection.connection().close();
     }
 
-    @Test(expected = ConnectException.class)
-    public void shouldFailOnTableLock() throws Exception {
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.USER, "cloud")
-                .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
-                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA_NO_TABLE_LOCKS)
-                .with("test.disable.global.locking", "true")
-                .build();
+    @Test
+    void shouldFailOnTableLock() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            config = simpleConfig()
+                    .with(MySqlConnectorConfig.USER, "cloud")
+                    .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                    .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA_NO_TABLE_LOCKS)
+                    .with("test.disable.global.locking", "true")
+                    .build();
 
-        if (!isPerconaServer()) {
-            throw new ConnectException("Not a percona server, skip the test");
-        }
+            if (!isPerconaServer()) {
+                throw new ConnectException("Not a percona server, skip the test");
+            }
 
-        // Start the connector ...
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
-        waitForEngineShutdown();
-        stopConnector();
-        final Throwable e = exception.get();
-        if (e != null) {
-            throw (RuntimeException) e;
-        }
+            // Start the connector ...
+            AtomicReference<Throwable> exception = new AtomicReference<>();
+            start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+            waitForEngineShutdown();
+            stopConnector();
+            final Throwable e = exception.get();
+            if (e != null) {
+                throw (RuntimeException) e;
+            }
+        });
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
+    void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
         config = simpleConfig()
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
                 .with("transforms", "snapshotasinsert")

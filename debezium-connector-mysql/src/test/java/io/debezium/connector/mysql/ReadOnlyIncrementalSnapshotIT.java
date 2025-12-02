@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotIT;
@@ -28,18 +30,20 @@ public class ReadOnlyIncrementalSnapshotIT extends BinlogReadOnlyIncrementalSnap
         return MySqlBinaryProtocolFieldReader.class;
     }
 
-    @Test(expected = ConnectException.class)
+    @Test
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
-    public void shouldFailIfGtidModeIsOff() throws Exception {
-        // Testing.Print.enable();
-        populateTable();
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        startConnector((success, message, error) -> exception.set(error));
-        waitForEngineShutdown();
-        stopConnector();
-        final Throwable e = exception.get();
-        if (e != null) {
-            throw (RuntimeException) e;
-        }
+    void shouldFailIfGtidModeIsOff() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            // Testing.Print.enable();
+            populateTable();
+            AtomicReference<Throwable> exception = new AtomicReference<>();
+            startConnector((success, message, error) -> exception.set(error));
+            waitForEngineShutdown();
+            stopConnector();
+            final Throwable e = exception.get();
+            if (e != null) {
+                throw (RuntimeException) e;
+            }
+        });
     }
 }
