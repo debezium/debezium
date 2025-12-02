@@ -22,9 +22,9 @@ import java.util.stream.StreamSupport;
 
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -44,8 +44,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
 
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         connection = TestHelper.multiPartitionTestConnection();
@@ -84,8 +84,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -94,7 +94,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceMultipleOpenLineageJobRunningEvent() {
+    void shouldProduceMultipleOpenLineageJobRunningEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig(

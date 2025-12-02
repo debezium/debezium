@@ -25,10 +25,10 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -62,8 +62,8 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -81,8 +81,8 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -90,28 +90,28 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void takeSnapshotInExclusiveMode() throws Exception {
+    void takeSnapshotInExclusiveMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.EXCLUSIVE);
     }
 
     @Test
-    public void takeSnapshotInSnapshotMode() throws Exception {
+    void takeSnapshotInSnapshotMode() throws Exception {
         Testing.Print.enable();
         takeSnapshot(SnapshotIsolationMode.SNAPSHOT);
     }
 
     @Test
-    public void takeSnapshotInRepeatableReadMode() throws Exception {
+    void takeSnapshotInRepeatableReadMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.REPEATABLE_READ);
     }
 
     @Test
-    public void takeSnapshotInReadCommittedMode() throws Exception {
+    void takeSnapshotInReadCommittedMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.READ_COMMITTED);
     }
 
     @Test
-    public void takeSnapshotInReadUncommittedMode() throws Exception {
+    void takeSnapshotInReadUncommittedMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.READ_UNCOMMITTED);
     }
 
@@ -149,7 +149,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void takeSnapshotAndStartStreaming() throws Exception {
+    void takeSnapshotAndStartStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig().build();
 
         start(SqlServerConnector.class, config);
@@ -229,7 +229,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
+    void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -286,7 +286,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
+    void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
@@ -402,7 +402,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTables() throws Exception {
+    void reoderCapturedTables() throws Exception {
         connection.execute(
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_b (id int, name varchar(30), amount integer primary key(id))");
@@ -434,7 +434,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
+    void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
         connection.execute(
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
@@ -476,7 +476,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
+    void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
         connection.execute(
                 "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
