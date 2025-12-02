@@ -6,6 +6,7 @@
 package io.debezium.embedded;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,8 +36,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Charsets;
@@ -120,8 +121,8 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         nextConsumedLineNumber = 1;
         linesAdded = 0;
         Testing.Files.delete(TEST_FILE_PATH);
@@ -260,7 +261,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStartAndUseFileConnectorUsingMemoryOffsetStorage() throws Exception {
+    void shouldStartAndUseFileConnectorUsingMemoryOffsetStorage() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -295,7 +296,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1080")
-    public void shouldWorkToUseCustomChangeConsumer() throws Exception {
+    void shouldWorkToUseCustomChangeConsumer() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -353,7 +354,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldRunDebeziumEngine() throws Exception {
+    void shouldRunDebeziumEngine() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -417,7 +418,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-2897")
-    public void shouldRunEngineWithConsumerSettingOffsets() throws Exception {
+    void shouldRunEngineWithConsumerSettingOffsets() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -493,7 +494,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldExecuteSmt() throws Exception {
+    void shouldExecuteSmt() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -559,35 +560,37 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
         stopConnector();
     }
 
-    @Test(expected = DebeziumException.class)
-    public void invalidSmt() throws Exception {
-        // Add initial content to the file ...
-        appendLinesToSource(NUMBER_OF_LINES);
+    @Test
+    void invalidSmt() throws Exception {
+        assertThrows(DebeziumException.class, () -> {
+            // Add initial content to the file ...
+            appendLinesToSource(NUMBER_OF_LINES);
 
-        final Properties props = new Properties();
-        props.setProperty("name", "debezium-engine");
-        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
-        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
-        props.setProperty("offset.flush.interval.ms", "0");
-        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
-        props.setProperty("topic", "topicX");
-        props.setProperty("transforms", "router");
-        props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.Regex");
-        props.setProperty("transforms.router.regex", "(.*)");
-        props.setProperty("transforms.router.replacement", "trf$1");
+            final Properties props = new Properties();
+            props.setProperty("name", "debezium-engine");
+            props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+            props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+            props.setProperty("offset.flush.interval.ms", "0");
+            props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+            props.setProperty("topic", "topicX");
+            props.setProperty("transforms", "router");
+            props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.Regex");
+            props.setProperty("transforms.router.regex", "(.*)");
+            props.setProperty("transforms.router.replacement", "trf$1");
 
-        // create an engine with our custom class
-        DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
-                .using(props)
-                .notifying((records, committer) -> {
-                })
-                .using(this.getClass().getClassLoader())
-                .build();
+            // create an engine with our custom class
+            DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                    .using(props)
+                    .notifying((records, committer) -> {
+                    })
+                    .using(this.getClass().getClassLoader())
+                    .build();
+        });
     }
 
     @Test
     @FixFor("DBZ-1807")
-    public void shouldRunDebeziumEngineWithJson() throws Exception {
+    void shouldRunDebeziumEngineWithJson() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -655,7 +658,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldRunDebeziumEngineWithString() throws Exception {
+    void shouldRunDebeziumEngineWithString() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -718,7 +721,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-5926")
-    public void shouldRunDebeziumEngineWithMismatchedTypes() throws Exception {
+    void shouldRunDebeziumEngineWithMismatchedTypes() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
@@ -843,7 +846,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-7099")
-    public void shouldHandleNoDefaultOffsetFlushInterval() throws IOException, InterruptedException {
+    void shouldHandleNoDefaultOffsetFlushInterval() throws IOException, InterruptedException {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());

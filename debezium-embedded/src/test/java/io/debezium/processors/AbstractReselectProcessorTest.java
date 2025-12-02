@@ -12,9 +12,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -55,15 +55,15 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
-    @Before
+    @BeforeEach
     @SuppressWarnings("resource")
     public void beforeEach() throws Exception {
         createTable();
         databaseConnection().setAutoCommit(false);
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         dropTable();
@@ -72,7 +72,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
+    void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithNullValue());
@@ -107,7 +107,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
+    void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithValue());
@@ -140,7 +140,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
+    void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
         enableTableForCdc();
 
         LogInterceptor interceptor = getReselectLogInterceptor();
@@ -194,7 +194,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testColumnsReselectedWhenValueIsNullSnapshot() throws Exception {
+    void testColumnsReselectedWhenValueIsNullSnapshot() throws Exception {
         databaseConnection().execute(getInsertWithNullValue());
         databaseConnection().execute(String.format("UPDATE %s SET data = 'two' where id = 1", tableName()));
 
@@ -225,7 +225,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
+    void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
         enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
@@ -263,7 +263,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
     @Test
     @FixFor("DBZ-8901")
-    public void shouldThrowAnExceptionWhenConfigurationAreNotProvided() throws Exception {
+    void shouldThrowAnExceptionWhenConfigurationAreNotProvided() throws Exception {
 
         final LogInterceptor logInterceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
         logInterceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.ERROR);

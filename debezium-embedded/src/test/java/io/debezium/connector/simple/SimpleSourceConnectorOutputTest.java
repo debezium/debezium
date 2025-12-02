@@ -6,6 +6,7 @@
 package io.debezium.connector.simple;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,7 +22,7 @@ import java.util.Properties;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.document.Array;
 import io.debezium.document.ArrayReader;
@@ -48,7 +49,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * @throws Exception if there is an error
      */
     @Test
-    public void shouldGenerateExpected() throws Exception {
+    void shouldGenerateExpected() throws Exception {
         // The test connector is blocking so we need to execute interrupt faster
         System.setProperty("debezium.embedded.shutdown.pause.before.interrupt.ms", "5000");
         int numBatches = 1;
@@ -95,7 +96,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, which are read in one step.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStep() {
+    void shouldRunConnectorFromFilesInOneStep() {
         runConnector("simple-test-a", "src/test/resources/simple/test/a");
     }
 
@@ -103,18 +104,20 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, which are read in two steps.
      */
     @Test
-    public void shouldRunConnectorFromFilesInTwoSteps() {
+    void shouldRunConnectorFromFilesInTwoSteps() {
         runConnector("simple-test-b", "src/test/resources/simple/test/b");
     }
 
     /**
      * Run the connector with connector configuration and expected results files, but find a mismatch in the results.
      */
-    @Test(expected = AssertionError.class)
-    public void shouldRunConnectorFromFilesAndFindMismatch() {
-        // Testing.Debug.enable();
-        Testing.Print.disable();
-        runConnector("simple-test-c", "src/test/resources/simple/test/c");
+    @Test
+    void shouldRunConnectorFromFilesAndFindMismatch() {
+        assertThrows(AssertionError.class, () -> {
+            // Testing.Debug.enable();
+            Testing.Print.disable();
+            runConnector("simple-test-c", "src/test/resources/simple/test/c");
+        });
     }
 
     /**
@@ -123,7 +126,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * However, this test filters out the timestamps from the matching logic.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStepWithTimestamps() {
+    void shouldRunConnectorFromFilesInOneStepWithTimestamps() {
         // Testing.Debug.enable();
         runConnector("simple-test-d", "src/test/resources/simple/test/d");
     }
@@ -132,18 +135,18 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector and verify that {@link org.apache.kafka.connect.errors.RetriableException} is handled.
      */
     @Test
-    public void shouldRecoverFromRetriableException() {
+    void shouldRecoverFromRetriableException() {
         // Testing.Debug.enable();
         runConnector("simple-test-e", "src/test/resources/simple/test/e");
     }
 
     @Test
-    public void shouldRecoverFromRetriableExceptionMaxRetriesIs1() {
+    void shouldRecoverFromRetriableExceptionMaxRetriesIs1() {
         runConnector("simple-test-f", "src/test/resources/simple/test/f");
     }
 
     @Test
-    public void shouldRecoverFromRetriableExceptionMaxRetriesIsNegative1() {
+    void shouldRecoverFromRetriableExceptionMaxRetriesIsNegative1() {
         runConnector("simple-test-g", "src/test/resources/simple/test/g");
     }
 
