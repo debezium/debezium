@@ -2811,6 +2811,66 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataButNotSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        final String tables = String.format("%s.products", DATABASE.getDatabaseName());
+        // The connector is configured with stored.only.captured.databases.ddl=false
+        // There are multiple databases with several tables (more than guardrail limit)
+        // Configuring with guardrail limit of 2 tables, but capturing data for only 1 table
+        Configuration config = DATABASE.defaultConfig()
+            .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+            .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
+            .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+            .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
+            .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataAndSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        final String tables = String.format("%s.products", DATABASE.getDatabaseName());
+        // The connector is configured with stored.only.captured.databases.ddl=true
+        // There are 4 tables in the captured database (more than guardrail limit)
+        // Configuring with guardrail limit of 2 tables, but capturing data for only 1 table
+        Configuration config = DATABASE.defaultConfig()
+            .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+            .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
+            .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+            .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 2)
+            .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
     public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
         final String tables = String.format("%s.products, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         // Configure with guardrail limit of 1 table
