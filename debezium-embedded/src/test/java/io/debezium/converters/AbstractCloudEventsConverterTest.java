@@ -16,9 +16,9 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
 import org.apache.kafka.connect.transforms.InsertHeader;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
@@ -58,13 +58,13 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         startConnector();
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         databaseConnection().close();
@@ -72,7 +72,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-6982" })
-    public void shouldConvertToCloudEventsInJsonWithoutExtensionAttributes() throws Exception {
+    void shouldConvertToCloudEventsInJsonWithoutExtensionAttributes() throws Exception {
         createTable();
 
         databaseConnection().execute(createInsert());
@@ -90,7 +90,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-3642", "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeadersAfterOutboxEventRouter() throws Exception {
+    void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -141,7 +141,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7284", "DBZ-8669" })
-    public void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+    void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -192,7 +192,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType() throws Exception {
+    void shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType() throws Exception {
         InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
         Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
         insertHeaderConfig.put("header", "id");
@@ -220,7 +220,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7159" })
-    public void shouldThrowExceptionWhenDeserializingNotCloudEventJson() throws Exception {
+    void shouldThrowExceptionWhenDeserializingNotCloudEventJson() throws Exception {
         createTable();
 
         databaseConnection().execute(createInsert());
@@ -238,7 +238,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7159" })
-    public void shouldThrowExceptionWhenDeserializingNotCloudEventAvro() throws Exception {
+    void shouldThrowExceptionWhenDeserializingNotCloudEventAvro() throws Exception {
         createTable();
 
         databaseConnection().execute(createInsert());
@@ -256,7 +256,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7235" })
-    public void shouldConvertToCloudEventsInAvroWithCustomCloudEventsSchemaName() throws Exception {
+    void shouldConvertToCloudEventsInAvroWithCustomCloudEventsSchemaName() throws Exception {
         createTable();
 
         databaseConnection().execute(createInsert());

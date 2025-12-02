@@ -5,8 +5,8 @@
  */
 package io.debezium.embedded;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -20,7 +20,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.ReplaceField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.HasHeaderKey;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 
