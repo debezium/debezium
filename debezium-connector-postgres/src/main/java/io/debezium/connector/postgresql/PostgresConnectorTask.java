@@ -484,15 +484,15 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     private void validateGuardrailLimits(PostgresConnectorConfig connectorConfig, PostgresConnection connection) {
         try {
-            // Get all table IDs that match the connector's filters
             Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.databaseName());
 
             List<String> tableNames = allTableIds.stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
                     .map(TableId::toString)
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
 
-            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
+            LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
+            connectorConfig.validateGuardrailLimits(tableNames);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);

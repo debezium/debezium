@@ -333,13 +333,26 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
             // Get all table IDs that match the connector's filters
             Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
+            List<String> tableNames;
+            boolean isValidatingAllTables = !schema.storeOnlyCapturedTables();
 
-            List<String> tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+            if (isValidatingAllTables) {
+                tableNames = allTableIds.stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
                     .map(TableId::toString)
                     .collect(java.util.stream.Collectors.toList());
+                LOGGER.info("Validating guardrail limits against {} tables present in {}", tableNames.size(),
+                    schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
+            }
+            else {
+                tableNames = allTableIds.stream()
+                        .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                        .map(TableId::toString)
+                        .collect(java.util.stream.Collectors.toList());
+                LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
+            }
 
-            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
+            connectorConfig.validateGuardrailLimits(tableNames, isValidatingAllTables);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
