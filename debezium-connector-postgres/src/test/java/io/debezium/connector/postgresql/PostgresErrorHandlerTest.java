@@ -8,7 +8,7 @@ package io.debezium.connector.postgresql;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
@@ -28,38 +28,38 @@ public class PostgresErrorHandlerTest {
             new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE)).build(), null);
 
     @Test
-    public void classifiedPSQLExceptionIsRetryable() {
+    void classifiedPSQLExceptionIsRetryable() {
         PSQLException testException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
         assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
-    public void nonCommunicationExceptionNotRetryable() {
+    void nonCommunicationExceptionNotRetryable() {
         Exception testException = new NullPointerException();
         assertThat(errorHandler.isRetriable(testException)).isFalse();
     }
 
     @Test
-    public void nullThrowableIsNotRetryable() {
+    void nullThrowableIsNotRetryable() {
         assertThat(errorHandler.isRetriable(null)).isFalse();
     }
 
     @Test
-    public void encapsulatedPSQLExceptionIsRetriable() {
+    void encapsulatedPSQLExceptionIsRetriable() {
         Exception testException = new IllegalArgumentException(
                 new PSQLException("definitely not a postgres error", PSQLState.CONNECTION_FAILURE));
         assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
-    public void classifiedPSQLExceptionWrappedInDebeziumExceptionIsRetryable() {
+    void classifiedPSQLExceptionWrappedInDebeziumExceptionIsRetryable() {
         PSQLException psqlException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
         DebeziumException testException = new DebeziumException(psqlException);
         assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
-    public void randomUnhandledExceptionIsNotRetryable() {
+    void randomUnhandledExceptionIsNotRetryable() {
         RuntimeException testException = new RuntimeException();
         assertThat(errorHandler.isRetriable(testException)).isFalse();
     }

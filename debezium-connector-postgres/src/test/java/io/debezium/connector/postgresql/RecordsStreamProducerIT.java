@@ -59,9 +59,10 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLException;
 
@@ -127,8 +128,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // ensure the slot is deleted for each test
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
@@ -184,7 +185,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
+    void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
         startConnector();
 
@@ -355,7 +356,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
+    void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
@@ -364,7 +365,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsCustomTypesWithIncludeUnknownFalse() throws Exception {
+    void shouldReceiveChangesForInsertsCustomTypesWithIncludeUnknownFalse() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false));
@@ -492,8 +493,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         return ((Struct) record.value()).getStruct("before");
     }
 
-    @Test(timeout = 30000)
-    public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
         startConnector();
@@ -519,8 +521,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_TYPES_STMT, 1, schemaAndValuesForPostgisTypes());
     }
 
-    @Test(timeout = 30000)
-    public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
         startConnector();
@@ -547,7 +550,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
+    void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector();
@@ -557,7 +560,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
+    void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector();
@@ -634,7 +637,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForNewTable() throws Exception {
+    void shouldReceiveChangesForNewTable() throws Exception {
         String statement = "CREATE SCHEMA s1;" +
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.a (aa) VALUES (11);";
@@ -646,7 +649,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForRenamedTable() throws Exception {
+    void shouldReceiveChangesForRenamedTable() throws Exception {
         String statement = "DROP TABLE IF EXISTS renamed_test_table;" +
                 "ALTER TABLE test_table RENAME TO renamed_test_table;" +
                 "INSERT INTO renamed_test_table (text) VALUES ('new');";
@@ -710,7 +713,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForUpdatesWithColumnChanges() throws Exception {
+    void shouldReceiveChangesForUpdatesWithColumnChanges() throws Exception {
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN uvc VARCHAR(2);" +
                 "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -800,7 +803,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
+    void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
         startConnector();
         consumer = testConsumer(3);
         executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
@@ -859,7 +862,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForDefaultValues() throws Exception {
+    void shouldReceiveChangesForDefaultValues() throws Exception {
         String statements = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
                 "ALTER TABLE test_table ADD COLUMN default_column TEXT DEFAULT 'default';" +
                 "INSERT INTO test_table (text) VALUES ('update');";
@@ -877,7 +880,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForTypeConstraints() throws Exception {
+    void shouldReceiveChangesForTypeConstraints() throws Exception {
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN num_val NUMERIC(5,2);" +
                 "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -983,7 +986,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForDeletes() throws Exception {
+    void shouldReceiveChangesForDeletes() throws Exception {
         // add a new entry and remove both
         String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
                 "DELETE FROM test_table WHERE pk > 0;";
@@ -1160,7 +1163,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveNumericTypeAsDouble() throws Exception {
+    void shouldReceiveNumericTypeAsDouble() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE));
@@ -1864,7 +1867,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldHandleToastedByteaColumnInHexMode() throws Exception {
+    void shouldHandleToastedByteaColumnInHexMode() throws Exception {
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_toast_table;",
                 "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
@@ -2645,7 +2648,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldProcessLargerTx() throws Exception {
+    void shouldProcessLargerTx() throws Exception {
         Testing.Print.disable();
         final int numberOfEvents = 1000;
 
@@ -3311,7 +3314,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamEnumArrayAsKnownType() throws Exception {
+    void shouldStreamEnumArrayAsKnownType() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
         TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");

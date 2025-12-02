@@ -32,9 +32,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
@@ -67,8 +67,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Rule
     public final SkipTestRule skip = new SkipTestRule();
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
@@ -77,7 +77,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
+    void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         // insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
         TestHelper.execute(statementsBuilder);
@@ -164,7 +164,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldGenerateSnapshotsForCustomDatatypes() throws Exception {
+    void shouldGenerateSnapshotsForCustomDatatypes() throws Exception {
         TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
 
         // then start the producer and validate all records are there
@@ -179,7 +179,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldGenerateSnapshotsForCustomDatatypesWithIncludeUnknownFalse() throws Exception {
+    void shouldGenerateSnapshotsForCustomDatatypesWithIncludeUnknownFalse() throws Exception {
         TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
 
         // then start the producer and validate all records are there
@@ -194,7 +194,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
+    void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
         // PostGIS must not be used
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -296,7 +296,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamAfterSnapshot() throws Exception {
+    void shouldStreamAfterSnapshot() throws Exception {
 
         LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
         TestHelper.dropAllSchemas();

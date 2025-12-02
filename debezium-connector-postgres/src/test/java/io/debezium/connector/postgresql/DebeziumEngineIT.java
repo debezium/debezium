@@ -27,9 +27,9 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,8 +66,8 @@ public class DebeziumEngineIT {
     @Rule
     public SkipTestRule skipTest = new SkipTestRule();
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
         OFFSET_STORE_PATH.toFile().delete();
         TestHelper.dropDefaultReplicationSlot();
@@ -212,7 +212,7 @@ public class DebeziumEngineIT {
     }
 
     @Test
-    public void shouldSerializeArbitraryPayloadFromOutbox() throws Exception {
+    void shouldSerializeArbitraryPayloadFromOutbox() throws Exception {
         TestHelper.execute(
                 "CREATE TABLE engine.outbox (id INT PRIMARY KEY, aggregateid TEXT, aggregatetype TEXT, payload BYTEA);",
                 "INSERT INTO engine.outbox VALUES(1, 'key1', 'event', 'value1'::BYTEA);");
