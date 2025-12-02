@@ -320,7 +320,8 @@ id VARCHAR(36)      NOT NULL,
 offset_key          VARCHAR(1255),
 offset_val          VARCHAR(1255),
 record_insert_ts    TIMESTAMP NOT NULL,
-record_insert_seq   INTEGER NOT NULL)
+record_insert_seq   INTEGER NOT NULL),
+PRIMARY KEY (id)
 ----
 
 [[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default,Select query>>
@@ -461,7 +462,8 @@ CREATE TABLE %s (
     history_data VARCHAR(65000),
     history_data_seq INTEGER,
     record_insert_ts TIMESTAMP NOT NULL,
-    record_insert_seq INTEGER NOT NULL
+    record_insert_seq INTEGER NOT NULL,
+    PRIMARY KEY (id)
 )
 ----
 
