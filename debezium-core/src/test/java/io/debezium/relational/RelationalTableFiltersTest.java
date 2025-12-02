@@ -7,8 +7,8 @@ package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author ggaborg
@@ -18,7 +18,7 @@ public class RelationalTableFiltersTest {
     private Configurator build;
     private RelationalTableFilters filters;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         build = new Configurator();
         filters = null;

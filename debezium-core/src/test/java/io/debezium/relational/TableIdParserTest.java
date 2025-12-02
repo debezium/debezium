@@ -6,15 +6,16 @@
 package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit test for {@link TableIdParser}.
  *
  * @author Gunnar Morling
  */
-public class TableIdParserTest {
+class TableIdParserTest {
 
     @Test
     public void canParseValidIdentifiers() {
@@ -38,24 +39,32 @@ public class TableIdParserTest {
         assertThat(TableIdParser.parse("[db].[table with spaces]", new TestTableIdPredicates())).containsExactly("db", "table with spaces");
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void leadingSeparatorIsInvalid() {
-        TableIdParser.parse(".table");
+    @Test
+    void leadingSeparatorIsInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse(".table");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void trailingSeparatorIsInvalid() {
-        TableIdParser.parse("table.");
+    @Test
+    void trailingSeparatorIsInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse("table.");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void unclosedQuotingCharIsInvalid() {
-        TableIdParser.parse("\"table");
+    @Test
+    void unclosedQuotingCharIsInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse("\"table");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void escapedQuoteDoesntCloseQuotedIdentifier() {
-        TableIdParser.parse("\"table\"\"");
+    @Test
+    void escapedQuoteDoesntCloseQuotedIdentifier() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse("\"table\"\"");
+        });
     }
 
     private static class TestTableIdPredicates implements TableIdPredicates {

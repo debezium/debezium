@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,14 +19,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
@@ -56,7 +56,7 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class EventDispatcherTest {
 
     @Mock
@@ -137,7 +137,7 @@ public class EventDispatcherTest {
     private EventDispatcher<Partition, DataCollectionId> dispatcher;
     private static ConnectHeaders connectHeaders;
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (connectHeaders != null) {
             connectHeaders.clear();
@@ -216,7 +216,7 @@ public class EventDispatcherTest {
                 .map(Header::key)
                 .toList();
 
-        Assert.assertEquals("Header must not be duplicated", listOfHeaders.stream().distinct().count(), listOfHeaders.size());
+        assertEquals(listOfHeaders.stream().distinct().count(), listOfHeaders.size(), "Header must not be duplicated");
     }
 
     @Test

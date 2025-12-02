@@ -22,8 +22,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -45,7 +45,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
     private final MyBaseSourceTask baseSourceTask = new MyBaseSourceTask();
 
-    @Before
+    @BeforeEach
     public void setup() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
     }

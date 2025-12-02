@@ -6,8 +6,9 @@
 package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -20,7 +21,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.text.ParsingException;
@@ -331,9 +332,11 @@ public class StringsTest {
         assertThat(Strings.join(",", Arrays.asList("a", "b", "c"), s -> "_" + s)).isEqualTo("_a,_b,_c");
     }
 
-    @Test(expected = ParsingException.class)
-    public void regexSplitWrongEscape() {
-        Strings.setOfRegex("a,b\\,c\\");
+    @Test
+    void regexSplitWrongEscape() {
+        assertThrows(ParsingException.class, () -> {
+            Strings.setOfRegex("a,b\\,c\\");
+        });
     }
 
     @Test

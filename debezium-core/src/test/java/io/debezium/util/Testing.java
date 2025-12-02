@@ -19,7 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.util.Stopwatch.Statistics;
 import io.debezium.util.Stopwatch.StopwatchSet;
@@ -31,7 +31,7 @@ import io.debezium.util.Stopwatch.StopwatchSet;
  */
 public interface Testing {
 
-    @Before
+    @BeforeEach
     default void resetBeforeEachTest() {
         Print.enabled = false;
         Debug.enabled = false;
