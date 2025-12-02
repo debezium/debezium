@@ -34,7 +34,8 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
     public static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s (id VARCHAR(36) NOT NULL, " +
             "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
             "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
+            "record_insert_seq INTEGER NOT NULL," +
+            "PRIMARY KEY (id)"
             ")";
 
     /**
