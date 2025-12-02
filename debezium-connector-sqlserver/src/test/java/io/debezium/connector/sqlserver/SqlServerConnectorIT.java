@@ -3509,11 +3509,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Configure with guardrail limit of 1 table
         // (connector is capturing 1 table for data, but all tables for schema from all databases)
         final Configuration config = TestHelper.defaultConfig()
-            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-            .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
-            .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
-            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
-            .build();
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .build();
 
         // The connector should continue to run even after exceeding the guardrail limit
         logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
@@ -3538,11 +3538,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Configure with guardrail limit of 1 table
         // (connector is capturing 1 table for data, but all tables for schema from all databases)
         final Configuration config = TestHelper.defaultConfig()
-            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-            .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
-            .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
-            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
-            .build();
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .build();
 
         // The connector should continue to run even after exceeding the guardrail limit
         logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
