@@ -50,7 +50,7 @@
       <includes>
         <include>README*</include>
         <include>CHANGELOG*</include>
-        <include>CONTRIBUTE*</include>
+        <include>CONTRIBUTING*</include>
         <include>COPYRIGHT*</include>
         <include>LICENSE*</include>
       </includes>
