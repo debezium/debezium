@@ -36,8 +36,8 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.util.Callback;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +82,8 @@ public class AsyncEmbeddedEngineTest {
     private File inputFile;
     private int linesAdded;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         linesAdded = 0;
         Testing.Files.delete(TEST_FILE_PATH);
         Testing.Files.delete(OFFSET_STORE_PATH);
@@ -93,7 +93,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testEngineBasicLifecycle() throws Exception {
+    void testEngineBasicLifecycle() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -147,7 +147,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testRunMultipleTasks() throws Exception {
+    void testRunMultipleTasks() throws Exception {
 
         final int NUMBER_OF_TASKS = 5;
         final Properties props = new Properties();
@@ -186,7 +186,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testTasksAreStoppedIfSomeFailsToStart() {
+    void testTasksAreStoppedIfSomeFailsToStart() {
         final int NUMBER_OF_TASKS = 10;
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
@@ -233,7 +233,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testHeaderConverter() throws Exception {
+    void testHeaderConverter() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -274,7 +274,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testCompletionCallbackCalledUponSuccess() throws Exception {
+    void testCompletionCallbackCalledUponSuccess() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -324,7 +324,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testCompletionCallbackCalledUponFailure() throws Exception {
+    void testCompletionCallbackCalledUponFailure() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -360,7 +360,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8414")
-    public void testErrorInConnectorCallbackDoesNotBlockShutdown() throws Exception {
+    void testErrorInConnectorCallbackDoesNotBlockShutdown() throws Exception {
         final Properties props = new Properties();
         props.put(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -420,7 +420,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-2534")
-    public void testCannotStopWhileTasksAreStarting() throws Exception {
+    void testCannotStopWhileTasksAreStarting() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -464,7 +464,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testCannotStopAlreadyStoppedEngine() throws Exception {
+    void testCannotStopAlreadyStoppedEngine() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -502,7 +502,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testExecuteSmt() throws Exception {
+    void testExecuteSmt() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -569,7 +569,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8106")
-    public void testCloseSmt() throws Exception {
+    void testCloseSmt() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -608,7 +608,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testPollingIsRetriedUponFailure() throws Exception {
+    void testPollingIsRetriedUponFailure() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -642,7 +642,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testConnectorFailsIfMaxRetriesExceeded() throws Exception {
+    void testConnectorFailsIfMaxRetriesExceeded() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -685,7 +685,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testEngineBasicLifecycleConsumerSequentially() throws Exception {
+    void testEngineBasicLifecycleConsumerSequentially() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -700,7 +700,7 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
-    public void testEngineBasicLifecycleConsumerNonSequentially() throws Exception {
+    void testEngineBasicLifecycleConsumerNonSequentially() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -716,7 +716,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-7496")
-    public void testCompletionCallbackCalledAfterConnectorStop() throws Exception {
+    void testCompletionCallbackCalledAfterConnectorStop() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -784,7 +784,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8241")
-    public void testDefaultBuilderFactory() throws Exception {
+    void testDefaultBuilderFactory() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -828,7 +828,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8434")
-    public void testSmtReturnsNullToProcessor() throws Exception {
+    void testSmtReturnsNullToProcessor() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -873,7 +873,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8434")
-    public void testSmtReturnsNullToProcessorAndConvertor() throws Exception {
+    void testSmtReturnsNullToProcessorAndConvertor() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -919,7 +919,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8936")
-    public void testGracefullyShutDownUponStopEngineException() throws Exception {
+    void testGracefullyShutDownUponStopEngineException() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -982,7 +982,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8936")
-    public void testOffsetIsCommittedUponStopEngineException() throws Exception {
+    void testOffsetIsCommittedUponStopEngineException() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -1057,7 +1057,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8948")
-    public void testPollingCallbacksAreCalled() throws Exception {
+    void testPollingCallbacksAreCalled() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -1136,7 +1136,7 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-8948")
-    public void testCanStopEngineFromPollingCallback() throws Exception {
+    void testCanStopEngineFromPollingCallback() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
@@ -1194,7 +1194,7 @@ public class AsyncEmbeddedEngineTest {
     // simplified test just to demonstrate the generic issue
     @Test
     @FixFor("DBZ-9292")
-    public void testOffsetStorageFailure() throws Exception {
+    void testOffsetStorageFailure() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
