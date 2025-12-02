@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class TableTest {
 
@@ -22,7 +22,7 @@ public class TableTest {
     private Column c4;
     private Attribute a1;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         table = Table.editor()
                 .tableId(id)

@@ -6,19 +6,19 @@
 package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.sql.Types;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ColumnEditorTest {
 
     private ColumnEditor editor;
     private Column column;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         editor = Column.editor();
         column = null;
@@ -58,7 +58,7 @@ public class ColumnEditorTest {
         assertThat(column.typeName()).isNull();
         assertThat(column.jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(column.length()).isEqualTo(-1);
-        Assert.assertFalse(column.scale().isPresent());
+        assertFalse(column.scale().isPresent());
         assertThat(column.position()).isEqualTo(1);
         assertThat(column.isOptional()).isTrue();
         assertThat(column.isAutoIncremented()).isFalse();

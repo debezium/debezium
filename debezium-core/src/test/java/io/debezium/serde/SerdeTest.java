@@ -6,6 +6,7 @@
 package io.debezium.serde;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.Objects;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.common.serialization.Serde;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -194,14 +195,16 @@ public class SerdeTest implements Testing {
         assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
     }
 
-    @Test(expected = RuntimeException.class)
-    public void valueWithUnknownPropertyThrowRuntimeException() {
-        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
-        valueSerde.configure(Collections.singletonMap("from.field", "before"), false);
+    @Test
+    void valueWithUnknownPropertyThrowRuntimeException() {
+        assertThrows(RuntimeException.class, () -> {
+            final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
+            valueSerde.configure(Collections.singletonMap("from.field", "before"), false);
 
-        String content = Testing.Files.readResourceAsString("json/serde-unknown-property.json");
-        assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes()))
-                .isEqualTo(new Customer(1004, "Anne-Marie", "Kretchmar", "annek@noanswer.org"));
+            String content = Testing.Files.readResourceAsString("json/serde-unknown-property.json");
+            assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes()))
+                    .isEqualTo(new Customer(1004, "Anne-Marie", "Kretchmar", "annek@noanswer.org"));
+        });
     }
 
     @Test

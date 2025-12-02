@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
