@@ -13,9 +13,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -35,8 +35,8 @@ public class SnapshotWithSelectOverridesIT extends AbstractAsyncEngineConnectorT
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -82,8 +82,8 @@ public class SnapshotWithSelectOverridesIT extends AbstractAsyncEngineConnectorT
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }

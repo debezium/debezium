@@ -49,11 +49,11 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -105,8 +105,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException, InterruptedException {
+    @BeforeEach
+    void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -125,36 +125,36 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeFunctionWithoutFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeFunctionWithoutFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.FUNCTION)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 0));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeFunctionWithFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeFunctionWithFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.FUNCTION)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 3));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeDirectWithoutFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeDirectWithoutFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.DIRECT)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 0));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeDirectWithFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeDirectWithFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.DIRECT)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 3));
@@ -236,7 +236,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void createAndDeleteInDataQueryDirectMode() throws Exception {
+    void createAndDeleteInDataQueryDirectMode() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -443,7 +443,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void deleteWithoutTombstone() throws Exception {
+    void deleteWithoutTombstone() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -491,7 +491,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void update() throws Exception {
+    void update() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -550,7 +550,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void updatePrimaryKey() throws Exception {
+    void updatePrimaryKey() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -815,7 +815,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void streamChangesWhileStopped() throws Exception {
+    void streamChangesWhileStopped() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -881,7 +881,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    @Ignore // the test is very flaky in CI environment
+    @Disabled // the test is very flaky in CI environment
     public void verifyOffsets() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
@@ -1006,7 +1006,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testIncludeTable() throws Exception {
+    void testIncludeTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1089,7 +1089,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testTableIncludeList() throws Exception {
+    void testTableIncludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1125,7 +1125,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testTableExcludeList() throws Exception {
+    void testTableExcludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1548,7 +1548,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-2522")
-    @Ignore // the test is very flaky in CI environment
+    @Disabled // the test is very flaky in CI environment
     public void whenCaptureInstanceExcludesColumnsAndColumnsRenamedExpectNoErrors() throws Exception {
         connection.execute(
                 "CREATE TABLE excluded_column_table_a (id int, name varchar(30), amount integer primary key(id))");
@@ -2592,7 +2592,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReturnSingleTaskConfig() {
+    void shouldReturnSingleTaskConfig() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "mAsTeR,mOdEl")
                 .build()
@@ -2607,7 +2607,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldHandleMaxTasksGreaterThanNumberOfDatabaseNames() {
+    void shouldHandleMaxTasksGreaterThanNumberOfDatabaseNames() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "mAsTeR,mOdEl")
                 .build()
@@ -2624,7 +2624,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReturnTwoTaskConfigs() {
+    void shouldReturnTwoTaskConfigs() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "MaStEr,MoDeL")
                 .build()
@@ -2755,7 +2755,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldFailWhenUserDoesNotHaveAccessToDatabase() {
+    void shouldFailWhenUserDoesNotHaveAccessToDatabase() {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
         final Configuration config2 = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2)
@@ -2973,7 +2973,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
+    void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE WITH ROLLBACK IMMEDIATE");
             TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
@@ -2981,7 +2981,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
+    void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             TestHelper.waitForStreamingStarted();
             connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2
@@ -2990,7 +2990,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+    void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
 
         try {
             Configuration config = TestHelper.defaultConfig()
@@ -3050,7 +3050,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+    void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
@@ -3081,7 +3081,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
 
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
@@ -3152,7 +3152,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+    void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         final String pkField = "id";
 

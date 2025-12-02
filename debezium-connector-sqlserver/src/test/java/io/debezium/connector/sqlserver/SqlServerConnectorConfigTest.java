@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,14 +22,14 @@ public class SqlServerConnectorConfigTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfigTest.class);
 
     @Test
-    public void nullDatabaseNames() {
+    void nullDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig().build());
         assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
-    public void emptyDatabaseNames() {
+    void emptyDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.DATABASE_NAMES, "")
@@ -38,7 +38,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void nonEmptyDatabaseNames() {
+    void nonEmptyDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB1")
@@ -47,7 +47,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void hostnameAndDefaultPortConnectionUrl() {
+    void hostnameAndDefaultPortConnectionUrl() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.HOSTNAME, "example.com")
@@ -56,7 +56,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void hostnameAndPortConnectionUrl() {
+    void hostnameAndPortConnectionUrl() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.HOSTNAME, "example.com")
@@ -66,7 +66,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void hostnameAndInstanceConnectionUrl() {
+    void hostnameAndInstanceConnectionUrl() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.HOSTNAME, "example.com")
@@ -76,7 +76,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void hostnameAndInstanceAndPortConnectionUrl() {
+    void hostnameAndInstanceAndPortConnectionUrl() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(SqlServerConnectorConfig.HOSTNAME, "example.com")
@@ -87,7 +87,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void validQueryFetchSizeDefaults() {
+    void validQueryFetchSizeDefaults() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
@@ -96,7 +96,7 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void validQueryFetchSizeAvailable() {
+    void validQueryFetchSizeAvailable() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")

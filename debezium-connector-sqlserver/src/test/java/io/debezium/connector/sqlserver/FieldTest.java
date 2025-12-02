@@ -6,14 +6,14 @@
 
 package io.debezium.connector.sqlserver;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.AbstractFieldTest;
 
 public class FieldTest extends AbstractFieldTest {
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         setAllConnectorFields(SqlServerConnectorConfig.ALL_FIELDS);
     }
 
