@@ -14,10 +14,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
@@ -38,8 +38,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.customer");
@@ -70,8 +70,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("ALTER TABLE debezium.orders ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.orders");
             TestHelper.dropTable(connection, "debezium.customer");
@@ -79,8 +79,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         connection.execute("delete from debezium.customer");
         connection.execute("delete from debezium.orders");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -89,7 +89,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void transactionMetadata() throws Exception {
+    void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)

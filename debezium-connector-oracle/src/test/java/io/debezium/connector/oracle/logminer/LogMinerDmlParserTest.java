@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Properties;
 
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -42,8 +42,8 @@ public class LogMinerDmlParserTest {
     private LogMinerDmlParser fastDmlParser;
     private LogMinerColumnResolverDmlParser columnResolverDmlParser;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
         columnResolverDmlParser = new LogMinerColumnResolverDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
@@ -455,7 +455,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    public void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
+    void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST"))
                 .addColumn(Column.editor().name("ID").create())

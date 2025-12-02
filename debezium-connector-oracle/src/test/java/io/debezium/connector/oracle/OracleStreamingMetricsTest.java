@@ -15,8 +15,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
-import org.junit.Before;
 import org.junit.Rule;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
@@ -40,8 +40,8 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
     protected T metrics;
     protected Clock fixedClock;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         init(TestHelper.defaultConfig());
     }
 
