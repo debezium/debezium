@@ -35,7 +35,7 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
             "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL," +
-            "PRIMARY KEY (id)"
+            "PRIMARY KEY (id)" +
             ")";
 
     /**
