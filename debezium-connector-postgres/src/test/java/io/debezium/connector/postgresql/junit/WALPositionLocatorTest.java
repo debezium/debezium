@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.util.Optional;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.Lsn;
@@ -44,7 +44,7 @@ public class WALPositionLocatorTest {
     // Constructor Tests
     // =============================================================================
     @Test
-    public void testDefaultConstructor() {
+    void testDefaultConstructor() {
         WalPositionLocator locator = new WalPositionLocator();
 
         assertThat(locator.getLastCommitStoredLsn()).isNull();
@@ -53,7 +53,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void testParameterizedConstructor() {
+    void testParameterizedConstructor() {
         Lsn lastCommit = Lsn.valueOf(100L);
         Lsn lastEvent = Lsn.valueOf(150L);
         ReplicationMessage.Operation lastType = ReplicationMessage.Operation.COMMIT;
@@ -66,7 +66,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenLastCommitStoredLsnIsNullShouldBeginProcessingOfMessageFromTheFirstLsn() {
+    void whenLastCommitStoredLsnIsNullShouldBeginProcessingOfMessageFromTheFirstLsn() {
         WalPositionLocator locator = new WalPositionLocator();
         Lsn beginLsn = Lsn.valueOf(100L);
         ReplicationMessage message = createBeginMessage(1L);
@@ -77,7 +77,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenLastCommitStoredIsLessThanCurrentCommitShouldBeginProcessingMessageFromBeginLsn() {
+    void whenLastCommitStoredIsLessThanCurrentCommitShouldBeginProcessingMessageFromBeginLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(100L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.COMMIT);
@@ -103,7 +103,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenLastCommitStoredIsLessThanCurrentCommitAndFirstMessageIsNotBeginShouldBeginProcessingMessageFromTheFirstLsn() {
+    void whenLastCommitStoredIsLessThanCurrentCommitAndFirstMessageIsNotBeginShouldBeginProcessingMessageFromTheFirstLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(100L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.COMMIT);
@@ -126,7 +126,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenStoreLsnAfterLastEventStoredLsnFoundShouldBeginProcessingMessageFromTheLsnAfterLastEventStoredLsn() {
+    void whenStoreLsnAfterLastEventStoredLsnFoundShouldBeginProcessingMessageFromTheLsnAfterLastEventStoredLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(140L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.COMMIT);
@@ -175,7 +175,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsNullShouldBeginProcessingMessageFromTxStartLsn() {
+    void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsNullShouldBeginProcessingMessageFromTxStartLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(110L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, null);
@@ -210,7 +210,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsBeginShouldBeginProcessingMessageFromTxStartLsn() {
+    void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsBeginShouldBeginProcessingMessageFromTxStartLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(110L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.BEGIN);
@@ -245,7 +245,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsCommitShouldBeginProcessingMessageFromTxStartLsn() {
+    void whenStoreLsnAfterLastEventStoredLsnFoundAndBeginMessageProcessedAndLastProcessedMessageTypeIsCommitShouldBeginProcessingMessageFromTxStartLsn() {
         Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         Lsn lastEventStoredLsn = Lsn.valueOf(110L);
         WalPositionLocator locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.COMMIT);
@@ -280,7 +280,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void whenReceivedALsnWhichIsValidButNoSeenShouldThrowException() {
+    void whenReceivedALsnWhichIsValidButNoSeenShouldThrowException() {
         WalPositionLocator locator = new WalPositionLocator();
         Lsn searchLsn = Lsn.valueOf(100L);
         Lsn unseenLsn = Lsn.valueOf(200L); // Valid LSN not seen during search
@@ -300,7 +300,7 @@ public class WALPositionLocatorTest {
     // =============================================================================
 
     @Test
-    public void testToStringDefaultConstructor() {
+    void testToStringDefaultConstructor() {
         WalPositionLocator locator = new WalPositionLocator();
 
         String result = locator.toString();
@@ -318,7 +318,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void testToStringParameterizedConstructor() {
+    void testToStringParameterizedConstructor() {
         Lsn lastCommit = Lsn.valueOf(100L);
         Lsn lastEvent = Lsn.valueOf(150L);
         ReplicationMessage.Operation lastType = ReplicationMessage.Operation.COMMIT;
@@ -333,7 +333,7 @@ public class WALPositionLocatorTest {
     }
 
     @Test
-    public void testToStringAfterProcessingMessages() {
+    void testToStringAfterProcessingMessages() {
         WalPositionLocator locator = new WalPositionLocator();
         Lsn lsn = Lsn.valueOf(100L);
         locator.resumeFromLsn(lsn, createBeginMessage(1L));

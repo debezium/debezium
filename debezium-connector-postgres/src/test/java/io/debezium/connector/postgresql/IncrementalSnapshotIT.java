@@ -19,12 +19,12 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -57,8 +57,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             + "CREATE TYPE enum_type AS ENUM ('UP', 'DOWN', 'LEFT', 'RIGHT', 'STORY');"
             + "CREATE TABLE s1.enumpk (pk enum_type, aa integer, PRIMARY KEY(pk));";
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
         initializeConnectorTestFramework();
 
@@ -66,8 +66,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         TestHelper.execute(SETUP_TABLES_STMT);
     }
 
-    @BeforeClass
-    public static void startKafka() throws Exception {
+    @BeforeAll
+    static void startKafka() throws Exception {
         Map<String, String> props = new HashMap<>();
         props.put("auto.create.topics.enable", "false");
 
@@ -82,15 +82,15 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         KafkaClusterUtils.createTopic("signals_topic", 1, (short) 1, kafkaCluster.getBootstrapServers());
     }
 
-    @AfterClass
-    public static void stopKafka() {
+    @AfterAll
+    static void stopKafka() {
         if (kafkaCluster != null) {
             kafkaCluster.stop();
         }
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -226,7 +226,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void inserts4Pks() throws Exception {
+    void inserts4Pks() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -299,7 +299,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void inserts4PksWithKafkaSignal() throws Exception {
+    void inserts4PksWithKafkaSignal() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -343,7 +343,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void insertsNumericPk() throws Exception {
+    void insertsNumericPk() throws Exception {
         // Testing.Print.enable();
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -448,7 +448,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+    void shouldOutputRecordsInCloudEventsFormat() throws Exception {
         // Testing.Print.enable();
 
         try (JdbcConnection connection = databaseConnection()) {

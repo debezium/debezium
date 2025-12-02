@@ -21,8 +21,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -71,8 +71,8 @@ public class PostgresPublicationTableComparisonTest {
     private static final String TEST_PUBLICATION_NAME = "test_publication";
     private static final String TEST_DATABASE_NAME = "test_db";
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
 
         // Mock connector config
@@ -105,7 +105,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testGetCurrentPublicationTablesSuccess() throws Exception {
+    void testGetCurrentPublicationTablesSuccess() throws Exception {
         // Setup current publication tables
         Set<TableId> currentTables = new HashSet<>(Arrays.asList(
                 new TableId(null, "public", "customers"),
@@ -131,7 +131,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testGetCurrentPublicationTablesWithSQLException() throws Exception {
+    void testGetCurrentPublicationTablesWithSQLException() throws Exception {
         // Setup mock to throw SQLException
         when(preparedStatement.executeQuery()).thenThrow(new SQLException("permission denied for relation pg_publication_tables"));
 
@@ -149,7 +149,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testGetCurrentPublicationTablesEmptyResult() throws Exception {
+    void testGetCurrentPublicationTablesEmptyResult() throws Exception {
         // Setup mock result set with no data
         when(resultSet.next()).thenReturn(false);
 
@@ -167,7 +167,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testIsPublicationUpdateRequiredWhenTablesMatch() throws Exception {
+    void testIsPublicationUpdateRequiredWhenTablesMatch() throws Exception {
         // Setup current publication tables
         Set<TableId> currentTables = new HashSet<>(Arrays.asList(
                 new TableId(null, "public", "customers"),
@@ -187,7 +187,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testIsPublicationUpdateRequiredWhenTablesDiffer() throws Exception {
+    void testIsPublicationUpdateRequiredWhenTablesDiffer() throws Exception {
         // Setup current publication tables
         Set<TableId> currentTables = new HashSet<>(Arrays.asList(
                 new TableId(TEST_DATABASE_NAME, "public", "customers")));
@@ -211,7 +211,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testIsPublicationUpdateRequiredWhenCurrentTablesIsNull() throws Exception {
+    void testIsPublicationUpdateRequiredWhenCurrentTablesIsNull() throws Exception {
         // Mock getCurrentPublicationTables to return Optional.empty() (simulating SQL exception)
         mockGetCurrentPublicationTables(null);
 
@@ -228,7 +228,7 @@ public class PostgresPublicationTableComparisonTest {
     }
 
     @Test
-    public void testIsPublicationUpdateRequiredWhenNoDesiredTables() throws Exception {
+    void testIsPublicationUpdateRequiredWhenNoDesiredTables() throws Exception {
         // Setup current publication tables
         Set<TableId> currentTables = new HashSet<>(Arrays.asList(
                 new TableId(TEST_DATABASE_NAME, "public", "customers")));

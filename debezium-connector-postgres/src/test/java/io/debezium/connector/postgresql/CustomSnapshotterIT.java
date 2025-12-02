@@ -13,11 +13,11 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -45,18 +45,18 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -122,7 +122,7 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldAllowStreamOnlyByConfigurationBasedSnapshot() throws InterruptedException {
+    void shouldAllowStreamOnlyByConfigurationBasedSnapshot() throws InterruptedException {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
@@ -153,7 +153,7 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotAllowStreamByConfigurationBasedSnapshot() {
+    void shouldNotAllowStreamByConfigurationBasedSnapshot() {
 
         LogInterceptor logInterceptor = new LogInterceptor(ChangeEventSourceCoordinator.class);
 

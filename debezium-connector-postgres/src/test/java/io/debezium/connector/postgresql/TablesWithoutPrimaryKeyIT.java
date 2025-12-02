@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 
@@ -35,13 +35,13 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
             "INSERT INTO nopk.t2 VALUES (2,20);" +
             "INSERT INTO nopk.t3 VALUES (3,30);";
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
     @Test
-    public void shouldProcessFromSnapshot() throws Exception {
+    void shouldProcessFromSnapshot() throws Exception {
         TestHelper.execute(STATEMENTS);
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
@@ -63,7 +63,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldProcessFromSnapshotOld() throws Exception {
+    void shouldProcessFromSnapshotOld() throws Exception {
         TestHelper.execute(STATEMENTS);
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
@@ -85,7 +85,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldProcessFromStreaming() throws Exception {
+    void shouldProcessFromStreaming() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
@@ -124,7 +124,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldProcessFromStreamingOld() throws Exception {
+    void shouldProcessFromStreamingOld() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")

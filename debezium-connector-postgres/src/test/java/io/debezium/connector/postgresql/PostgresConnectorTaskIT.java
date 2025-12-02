@@ -6,12 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.sql.SQLException;
 import java.time.Duration;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -37,17 +39,19 @@ public class PostgresConnectorTaskIT {
         }
     }
 
-    @Test(expected = ConnectException.class)
+    @Test
     @FixFor("DBZ-1426")
-    public void retryOnFailureToCreateConnection() throws Exception {
-        FakeTask postgresConnectorTask = new FakeTask();
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        long startTime = System.currentTimeMillis();
-        postgresConnectorTask.createReplicationConnection(config, 3, Duration.ofSeconds(2));
+    void retryOnFailureToCreateConnection() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            FakeTask postgresConnectorTask = new FakeTask();
+            PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+            long startTime = System.currentTimeMillis();
+            postgresConnectorTask.createReplicationConnection(config, 3, Duration.ofSeconds(2));
 
-        // Verify retry happened for 10 seconds
-        long endTime = System.currentTimeMillis();
-        long timeElapsed = endTime - startTime;
-        Assert.assertTrue(timeElapsed > 5);
+            // Verify retry happened for 10 seconds
+            long endTime = System.currentTimeMillis();
+            long timeElapsed = endTime - startTime;
+            assertTrue(timeElapsed > 5);
+        });
     }
 }

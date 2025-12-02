@@ -22,10 +22,10 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
@@ -52,8 +52,8 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngine
 
     private DecodeLogicalDecodingMessageContent<SourceRecord> decodeLogicalDecodingMessageContent;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         Configuration.Builder configBuilder = TestHelper.defaultConfig();
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -63,15 +63,15 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngine
         decodeLogicalDecodingMessageContent.configure(Collections.emptyMap());
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         decodeLogicalDecodingMessageContent.close();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
