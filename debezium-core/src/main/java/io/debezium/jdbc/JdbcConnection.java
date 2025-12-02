@@ -1674,11 +1674,17 @@ public class JdbcConnection implements AutoCloseable {
 
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy) {
+        return buildSelectWithRowLimits(tableId, limit, projection, condition, additionalCondition, orderBy, Optional.empty());
+    }
+
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
+                                           Optional<String> additionalCondition, String orderBy, Optional<String> tableAlias) {
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
                 .append(" FROM ");
         sql.append(quotedTableIdString(tableId));
+        tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
                     .append(" WHERE ")

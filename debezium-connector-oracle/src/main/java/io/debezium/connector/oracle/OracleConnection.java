@@ -43,13 +43,16 @@ import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
@@ -477,13 +480,15 @@ public class OracleConnection extends JdbcConnection {
                                            String projection,
                                            Optional<String> condition,
                                            Optional<String> additionalCondition,
-                                           String orderBy) {
+                                           String orderBy,
+                                           Optional<String> tableAlias) {
         final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
                 .append(" FROM ");
         sql.append(quotedTableIdString(table));
+        tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
                     .append(" WHERE ")
@@ -910,5 +915,10 @@ public class OracleConnection extends JdbcConnection {
     @FunctionalInterface
     interface ObjectIdentifierConsumer {
         void apply(Long objectId, Long dataObjectId);
+    }
+
+    @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        return new OraclePhysicalRowIdentifierChunkQueryBuilder<>(connectorConfig, this);
     }
 }
