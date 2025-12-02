@@ -18,10 +18,10 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -63,8 +63,8 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
     @Rule
     public TestRule skipTest2 = new SkipTestDependingOnDatabaseRule();
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         RO_DATABASE.createAndInitialize();
@@ -72,8 +72,8 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }

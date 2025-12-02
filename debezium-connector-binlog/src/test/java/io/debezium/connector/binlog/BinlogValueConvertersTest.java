@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -19,7 +20,7 @@ import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -46,7 +47,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
             0, 0, 47, 0, 116, 121, 112, 101 };
 
     @Test
-    public void shouldAdjustLocalDateWithTwoDigitYears() {
+    void shouldAdjustLocalDateWithTwoDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateWithYear(00))).isEqualTo(localDateWithYear(2000));
         assertThat(ADJUSTER.adjustInto(localDateWithYear(01))).isEqualTo(localDateWithYear(2001));
         assertThat(ADJUSTER.adjustInto(localDateWithYear(10))).isEqualTo(localDateWithYear(2010));
@@ -57,7 +58,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void shouldAdjustLocalDateTimeWithTwoDigitYears() {
+    void shouldAdjustLocalDateTimeWithTwoDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(00))).isEqualTo(localDateTimeWithYear(2000));
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(01))).isEqualTo(localDateTimeWithYear(2001));
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(10))).isEqualTo(localDateTimeWithYear(2010));
@@ -68,19 +69,19 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void shouldNotAdjustLocalDateWithThreeDigitYears() {
+    void shouldNotAdjustLocalDateWithThreeDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateWithYear(-1))).isEqualTo(localDateWithYear(-1));
         assertThat(ADJUSTER.adjustInto(localDateWithYear(100))).isEqualTo(localDateWithYear(100));
     }
 
     @Test
-    public void shouldNotAdjustLocalDateTimeWithThreeDigitYears() {
+    void shouldNotAdjustLocalDateTimeWithThreeDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(-1))).isEqualTo(localDateTimeWithYear(-1));
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(100))).isEqualTo(localDateTimeWithYear(100));
     }
 
     @Test
-    public void testJsonValues() {
+    void testJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         final BinlogValueConverters converters = getValueConverters(
@@ -154,28 +155,30 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
                 .isTrue();
     }
 
-    @Test(expected = DebeziumException.class)
+    @Test
     @FixFor({ "DBZ-2563", "DBZ-7143" })
     public void testErrorOnInvalidJsonValues() {
-        String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
+        assertThrows(DebeziumException.class, () -> {
+            String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
-        final BinlogValueConverters converters = getValueConverters(
-                JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.BYTES,
-                x -> x,
-                EventConvertingFailureHandlingMode.FAIL);
+            final BinlogValueConverters converters = getValueConverters(
+                    JdbcValueConverters.DecimalMode.DOUBLE,
+                    TemporalPrecisionMode.CONNECT,
+                    JdbcValueConverters.BigIntUnsignedMode.LONG,
+                    BinaryHandlingMode.BYTES,
+                    x -> x,
+                    EventConvertingFailureHandlingMode.FAIL);
 
-        DdlParser parser = getDdlParser();
-        Tables tables = new Tables();
-        parser.parse(sql, tables);
-        Table table = tables.forTable(new TableId(null, null, "JSON_TABLE"));
+            DdlParser parser = getDdlParser();
+            Tables tables = new Tables();
+            parser.parse(sql, tables);
+            Table table = tables.forTable(new TableId(null, null, "JSON_TABLE"));
 
-        // ColA - Nullable column
-        Column colA = table.columnWithName("A");
-        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
-        converters.converter(colA, fieldA).convert(INVALID_JSON);
+            // ColA - Nullable column
+            Column colA = table.columnWithName("A");
+            Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
+            converters.converter(colA, fieldA).convert(INVALID_JSON);
+        });
     }
 
     @Test
@@ -268,7 +271,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void testInvalidLocalDate() {
+    void testInvalidLocalDate() {
         LogInterceptor interceptorInvalid = new LogInterceptor(BinlogValueConverters.class.getName() + ".invalid_value");
         String dateTable = "DATE_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A DATE NOT NULL);";
@@ -295,7 +298,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void testDateValidYear() {
+    void testDateValidYear() {
         String dateTable = "DATE_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A DATE NOT NULL);";
 
@@ -319,7 +322,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void testInvalidTimestamp() {
+    void testInvalidTimestamp() {
         LogInterceptor interceptorInvalid = new LogInterceptor(BinlogValueConverters.class.getName() + ".invalid_value");
         String dateTable = "TIMESTAMP_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A TIMESTAMP(3) NOT NULL);";
@@ -352,7 +355,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    public void testTimestampValidYear() {
+    void testTimestampValidYear() {
         String dateTable = "TIMESTAMP_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A TIMESTAMP(3) NOT NULL);";
 

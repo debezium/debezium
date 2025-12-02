@@ -28,9 +28,9 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
@@ -56,16 +56,16 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
     protected static final String SERVER_NAME = "is_test";
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         try {
             stopConnector();
         }

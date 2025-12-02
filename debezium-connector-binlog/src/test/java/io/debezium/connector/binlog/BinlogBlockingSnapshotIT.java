@@ -12,8 +12,8 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -37,16 +37,16 @@ public abstract class BinlogBlockingSnapshotIT<C extends SourceConnector>
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "blocking_snapshot_test", "1", null).withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final BinlogDatabaseVersionResolver databaseVersionResolver = new BinlogDatabaseVersionResolver();
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         try {
             stopConnector();
             JdbcConnection connection = databaseConnection();

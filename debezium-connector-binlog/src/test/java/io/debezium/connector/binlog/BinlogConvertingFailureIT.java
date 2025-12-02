@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
@@ -46,16 +46,16 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
     // 4 meta events (set character_set etc.) and then 2 tables with 2 events each (drop DDL, create DDL)
     private static final int INITIAL_EVENT_COUNT = 4 + (2 * 2);
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(DB_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }

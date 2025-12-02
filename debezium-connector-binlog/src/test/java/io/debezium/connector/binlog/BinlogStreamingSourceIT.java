@@ -9,6 +9,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -29,10 +30,10 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
@@ -79,8 +80,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     @Rule
     public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
@@ -90,8 +91,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         this.schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -144,7 +145,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
+    void shouldCreateSnapshotOfSingleDatabase() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = simpleConfig()
                 .build();
@@ -201,7 +202,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
+    void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = simpleConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -496,18 +497,20 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         assertThat(c11Time).isEqualTo(Duration.ofHours(0).minusMinutes(0).minusSeconds(0).minusNanos(0));
     }
 
-    @Test(expected = ConnectException.class)
-    public void shouldFailOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(null);
+    @Test
+    void shouldFailOnSchemaInconsistency() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            inconsistentSchema(null);
+        });
     }
 
     @Test
-    public void shouldWarnOnSchemaInconsistency() throws Exception {
+    void shouldWarnOnSchemaInconsistency() throws Exception {
         inconsistentSchema(EventProcessingFailureHandlingMode.WARN);
     }
 
     @Test
-    public void shouldIgnoreOnSchemaInconsistency() throws Exception {
+    void shouldIgnoreOnSchemaInconsistency() throws Exception {
         inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
     }
 

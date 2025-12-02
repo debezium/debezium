@@ -8,8 +8,8 @@ package io.debezium.connector.binlog;
 import java.nio.file.Path;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -36,7 +36,7 @@ public abstract class BinlogReselectColumnsProcessorIT<C extends SourceConnector
 
     private BinlogTestConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws Exception {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
@@ -45,7 +45,7 @@ public abstract class BinlogReselectColumnsProcessorIT<C extends SourceConnector
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         super.afterEach();
         if (connection != null) {

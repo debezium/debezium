@@ -11,9 +11,9 @@ import static org.junit.Assert.fail;
 import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
@@ -38,8 +38,8 @@ public abstract class AbstractSchemaHistoryTest<C extends SourceConnector> {
     protected Tables all;
     protected DdlParser parser;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         parser = getDdlParser();
         tables = new Tables();
         t0 = new Tables();
@@ -53,8 +53,8 @@ public abstract class AbstractSchemaHistoryTest<C extends SourceConnector> {
         history = createHistory();
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         if (history != null) {
             history.stop();
         }
@@ -94,7 +94,7 @@ public abstract class AbstractSchemaHistoryTest<C extends SourceConnector> {
     }
 
     @Test
-    public void shouldRecordChangesAndRecoverToVariousPoints() throws InterruptedException {
+    void shouldRecordChangesAndRecoverToVariousPoints() throws InterruptedException {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
         record(23, 1, "CREATE TABLE\nperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
         record(30, 2, "CREATE TABLE address\n( street VARCHAR(22) NOT NULL );", all, t3, t2);
