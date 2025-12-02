@@ -11,11 +11,11 @@ import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -53,21 +53,21 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
     private static OracleConnection connection;
     private static String flushTableName;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         flushTableName = TestHelper.defaultConfig().build().getString(OracleConnectorConfig.LOG_MINING_FLUSH_TABLE_NAME);
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);

@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.Scn;
@@ -33,7 +33,7 @@ public class LogMinerUtilsTest {
 
     // todo delete after replacement == -1 in the code
     @Test
-    public void testConversion() {
+    void testConversion() {
         Map<String, String> map = new HashMap<>();
         map.put("one", "1001");
         map.put("two", "1002");

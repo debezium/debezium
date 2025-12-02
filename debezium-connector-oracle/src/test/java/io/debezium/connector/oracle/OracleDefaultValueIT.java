@@ -18,9 +18,9 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -45,8 +45,8 @@ public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
     private Consumer<Configuration.Builder> configUpdater;
     private Configuration config;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         configUpdater = builder -> {
         };
         connection = TestHelper.testConnection();
@@ -59,8 +59,8 @@ public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("CREATE SEQUENCE debezium_seq MINVALUE 1 MAXVALUE 999999999 INCREMENT BY 1 START WITH 1");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "default_value_test");
             TestHelper.dropSequence(connection, "debezium_seq");

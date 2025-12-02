@@ -10,9 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
@@ -35,8 +35,8 @@ public class OracleOffsetContextTest {
     private OracleConnectorConfig connectorConfig;
     private OffsetContext.Loader offsetLoader;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         this.connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
         this.offsetLoader = connectorConfig.getAdapter().getOffsetContextLoader();
     }

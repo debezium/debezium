@@ -19,11 +19,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.TestRule;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
@@ -51,7 +51,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
     private OracleConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -60,7 +60,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         super.afterEach();
         if (connection != null) {
@@ -293,7 +293,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
     @Test
     @FixFor("DBZ-8493")
-    @Ignore("This requires running ALTER SYSTEM SET UNDO_RETENTION=60 within the PDB, which we do not want to automate")
+    @Disabled("This requires running ALTER SYSTEM SET UNDO_RETENTION=60 within the PDB, which we do not want to automate")
     public void testShouldNotThrowErrorUsingFallbackQuery() throws Exception {
         TestHelper.dropTable(connection, "dbz4321");
         try {

@@ -12,13 +12,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.SQLException;
 import java.util.Random;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import oracle.sql.RAW;
 
 public class LobUnderConstructionTest {
     @Test
-    public void shouldBuildCorrectLobFromInitialValue() {
+    void shouldBuildCorrectLobFromInitialValue() {
         LobUnderConstruction lob = LobUnderConstruction.fromInitialValue(null);
         assertThat(lob.isNull).isTrue();
         assertThat(lob.fragments).isEmpty();
@@ -51,7 +51,7 @@ public class LobUnderConstructionTest {
     }
 
     @Test
-    public void shouldMergeCorrectly() throws SQLException {
+    void shouldMergeCorrectly() throws SQLException {
         // 0 fragments
         LobUnderConstruction lob = LobUnderConstruction.fromInitialValue(null);
         assertThat(lob.merge()).isEqualTo(null);
@@ -112,7 +112,7 @@ public class LobUnderConstructionTest {
     }
 
     @Test
-    public void shouldHandleNonLinearInsertionOrderWithOverwritesForBlob() {
+    void shouldHandleNonLinearInsertionOrderWithOverwritesForBlob() {
         byte[] contents = new byte[1024];
         new Random().nextBytes(contents);
 
@@ -183,7 +183,7 @@ public class LobUnderConstructionTest {
     }
 
     @Test
-    public void shouldHandleNonLinearInsertionOrderWithOverwritesForClob() {
+    void shouldHandleNonLinearInsertionOrderWithOverwritesForClob() {
         String contents = randomString(1024);
 
         // back to front
