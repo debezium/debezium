@@ -39,7 +39,7 @@ A directory named `debezium-server` will be created with these contents:
 debezium-server/
 |-- CHANGELOG.md
 |-- config
-|-- CONTRIBUTE.md
+|-- CONTRIBUTING.md
 |-- COPYRIGHT.txt
 |-- debezium-server-{debezium-version}-runner.jar
 |-- lib
