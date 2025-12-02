@@ -14,7 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
@@ -33,7 +33,7 @@ public class MySqlGtidSetTest {
     private MySqlGtidSet gtids;
 
     @Test
-    public void shouldCreateSetWithSingleInterval() {
+    void shouldCreateSetWithSingleInterval() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191");
         asertIntervalCount(UUID1, 1);
         asertIntervalExists(UUID1, 1, 191);
@@ -43,7 +43,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCollapseAdjacentIntervals() {
+    void shouldCollapseAdjacentIntervals() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191:192-199");
         asertIntervalCount(UUID1, 1);
         asertIntervalExists(UUID1, 1, 199);
@@ -53,7 +53,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldNotCollapseNonAdjacentIntervals() {
+    void shouldNotCollapseNonAdjacentIntervals() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191:193-199");
         asertIntervalCount(UUID1, 2);
         asertFirstInterval(UUID1, 1, 191);
@@ -62,7 +62,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCreateWithMultipleIntervals() {
+    void shouldCreateWithMultipleIntervals() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191:193-199:1000-1033");
         asertIntervalCount(UUID1, 3);
         asertFirstInterval(UUID1, 1, 191);
@@ -72,7 +72,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCreateWithMultipleIntervalsThatMayBeAdjacent() {
+    void shouldCreateWithMultipleIntervalsThatMayBeAdjacent() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191:192-199:1000-1033:1035-1036:1038-1039");
         asertIntervalCount(UUID1, 4);
         asertFirstInterval(UUID1, 1, 199);
@@ -83,7 +83,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCorrectlyDetermineIfSimpleGtidSetIsContainedWithinAnother() {
+    void shouldCorrectlyDetermineIfSimpleGtidSetIsContainedWithinAnother() {
         gtids = new MySqlGtidSet("7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
         assertThat(gtids.isContainedWithin(new MySqlGtidSet("7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41"))).isTrue();
         assertThat(gtids.isContainedWithin(new MySqlGtidSet("7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-42"))).isTrue();
@@ -92,7 +92,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCorrectlyDetermineIfComplexGtidSetIsContainedWithinAnother() {
+    void shouldCorrectlyDetermineIfComplexGtidSetIsContainedWithinAnother() {
         MySqlGtidSet connector = new MySqlGtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
@@ -103,7 +103,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldCorrectlyDetermineIfComplexGtidSetWithVariousLineSeparatorsIsContainedWithinAnother() {
+    void shouldCorrectlyDetermineIfComplexGtidSetWithVariousLineSeparatorsIsContainedWithinAnother() {
         GtidSet connector = new MySqlGtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
@@ -117,7 +117,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldFilterServerUuids() {
+    void shouldFilterServerUuids() {
         String gtidStr = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
@@ -155,7 +155,7 @@ public class MySqlGtidSetTest {
     }
 
     @Test
-    public void shouldSubtractOnlyGTIDSetsInLeftOperand() {
+    void shouldSubtractOnlyGTIDSetsInLeftOperand() {
         String gtidStr1 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-20,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:5-8:12-18:25-55:60-65";
         String gtidStr2 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-21,"
