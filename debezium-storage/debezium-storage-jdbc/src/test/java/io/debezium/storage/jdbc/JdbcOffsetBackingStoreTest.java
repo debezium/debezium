@@ -52,7 +52,7 @@ public class JdbcOffsetBackingStoreTest {
                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                 "record_insert_ts TIMESTAMP NOT NULL," +
                 "record_insert_seq INTEGER NOT NULL," +
-                "PRIMARY KEY (id)"
+                "PRIMARY KEY (id)" +
                 ")");
         props.put("offset.storage.jdbc.offset.table.select", "SELECT id, offset_key, offset_val FROM offsets_jdbc " +
                 "ORDER BY record_insert_ts, record_insert_seq");
