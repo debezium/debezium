@@ -41,6 +41,9 @@ The following connectors are supported:
 
 - `quarkus-debezium-postgres` extension for *Postgres* Connector
 - `quarkus-debezium-mongodb` extension for *Mongodb* Connector
+- `quarkus-debezium-mysql` extension for *MySQL* Connector
+- `quarkus-debezium-mariadb` extension for *MariaDB* Connector
+- `quarkus-debezium-sqlserver` extension for *MS Sql Server* Connector
 
 
 == Prerequisites

@@ -11,4 +11,4 @@ metadata:
   - "integration"
   - "cdc"
   - "mongoDB"
-  status: "experimental"
+  status: "stable"

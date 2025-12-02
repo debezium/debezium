@@ -11,4 +11,4 @@ metadata:
     - "integration"
     - "cdc"
     - "mysql"
-  status: "experimental"
+  status: "stable"
