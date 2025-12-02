@@ -3498,6 +3498,64 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataButNotSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+
+        // Configure with guardrail limit of 1 table
+        // (connector is capturing 1 table for data, but all tables for schema from all databases)
+        final Configuration config = TestHelper.defaultConfig()
+            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+            .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
+            .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+            .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataAndSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+
+        // Configure with guardrail limit of 1 table
+        // (connector is capturing 1 table for data, but all tables for schema from all databases)
+        final Configuration config = TestHelper.defaultConfig()
+            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+            .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
+            .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+            .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+            .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
     public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
         connection = TestHelper.testConnection();
 
