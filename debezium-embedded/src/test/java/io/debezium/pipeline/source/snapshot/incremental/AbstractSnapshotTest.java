@@ -352,7 +352,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
             String query;
             if (!Strings.isNullOrEmpty(additionalCondition) && !Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s, \"surrogate-key\": %s}')",
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s, \"surrogate-key\": \"%s\"}')",
                         signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition, surrogateKey);
             }
             else if (!Strings.isNullOrEmpty(additionalCondition)) {
@@ -362,7 +362,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
             }
             else if (!Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": %s}')",
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": \"%s\"}')",
                         signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey);
             }
             else {
@@ -396,7 +396,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
             String query;
             if (!Strings.isNullOrEmpty(additionalConditions) && !Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-conditions\": [%s], \"surrogate-key\": %s}')",
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-conditions\": [%s], \"surrogate-key\": \"%s\"}')",
                         signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalConditions, surrogateKey);
             }
             else if (!Strings.isNullOrEmpty(additionalConditions)) {
@@ -406,7 +406,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
             }
             else if (!Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": %s}')",
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": \"%s\"}')",
                         signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey);
             }
             else {
