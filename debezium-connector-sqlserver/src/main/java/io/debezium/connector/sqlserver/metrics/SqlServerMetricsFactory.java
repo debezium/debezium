@@ -12,6 +12,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.sqlserver.SqlServerPartition;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
@@ -26,9 +27,10 @@ public class SqlServerMetricsFactory implements ChangeEventSourceMetricsFactory<
     @Override
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<SqlServerPartition> getSnapshotMetrics(T taskContext,
                                                                                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                                    EventMetadataProvider eventMetadataProvider) {
+                                                                                                                    EventMetadataProvider eventMetadataProvider,
+                                                                                                                    TaskStateMetrics taskStateMetrics) {
         return new SqlServerSnapshotTaskMetrics(taskContext, changeEventQueueMetrics,
-                eventMetadataProvider, partitions);
+                eventMetadataProvider, partitions, taskStateMetrics);
     }
 
     @Override

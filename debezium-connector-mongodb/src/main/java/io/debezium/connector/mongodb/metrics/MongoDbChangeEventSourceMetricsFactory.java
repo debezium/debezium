@@ -9,6 +9,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
@@ -25,8 +26,21 @@ public class MongoDbChangeEventSourceMetricsFactory extends DefaultChangeEventSo
                                                                                                        ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                        EventMetadataProvider eventMetadataProvider) {
         if (snapshotMetrics == null) {
-            snapshotMetrics = new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+            snapshotMetrics = new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics,
+                    eventMetadataProvider);
+        }
+        return snapshotMetrics;
+    }
 
+    @Override
+    public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics getSnapshotMetrics(
+                                                                                                       T taskContext,
+                                                                                                       ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                       EventMetadataProvider eventMetadataProvider,
+                                                                                                       TaskStateMetrics taskStateMetrics) {
+        if (snapshotMetrics == null) {
+            snapshotMetrics = new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics,
+                    eventMetadataProvider, taskStateMetrics);
         }
         return snapshotMetrics;
     }
@@ -37,7 +51,8 @@ public class MongoDbChangeEventSourceMetricsFactory extends DefaultChangeEventSo
                                                                                                          ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                          EventMetadataProvider eventMetadataProvider) {
         if (streamingMetrics == null) {
-            streamingMetrics = new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+            streamingMetrics = new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics,
+                    eventMetadataProvider);
         }
         return streamingMetrics;
     }

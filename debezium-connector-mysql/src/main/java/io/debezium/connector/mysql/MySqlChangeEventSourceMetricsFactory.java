@@ -10,6 +10,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
@@ -26,8 +27,10 @@ public class MySqlChangeEventSourceMetricsFactory extends DefaultChangeEventSour
     @Override
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<MySqlPartition> getSnapshotMetrics(T taskContext,
                                                                                                                 ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                                EventMetadataProvider eventMetadataProvider) {
-        return new MySqlSnapshotChangeEventSourceMetrics((MySqlTaskContext) taskContext, changeEventQueueMetrics, eventMetadataProvider);
+                                                                                                                EventMetadataProvider eventMetadataProvider,
+                                                                                                                TaskStateMetrics taskStateMetrics) {
+        return new MySqlSnapshotChangeEventSourceMetrics((MySqlTaskContext) taskContext, changeEventQueueMetrics,
+                eventMetadataProvider, taskStateMetrics);
     }
 
     @Override

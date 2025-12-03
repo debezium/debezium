@@ -14,6 +14,7 @@ import io.debezium.connector.mongodb.DisconnectEvent;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.DefaultSnapshotChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.Collect;
 
@@ -26,10 +27,22 @@ public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChan
 
     private final AtomicLong numberOfDisconnects = new AtomicLong();
 
-    public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+    public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext,
+                                                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                     EventMetadataProvider metadataProvider) {
         super(taskContext, changeEventQueueMetrics, metadataProvider,
-                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId()));
+                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task",
+                        taskContext.getTaskId()));
+    }
+
+    public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext,
+                                                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                    EventMetadataProvider metadataProvider,
+                                                                                    TaskStateMetrics taskStateMetrics) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider,
+                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task",
+                        taskContext.getTaskId()),
+                taskStateMetrics);
     }
 
     @Override

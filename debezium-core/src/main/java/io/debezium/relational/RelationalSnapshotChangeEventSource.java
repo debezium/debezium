@@ -64,9 +64,9 @@ import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
+import io.debezium.util.ThreadNameContext;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
-import io.debezium.util.ThreadNameContext;
 
 /**
  * Base class for {@link SnapshotChangeEventSource} for relational databases with or without a schema history.
