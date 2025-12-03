@@ -41,6 +41,8 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE tsvector.text_search_test (id SERIAL PRIMARY KEY, title TEXT, content TEXT, search_vector tsvector);");
         TestHelper.execute(
                 "INSERT INTO tsvector.text_search_test (title, content, search_vector) VALUES ('TC1 - Direct TSV', 'This is a test for direct tsvector insert', to_tsvector('english', 'This is a test for direct tsvector insert'));");
+
+        // Re-initialize the connector framework AFTER database cleanup to ensure clean state
         initializeConnectorTestFramework();
     }
 
