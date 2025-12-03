@@ -11,14 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -26,9 +24,6 @@ import io.debezium.util.Testing;
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConnector> {
 
     private OracleConnection connection;
-
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
 
     @BeforeEach
     void before() throws Exception {

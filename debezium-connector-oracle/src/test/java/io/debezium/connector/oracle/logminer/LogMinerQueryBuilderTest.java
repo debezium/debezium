@@ -31,15 +31,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningQueryFilterMode;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -54,9 +51,6 @@ import io.debezium.util.Strings;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerQueryBuilderTest {
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +

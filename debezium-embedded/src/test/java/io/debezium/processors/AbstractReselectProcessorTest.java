@@ -63,7 +63,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     }
 
     @AfterEach
-    void afterEach() throws Exception {
+    protected void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         dropTable();

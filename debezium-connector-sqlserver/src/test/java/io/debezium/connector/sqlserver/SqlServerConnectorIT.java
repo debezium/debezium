@@ -16,8 +16,9 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EX
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -49,12 +50,10 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -69,7 +68,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.RetryingCallable;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
@@ -89,17 +87,12 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
-import junit.framework.TestCase;
-
 /**
  * Integration test for the Debezium SQL Server connector.
  *
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     public static final int ON_LINE = 0;
 
@@ -934,7 +927,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                         }
                     }
                     catch (Exception e) {
-                        org.junit.Assert.fail("Failed to fetch changes for table " + tableName + ": " + e.getMessage());
+                        fail("Failed to fetch changes for table " + tableName + ": " + e.getMessage());
                     }
                 }
             });
@@ -3017,11 +3010,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
             assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
             Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(1, struct.get("id"));
-            TestCase.assertEquals("Test1", struct.get("data"));
+            assertEquals(1, struct.get("id"));
+            assertEquals("Test1", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
 
             stopConnector();
 
@@ -3035,11 +3028,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Check we get up-to-date data in the snapshot.
             assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(3, struct.get("id"));
-            TestCase.assertEquals("Test3", struct.get("data"));
+            assertEquals(3, struct.get("id"));
+            assertEquals("Test3", struct.get("data"));
         }
         catch (Exception e) {
             e.printStackTrace();

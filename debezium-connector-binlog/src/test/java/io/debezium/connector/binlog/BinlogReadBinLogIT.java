@@ -7,8 +7,8 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -27,7 +27,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -57,7 +56,6 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
@@ -80,9 +78,6 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
     private JdbcConfiguration config;
 
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("readbinlog_it", "readbinlog_test");
-
-    @Rule
-    public SkipTestRule skipTest = new SkipTestRule();
 
     @BeforeEach
     void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {

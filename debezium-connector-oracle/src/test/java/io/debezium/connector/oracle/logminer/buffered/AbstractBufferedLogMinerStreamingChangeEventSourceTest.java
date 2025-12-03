@@ -21,11 +21,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +42,6 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
@@ -80,9 +77,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;

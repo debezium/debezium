@@ -51,13 +51,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -78,7 +76,6 @@ import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.PostgresDatabaseVersionResolver;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.spi.SlotState;
@@ -126,9 +123,6 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             "CREATE TABLE s2.a (pk SERIAL, aa integer, bb varchar(20), PRIMARY KEY(pk));";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
     private PostgresConnector connector;
-
-    @Rule
-    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
     @BeforeAll
     static void beforeClass() throws SQLException {

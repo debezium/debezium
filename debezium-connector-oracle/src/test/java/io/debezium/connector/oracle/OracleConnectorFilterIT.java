@@ -18,18 +18,15 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -45,9 +42,6 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
     private static OracleConnection adminConnection;
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @BeforeAll
     static void beforeClass() throws SQLException {

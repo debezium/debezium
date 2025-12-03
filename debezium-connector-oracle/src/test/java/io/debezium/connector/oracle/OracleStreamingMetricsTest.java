@@ -15,15 +15,12 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -32,9 +29,6 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  * Common multi-adapter streaming metrics tests.
  */
 public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreamingChangeEventSourceMetrics> {
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     protected OracleConnectorConfig connectorConfig;
     protected T metrics;

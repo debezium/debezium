@@ -101,7 +101,7 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
         config = simpleConfig()
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
                 .with("transforms", "snapshotasinsert")

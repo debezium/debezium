@@ -77,7 +77,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
     @BeforeEach
-    void beforeEach() throws Exception {
+    protected void beforeEach() throws Exception {
         createTable();
         outboxEventRouter = new EventRouter<>();
         outboxEventRouter.configure(Collections.emptyMap()); // configure with defaults
