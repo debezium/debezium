@@ -13,14 +13,14 @@ import static io.debezium.connector.postgresql.TestHelper.TYPE_SCALE_PARAMETER_K
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.fail;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -3682,7 +3682,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String[] expectedFieldOrder = new String[]{ "b", "d", "c", "a" };
 
         for (int i = 0; i < fields.size(); i++) {
-            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+            assertEquals(expectedFieldOrder[i], fields.get(i).name(), "Key field names should in order");
         }
 
         // Alter the table to trigger a schema change event. Validate that the new schema maintains the primary key order.
@@ -3695,7 +3695,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         fields = record.keySchema().fields();
         for (int i = 0; i < fields.size(); i++) {
-            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+            assertEquals(expectedFieldOrder[i], fields.get(i).name(), "Key field names should in order");
         }
     }
 
@@ -4021,7 +4021,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private SourceRecord assertRecordDeleted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse("records not generated", consumer.isEmpty());
+        assertFalse(consumer.isEmpty(), "records not generated");
         SourceRecord deletedRecord = consumer.remove();
 
         return assertRecordDeleted(deletedRecord, expectedTopicName, pkColumn, pk);
@@ -4041,7 +4041,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse("records not generated", consumer.isEmpty());
+        assertFalse(consumer.isEmpty(), "records not generated");
         SourceRecord insertedRecord = consumer.remove();
 
         return assertRecordInserted(insertedRecord, expectedTopicName, pkColumn, pk);
