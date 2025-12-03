@@ -9,8 +9,8 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.AbstractRecordsProducerTest.INSERT_ARRAY_TYPES_STMT;
 import static io.debezium.connector.postgresql.AbstractRecordsProducerTest.INSERT_DATE_TIME_TYPES_STMT;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
 

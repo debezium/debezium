@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  * JUnit 5 Extension that inspects the presence of the {@link RequiresAssemblyProfile} annotation either on a test method or on a test class.
  * If it finds the annotation, it will only run the test method/class if the system property {@code isAssemblyProfileActive} has the
  * value {@code true}.
- * This is the JUnit 5 equivalent of {@link RequiresAssemblyProfileTestRule}.
  *
  * @author René Kerner
  */
