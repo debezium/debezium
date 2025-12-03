@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -64,6 +65,19 @@ public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
     @AfterAll()
     public static void stopAzurite() {
         container.stop();
+    }
+
+    @AfterEach
+    public void cleanupBlobStorage() {
+        // Clean up the blob storage after each test to ensure test isolation
+        try {
+            if (blobServiceClient.getBlobContainerClient(CONTAINER_NAME).exists()) {
+                blobServiceClient.deleteBlobContainer(CONTAINER_NAME);
+            }
+        }
+        catch (Exception e) {
+            // Ignore cleanup errors
+        }
     }
 
     @Override

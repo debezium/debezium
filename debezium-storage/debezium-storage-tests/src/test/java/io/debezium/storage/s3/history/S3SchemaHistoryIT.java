@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 import org.apache.http.entity.ContentType;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +43,6 @@ import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
@@ -69,13 +69,26 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
         container.stop();
     }
 
-    @Override
-    public void afterEach() {
+    @AfterEach
+    public void cleanupS3Storage() {
+        // Clean up the S3 storage after each test to ensure test isolation
         if (client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET)) {
-            client.deleteObject(DeleteObjectRequest.builder().bucket(BUCKET).key(OBJECT_NAME).build());
-            client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+            try {
+                // Delete all objects in the bucket
+                client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                        .contents()
+                        .forEach(s3Object -> {
+                            client.deleteObject(DeleteObjectRequest.builder()
+                                    .bucket(BUCKET)
+                                    .key(s3Object.key())
+                                    .build());
+                        });
+                client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+            }
+            catch (Exception e) {
+                // Ignore cleanup errors
+            }
         }
-        super.afterEach();
     }
 
     @Override
@@ -97,11 +110,22 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     public void initializeStorageShouldCreateBucket() {
+        // Delete bucket for this test since it tests initialization
         try {
+            client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                    .contents()
+                    .forEach(s3Object -> {
+                        client.deleteObject(DeleteObjectRequest.builder()
+                                .bucket(BUCKET)
+                                .key(s3Object.key())
+                                .build());
+                    });
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
         }
-        catch (NoSuchBucketException e) {
+        catch (Exception e) {
+            // Ignore if bucket doesn't exist
         }
+
         history.initializeStorage();
 
         assertTrue(client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET));
@@ -109,10 +133,20 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     public void shouldDetectExistingBucket() {
+        // Delete bucket for this test since it tests detection
         try {
+            client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                    .contents()
+                    .forEach(s3Object -> {
+                        client.deleteObject(DeleteObjectRequest.builder()
+                                .bucket(BUCKET)
+                                .key(s3Object.key())
+                                .build());
+                    });
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
         }
-        catch (NoSuchBucketException e) {
+        catch (Exception e) {
+            // Ignore if bucket doesn't exist
         }
 
         assertFalse(history.storageExists());
