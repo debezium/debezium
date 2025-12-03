@@ -18,10 +18,10 @@ import java.util.stream.Stream;
 
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -29,7 +29,7 @@ import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
 import io.debezium.data.Envelope;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ChangeStreamPipelineFactoryTest {
 
     private static final List<String> SIZE_PIPELINE = List.of(

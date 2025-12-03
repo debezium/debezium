@@ -6,13 +6,13 @@
 package io.debezium.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Map;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.Tables;
@@ -40,7 +40,7 @@ public abstract class AbstractSchemaHistoryTest {
     protected Tables all;
     protected DdlParser parser;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         parser = new MySqlAntlrDdlParser();
         tables = new Tables();
@@ -55,7 +55,7 @@ public abstract class AbstractSchemaHistoryTest {
         history = createHistory();
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         if (history != null) {
             history.stop();

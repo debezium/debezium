@@ -59,11 +59,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -75,7 +73,6 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMod
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.custom.heartbeat.TestHeartbeatFactory;
@@ -93,7 +90,6 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
@@ -121,12 +117,6 @@ import io.debezium.util.Testing;
 public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private TestConsumer consumer;
-
-    @Rule
-    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     @BeforeEach
     void before() throws Exception {

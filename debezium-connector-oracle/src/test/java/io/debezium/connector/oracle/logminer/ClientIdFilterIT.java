@@ -10,26 +10,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -43,11 +38,7 @@ import io.debezium.junit.logging.LogInterceptor;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = ANY_LOGMINER)
-@RunWith(Parameterized.class)
 public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private static OracleConnection connection;
 
@@ -63,23 +54,14 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Parameterized.Parameters(name = "{index}: lobEnabled={0}")
-    public static Collection<Object[]> lobEnabled() {
-        return Arrays.asList(new Object[][]{
-                { "false" },
-                { "true" }
-        });
+    static Stream<String> lobEnabled() {
+        return Stream.of("false", "true");
     }
 
-    private final String lobEnabled;
-
-    public ClientIdFilterIT(String lobEnabled) {
-        this.lobEnabled = lobEnabled;
-    }
-
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithAnExcludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithAnExcludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -127,9 +109,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithoutLoggingWithAnExcludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithoutLoggingWithAnExcludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -176,9 +159,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithAnIncludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithAnIncludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -225,9 +209,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithoutLoggingWithAnIncludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithoutLoggingWithAnIncludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -272,9 +257,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldThrowConfigurationExceptionWhenClientIdIncludeExcludeBothSpecified() throws Exception {
+    public void shouldThrowConfigurationExceptionWhenClientIdIncludeExcludeBothSpecified(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");

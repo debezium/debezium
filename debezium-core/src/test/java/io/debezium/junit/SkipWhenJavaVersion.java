@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation used together with the {@link SkipTestRule} JUnit rule, that allows tests to be skipped
  * based on the Java version used for testing.
@@ -18,6 +20,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(SkipTestExtension.class)
 public @interface SkipWhenJavaVersion {
 
     int value();

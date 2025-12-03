@@ -13,12 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 
@@ -27,9 +24,6 @@ public class LogMinerUtilsTest {
 
     private static final Scn SCN = new Scn(BigInteger.ONE);
     private static final Scn OTHER_SCN = new Scn(BigInteger.TEN);
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     // todo delete after replacement == -1 in the code
     @Test

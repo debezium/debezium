@@ -22,9 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -33,7 +31,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -46,9 +43,6 @@ import io.debezium.jdbc.JdbcConnection;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogFileCollectorTest {
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private int currentQueryRow;
 

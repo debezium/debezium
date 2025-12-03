@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -20,7 +21,6 @@ import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -287,7 +287,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
                 true);
 
         assertThat(dbChanges).hasSize(expectedRecordCount);
-        Assert.assertTrue(validateDbChanges.test(dbChanges));
+        assertTrue(validateDbChanges.test(dbChanges));
     }
 
     protected <P, V> Map<P, V> consumeIncrementalSnapshot(int recordCount,

@@ -10,14 +10,12 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -27,9 +25,6 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 16, reason = "tsvector is tested only with PostgreSQL 16+")
 public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
-
-    @Rule
-    public final SkipTestRule skipTest = new SkipTestRule();
 
     @BeforeEach
     void before() throws Exception {

@@ -25,23 +25,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
-import io.debezium.junit.TestLogger;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.util.Clock;
@@ -55,11 +51,6 @@ import io.debezium.util.Metronome;
 public class ReplicationConnectionIT {
 
     private static final Logger logger = LoggerFactory.getLogger(ReplicationConnectionIT.class);
-    @Rule
-    public TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @Rule
-    public TestRule logTestName = new TestLogger(logger);
 
     @BeforeEach
     void before() throws Exception {
