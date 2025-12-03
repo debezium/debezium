@@ -38,9 +38,9 @@ public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnecto
 
     @BeforeEach
     void before() throws SQLException {
-        initializeConnectorTestFramework();
 
         TestHelper.dropAllSchemas();
+        initializeConnectorTestFramework();
     }
 
     @AfterEach
