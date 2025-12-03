@@ -6,7 +6,7 @@
 package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Properties;
 

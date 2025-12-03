@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * JUnit 5 Extension that logs start and end of each test method execution.
- * This is the JUnit 5 equivalent of the JUnit 4 {@link TestLogger} rule.
  *
  * @author Jiri Pechanec
  */

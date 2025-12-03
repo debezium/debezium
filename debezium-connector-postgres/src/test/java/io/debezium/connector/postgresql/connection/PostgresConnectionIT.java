@@ -7,11 +7,11 @@
 package io.debezium.connector.postgresql.connection;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -57,7 +57,7 @@ public class PostgresConnectionIT {
             connection.setAutoCommit(false);
             Long txId = connection.currentTransactionId();
             connection.executeWithoutCommitting("SELECT 1;");
-            assertEquals("tx id should be the same", txId, connection.currentTransactionId());
+            assertEquals(txId, connection.currentTransactionId(), "tx id should be the same");
             connection.connection().commit();
         }
     }
@@ -76,7 +76,7 @@ public class PostgresConnectionIT {
                 }
             });
 
-            assertEquals("tx id should be converted in backward compatible way", txId.get(), connection.currentTransactionId().longValue());
+            assertEquals(txId.get(), connection.currentTransactionId().longValue(), "tx id should be converted in backward compatible way");
             connection.connection().commit();
         }
     }
@@ -159,7 +159,7 @@ public class PostgresConnectionIT {
             pgConnection.close();
 
             try (PostgresConnection connection = TestHelper.create()) {
-                assertFalse("postgres did not drop replication slot", connection.dropReplicationSlot("test"));
+                assertFalse(connection.dropReplicationSlot("test"), "postgres did not drop replication slot");
             }
         }
     }

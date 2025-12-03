@@ -5,7 +5,7 @@
  */
 package io.debezium.snapshot;
 
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ConnectorSpecific;
@@ -35,6 +37,7 @@ import io.debezium.snapshot.spi.SnapshotQuery;
 import io.debezium.spi.schema.DataCollectionId;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class SnapshotQueryProviderTest {
 
     @Test

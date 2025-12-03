@@ -8,12 +8,12 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -662,7 +662,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             final long expectedMinTsStreaming = -210831897600000001L;
             final long expectedMinTsSnapshot = LocalDateTime.of(-4712, 11, 1, 0, 0, 0).toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000;
             final long ts = (long) actualValue;
-            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue, ts >= expectedMinTsSnapshot && ts < 0);
+            assertTrue(ts >= expectedMinTsSnapshot && ts < 0, "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
         };
         // The same issue is with timezoned timestamp
         // Database: 4714-12-31T23:59:59.999999Z BC
@@ -672,8 +672,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         final SchemaAndValueField.Condition largeNegativeTzTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
             final String expectedMinTsStreaming = "-4713-12-31T23:59:59.999999Z";
             final String expectedMinTsSnapshot = "-4713-11-23T23:59:59.999999Z";
-            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue,
-                    expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue));
+            assertTrue(expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue),
+                    "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
         };
         return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
@@ -1088,7 +1088,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             assertThat(content).isNull();
         }
         else {
-            assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
+            assertNotNull(content, "expected there to be content in Envelope under " + envelopeFieldName);
             expectedSchemaAndValuesByColumn.forEach(
                     schemaAndValueField -> schemaAndValueField.assertFor(content));
         }
@@ -1127,18 +1127,18 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             assertEquals(SnapshotType.INITIAL.toString(), snapshot);
         }
         else {
-            assertNull("Snapshot marker not expected, but found", snapshot);
-            assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
+            assertNull(snapshot, "Snapshot marker not expected, but found");
+            assertNull(lastSnapshotRecord, "Last snapshot marker not expected, but found");
         }
         final Struct envelope = (Struct) record.value();
         if (envelope != null && Envelope.isEnvelopeSchema(envelope.schema())) {
             final Struct source = (Struct) envelope.get("source");
             final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
             if (sourceSnapshot != null) {
-                assertEquals("Expected snapshot of type, but found", expectedType, sourceSnapshot);
+                assertEquals(expectedType, sourceSnapshot, "Expected snapshot of type, but found");
             }
             else {
-                assertEquals("Source snapshot marker not expected, but found", expectedType, SnapshotRecord.FALSE);
+                assertEquals(expectedType, SnapshotRecord.FALSE, "Source snapshot marker not expected, but found");
             }
         }
     }
@@ -1166,7 +1166,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
 
     protected static TableId tableIdFromInsertStmt(String statement) {
         Matcher matcher = INSERT_TABLE_MATCHING_PATTERN.matcher(statement);
-        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+        assertTrue(matcher.matches(), "Extraction of table name from insert statement failed: " + statement);
 
         TableId id = TableId.parse(matcher.group(1), false);
 
@@ -1179,7 +1179,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
 
     protected static TableId tableIdFromDeleteStmt(String statement) {
         Matcher matcher = DELETE_TABLE_MATCHING_PATTERN.matcher(statement);
-        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+        assertTrue(matcher.matches(), "Extraction of table name from insert statement failed: " + statement);
 
         TableId id = TableId.parse(matcher.group(1), false);
 
@@ -1201,7 +1201,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         private final String fieldName;
         private Supplier<Boolean> assertValueOnlyIf = null;
         private Condition valueCondition = (fieldName, expectedValue, actualValue) -> {
-            assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
+            assertEquals(expectedValue, actualValue, "Values don't match for " + fieldName);
         };
 
         public SchemaAndValueField(String fieldName, Schema schema, Object value) {
@@ -1231,17 +1231,17 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             }
 
             if (value == null) {
-                assertNull(fieldName + " is present in the actual content", content.get(fieldName));
+                assertNull(content.get(fieldName), fieldName + " is present in the actual content");
                 return;
             }
             Object actualValue = content.get(fieldName);
 
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if (actualValue instanceof List) {
-                assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+                assertTrue(value instanceof List, "Incorrect value type for " + fieldName);
                 final List<?> actualValueList = (List<?>) actualValue;
                 final List<?> valueList = (List<?>) value;
-                assertEquals("List size don't match for " + fieldName, valueList.size(), actualValueList.size());
+                assertEquals(valueList.size(), actualValueList.size(), "List size don't match for " + fieldName);
                 if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
                     for (int i = 0; i < valueList.size(); i++) {
                         assertStruct((Struct) valueList.get(i), (Struct) actualValueList.get(i));
@@ -1250,11 +1250,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                 }
             }
             else {
-                assertEquals("Incorrect value type for " + fieldName, (value != null) ? value.getClass() : null, (actualValue != null) ? actualValue.getClass() : null);
+                assertEquals((value != null) ? value.getClass() : null, (actualValue != null) ? actualValue.getClass() : null, "Incorrect value type for " + fieldName);
             }
 
             if (actualValue instanceof byte[]) {
-                assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
+                assertArrayEquals((byte[]) value, (byte[]) actualValue, "Values don't match for " + fieldName);
             }
             else if (actualValue instanceof Struct) {
                 assertStruct((Struct) value, (Struct) actualValue);
@@ -1268,20 +1268,20 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             expectedStruct.schema().fields().stream().forEach(field -> {
                 final Object expectedValue = expectedStruct.get(field);
                 if (expectedValue == null) {
-                    assertNull(fieldName + " is present in the actual content", actualStruct.get(field.name()));
+                    assertNull(actualStruct.get(field.name()), fieldName + " is present in the actual content");
                     return;
                 }
                 final Object actualValue = actualStruct.get(field.name());
-                assertNotNull("No value found for " + fieldName, actualValue);
-                assertEquals("Incorrect value type for " + fieldName, expectedValue.getClass(), actualValue.getClass());
+                assertNotNull(actualValue, "No value found for " + fieldName);
+                assertEquals(expectedValue.getClass(), actualValue.getClass(), "Incorrect value type for " + fieldName);
                 if (actualValue instanceof byte[]) {
-                    assertArrayEquals("Values don't match for " + fieldName, (byte[]) expectedValue, (byte[]) actualValue);
+                    assertArrayEquals((byte[]) expectedValue, (byte[]) actualValue, "Values don't match for " + fieldName);
                 }
                 else if (actualValue instanceof Struct) {
                     assertStruct((Struct) expectedValue, (Struct) actualValue);
                 }
                 else {
-                    assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
+                    assertEquals(expectedValue, actualValue, "Values don't match for " + fieldName);
                 }
             });
         }
@@ -1292,7 +1292,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             }
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
-            assertNotNull(fieldName + " not found in schema " + SchemaUtil.asString(schema), field);
+            assertNotNull(field, fieldName + " not found in schema " + SchemaUtil.asString(schema));
             VerifyRecord.assertConnectSchemasAreEqual(field.name(), field.schema(), this.schema);
         }
     }

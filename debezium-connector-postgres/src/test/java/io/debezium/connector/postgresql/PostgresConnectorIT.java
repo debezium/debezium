@@ -10,13 +10,13 @@ import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.getDefaultReplicationSlot;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -50,7 +50,6 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,8 +167,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     void shouldValidateMinimalConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig().build();
         Config validateConfig = new PostgresConnector().validate(config.asMap());
-        validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
-                configValue.errorMessages().isEmpty()));
+        validateConfig.configValues().forEach(configValue -> assertTrue(configValue.errorMessages().isEmpty(),
+                "Unexpected error for: " + configValue.name()));
     }
 
     @Test
@@ -202,7 +201,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         validatedConfig.forEach(
                 configValue -> {
                     if (!invalidProperties.contains(configValue.name())) {
-                        assertTrue("Unexpected error for \"" + configValue.name() + "\": " + configValue.errorMessages(), configValue.errorMessages().isEmpty());
+                        assertTrue(configValue.errorMessages().isEmpty(), "Unexpected error for \"" + configValue.name() + "\": " + configValue.errorMessages());
                     }
                 });
     }
@@ -907,8 +906,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         assertRecordsAfterInsert(2, 3, 3);
 
-        assertEquals("There should be at most one log message every 10 seconds",
-                1, interceptor.countOccurrences("identified as already processed"));
+        assertEquals(1, interceptor.countOccurrences("identified as already processed"),
+                "There should be at most one log message every 10 seconds");
     }
 
     @Test
@@ -2718,7 +2717,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
-        Assert.assertEquals(1, slotAfterIncremental.slotLastFlushedLsn().compareTo(slotAfterSnapshot.slotLastFlushedLsn()));
+        assertEquals(1, slotAfterIncremental.slotLastFlushedLsn().compareTo(slotAfterSnapshot.slotLastFlushedLsn()));
     }
 
     @Test
@@ -2745,7 +2744,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+        assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
 
         TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
         TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
@@ -2760,7 +2759,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+        assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
     }
 
     @Test
@@ -2787,7 +2786,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+        assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
 
         TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
         TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
@@ -2802,7 +2801,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+        assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
     }
 
     @Test

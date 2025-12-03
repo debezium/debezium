@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
 
@@ -23,6 +23,6 @@ public class CustomTypeEncodingTest {
         final BigDecimal testValue = new BigDecimal("138.456");
         final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new SpecialValueDecimal(testValue));
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct).getDecimalValue().get();
-        assertEquals("Number should be same after serde", testValue, decodedValue);
+        assertEquals(testValue, decodedValue, "Number should be same after serde");
     }
 }
