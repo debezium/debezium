@@ -10,7 +10,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -36,6 +35,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -331,31 +331,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 switchedToPdb = true;
             }
 
-            // Get all table IDs that match the connector's filters
-            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
-            List<String> tableNames;
-            boolean isValidatingAllTables = !schema.storeOnlyCapturedTables();
-
-            if (isValidatingAllTables) {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(java.util.stream.Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} tables present in {}", tableNames.size(),
-                        schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
-            }
-            else {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(java.util.stream.Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
-            }
-
-            connectorConfig.validateGuardrailLimits(tableNames, isValidatingAllTables);
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Failed to validate guardrail limits", e);
+            GuardrailValidator.validateTableLimitHistorized(
+                    () -> connection.getAllTableIds(connectorConfig.getCatalogName()),
+                    connectorConfig,
+                    connectorConfig.getTableFilters(),
+                    schema.storeOnlyCapturedTables(),
+                    schema.storeOnlyCapturedDatabases());
         }
         finally {
             // Reset the connection to the CDB.

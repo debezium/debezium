@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -34,6 +33,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -248,32 +248,12 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     }
 
     private void validateGuardrailLimits(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) {
-        try {
-            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getDatabaseNames());
-            List<String> tableNames;
-            boolean isValidatingAllTables = !schema.storeOnlyCapturedTables();
-
-            if (isValidatingAllTables) {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} tables present in {}", tableNames.size(),
-                        schema.storeOnlyCapturedDatabases() ? "the captured databases" : "all databases");
-            }
-            else {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
-            }
-
-            connectorConfig.validateGuardrailLimits(tableNames, isValidatingAllTables);
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Failed to validate guardrail limits", e);
-        }
+        GuardrailValidator.validateTableLimitHistorized(
+                () -> connection.getAllTableIds(connectorConfig.getDatabaseNames()),
+                connectorConfig,
+                connectorConfig.getTableFilters(),
+                schema.storeOnlyCapturedTables(),
+                schema.storeOnlyCapturedDatabases());
     }
 
 }
