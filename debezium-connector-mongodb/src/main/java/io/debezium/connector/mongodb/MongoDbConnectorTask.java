@@ -39,6 +39,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -346,8 +347,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     .map(CollectionId::toString)
                     .collect(Collectors.toList());
 
-            LOGGER.info("Validating guardrail limits against {} captured tables", collectionNames.size());
-            connectorConfig.validateGuardrailLimits(collectionNames);
+            GuardrailValidator.validateCollectionLimitCaptured(collectionNames, connectorConfig);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
