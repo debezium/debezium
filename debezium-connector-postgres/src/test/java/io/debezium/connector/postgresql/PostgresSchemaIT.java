@@ -82,7 +82,7 @@ public class PostgresSchemaIT {
 
     @Before
     public void before() throws SQLException {
-        DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().asMap(), "postgresql");
+        DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().withMaskedPasswords().asMap(), "postgresql");
         TestHelper.dropAllSchemas();
     }
 

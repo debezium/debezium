@@ -165,7 +165,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "connector.class=io.debezium.connector.sqlserver.SqlServerConnector",
                 "database.names=" + databaseName,
                 "database.hostname=localhost",
-                "database.password=Password!",
+                "database.password=********",
                 "database.port=1433",
                 "database.user=sa",
                 "errors.max.retries=-1",
