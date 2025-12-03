@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -331,12 +332,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 switchedToPdb = true;
             }
 
-            GuardrailValidator.validateTableLimitHistorized(
-                    () -> connection.getAllTableIds(connectorConfig.getCatalogName()),
-                    connectorConfig,
-                    connectorConfig.getTableFilters(),
-                    schema.storeOnlyCapturedTables(),
-                    schema.storeOnlyCapturedDatabases());
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
         }
         finally {
             // Reset the connection to the CDB.
