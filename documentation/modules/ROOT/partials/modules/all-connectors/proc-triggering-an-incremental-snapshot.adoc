@@ -246,31 +246,21 @@ The following example, shows the JSON for an incremental snapshot event that is 
     },
     "source": {
         ...
-        "snapshot":"incremental" <1>
+        "snapshot":"incremental"
     },
-    "op":"r", <2>
+    "op":"r",
     "ts_ms":"1620393591654",
     "ts_us":"1620393591654014",
     "ts_ns":"1620393591654014325",
     "transaction":null
 }
 ----
-[cols="1,1,4a",options="header"]
-|===
-|Item |Field name |Description
-|1
-|`snapshot`
-|Specifies the type of snapshot operation to run.
 
-Currently, the only valid options are `blocking` and `incremental`.
+The following list describes select fields in the preceding incremental snapshot event message example:
 
-Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional.
-If you do not specify a value, the connector runs an incremental snapshot.
+`"snapshot":"incremental"`::
+Specifies the type of snapshot operation.
 
-|2
-|`op`
-|Specifies the event type.
-
+`"op":"r",`::
+Specifies the event type.
 The value for snapshot events is `r`, signifying a `READ` operation.
-
-|===

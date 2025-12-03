@@ -124,6 +124,7 @@ If consumers do not need the records the connector generates for helper tables, 
 .Additional resources
 
 * xref:{context}-topic-names[Default names for topics] that receive {prodname} event records.
+
 end::schema-history[]
 
 
@@ -209,13 +210,13 @@ The message contains a logical representation of the table schema.
 {
   "schema": { },
   "payload": {
-      "source": {  // <1>
+      "source": {
         "version": "{debezium-version}",
         "connector": "{context}",
         "name": "{context}",
-        "ts_ms": 1651535750218, // <2>
-        "ts_us": 1651535750218000, // <2>
-        "ts_ns": 1651535750218000000, // <2>
+        "ts_ms": 1651535750218,
+        "ts_us": 1651535750218000,
+        "ts_ns": 1651535750218000000,
         "snapshot": "false",
         "db": "inventory",
         "sequence": null,
@@ -228,19 +229,19 @@ The message contains a logical representation of the table schema.
         "thread": null,
         "query": null
       },
-      "databaseName": "inventory", <3>
+      "databaseName": "inventory",
       "schemaName": null,
-      "ddl": "ALTER TABLE customers ADD middle_name varchar(255) AFTER first_name", <4>
-      "tableChanges": [  <5>
+      "ddl": "ALTER TABLE customers ADD middle_name varchar(255) AFTER first_name",
+      "tableChanges": [
         {
-          "type": "ALTER", <6>
-          "id": "\"inventory\".\"customers\"", <7>
-          "table": {    <8>
+          "type": "ALTER",
+          "id": "\"inventory\".\"customers\"",
+          "table": {
             "defaultCharsetName": "utf8mb4",
-            "primaryKeyColumnNames": [  <9>
+            "primaryKeyColumnNames": [
               "id"
             ],
-            "columns": [  <10>
+            "columns": [
               {
                 "name": "id",
                 "jdbcType": 4,
@@ -312,7 +313,7 @@ The message contains a logical representation of the table schema.
                 "generated": false
             }
           ],
-          "attributes": [ <11>
+          "attributes": [
             {
               "customAttribute": "attributeValue"
             }
@@ -325,76 +326,59 @@ The message contains a logical representation of the table schema.
 
 ----
 
-.Descriptions of fields in messages emitted to the schema change topic
-[cols="1,4,5",options="header"]
-|===
-|Item |Field name |Description
 
-|1
-|`source`
-|The `source` field is structured exactly as standard data change events that the connector writes to table-specific topics.
+The following list describes select fields in the preceding example:
+
+`source`::
+The structure of the `payload.source` field reflects the structure of standard data change events that the connector writes to table-specific topics.
 This field is useful to correlate events on different topics.
 
-|2
-|`ts_ms`, `ts_us`, `ts_ns`
-|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task. +
- +
-In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
+`ts_ms`, `ts_us`, `ts_ns`::
+Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
-|3
-|`databaseName` +
-`schemaName`
-|Identifies the database and the schema that contains the change.
-The value of the `databaseName` field is used as the message key for the record.
+`databaseName`, `schemaName`::
+These two fields provide the names of the database and schema that contain the change.
+The value of the `databaseName` field serves as the message key for the event record.
 
-|4
-|`ddl`
-|This field contains the DDL that is responsible for the schema change.
+`ddl::
+Provides the DDL that produced the schema change.
 The `ddl` field can contain multiple DDL statements.
-Each statement applies to the database in the `databaseName` field.
-Multiple DDL statements appear in the order in which they were applied to the database. +
- +
+Each statement applies to the database that is specified in the `databaseName` field.
+Multiple DDL statements appear in the order in which they were applied to the database.
++
 Clients can submit multiple DDL statements that apply to multiple databases.
-If {connector-name} applies them atomically, the connector takes the DDL statements in order, groups them by database, and creates a schema change event for each group.
+If {connector-name} applies them atomically, the connector processes the DDL statements in order, groups them by database, and creates a schema change event for each group.
 If {connector-name} applies them individually, the connector creates a separate schema change event for each statement.
 
-|5
-|`tableChanges`
-|An array of one or more items that contain the schema changes generated by a DDL command.
+`tableChanges`::
+An array of one or more items that contain the schema changes generated by a DDL command.
 
-|6
-|`type`
-a|Describes the kind of change. The value is one of the following:
+`type`::
+Describes the kind of change.
+This field can contain one of the following values:
++
+`CREATE`::: Table created.
+`ALTER`::: Table modified.
+`DROP`::: Table deleted.
 
-`CREATE`:: Table created.
-`ALTER`:: Table modified.
-`DROP`:: Table deleted.
-
-|7
-|`id`
-|Full identifier of the table that was created, altered, or dropped.
+`id`::
+Specifies the full identifier of the table that was created, altered, or dropped.
 In the case of a table rename, this identifier is a concatenation of `_<old>_,_<new>_` table names.
 
-|8
-|`table`
-|Represents table metadata after the applied change.
+`table`::
+Represents table metadata after the applied change.
 
-|9
-|`primaryKeyColumnNames`
-|List of columns that compose the table's primary key.
+`primaryKeyColumnNames`::
+List of columns that compose the table's primary key.
 
-|10
-|`columns`
-|Metadata for each column in the changed table.
+`columns`::
+Metadata for each column in the changed table.
 
-|11
-|`attributes`
-|Custom attribute metadata for each table change.
+`"attributes`::
+Custom attribute metadata for each table change.
 
-|===
-
-For more information, see xref:{context}-schema-history-topic[schema history topic].
+For more information about schema change events, see xref:{context}-schema-history-topic[schema history topic].
 end::schema-change[]
 
 === Snapshots
@@ -964,54 +948,62 @@ end::trans-meta[]
 tag::data-chg-events[]
 The {prodname} {connector-name} connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
 
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_.
+However, the structure of these events may change over time, which can be difficult for consumers to handle.
+To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry.
+This makes each event self-contained.
 
-The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
+The following skeleton JSON shows the four basic components of a change event.
+The exact way that {prodname} represents these components in a change event message depends on how you configure the Kafka Connect converter in your application.
+Change events only contain `schema` fields if you configure the converter to produce them.
+Likewise, change events only contain the event key and event payload if you configure the converter to produce them.
+If you use the JSON converter and you configure it to produce all four of the basic change event components, a change event has the following structure:
 
 [source,json,index=0]
 ----
 {
- "schema": { //<1>
+ "schema": {
    ...
   },
- "payload": { //<2>
+ "payload": {
    ...
  },
- "schema": { //<3>
+ "schema": {
    ...
  },
- "payload": { //<4>
+ "payload": {
    ...
  },
 }
 ----
 
-.Overview of change event basic content
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list provides details about the components that are shown in the preceding change event structure:
 
-|1
-|`schema`
-|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
- +
-It is possible to override the table's primary key by setting the xref:{context}-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+`schema`::
+This first `schema` field in the event message is part of the event key.
+The event key schema is a Kafka Connect schema that defines the structure and data types that are present in the `payload` portion of the event key.
+The event key structure reflects the structure of the primary key for the table that was changed by the database operation.
+If the source table has no primary key, the event key structure maps represents the structure of the source table's unique key.
++
+It is possible to override the table's primary key by setting the xref:{context}-property-message-key-columns[`message.key.columns` connector configuration property].
+In this case, the first schema field describes the structure of the key identified by that property.
 
-|2
-|`payload`
-|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field, and it contains the key for the row that was changed.
+`payload`::
+The first `payload` field is part of the event key.
+The payload structure reflects the structure of the preceding event key `schema`, and it contains the key for the row that was changed.
 
-|3
-|`schema`
-|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas.
+`schema`::
+The second `schema` field is part of the event value.
+This event value schema represents the Kafka Connect schema that defines the structure and data types present in the `payload` portion of the event value.
+This schema values reflects the structure of the row that the database operation changed.
+Typically, the event value schema contains nested schemas.
 
-|4
-|`payload`
-|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+`payload`::
+The second `payload` field is part of the event value.
+The payload structure reflects the structure of the preceding event value `schema`, and it contains the actual data for the row that was changed.
 
-|===
-
-By default, the connector streams change event records to topics with names that are the same as the event's originating table. See xref:{context}-topic-names[topic names].
+By default, the connector streams change event records to topics with names that are the same as the event's originating table.
+For more information, see xref:{context}-topic-names[topic names].
 
 [WARNING]
 ====
@@ -1035,7 +1027,8 @@ end::data-chg-events[]
 === Change event keys
 
 tag::event-keys[]
-A change event's key contains the schema for the changed table's key and the changed row's actual key. Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
+A change event's key contains the schema for the changed table's key and the changed row's actual key.
+Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
 
 Consider the following `customers` table, which is followed by an example of a change event key for this table.
 
@@ -1049,16 +1042,19 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
-Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
+Every change event that captures a change to the `customers` table has the same event key schema.
+Thus, for every change event that {prodname} emits for the table, the event message has the same key structure.
+Key consistency remains stable as long as the schema of the `customers` table remains unchanged.
+The preceding table definiton results in a key structure such as the one in the following JSON example:
 
 [source,json,index=0,subs="+attributes"]
 ----
 {
- "schema": { <1>
+ "schema": {
     "type": "struct",
-    "name": "{context}-server-1.inventory.customers.Key", <2>
-    "optional": false, <3>
-    "fields": [ <4>
+    "name": "{context}-server-1.inventory.customers.Key",
+    "optional": false,
+    "fields": [
       {
         "field": "id",
         "type": "int32",
@@ -1066,42 +1062,39 @@ Every change event that captures a change to the `customers` table has the same 
       }
     ]
   },
- "payload": { <5>
+ "payload": {
     "id": 1001
   }
 }
 ----
 
-.Description of change event key
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes some of the elements in the event key of a change event message that {prodname} emits from the `customers` table:
 
-|1
-|`schema`
-|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
+`schema`::
+The schema element of the key specifies the Kafka Connect schema that defines the structure and data types that are present in the `payload` portion of the event key.
 
-|2
-|`{context}-server-1.inventory.customers.Key`
-a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: +
+`name`::
+Specifies the name of the schema that defines the structure of the key's payload.
+This schema describes the structure of the primary key for the table that was changed.
+The schema name of an event key has the following format: _connector-name_._database-name_._table-name_.`Key`.
++
+In the preceding event message, the schema name is made up of the following elements:
 
-* `{context}-server-1` is the name of the connector that generated this event. +
-* `inventory` is the database that contains the table that was changed. +
-* `customers` is the table that was updated.
+`{context}-server-1`::: Specifies the name of the connector that generated this event.
+`inventory`::: Specifies the database that contains the table that was changed.
+`customers`::: Specifies the table that was changed.
 
-|3
-|`optional`
-|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
+`fields`::
+Specifies the required fields in the `payload`.
+The `fields` element includes the following attributes:
+`field`::: The name of the field, for example, `id`.
+`type`::: The data type of the field, for example, `int32`.
+`optional`::: A Boolean value that specifies whether a value is required in the payload field of the event key
+A value in the key's payload field is optional when a table does not have a primary key.
 
-|4
-|`fields`
-|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
-
-|5
-|`payload`
-|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `id` field whose value is `1001`.
-
-|===
+`payload`::
+Specifies the key of the row for which this change event was generated.
+In the preceding example, the `payload` contains a single field, `id`, which has the value `1001`.
 end::event-keys[]
 
 
@@ -1148,7 +1141,7 @@ The following example shows the value portion of a change event that the connect
 [source,json,options="nowrap",subs="+attributes"]
 ----
 {
-  "schema": { // <1>
+  "schema": {
     "type": "struct",
     "fields": [
       {
@@ -1176,7 +1169,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": true,
-        "name": "{context}-server-1.inventory.customers.Value", // <2>
+        "name": "{context}-server-1.inventory.customers.Value",
         "field": "before"
       },
       {
@@ -1293,7 +1286,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": false,
-        "name": "io.debezium.connector.{context}.Source", // <3>
+        "name": "io.debezium.connector.{context}.Source",
         "field": "source"
       },
       {
@@ -1318,21 +1311,21 @@ The following example shows the value portion of a change event that the connect
       }
     ],
     "optional": false,
-    "name": "{context}-server-1.inventory.customers.Envelope" // <4>
+    "name": "{context}-server-1.inventory.customers.Envelope"
   },
-  "payload": { // <5>
-    "op": "c", // <6>
-    "ts_ms": 1465491411815, // <7>
-    "ts_us": 1465491411815437, // <7>
-    "ts_ns": 1465491411815437158, // <7>
-    "before": null, // <8>
-    "after": { // <9>
+  "payload": {
+    "op": "c",
+    "ts_ms": 1465491411815,
+    "ts_us": 1465491411815437,
+    "ts_ns": 1465491411815437158,
+    "before": null,
+    "after": {
       "id": 1004,
       "first_name": "Anne",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "source": { // <10>
+    "source": {
       "version": "{debezium-version}",
       "connector": "{context}",
       "name": "{context}-server-1",
@@ -1354,91 +1347,85 @@ The following example shows the value portion of a change event that the connect
 }
 ----
 
-.Descriptions of _create_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the value portion of the preceding `create` event message:
 
-|1
-|`schema`
-|The value's schema, which describes the structure of the value's payload.
-A change event's value schema is the same in every change event that the connector generates for a particular table.
+`schema`::
+Specifies the schema of the event value.
+The schema describes the structure of the value's payload.
+Every change event that {prodname} emits for a table uses the same value schema, as long as the table schema remains unchanged.
 
-|2
-|`name`
-a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
- +
+`name`::
+The `schema` section can contain multiple `name` fields.
+Each `name` field specifies the schema for a field in the payload of the event value.
++
 `{context}-server-1.inventory.customers.Value` is the schema for the payload's `before` and `after` fields.
-This schema is specific to the `customers` table. +
- +
-Names of schemas for `before` and `after` fields are of the form `_logicalName_._tableName_.Value`, which ensures that the schema name is unique in the database.
-This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+This schema is specific to the `customers` table.
++
+The schema names of the `before` and `after` fields are of the form `_logicalName_._tableName_.Value`.
+This format ensures that schema names are unique within the database.
+In environments that use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], having unique schema names ensures that the Avro schema for each table in each logical source has its own evolution and history.
 
-|3
-|`name`
-|`io.debezium.connector.{context}.Source` is the schema for the payload's `source` field.
+`"name": "io.debezium.connector.{context}.Source"`::
+`io.debezium.connector.{context}.Source` is the schema for the payload's `source` field.
 This schema is specific to the {connector-name} connector.
 The connector uses it for all events that it generates.
 
-|4
-|`name`
-|`{context}-server-1.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `{context}-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
+`"name": "{context}-server-1.inventory.customers.Envelope"`::
+Specifies the name of the schema for the overall structure of the payload.
+The schema name is made up of the following elements:
 
-|5
-|`payload`
-|The value's actual data.
-This is the information that the change event is providing. +
- +
-It may appear that the JSON representations of the events are much larger than the rows they describe.
-This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+`{context}-server-1`::: Specifies the name of the connector that generated this event.
+`inventory`::: Specifies the database that contains the table that was changed.
+`customers`::: Specifies the table that was changed.
 
-|6
-|`op`
-a| Mandatory string that describes the type of operation that caused the connector to generate the event.
-In this example, `c` indicates that the operation created a row. Valid values are:
 
-* `c` = create
-* `u` = update
-* `d` = delete
-* `r` = read (applies to only snapshots)
+`payload`::
+Specifies the actual data for the row that was changed.
++
+Because the JSON representation of an event includes both the schema and the payload portions of the message, it is often larger than the row that it describes.
+To reduce the size of the messages that the connector streams to Kafka topics, you can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter].
 
-|7
-|`ts_ms`, `ts_us`, `ts_ns`
-a| Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database.
-By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+`op`::
+Mandatory string that specifies the type of operation that caused the connector to generate the event.
+In this example, `c` indicates that a `create` operation was performed resulting in a new row.
+This field can contain one of the following values:
+[horizontal]
+`c`::: Create a row.
+`u`::: Update a row.
+`d`::: Delete a row.
+`r`::: Read a row (applies to only snapshots).
 
-|8
-|`before`
-| An optional field that specifies the state of the row before the event occurred.
-When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
+`ts_ms`, `ts_us`, `ts_ns`::
+Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
 
-|9
-|`after`
-| An optional field that specifies the state of the row after the event occurred.
+`before`::
+An optional field that specifies the state of the row before the event occurred.
+Because the `op` field in the preceding example is `c` (create), this change event is describes new data, so the value of the `before` field is `null`.
+
+`after`::
+An optional field that specifies the state of the row after the event occurred.
 In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
 
-|10
-|`source`
-a| Mandatory field that describes the source metadata for the event.
-This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes:
+`source`::
+Mandatory field that describes the source metadata for the event.
+This field contains information that you can use to compare this event to other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction.
+The source metadata provides the following information:
 
-* {prodname} version
-* Connector name
-* binlog name where the event was recorded
-* binlog position
-* Row within the event
-* If the event was part of a snapshot
-* Name of the database and table that contain the new row
-* ID of the {connector-name} thread that created the event (non-snapshot only)
-* {connector-name} server ID (if available)
-* Timestamp for when the change was made in the database
-
+`version`::: {prodname} version.
+`name`::: Connector name.
+`connector`::: The type of connector.
+`ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
+`snapshot`::: Specifies whether the event resulted from a snapshot operation.
+`db`, `table`::: Names of the database and table that contain the new row.
+`server_id`::: {connector-name} server ID (if available).
+`file`::: Binary log name where the event was recorded.
+`pos`::: Binary log position.
+`row`::: Row within the event.
+`thread`::: ID of the {connector-name} thread that created the event (non-snapshot only).
+`query`::: SQL command that performed the operation on the source table.
++
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
-|===
 end::create-events[]
 
 
@@ -1455,19 +1442,19 @@ The value of a change event for an update in the sample `customers` table has th
 {
   "schema": { ... },
   "payload": {
-    "before": { // <1>
+    "before": {
       "id": 1004,
       "first_name": "Anne",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "after": { // <2>
+    "after": {
       "id": 1004,
       "first_name": "Anne Marie",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "source": { // <3>
+    "source": {
       "version": "{debezium-version}",
       "name": "{context}-server-1",
       "connector": "{context}",
@@ -1485,70 +1472,67 @@ The value of a change event for an update in the sample `customers` table has th
       "thread": 7,
       "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
     },
-    "op": "u", // <4>
-    "ts_ms": 1465581029523, // <5>
-    "ts_us": 1465581029523758, // <6>
-    "ts_ns": 1465581029523758914 // <7>
+    "op": "u",
+    "ts_ms": 1465581029523,
+    "ts_us": 1465581029523758,
+    "ts_ns": 1465581029523758914
   }
 }
 ----
 
-.Descriptions of _update_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the value portion of the preceding `update` event message:
 
-|1
-|`before`
-|An optional field that specifies the state of the row before the event occurred. In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit. In this example, the `first_name` value is `Anne.`
+`before`::
+Shows the state of the row before the event occurred.
+In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit.
+In this example, the `first_name` value is `Anne.`
 
-|2
-|`after`
-| An optional field that specifies the state of the row after the event occurred. You can compare the `before` and `after` structures to determine what the update to this row was. In the example, the `first_name` value is now `Anne Marie`.
+`after`::
+Shows the state of the row after the event occurred.
+You can compare the `before` and `after` structures to determine what the update to this row was.
+In the example, the `first_name` value is now `Anne Marie`.
 
-|3
-|`source`
-a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event is from a different position in the binlog. The source metadata includes:
-
-* {prodname} version
-* Connector name
-* binlog name where the event was recorded
-* binlog position
-* Row within the event
-* If the event was part of a snapshot
-* Name of the database and table that contain the updated row
-* ID of the {connector-name} thread that created the event (non-snapshot only)
-* {connector-name} server ID (if available)
-* Timestamp for when the change was made in the database
-
+`source`::
+Represents the source metadata for the event.
+The `source` field structure has the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event is from a different position in the binlog.
+The `source` fields in an _update_ event value provides the following metadata:
++
+`version`::: {prodname} version.
+`name`::: Connector name.
+`connector`::: The type of connector.
+`ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
+`snapshot`::: Specifies whether the event resulted from a snapshot operation.
+`db`, `table`::: Names of the database and table that contain the new row.
+`server_id`::: {connector-name} server ID (if available).
+`file`::: Binary log name where the event was recorded.
+`pos`::: Binary log position.
+`row`::: Row within the event.
+`thread`::: ID of the {connector-name} thread that created the event (non-snapshot only).
+`query`::: SQL command that performed the operation on the source table.
++
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
 
-|4
-|`op`
-a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+`op`::
+Specifies the type of operation.
+In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
-|5
-|`ts_ms`
-a| Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|6
-|`ts_us`
-a|Optional field that displays the time at which the connector processed the event, in microseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
-|7
-|`ts_ns`
-a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
-|===
+`ts_ms`, `ts_us`, `ts_ns`::
+Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
++
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value of `payload.source.ts_ms` with the value of `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:{context}-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
+Updating the columns for a row's primary or unique key changes the value of the row's key.
+After a key changes, {prodname} generates the following three events:
+
+* A `DELETE` event.
+* A xref:{context}-tombstone-events[Tombstone event] that specifies the old key for the row.
+* A `CREATE` event that provides the new primary key for the row.
+
+For more information, see xref:{context}-primary-key-updates[Primary key updates].
 ====
 
 end::update-events[]
@@ -1582,14 +1566,14 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
 {
   "schema": { ... },
   "payload": {
-    "before": { // <1>
+    "before": {
       "id": 1004,
       "first_name": "Anne Marie",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "after": null, // <2>
-    "source": { // <3>
+    "after": null,
+    "source": {
       "version": "{debezium-version}",
       "connector": "{context}",
       "name": "{context}-server-1",
@@ -1607,70 +1591,64 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "thread": 7,
       "query": "DELETE FROM customers WHERE id=1004"
     },
-    "op": "d", // <4>
-    "ts_ms": 1465581902461, // <5>
-    "ts_us": 1465581902461842, // <6>
-    "ts_ns": 1465581902461842579 // <7>
+    "op": "d",
+    "ts_ms": 1465581902461,
+    "ts_us": 1465581902461842,
+    "ts_ns": 1465581902461842579
   }
 }
 ----
 
-.Descriptions of _delete_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
 
-|1
-|`before`
-|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
+The following list describes select fields in the value portion of the preceding `delete` event message:
 
-|2
-|`after`
-| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
+`before`::
+Specifies the state of the row before the event occurred.
+In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
 
-|3
-|`source`
-a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `pos` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata:
+`after`::
+Specifies the state of the row after the event occurred.
+In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
 
-* {prodname} version
-* Connector name
-* binlog name where the event was recorded
-* binlog position
-* Row within the event
-* If the event was part of a snapshot
-* Name of the database and table that contain the updated row
-* ID of the {connector-name} thread that created the event (non-snapshot only)
-* {connector-name} server ID (if available)
-* Timestamp for when the change was made in the database
-
+`source`::
+Specifies the source metadata for the event.
+In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table.
+Many `source` field values are also the same.
+In a _delete_ event value, the `ts_ms` and `pos` field values, as well as other values, might have changed.
+The `source` field in a _delete_ event value provides the following metadata:
++
+`version`::: {prodname} version.
+`name`::: Connector name.
+`connector`::: The type of connector.
+`ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
+`snapshot`::: Specifies whether the event resulted from a snapshot operation.
+`db`, `table`::: Names of the database and table that contain the new row.
+`server_id`::: {connector-name} server ID (if available).
+`file`::: Binary log name where the event was recorded.
+`pos`::: Binary log position.
+`row`::: Row within the event.
+`thread`::: ID of the {connector-name} thread that created the event (non-snapshot only).
+`query`::: SQL command that performed the operation on the source table.
++
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
 
-|4
-|`op`
-a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
+`op`::
+Specifies the type of operation.
+In this example, the `d` value indicates that a `DELETE` operation was performed, resulting in removal of a row.
 
-|5
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+`ts_ms`, `ts_us`, `ts_ns`::
+Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
++
+In the source object, these fields indicate the time when the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
-|6
-|`ts_us`
-a|Optional field that displays the time at which the connector processed the event, in microseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
+A _delete_ change event record provides a consumer with the information it needs to process the removal of this row.
+The old values are included because some consumers might require them in order to properly handle the removal.
 
-|7
-|`ts_ns`
-a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
-|===
-
-A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
-
-{connector-name} connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+{connector-name} connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction].
+Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept.
+Kafka can thus reclaim storage space while still ensuring that the topic contains a complete data set that can be used for reloading key-based state.
 end::del-events[]
 
 
@@ -1701,7 +1679,7 @@ The message value resembles the following example:
 {
     "schema": { ... },
     "payload": {
-        "source": { // <1>
+        "source": {
             "version": "{debezium-version}",
             "name": "{context}-server-1",
             "connector": "{context}",
@@ -1718,59 +1696,46 @@ The message value resembles the following example:
             "pos": 484,
             "row": 0,
             "thread": 7,
-            "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
         },
-        "op": "t", // <2>
-        "ts_ms": 1465581029523, // <3>
-        "ts_us": 1465581029523468, // <4>
-        "ts_ns": 1465581029523468471 // <5>
+        "op": "t",
+        "ts_ms": 1465581029523,
+        "ts_us": 1465581029523468,
+        "ts_ns": 1465581029523468471
     }
 }
 ----
 
-.Descriptions of _truncate_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
 
-|1
-|`source`
-a|Mandatory field that describes the source metadata for the event. In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
+The following list describes select fields in the value portion of the preceding `truncate` event message:
 
-* {prodname} version
-* Connector type and name
-* Binlog name where the event was recorded
-* Binlog position
-* Row within the event
-* If the event was part of a snapshot
-* Name of the database and table
-* ID of the {connector-name} thread that truncated the event (non-snapshot only)
-* {connector-name} server ID (if available)
-* Timestamp for when the change was made in the database
+`source`::
+Mandatory field that describes the source metadata for the event.
+In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table.
+The `source` field provides the following metadata:
++
+`version`::: {prodname} version.
+`name`::: Connector name.
+`connector`::: The type of connector.
+`ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
+`snapshot`::: Specifies whether the event resulted from a snapshot operation.
+`db`, `table`::: Names of the database and table that contain the new row.
+`server_id`::: {connector-name} server ID (if available).
+`file`::: Binary log name where the event was recorded.
+`pos`::: Binary log position.
+`row`::: Row within the event.
+`thread`::: ID of the {connector-name} thread that created the event (non-snapshot only).
 
-|2
-|`op`
-a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+`op`::
+Specifies the type of operation.
+In this example, the `t` value indicates that a `TRUNCATE` operation was performed, resulting in removal of a row.
+`op`:
+Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
 
-|3
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+`ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
++
+In the source object, these fields indicate the time when the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|4
-|`ts_us`
-a|Optional field that displays the time at which the connector processed the event, in microseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
-|5
-|`ts_ns`
-a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
-|===
 
 If a single `TRUNCATE` statement applies to multiple tables, the connector emits one _truncate_ change event record for each truncated table.
 
@@ -2047,7 +2012,11 @@ Represents the number of microseconds past the epoch and does not include time z
 |===
 
 time.precision.mode=connect::
-The {connector-name} connector uses defined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`. Values in only the range of `00:00:00.000` to `23:59:59.999` can be handled. Set `time.precision.mode=connect` only if you can ensure that the `TIME` values in your tables never exceed the supported ranges. The `connect` setting is expected to be removed in a future version of {prodname}.
+The {connector-name} connector uses defined Kafka Connect logical types.
+This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`.
+Values in only the range of `00:00:00.000` to `23:59:59.999` can be handled.
+Set `time.precision.mode=connect` only if you can ensure that the `TIME` values in your tables never exceed the supported ranges.
+The `connect` setting is expected to be removed in a future version of {prodname}.
 +
 .Mappings when `time.precision.mode=connect`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
@@ -2599,7 +2568,7 @@ You can use either of the following methods to deploy a {prodname} {connector-na
 * xref:openshift-streams-{context}-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Containerfile]. +
 This Containerfile deployment method is deprecated.
 The instructions for this method are scheduled for removal in future versions of the documentation.
 
@@ -2613,7 +2582,7 @@ end::deployment[]
 
 
 
-=== Deploying connectors by building a custom Kafka Connect container image from a Dockerfile
+=== Deploying connectors by building a custom Kafka Connect container image from a Containerfile
 
 tag::deploy-via-dockerfile[]
 To deploy a {prodname} {connector-name} connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
@@ -2642,17 +2611,17 @@ For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployMan
 
 . Create the {prodname} {connector-name} container for Kafka Connect:
 
-.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command:
+.. Create a Containerfile that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command to create a Containerfile with the name `debezium-container-for-{context}.yaml` in a specified directory:
 +
 =====================================================================
 
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-{context}.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml
 FROM {DockerKafkaConnect}
 USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN mkdir -p /opt/kafka/plugins/debezium
 RUN cd /opt/kafka/plugins/debezium/ \
 && curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
 && unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
@@ -2663,20 +2632,15 @@ EOF
 ----
 =====================================================================
 +
-[cols="1,7",options="header"]
-|===
-|Item |Description
+The following list describes the purpose of some of the lines in the preceding example:
 
-|1
-|You can specify any file name that you want.
+`cat <<EOF >debezium-container-for-{context}.yaml`::
+Specifies a name for the YAML Containerfile to be created.
+You can specify any file name that you want.
 
-|2
-|Specifies the path to your Kafka Connect plug-ins directory.
-If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
-
-|===
-+
-The command creates a Dockerfile with the name `debezium-container-for-{context}.yaml` in the current directory.
+`RUN mkdir -p /opt/kafka/plugins/debezium`::
+Creates a `debezium` directory within your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, modify this path to reflect the actual directory location.
 
 .. Build the container image from the `debezium-container-for-{context}.yaml` Docker file that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
@@ -2718,27 +2682,23 @@ kind: KafkaConnect
 metadata:
   name: my-connect-cluster
   annotations:
-    strimzi.io/use-connector-resources: "true" // <1>
+    strimzi.io/use-connector-resources: "true"
 spec:
   #...
-  image: debezium-container-for-{context}  // <2>
+  image: debezium-container-for-{context}
 
   ...
 ----
 =====================================================================
 +
-[cols="1,7",options="header"]
-|===
-|Item |Description
+The following list describes the purpose of select lines in the preceding example:
 
-|1
-|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+`strimzi.io/use-connector-resources: "true"`::
+This annotation indicates to the Cluster Operator that `KafkaConnector` custom resources are used to configure connectors in this Kafka Connect cluster.
 
-|2
-|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+`spec.image::
+Specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
@@ -2754,9 +2714,7 @@ The command adds a Kafka Connect instance that specifies the name of the image t
 You configure a {prodname} {connector-name} connector in a `.yaml` file that specifies the configuration properties for the connector.
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
 +
-The following example configures a {prodname} connector that connects to a {connector-name} host, `192.168.99.100`, on port `3306`,
-and captures changes to the `inventory` database.
-`dbserver1` is the server's logical name.
+The following example configures a {prodname} connector that connects to a {connector-name} database server, `{context}`, on port `3306`, and captures changes to the `inventory` database.
 +
 .{connector-name} `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
@@ -2764,64 +2722,61 @@ and captures changes to the `inventory` database.
   apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
   metadata:
-    name: inventory-connector-{context}  // <1>
+    name: inventory-connector-{context}
     labels:
       strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.{context}.MariaDbConnector
-    tasksMax: 1  // <2>
-    config:  // <3>
-      database.hostname: {context}  // <4>
+    tasks.max: 1
+    config:
+      database.hostname: {context}
       database.port: 3306
       database.user: debezium
       database.password: dbz
-      database.server.id: 184054  // <5>
-      topic.prefix: inventory-connector-{context} // <6>
-      table.include.list: inventory  // <7>
-      schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
-      schema.history.internal.kafka.topic: schema-changes.inventory  // <9>
+      database.server.id: 184054
+      topic.prefix: inventory-connector-{context}
+      table.include.list: inventory
+      schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
+      schema.history.internal.kafka.topic: schema-changes.inventory
 ----
 +
-.Descriptions of connector configuration settings
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
+The following list describes select parameters in the preceding connector CR example:
 
-|1
-|The name of the connector.
+`name`::
+The name of the connector.
 
-|2
-|Only one task should operate at any one time.
+`tasks.max`::
+Specifies the number of tasks that the connector can operate at one time.
 Because the {connector-name} connector reads the {connector-name} server’s `binlog`,
 using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks that do the work,
+The Kafka Connect service uses connectors to start one or more tasks to perform work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash,
-those tasks will be redistributed to running services.
+If any of the services stop or crash, tasks are redistributed to running services.
 
-|3
-|The connector’s configuration.
+`config:`::
+The connector’s configuration.
 
-|4
-|The database host, which is the name of the container running the {connector-name} server (`{context}`).
+`database.hostname`::
+Specifies the database host, which is the name of the container that runs the {connector-name} server (`{context}`).
 
-|5
-|Unique ID of the connector.
+`database.server.id`::
+Unique ID of the connector.
 
-|6
-|Topic prefix for the {connector-name} server or cluster.
-This name is used as the prefix for all Kafka topics that receive change event records.
+`topic.prefix`::
+Specifies the topic prefix for the {connector-name} server or cluster.
+This name is used as the prefix for all Kafka topics that receive change event records from the connector.
 
-|7
-|The connector captures changes from the `inventory` table only.
+`table.include.list`::
+Specifies the tables from which the connector captures changes.
+This connector captures changes only from the `inventory` table.
 
-|8
-|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
-Upon restart, the connector recovers the schemas of the database that existed at the point in time in the binlog when the connector should begin reading.
+`schema.history.internal.kafka.bootstrap.servers::
+Specifies the the connector uses `my-cluster-kafka-bootstrap:9092` as the Kafka broker for connecting to the database schema history topic when it writes or reads DDL statements.
+When a connector restarts, it recovers the database schemas that existed in the binlog at the point in time when the connector stopped.
 
-|9
-|The name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
-|===
+`schema.history.internal.kafka.topic::
+Specifies the name of the database schema history topic.
+This topic is for internal use only and should not be used by consumers.
 
 . Create your connector instance with Kafka Connect.
 For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
@@ -2837,43 +2792,71 @@ end::deploy-via-dockerfile[]
 
 tag::connector-config-example[]
 ifdef::community[]
-Following is an example of the configuration for a connector instance that captures data from a {connector-name} server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
+The following example shows the configuration for a connector instance that captures data from a {connector-name} database server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} {connector-name} connector in a JSON file by setting the configuration properties that are available for the connector.
 
 You can choose to produce events for a subset of the schemas and tables in a database.
-Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, those that are larger than a specified size, or those that you do not need to support downstream applications.
 
 [source,json]
 ----
 {
-    "name": "inventory-connector", // <1>
+    "name": "inventory-connector",
     "config": {
-        "connector.class": "io.debezium.connector.{context}.{connector-name}Connector", // <2>
-        "database.hostname": "192.168.99.100", // <3>
-        "database.port": "3306", // <4>
-        "database.user": "debezium-user", // <5>
-        "database.password": "debezium-user-pw", // <6>
-        "database.server.id": "184054", <7>
-        "topic.prefix": "fullfillment", // <8>
-        "database.include.list": "inventory", // <9>
-        "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
-        "schema.history.internal.kafka.topic": "schemahistory.fullfillment", // <11>
-        "include.schema.changes": "true" // <12>
+        "connector.class": "io.debezium.connector.{context}.{connector-name}Connector",
+        "database.hostname": "192.168.99.100",
+        "database.port": "3306",
+        "database.user": "debezium-user",
+        "database.password": "debezium-user-pw",
+        "database.server.id": "184054",
+        "topic.prefix": "fullfillment",
+        "database.include.list": "inventory",
+        "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+        "schema.history.internal.kafka.topic": "schemahistory.fullfillment",
+        "include.schema.changes": "true"
     }
 }
 ----
-<1> Connector's name when registered with the Kafka Connect service.
-<2> Connector's class name.
-<3> {connector-name} server address.
-<4> {connector-name} server port number.
-<5> {connector-name} user with the appropriate privileges.
-<6> {connector-name} user's password.
-<7> Unique ID of the connector.
-<8> Topic prefix for the {connector-name} server or cluster.
-<9> List of databases hosted by the specified server.
-<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database schema history topic.
-<11> Name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
-<12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
+
+where:
+
+`name`::
+Specifies the connector name (`inventory-connector`) to register with the Kafka Connect service.
+
+`connector.class`::
+Specifies the name of the Java connector class.
+
+`database.hostname`::
+Specifies the address or hostname of the {connector-name} server.
+
+`database.port`::
+Species the port number that the connector uses to access the {connector-name} server.
+
+`database.user`::
+Specifies the name of the {connector-name} user account that the connector uses to access the database.
+The specified account must have sufficient privileges, as described in the table xref:permissions-explained-{context}-connector[Descriptions of user permissions].
+
+`database.password`::
+Specifies the password for the {connector-name} user account that {prodname} uses to access the database.
+
+`database.server.id`::
+Specifies the unique ID of the connector.
+
+`topic.prefix`::
+Speciies the topic prefix for the {connector-name} server or cluster.
+
+`database.include.list`::
+Specifies databases on the specified server that you want the connector to capture from.
+
+`schema.history.internal.kafka.bootstrap.servers`::
+Specifies the Kafka brokers that the connector uses to write and recover DDL statements to the database schema history topic.
+
+`schema.history.internal.kafka.topic`::
+Specifies the name of the database schema history topic.
+This topic is for internal use only and should not be used by consumers.
+
+`include.schema.changes`::
+Specifies whether the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
 
 endif::community[]
 

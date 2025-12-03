@@ -15,7 +15,7 @@ This service exposes a REST API to manage the {prodname} MySQL connector.
 . Open a new terminal, and use it to start the Kafka Connect service in a container.
 +
 --
-This command runs a new container using the {debezium-docker-label} version of the `quay.io/debezium/connect` image:
+The following command runs a new container using the {debezium-docker-label} version of the `quay.io/debezium/connect` image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
@@ -85,9 +85,10 @@ replace `localhost` with the IP address of your Docker host.
 [source,options="nowrap",subs="+attributes"]
 ----
 $ curl -H "Accept:application/json" localhost:8083/
-{"version":"{debezium-kafka-version}","commit":"cb8625948210849f"}  <1>
+{"version":"{debezium-kafka-version}","commit":"cb8625948210849f"}
 ----
-<1> The response shows that Kafka Connect version {debezium-kafka-version} is running.
+
+The preceding response shows that Kafka Connect version {debezium-kafka-version} is running.
 --
 
 .. Check the list of connectors registered with Kafka Connect:
@@ -96,7 +97,8 @@ $ curl -H "Accept:application/json" localhost:8083/
 [source,options="nowrap"]
 ----
 $ curl -H "Accept:application/json" localhost:8083/connectors/
-[]  <1>
+[]
 ----
-<1> No connectors are currently registered with Kafka Connect.
+
+The empty brackets (`[]`) indicate that there are no connectors registered with Kafka Connect.
 --
