@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -18,9 +17,7 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
@@ -30,11 +27,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     private static final int POLLING_INTERVAL = 1;
 
     private SqlServerConnection connection;
-
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-    @Rule
-    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @BeforeEach
     void before() throws SQLException, InterruptedException {

@@ -5,8 +5,8 @@
  */
 package io.debezium.openlineage.emitter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
 
 import java.net.URI;
@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
@@ -33,7 +33,7 @@ import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
 import io.openlineage.client.OpenLineage;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OpenLineageEmitterTest {
 
     @Mock
@@ -44,8 +44,8 @@ public class OpenLineageEmitterTest {
     @Captor
     ArgumentCaptor<OpenLineage.RunEvent> eventCaptor;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
 
         Map<String, String> configMap = new HashMap<>();
         configMap.put("database.hostname", "localhost");
@@ -70,7 +70,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitInitialState() {
+    void testEmitInitialState() {
         emitter.emit(DebeziumTaskState.INITIAL);
 
         verify(eventEmitter).emit(eventCaptor.capture());
@@ -82,7 +82,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitWithError() {
+    void testEmitWithError() {
         Throwable error = new RuntimeException("Test failure");
 
         emitter.emit(DebeziumTaskState.RESTARTING, error);
@@ -95,7 +95,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitWithInputAndOutputDatasets() {
+    void testEmitWithInputAndOutputDatasets() {
         DatasetMetadata.FieldDefinition field = new DatasetMetadata.FieldDefinition("id", "int", "Identifier", Collections.emptyList());
         DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetKind.INPUT, DatasetMetadata.TABLE_DATASET_TYPE,
                 DatasetMetadata.DataStore.DATABASE, List.of(field));
@@ -118,7 +118,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitComplete() {
+    void testEmitComplete() {
         emitter.emit(DebeziumTaskState.STOPPED);
 
         verify(eventEmitter).emit(eventCaptor.capture());

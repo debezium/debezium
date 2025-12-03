@@ -7,9 +7,9 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -30,15 +30,12 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -76,9 +73,6 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     protected Configuration config;
     private KeyValueStore store;
     private SchemaChangeHistory schemaChanges;
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @BeforeEach
     void beforeEach() {

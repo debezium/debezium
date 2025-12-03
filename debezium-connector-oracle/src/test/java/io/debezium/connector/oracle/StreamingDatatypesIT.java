@@ -8,14 +8,11 @@ package io.debezium.connector.oracle;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.util.Testing;
@@ -26,9 +23,6 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @BeforeEach
     void before() throws Exception {

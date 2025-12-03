@@ -15,22 +15,18 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.relational.TableId;
 
 /**
@@ -41,12 +37,6 @@ import io.debezium.relational.TableId;
 public class PublicGeometryIT extends AbstractRecordsProducerTest {
 
     private TestConsumer consumer;
-
-    @Rule
-    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     @BeforeEach
     void before() throws Exception {

@@ -6,7 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;

@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Collects together multiple {@link SkipWhenDatabaseVersion} annotations.
  *
@@ -17,6 +19,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD })
+@ExtendWith(SkipTestExtension.class)
 public @interface SkipWhenDatabaseVersions {
 
     /**

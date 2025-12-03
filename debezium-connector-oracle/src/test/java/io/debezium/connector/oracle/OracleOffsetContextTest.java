@@ -10,12 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -28,9 +25,6 @@ import io.debezium.pipeline.spi.OffsetContext;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only applies to LogMiner")
 public class OracleOffsetContextTest {
-
-    @Rule
-    public TestRule skipTestRule = new SkipTestDependingOnAdapterNameRule();
 
     private OracleConnectorConfig connectorConfig;
     private OffsetContext.Loader offsetLoader;

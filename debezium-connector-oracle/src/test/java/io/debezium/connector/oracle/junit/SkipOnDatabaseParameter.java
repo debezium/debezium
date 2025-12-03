@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation used to skip a given test based on the value of a database parameter.
  *
@@ -20,6 +22,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(SkipTestDependingOnDatabaseParameterExtension.class)
 public @interface SkipOnDatabaseParameter {
     /**
      * Returns the parameter name to lookup.

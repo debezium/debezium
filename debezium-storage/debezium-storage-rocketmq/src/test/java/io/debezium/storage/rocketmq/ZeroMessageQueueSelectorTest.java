@@ -5,20 +5,20 @@
  */
 package io.debezium.storage.rocketmq;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.rocketmq.common.message.MessageQueue;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ZeroMessageQueueSelectorTest {
 
     private static List<MessageQueue> messageQueues;
 
-    @Before
+    @BeforeEach
     public void before() {
         messageQueues = new ArrayList<>();
         messageQueues.add(new MessageQueue("topic", "brokerName", 0));

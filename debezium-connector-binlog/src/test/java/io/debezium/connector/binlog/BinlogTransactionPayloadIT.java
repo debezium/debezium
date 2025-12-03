@@ -22,7 +22,6 @@ import java.util.concurrent.TimeoutException;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,6 @@ import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.DebeziumEngineTestUtils.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
@@ -64,8 +62,6 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     private static final String SERVER_NAME = "transactionpayload_it";
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "transactionpayload_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Rule
-    public SkipTestRule skipTest = new SkipTestRule();
     private Configuration config;
 
     @BeforeEach

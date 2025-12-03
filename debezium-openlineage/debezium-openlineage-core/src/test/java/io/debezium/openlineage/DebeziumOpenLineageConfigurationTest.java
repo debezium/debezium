@@ -5,20 +5,21 @@
  */
 package io.debezium.openlineage;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.ConfigurationNames;
 
 public class DebeziumOpenLineageConfigurationTest {
 
     @Test
-    public void testFromConfigurationParsesAllFieldsCorrectly() {
+    void testFromConfigurationParsesAllFieldsCorrectly() {
 
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
@@ -41,7 +42,7 @@ public class DebeziumOpenLineageConfigurationTest {
     }
 
     @Test
-    public void testFromConfigurationUsesConnectorLogicalNameAsNamespaceFallback() {
+    void testFromConfigurationUsesConnectorLogicalNameAsNamespaceFallback() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml",
@@ -56,7 +57,7 @@ public class DebeziumOpenLineageConfigurationTest {
     }
 
     @Test
-    public void testEmptyTagsAndOwnersAreParsedAsEmptyMaps() {
+    void testEmptyTagsAndOwnersAreParsedAsEmptyMaps() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "false",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "none",
@@ -70,8 +71,8 @@ public class DebeziumOpenLineageConfigurationTest {
         assertTrue(result.job().owners().isEmpty());
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    public void testMalformedTagEntryThrowsException() {
+    @Test
+    void testMalformedTagEntryThrowsException() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "file.yml",
@@ -80,6 +81,8 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tagOnlyNoEquals",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "");
 
-        DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> {
+            DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
+        });
     }
 }

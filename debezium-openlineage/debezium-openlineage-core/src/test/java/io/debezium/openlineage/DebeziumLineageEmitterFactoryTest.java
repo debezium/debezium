@@ -5,14 +5,14 @@
  */
 package io.debezium.openlineage;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.openlineage.emitter.LineageEmitter;
 import io.debezium.openlineage.emitter.NoOpLineageEmitter;
@@ -22,13 +22,13 @@ public class DebeziumLineageEmitterFactoryTest {
 
     private DebeziumLineageEmitterFactory factory;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         factory = new DebeziumLineageEmitterFactory();
     }
 
     @Test
-    public void shouldReturnNoOpEmitterWhenOpenLineageDisabled() {
+    void shouldReturnNoOpEmitterWhenOpenLineageDisabled() {
 
         Map<String, String> config = Map.of(
                 "name", "test-connector",
@@ -41,7 +41,7 @@ public class DebeziumLineageEmitterFactoryTest {
     }
 
     @Test
-    public void shouldReturnOpenLineageEmitterWhenEnabled() {
+    void shouldReturnOpenLineageEmitterWhenEnabled() {
 
         Map<String, String> config = Map.of(
                 "name", "test-connector",
@@ -60,7 +60,7 @@ public class DebeziumLineageEmitterFactoryTest {
     }
 
     @Test
-    public void shouldReuseOpenLineageContextAcrossCalls() {
+    void shouldReuseOpenLineageContextAcrossCalls() {
 
         Map<String, String> config = Map.of(
                 "name", "test-connector",

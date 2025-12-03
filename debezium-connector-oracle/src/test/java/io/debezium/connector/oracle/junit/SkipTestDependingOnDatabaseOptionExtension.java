@@ -8,38 +8,39 @@ package io.debezium.connector.oracle.junit;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.junit.AnnotationBasedTestRule;
+import io.debezium.junit.AnnotationBasedExtension;
 import io.debezium.util.Strings;
 
 /**
- * JUnit rule that automatically skips a test if the {@link SkipOnDatabaseOption} annotation at
+ * JUnit 5 extension that automatically skips a test if the {@link SkipOnDatabaseOption} annotation at
  * either the class or test method level if the option specified isn't enabled or available on
  * the test database used by {@link TestHelper#testConnection}.
  *
  * @author Chris Cranford
  */
-public class SkipTestDependingOnDatabaseOptionRule extends AnnotationBasedTestRule {
+public class SkipTestDependingOnDatabaseOptionExtension extends AnnotationBasedExtension implements ExecutionCondition {
     private static final String FALSE = "FALSE";
     private static final String TRUE = "TRUE";
 
     @Override
-    public Statement apply(Statement base, Description description) {
-        final SkipOnDatabaseOption option = hasAnnotation(description, SkipOnDatabaseOption.class);
+    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+        final SkipOnDatabaseOption option = hasAnnotation(context, SkipOnDatabaseOption.class);
         if (Objects.nonNull(option)) {
             final String optionValue = getDatabaseOptionValue(option.value());
             if (option.enabled() && TRUE.equals(optionValue)) {
-                return emptyStatement("Database option '" + optionValue + "' is enabled and available", description);
+                return ConditionEvaluationResult.disabled("Database option '" + optionValue + "' is enabled and available");
             }
             else if (!option.enabled() && (Strings.isNullOrEmpty(optionValue) || FALSE.equals(optionValue))) {
-                return emptyStatement("Database option '" + optionValue + "' not available", description);
+                return ConditionEvaluationResult.disabled("Database option '" + optionValue + "' not available");
             }
         }
-        return base;
+        return ConditionEvaluationResult.enabled("Database option check passed");
     }
 
     private String getDatabaseOptionValue(String option) {

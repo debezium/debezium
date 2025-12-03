@@ -52,8 +52,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
 import org.postgresql.jdbc.PgStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +73,6 @@ import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.Interval;
@@ -98,9 +95,6 @@ import io.debezium.util.Testing;
 public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRecordsProducerTest.class);
-
-    @Rule
-    public TestRule logTestName = new TestLogger(LOGGER);
 
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
     protected static final Pattern DELETE_TABLE_MATCHING_PATTERN = Pattern.compile("delete from (.*) where .*", Pattern.CASE_INSENSITIVE);

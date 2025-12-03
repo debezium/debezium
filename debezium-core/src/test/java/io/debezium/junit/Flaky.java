@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation used together with the {@link ConditionalFail} JUnit rule, that allows ignoring
  * failures of tests know to be unstable on CI, using the {@code ignoreFlakyFailures} system property.
@@ -18,6 +20,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(ConditionalFailExtension.class)
 public @interface Flaky {
 
     String FAIL_FLAKY_TESTS_PROPERTY = "failFlakyTests";

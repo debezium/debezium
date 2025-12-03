@@ -14,14 +14,11 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Rule;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
@@ -31,9 +28,6 @@ import ch.qos.logback.classic.Level;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public abstract class BinlogSnapshotParallelSourceIT<C extends SourceConnector> extends BinlogSnapshotSourceIT<C> {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     @Override
     protected Configuration.Builder simpleConfig() {

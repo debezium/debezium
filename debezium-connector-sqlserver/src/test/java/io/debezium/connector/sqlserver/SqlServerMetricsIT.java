@@ -130,7 +130,6 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
     }
 
     @Test
-    @Override
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         executeInsertStatements();
@@ -151,7 +150,6 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
     }
 
     @Test
-    @Override
     public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
         // Setup
         executeInsertStatements();

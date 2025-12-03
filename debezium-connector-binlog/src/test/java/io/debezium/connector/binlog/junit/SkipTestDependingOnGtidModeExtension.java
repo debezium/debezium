@@ -7,27 +7,32 @@ package io.debezium.connector.binlog.junit;
 
 import java.sql.SQLException;
 
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestConnectionService;
-import io.debezium.junit.AnnotationBasedTestRule;
+import io.debezium.junit.AnnotationBasedExtension;
 
 /**
- * JUnit rule that skips a test based on the {@link SkipWhenGtidModeIs} annotation on either a test method or a test class.
+ * JUnit 5 extension that skips a test based on the {@link SkipWhenGtidModeIs} annotation on either a test method or a test class.
+ * This is the JUnit 5 equivalent of {@link SkipTestDependingOnGtidModeRule}.
+ *
+ * @author Chris Cranford
  */
-public class SkipTestDependingOnGtidModeRule extends AnnotationBasedTestRule {
+public class SkipTestDependingOnGtidModeExtension extends AnnotationBasedExtension implements ExecutionCondition {
+
     private static final SkipWhenGtidModeIs.GtidMode gtidMode = getGtidMode();
 
     @Override
-    public Statement apply(Statement base, Description description) {
-        SkipWhenGtidModeIs skipGtidMode = hasAnnotation(description, SkipWhenGtidModeIs.class);
+    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+        SkipWhenGtidModeIs skipGtidMode = hasAnnotation(context, SkipWhenGtidModeIs.class);
         if (skipGtidMode != null && skipGtidMode.value().equals(gtidMode)) {
             String reasonForSkipping = "GTID_MODE is " + skipGtidMode.value() + System.lineSeparator() + skipGtidMode.reason();
-            return emptyStatement(reasonForSkipping, description);
+            return ConditionEvaluationResult.disabled(reasonForSkipping);
         }
-        return base;
+        return ConditionEvaluationResult.enabled("GTID_MODE is compatible");
     }
 
     public static SkipWhenGtidModeIs.GtidMode getGtidMode() {
