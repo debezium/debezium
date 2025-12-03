@@ -1335,6 +1335,37 @@ public abstract class CommonConnectorConfig {
             .withDescription("The Kafka bootstrap server address used as input/output namespace/");
 
     /**
+     * Configuration field for overriding the default pattern used to mask sensitive
+     * configuration values.
+     *
+     * <p>By default, Debezium masks values whose keys match the built-in password pattern
+     * ({@link Configuration#PASSWORD_PATTERN}). This setting allows users to provide a
+     * custom regular expression that replaces the default pattern. When set, only keys
+     * matching the custom pattern will be masked.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@link Configuration#CUSTOM_SANITIZE_PATTERN_KEY}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Format:</strong> Regular expression<br>
+     * <strong>Default:</strong> {@link Configuration#PASSWORD_PATTERN}<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * custom.sanitize.pattern=.*\.token$|.*\.credential$
+     * }</pre>
+     */
+    public static Field CUSTOM_SANITIZE_PATTERN = Field.create(Configuration.CUSTOM_SANITIZE_PATTERN_KEY)
+            .withDisplayName("Custom pattern for masking sensitive configuration")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 48))
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(Configuration.PASSWORD_PATTERN.pattern())
+            .withDescription(
+                    "Regular expression identifying configuration keys whose values should be masked. "
+                            + "When set, this custom pattern replaces Debezium’s default password masking pattern.");
+
+    /**
      * Configuration field for enabling or disabling extended Debezium context headers.
      *
      * <p>This field controls whether Debezium includes additional context headers in CDC events
@@ -1441,7 +1472,8 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER,
                     EXTENDED_HEADERS_ENABLED,
                     GUARDRAIL_COLLECTIONS_MAX,
-                    GUARDRAIL_COLLECTIONS_LIMIT_ACTION)
+                    GUARDRAIL_COLLECTIONS_LIMIT_ACTION,
+                    CUSTOM_SANITIZE_PATTERN)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,

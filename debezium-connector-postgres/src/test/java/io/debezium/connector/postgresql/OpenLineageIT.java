@@ -503,7 +503,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "connector.class=io.debezium.connector.postgresql.PostgresConnector",
                 "database.dbname=postgres",
                 "database.hostname=localhost",
-                "database.password=postgres",
+                "database.password=********",
                 "database.sslmode=disable",
                 "database.user=postgres",
                 "errors.max.retries=-1",
