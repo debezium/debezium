@@ -1736,11 +1736,11 @@ public abstract class CommonConnectorConfig {
                         "history recovery to add those tables later.";
             }
 
-            // Log table list at debug level for troubleshooting
-            if (tableNames != null && LOGGER.isDebugEnabled()) {
+            // Log table list at trace level for troubleshooting
+            if (tableNames != null && LOGGER.isTraceEnabled()) {
                 String tableList = tableNames.stream()
                         .sorted()
-                        .collect(java.util.stream.Collectors.joining(", "));
+                        .collect(Collectors.joining(", "));
                 LOGGER.trace("Tables/Collections configured for capture: {}", tableList);
             }
 
