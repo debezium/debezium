@@ -159,7 +159,7 @@ public class OracleConnection extends JdbcConnection {
             try {
                 // Oracle 18.1 introduced BANNER_FULL as the new column rather than BANNER
                 // This column uses a different format than the legacy BANNER.
-                versionStr = queryAndMap("SELECT BANNER_FULL FROM V$VERSION WHERE BANNER_FULL LIKE 'Oracle Database%'", (rs) -> {
+                versionStr = queryAndMap("SELECT BANNER_FULL FROM V$VERSION WHERE BANNER_FULL LIKE 'Oracle%Database%'", (rs) -> {
                     if (rs.next()) {
                         return rs.getString(1);
                     }
@@ -180,7 +180,7 @@ public class OracleConnection extends JdbcConnection {
             // For databases prior to 18.1, a SQLException will be thrown due to BANNER_FULL not being a column and
             // this will cause versionStr to remain null, use fallback column BANNER for versions prior to 18.1.
             if (versionStr == null) {
-                versionStr = queryAndMap("SELECT BANNER FROM V$VERSION WHERE BANNER LIKE 'Oracle Database%'", (rs) -> {
+                versionStr = queryAndMap("SELECT BANNER FROM V$VERSION WHERE BANNER LIKE 'Oracle%Database%'", (rs) -> {
                     if (rs.next()) {
                         return rs.getString(1);
                     }
