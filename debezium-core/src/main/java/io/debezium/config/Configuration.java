@@ -1774,7 +1774,8 @@ public interface Configuration {
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMaskedPasswords() {
-        return withMasked(getString(CUSTOM_SANITIZE_PATTERN_KEY));
+        String customPattern = getString(CUSTOM_SANITIZE_PATTERN_KEY);
+        return withMasked(customPattern != null ? customPattern : PASSWORD_PATTERN.pattern());
     }
 
     /**
