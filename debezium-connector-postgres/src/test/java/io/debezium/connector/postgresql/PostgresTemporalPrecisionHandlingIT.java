@@ -43,8 +43,8 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
     @BeforeEach
     void before() {
-        initializeConnectorTestFramework();
         createTable();
+        initializeConnectorTestFramework();
     }
 
     @AfterEach

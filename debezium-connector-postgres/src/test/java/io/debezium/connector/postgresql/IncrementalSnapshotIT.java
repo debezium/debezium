@@ -60,10 +60,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @BeforeEach
     void before() throws SQLException {
         TestHelper.dropAllSchemas();
-        initializeConnectorTestFramework();
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
+        initializeConnectorTestFramework();
     }
 
     @BeforeAll

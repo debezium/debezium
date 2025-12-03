@@ -78,11 +78,11 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
         System.setProperty("database.port", String.valueOf(postgresContainer.getMappedPort(5432)));
         try {
             TestHelper.dropAllSchemas();
+            initializeConnectorTestFramework();
         }
         catch (SQLException exception) {
             throw new RuntimeException(exception);
         }
-        initializeConnectorTestFramework();
     }
 
     @AfterEach
