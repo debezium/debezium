@@ -5,20 +5,20 @@
  */
 package io.debezium.pipeline;
 
-import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.HistorizedDatabaseSchema;
 
 /**
  * Validator for guardrail limits across different connector types.
@@ -31,119 +31,98 @@ public class GuardrailValidator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GuardrailValidator.class);
 
+    private final CommonConnectorConfig connectorConfig;
+    private final RelationalTableFilters tableFilters;
+    private final Boolean storeOnlyCapturedTables;
+    private final Boolean storeOnlyCapturedDatabases;
+
     /**
-     * Validates table guardrail limits for schema-history based connectors that support
-     * the storeOnlyCapturedTables configuration.
+     * Constructor for collection-based connectors (e.g., MongoDB).
      * <p>
-     * This method handles the common logic for:
-     * <ul>
-     *   <li>Fetching all table IDs from the database</li>
-     *   <li>Determining validation scope based on schema storage configuration</li>
-     *   <li>Filtering tables according to connector filters</li>
-     *   <li>Validating against configured guardrail limits</li>
-     * </ul>
+     * Use this constructor for connectors that don't use relational table filters.
      *
-     * @param tableIdSupplier Supplier that provides table IDs from the database
      * @param connectorConfig The connector configuration
-     * @param tableFilters The table filters for the connector
-     * @param storeOnlyCapturedTables Whether only captured tables are stored in schema history
-     * @param storeOnlyCapturedDatabases Whether only captured databases are stored in schema history
-     * @throws DebeziumException if validation fails or SQLException occurs
      */
-    public static void validateTableLimitHistorized(TableIdSupplier tableIdSupplier,
-                                                    CommonConnectorConfig connectorConfig,
-                                                    RelationalTableFilters tableFilters,
-                                                    boolean storeOnlyCapturedTables,
-                                                    boolean storeOnlyCapturedDatabases) {
+    public GuardrailValidator(CommonConnectorConfig connectorConfig) {
+        this.connectorConfig = connectorConfig;
+        this.tableFilters = null;
+        this.storeOnlyCapturedTables = null;
+        this.storeOnlyCapturedDatabases = null;
+    }
 
-        try {
-            Set<TableId> allTableIds = tableIdSupplier.get();
-            List<String> tableNames;
-            boolean isValidatingAllTables = !storeOnlyCapturedTables;
+    /**
+     * Constructor for relational database connectors.
+     *
+     * @param connectorConfig The connector configuration
+     * @param schema The database schema
+     */
+    public GuardrailValidator(CommonConnectorConfig connectorConfig, DatabaseSchema<?> schema) {
+        this.connectorConfig = connectorConfig;
 
-            if (isValidatingAllTables) {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> tableFilters.eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} tables present in {}",
-                        tableNames.size(),
-                        storeOnlyCapturedDatabases ? "the captured databases" : "all databases");
-            }
-            else {
-                tableNames = allTableIds.stream()
-                        .filter(tableId -> tableFilters.dataCollectionFilter().isIncluded(tableId))
-                        .map(TableId::toString)
-                        .collect(Collectors.toList());
-                LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
-            }
-
-            connectorConfig.validateGuardrailLimits(tableNames, isValidatingAllTables);
+        // Extract table filters from the config if it's a relational connector config
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig) {
+            this.tableFilters = ((RelationalDatabaseConnectorConfig) connectorConfig).getTableFilters();
         }
-        catch (SQLException e) {
-            throw new DebeziumException("Failed to validate guardrail limits", e);
+        else {
+            this.tableFilters = null;
+        }
+
+        // Extract schema history settings from the schema if it's historized
+        if (schema instanceof HistorizedDatabaseSchema) {
+            HistorizedDatabaseSchema<?> historizedSchema = (HistorizedDatabaseSchema<?>) schema;
+            this.storeOnlyCapturedTables = historizedSchema.storeOnlyCapturedTables();
+            this.storeOnlyCapturedDatabases = historizedSchema.storeOnlyCapturedDatabases();
+        }
+        else {
+            // Non-historized schemas (like PostgreSQL) default to null
+            this.storeOnlyCapturedTables = null;
+            this.storeOnlyCapturedDatabases = null;
         }
     }
 
     /**
-     * Validates guardrail limits for table-based connectors which are non schema-history based.
-     * <p>
-     * This is a simpler variant used by connectors that don't support the
-     * storeOnlyCapturedTables configuration (e.g., PostgreSQL).
+     * Validates guardrail limits for table-based connectors.
      *
-     * @param tableIdSupplier Supplier that provides table IDs from the database
-     * @param connectorConfig The connector configuration
-     * @param dataCollectionFilter The filter to identify captured tables
-     * @throws DebeziumException if validation fails or SQLException occurs
+     * @param allTableIds The set of all table IDs to validate
      */
-    public static void validateTableLimitOnCaptured(TableIdSupplier tableIdSupplier,
-                                                    CommonConnectorConfig connectorConfig,
-                                                    Predicate<TableId> dataCollectionFilter) {
+    public void validate(Set<TableId> allTableIds) {
+        List<String> tableNames;
+        // For non-historized connectors (PostgreSQL), storeOnlyCapturedTables will be null
+        // For historized connectors, it will be true or false
+        // null or true means we validate only captured tables
+        // false means we validate all tables in the schema
+        boolean isValidatingAllTables = Boolean.FALSE.equals(storeOnlyCapturedTables);
 
-        try {
-            Set<TableId> allTableIds = tableIdSupplier.get();
-
-            List<String> tableNames = allTableIds.stream()
-                    .filter(dataCollectionFilter)
+        if (isValidatingAllTables) {
+            // Schema-history based connectors with storeOnlyCapturedTables=false
+            tableNames = allTableIds.stream()
+                    .filter(tableId -> tableFilters.eligibleForSchemaDataCollectionFilter().isIncluded(tableId))
                     .map(TableId::toString)
                     .collect(Collectors.toList());
-
+            LOGGER.info("Validating guardrail limits against {} tables present in {}",
+                    tableNames.size(),
+                    Boolean.TRUE.equals(storeOnlyCapturedDatabases) ? "the captured databases" : "all databases");
+        }
+        else {
+            // Non-historized connectors (null) or historized with storeOnlyCapturedTables=true
+            tableNames = allTableIds.stream()
+                    .filter(tableId -> tableFilters.dataCollectionFilter().isIncluded(tableId))
+                    .map(TableId::toString)
+                    .collect(Collectors.toList());
             LOGGER.info("Validating guardrail limits against {} captured tables", tableNames.size());
-            connectorConfig.validateGuardrailLimits(tableNames);
         }
-        catch (SQLException e) {
-            throw new DebeziumException("Failed to validate guardrail limits", e);
-        }
+
+        connectorConfig.validateGuardrailLimits(tableNames, isValidatingAllTables);
     }
 
     /**
-     * Validates guardrail limits for collection-based connectors which are non schema-history based (e.g., MongoDB).
-     * <p>
-     * This variant works with collection names instead of TableId objects.
+     * Validates guardrail limits for collection-based connectors (e.g., MongoDB).
+     * This overload works with collection names instead of TableId objects.
      *
      * @param collectionNames The list of collection names to validate
-     * @param connectorConfig The connector configuration
-     * @throws DebeziumException if validation fails
      */
-    public static void validateCollectionLimitCaptured(Collection<String> collectionNames,
-                                                       CommonConnectorConfig connectorConfig) {
-
+    public void validate(Collection<String> collectionNames) {
         LOGGER.info("Validating guardrail limits against {} captured collections", collectionNames.size());
         connectorConfig.validateGuardrailLimits(collectionNames);
-    }
-
-    /**
-     * Functional interface for database operations that supply table IDs.
-     * Used to defer database operations until inside the try-catch block.
-     */
-    @FunctionalInterface
-    public interface TableIdSupplier {
-        /**
-         * Gets table IDs from the database.
-         *
-         * @return a set of table IDs
-         * @throws SQLException if a database access error occurs
-         */
-        Set<TableId> get() throws SQLException;
     }
 }
