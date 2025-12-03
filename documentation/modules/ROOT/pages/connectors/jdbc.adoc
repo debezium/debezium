@@ -767,8 +767,8 @@ After you apply the SMT to an event that includes a field with the name `ID`, th
 {
   "transforms": "topic-lowercase",
   "transforms.topic-lowercase.type": "io.debezium.connector.jdbc.transforms.FieldNameTransformation",
-  "transforms.topic-lowercase.collection.naming.style": "lower_case",
-  "transforms.topic-lowercase.collection.naming.prefix": "adt_"
+  "transforms.topic-lowercase.column.naming.style": "lower_case",
+  "transforms.topic-lowercase.column.naming.prefix": "adt_"
 }
 ----
 
