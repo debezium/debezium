@@ -92,9 +92,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         metadataConnection = new SqlServerConnection(connectorConfig, valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
-
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
                 schemaNameAdjuster, customConverterRegistry);

@@ -92,9 +92,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
-
         OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
