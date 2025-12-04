@@ -529,7 +529,7 @@ If the connector restarts after the last known offset is removed from the redo l
 By submitting a `drop-transaction` signal, you can avoid errors by removing a problem transaction from the connector's internal LogMiner buffer before it results in negative consequences.
 
 .Prerequisites
-* The connector is configured to use one of the available link:{debezium-signaling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* The connector is configured to use one of the available link:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
 * You have access to the connector log file and can identify the ID of the transaction that you want to drop.
 
 [IMPORTANT]
