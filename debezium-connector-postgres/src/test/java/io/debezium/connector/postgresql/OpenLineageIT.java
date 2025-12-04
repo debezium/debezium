@@ -9,6 +9,7 @@ import static io.debezium.connector.postgresql.TestHelper.decoderPlugin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,9 +48,12 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
     @BeforeEach
-    void before() {
+    void before() throws SQLException {
+        TestHelper.dropAllSchemas();
         getDebeziumTestTransport().clear();
         initializeConnectorTestFramework();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
     }
 
     @AfterEach
@@ -211,6 +215,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     void shouldProduceOpenLineageFailEvent() {
+
+        TestHelper.execute(SETUP_TABLES_STMT);
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
