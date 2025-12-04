@@ -16,7 +16,7 @@ You can also stop an incremental snapshot by sending a JSON message to the xref:
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
-.Using a source signaling channel to stop an incremental snapshot
+.Procedure
 
 . Insert a stop snapshot signal document into the signaling {data-collection}:
 +
@@ -41,28 +41,23 @@ The values of the `id`, `type`, and `data` parameters in the signal command corr
 +
 The following list describes the parameters in the example:
 +
-signalDataCollection::
-value::: `db.debeziumSignal.insert`
+`db.debeziumSignal.insert`::
 Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
-type::
-value::: `stop-snapshot`
-The `type` parameter specifies the operation that the signal is intended to trigger.
+`type`::
+Specifies the kind of signal to send, in this case a `stop-snapshot` signal.
 
-id::
-value::: `null`
-In the preceding example, the signal omits the optional `_id` parameter.
+`_id`::
+This optional field is omitted in the preceding signal.
 Because the document does not explicitly assign a value to the parameter, MongoDB automatically assigns an arbitrary id to the document.
-This `id` becomes the identifier for the signal request.
+This `_id` becomes the identifier for the signal request.
 {prodname} does not use this identifier string; however you can use the `id` to collate log messages with documents in the signaling {data-collection}.
 
 data.data-collections::
-value::: `public.Collection1, public.Collection2`
-An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions that designate the names of the {data-collection}s that you want to remove from the snapshot.
+An optional component in the `data` field of the signal that specifies an array of {data-collection} names or regular expressions that represent {data-collection}s that you want to exclude from the snapshot.
 The regular expressions in the array match the fully-qualified names of {data-collection}s in the format `database.collection`.
 
 data.type::
-value::: `incremental`
 A required component in the `data` field of a stop snapshot signal that specifies the type of snapshot operation that is to be stopped.
 Currently, the only valid option is `incremental`.
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
