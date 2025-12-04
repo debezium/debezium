@@ -2350,18 +2350,18 @@ If you are using a xref:postgresql-output-plugin[logical decoding plug-in] other
 [source,properties]
 ----
 # MODULES
-shared_preload_libraries = 'decoderbufs' // <1>
+shared_preload_libraries = 'decoderbufs'
 ----
-<1> Instructs the server to load the `decoderbufs` logical decoding plug-ins at startup (the name of the plug-in is set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v{debezium-version}/Makefile[`Protobuf`] make file).
+The preceding statement instructs the PostgreSQL server to load the `decoderbufs` logical decoding plug-ins at startup (the name of the plug-in is set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v{debezium-version}/Makefile[`Protobuf`] make file).
 
 . To configure the replication slot regardless of the decoder being used, specify the following in the `postgresql.conf` file:
 +
 [source,properties]
 ----
 # REPLICATION
-wal_level = logical             // <1>
+wal_level = logical
 ----
-<1> Instructs the server to use logical decoding with the write-ahead log.
+The preceding statement instructs the PostgreSQL server to use logical decoding with the write-ahead log.
 
 Depending on your requirements, you may have to set other PostgreSQL streaming replication parameters when using {prodname}.
 Examples include `max_wal_senders` and `max_replication_slots` for increasing the number of connectors that can access the sending server concurrently, and `wal_keep_size` for limiting the maximum WAL size which a replication slot will retain.
