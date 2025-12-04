@@ -267,8 +267,8 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
     }
 
     private static String unwrapParenthesis(String value) {
-        if (value.startsWith("(") && value.endsWith(")")) {
-            return value.substring(1, value.length() - 1);
+        while (value.startsWith("(") && value.endsWith(")")) {
+            value = value.substring(1, value.length() - 1);
         }
         return value;
     }
