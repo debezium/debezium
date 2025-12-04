@@ -114,7 +114,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         final Map<Integer, DefaultValueMapper> result = new HashMap<>();
 
         // Numeric types
-        result.put(OracleTypes.NUMERIC, nullableDefaultValueMapper());
+        result.put(OracleTypes.NUMERIC, nullableDefaultValueMapper(enforceParenthesisUnwrap()));
 
         // Approximate numerics
         result.put(OracleTypes.BINARY_FLOAT, nullableDefaultValueMapper());
@@ -191,6 +191,10 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         return (column, value) -> value != null ? unquote(value) : null;
     }
 
+    private static DefaultValueMapper enforceParenthesisUnwrap() {
+        return (column, value) -> value != null ? unwrapParenthesis(value) : null;
+    }
+
     private static DefaultValueMapper skipEmptyClobFunction() {
         return (column, value) -> {
             // For EMPTY_CLOB(), treat this as having a zero-length default value
@@ -260,6 +264,13 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
             }
             return value;
         };
+    }
+
+    private static String unwrapParenthesis(String value) {
+        if (value.startsWith("(") && value.endsWith(")")) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     private static String unquote(String value) {
