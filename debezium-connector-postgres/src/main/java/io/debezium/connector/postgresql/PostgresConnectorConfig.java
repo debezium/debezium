@@ -658,6 +658,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to create a failover slot. This is only supported when connecting to a primary server of a Postgres cluster, version 17 or newer. " +
                             "When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.");
 
+    /**
+     * @deprecated Replaced by {@link #OFFSET_SLOT_MISMATCH_STRATEGY}
+     */
+    @Deprecated
     public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
             .withDisplayName("Seek to last known offset on the replication slot")
             .withType(Type.BOOLEAN)
@@ -666,8 +670,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
             .withDescription(
-                    "Whether or not to seek to the last known offset on the replication slot." +
-                            "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
+                    "(Deprecated) Whether or not to seek to the last known offset on the replication slot. " +
+                            "Use 'offset.mismatch.strategy' instead. A value of 'true' maps to 'trust_offset' strategy, 'false' maps to 'fail' strategy.");
+
+    public static final Field OFFSET_SLOT_MISMATCH_STRATEGY = Field.create("offset.mismatch.strategy")
+            .withDisplayName("Offset Slot Mismatch Strategy")
+            .withEnum(OffsetSlotMismatchStrategy.class, OffsetSlotMismatchStrategy.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Determines behavior when the connector's stored offset LSN differs from the replication slot's confirmed LSN. " +
+                            "'fail' (default) throws an exception on mismatch, requiring manual intervention; " +
+                            "'trust_offset' advances the slot to match the offset when offset_lsn > slot_lsn (replaces deprecated slot.seek.to.known.offset.on.start=true); "
+                            +
+                            "'trust_slot' advances the offset to match the slot when slot_lsn > offset_lsn, allowing recovery from manual slot advancement; " +
+                            "'trust_greater_lsn' automatically synchronizes to the greater of the two LSNs, providing self-healing behavior.");
 
     public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
             .withDisplayName("Replication slot creation timeout")
@@ -1150,6 +1168,91 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(false)
             .withValidation(Field::isBoolean);
 
+    public enum OffsetSlotMismatchStrategy implements EnumeratedValue {
+        /**
+         * Throw an exception if LSNs do not match. (default behavior).
+         */
+        FAIL("fail"),
+
+        /**
+         * Advance the Slot to the offset LSN if offset_lsn > slot_lsn, if offset_lsn < slot_lsn, fail.
+         * Replaces slot.seek.to.known.offset.on.start = true.
+         */
+        TRUST_OFFSET("trust_offset"),
+
+        /**
+         * Advance the Offset to the Slot LSN if slot_lsn > offset_lsn, if slot_lsn < offset_lsn, re-stream old events.
+         * Allows recovery from WAL advancement by trusting the database slot as the source of truth
+         */
+
+        TRUST_SLOT("trust_slot"),
+
+        /**
+         * Advance the Offset to the Slot LSN if slot_lsn > offset_lsn, if slot_lsn < offset_lsn, re-stream old events.
+         * Allows recovery from WAL advancement by trusting the database slot as the source of truth
+         */
+        TRUST_GREATER_LSN("trust_greater_lsn");
+
+        private final String value;
+
+        OffsetSlotMismatchStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if one of the strategies is to seek the slot to the offset.
+         */
+        public boolean shouldSeekSlotToOffset() {
+            return this == TRUST_OFFSET || this == TRUST_GREATER_LSN;
+        }
+
+        /**
+         * Determine if one of the strategies is to seek the offset to the slot (jump ahead).
+         */
+        public boolean shouldSeekOffsetToSlot() {
+            return this == TRUST_SLOT || this == TRUST_GREATER_LSN;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static OffsetSlotMismatchStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (OffsetSlotMismatchStrategy option : OffsetSlotMismatchStrategy.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static OffsetSlotMismatchStrategy parse(String value, String defaultValue) {
+            OffsetSlotMismatchStrategy mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     /**
      * Modes for LSN flushing strategy
      */
@@ -1248,8 +1351,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                             "'connector' (default) for Debezium managed LSN flushing (replaces deprecated flush.lsn.source=true); " +
                             "'manual' for externally managed LSN flushing (replaces deprecated flush.lsn.source=false); " +
                             "'connector_and_driver' for Debezium managed LSN flushing with the pgjdbc driver flushing unmonitored LSNs" +
-                            "using server keepalive LSN, which prevents WAL growth on low-activity databases.")
-            .withValidation(PostgresConnectorConfig::validateLsnFlushMode);
+                            "using server keepalive LSN, which prevents WAL growth on low-activity databases.");
 
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
@@ -1277,6 +1379,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyConnection;
     private final boolean publishViaPartitionRoot;
+    private final OffsetSlotMismatchStrategy offsetSlotMismatchStrategy;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -1302,6 +1405,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
         this.publishViaPartitionRoot = config.getBoolean(PUBLISH_VIA_PARTITION_ROOT);
         this.lsnFlushTimeoutAction = LsnFlushTimeoutAction.parse(config.getString(LSN_FLUSH_TIMEOUT_ACTION));
+        this.offsetSlotMismatchStrategy = resolveOffsetSlotMismatchStrategy(config);
     }
 
     protected String hostname() {
@@ -1333,7 +1437,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     public boolean slotSeekToKnownOffsetOnStart() {
-        return getConfig().getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
+        return offsetSlotMismatchStrategy.shouldSeekSlotToOffset();
+    }
+
+    public boolean offsetSeekToSlotOnStart() {
+        return offsetSlotMismatchStrategy.shouldSeekOffsetToSlot();
     }
 
     public long createSlotCommandTimeout() {
@@ -1548,18 +1656,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return 0;
     }
 
-    private static int validateLsnFlushMode(Configuration config, Field field, Field.ValidationOutput problems) {
-        String value = config.getString(LSN_FLUSH_MODE);
-        if (value != null) {
-            LsnFlushMode mode = LsnFlushMode.parse(value);
-            if (mode == null) {
-                problems.accept(LSN_FLUSH_MODE, value, "Invalid LSN flush mode");
-                return 1;
-            }
-        }
-        return 0;
-    }
-
     private LsnFlushMode resolveLsnFlushMode(Configuration config) {
         LsnFlushMode mode = null;
 
@@ -1612,6 +1708,42 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
         }
         return problemCount;
+    }
+
+    private OffsetSlotMismatchStrategy resolveOffsetSlotMismatchStrategy(Configuration config) {
+        OffsetSlotMismatchStrategy mode = null;
+
+        String newModeValue = config.getString(OFFSET_SLOT_MISMATCH_STRATEGY);
+        if (newModeValue != null) {
+            mode = OffsetSlotMismatchStrategy.parse(newModeValue);
+        }
+        if (mode == null && config.hasKey(SLOT_SEEK_TO_KNOWN_OFFSET)) {
+            LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
+                    SLOT_SEEK_TO_KNOWN_OFFSET.name(), OFFSET_SLOT_MISMATCH_STRATEGY.name());
+            boolean deprecatedValue = config.getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
+            mode = deprecatedValue ? OffsetSlotMismatchStrategy.TRUST_OFFSET : OffsetSlotMismatchStrategy.FAIL;
+        }
+
+        if (mode == null) {
+            mode = OffsetSlotMismatchStrategy.FAIL; // Use default
+        }
+
+        logOffsetSlotMismatchStrategyInfo(mode);
+        return mode;
+    }
+
+    private static void logOffsetSlotMismatchStrategyInfo(OffsetSlotMismatchStrategy strategy) {
+        switch (strategy) {
+            case FAIL ->
+                LOGGER.info(
+                        "Using offset mismatch strategy 'fail': Connector will throw an exception if the stored offset LSN differs from the replication slot's confirmed LSN, requiring manual intervention.");
+            case TRUST_OFFSET -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_offset': If offset_lsn > slot_lsn, the replication slot will be advanced to match the offset, preventing duplicate event streaming after offset commit but before slot flush.");
+            case TRUST_SLOT -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_slot': If slot_lsn > offset_lsn, the connector offset will be advanced to match the slot, allowing recovery from manual slot advancement or WAL position changes.");
+            case TRUST_GREATER_LSN -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_greater_lsn': The connector will automatically synchronize to max(offset_lsn, slot_lsn), providing self-healing behavior for both scenarios.");
+        }
     }
 
     @Override
