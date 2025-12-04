@@ -677,7 +677,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         initConnection();
 
         connect();
-        if (offset == null || !offset.isValid()) {
+        if (shouldIgnoreExistingOffsetPosition(offset)) {
             offset = defaultStartingPos;
         }
         Lsn lsn = offset;
@@ -710,6 +710,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
             }
         }
+    }
+
+    private boolean shouldIgnoreExistingOffsetPosition(Lsn offset) {
+        return offset == null || !offset.isValid() ||
+                (offset.compareTo(defaultStartingPos) < 0 && connectorConfig.offsetSeekToSlotOnStart());
     }
 
     protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
