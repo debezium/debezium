@@ -104,7 +104,7 @@ Here is the _value_ of the first new event (formatted for readability):
 ----
 [cols="1a,7a",options="header",subs="+attributes"]
 
-The following list describes select fields in the preceding example of a delete event value:
+The following list describes select fields in the preceding example of a `delete` event value:
 
 `before`::
 The `before` field shows the state of the row before its deletion.
