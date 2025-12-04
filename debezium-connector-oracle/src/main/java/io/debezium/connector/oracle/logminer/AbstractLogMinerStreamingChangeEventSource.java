@@ -407,7 +407,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             getBatchMetrics().updateStreamingMetrics();
 
             if (getBatchMetrics().hasProcessedAnyTransactions()) {
-                getOffsetActivityMonitor().checkForStaleOffsets();
+                getOffsetActivityMonitor().checkForStaleOffsets(this::getActiveTransactionIds);
             }
 
             LOGGER.debug("{}.", getBatchMetrics());
@@ -1643,6 +1643,13 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         getMetrics().setCommitScn(event.getScn());
         getMetrics().setOffsetScn(getOffsetContext().getScn());
         getMetrics().setLastCommitDuration(commitDuration);
+    }
+
+    /**
+     * Return a list of all active transactions, default returns an empty list.
+     */
+    protected List<String> getActiveTransactionIds() {
+        return Collections.emptyList();
     }
 
     /**
