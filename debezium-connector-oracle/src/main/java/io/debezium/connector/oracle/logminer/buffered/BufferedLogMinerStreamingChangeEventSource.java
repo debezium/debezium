@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -631,6 +632,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
         return !getMetrics().getBatchMetrics().hasJdbcRows();
+    }
+
+    @Override
+    protected List<String> getActiveTransactionIds() {
+        return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getTransactionId).toList());
     }
 
     /**

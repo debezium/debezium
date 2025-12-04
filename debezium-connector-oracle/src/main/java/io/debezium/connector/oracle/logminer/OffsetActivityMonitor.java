@@ -6,7 +6,9 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +39,12 @@ public class OffsetActivityMonitor {
         this.metrics = metrics;
     }
 
-    public void checkForStaleOffsets() {
+    /**
+     * Checks for stale offsets.
+     *
+     * @param activeTransactionIdSupplier a non-{@code null} supplier that provides a list of active transaction ids
+     */
+    public void checkForStaleOffsets(Supplier<List<String>> activeTransactionIdSupplier) {
         // Check for stale state
         if (offsetContext.getCommitScn() != null) {
             final Scn currentScn = offsetContext.getScn();
@@ -46,9 +53,11 @@ public class OffsetActivityMonitor {
                 unchangedScnCount++;
 
                 if (unchangedScnCount == staleMaxIterations) {
+                    final List<String> activeTransactions = activeTransactionIdSupplier.get();
                     LOGGER.warn("Offset SCN {} has not changed in {} mining session iterations. " +
-                            "This indicates long running transaction(s) are active. Commit SCNs {}.",
-                            previousOffsetScn, staleMaxIterations, previousCommitScns);
+                            "This may indicate long running transaction(s), active transactions: {}. Commit SCNs {}.",
+                            previousOffsetScn, staleMaxIterations, activeTransactions, previousCommitScns);
+
                     metrics.incrementScnFreezeCount();
                     unchangedScnCount = 0;
                 }
