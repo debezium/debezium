@@ -431,10 +431,7 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 </dependency>
 ----
 
-where:
-
-`<version>${version.debezium}</version>`::
-`${version.debezium}` represents the version of the {prodname} connector.
+In the preceding excerpt from `pom.xml`, `${version.debezium}` represents the version of the {prodname} connector.
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
 
