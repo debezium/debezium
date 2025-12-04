@@ -226,7 +226,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
     @Test
     public void snapshotWithMultipleDatabases() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         TestHelper.createTestDatabase(TestHelper.TEST_DATABASE_2);
 

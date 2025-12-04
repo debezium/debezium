@@ -337,7 +337,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
     @Test
     public void blockingSnapshotMustReuseExistingOffsetAsSnapshotOffset() throws Exception {
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         insertRecords(200, 0, tableNames().get(1));
