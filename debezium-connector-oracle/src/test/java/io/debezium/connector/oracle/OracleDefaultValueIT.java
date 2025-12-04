@@ -143,6 +143,10 @@ public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
                 new ColumnDefinition("val_numeric_wrapped", "number(10,0)",
                         "(0)", "(1)",
                         0L, 1L,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_numeric_multiwrapped", "number(10,0)",
+                        "(((0)))", "(((1)))",
+                        0L, 1L,
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
