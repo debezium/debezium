@@ -1386,7 +1386,7 @@ Because the JSON representation of an event includes both the schema and the pay
 To reduce the size of the messages that the connector streams to Kafka topics, you can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter].
 
 `op`::
-Mandatory string that specifies the type of operation that caused the connector to generate the event.
+Specifies the type of operation that caused the connector to generate the event.
 In this example, `c` indicates that a `create` operation was performed resulting in a new row.
 This field can contain one of the following values:
 [horizontal]
