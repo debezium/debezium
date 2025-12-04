@@ -3588,6 +3588,105 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-9688")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to manually advance slot")
+    public void shouldAdvanceOffsetToSlotWithTrustSlotStrategy() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // Start connector, process initial snapshot, then stop
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        SlotState slotBeforeStop = getDefaultReplicationSlot();
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // Insert more data
+        TestHelper.execute(INSERT_STMT);
+
+        // Manually advance the replication slot ahead of the stored offset
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute(String.format(
+                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
+        }
+
+        SlotState slotAfterAdvance = getDefaultReplicationSlot();
+        assertThat(slotAfterAdvance.slotLastFlushedLsn())
+                .describedAs("Slot should be advanced past original position")
+                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+
+        // Restart with TRUST_SLOT strategy - should jump to slot position
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_slot");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Connector should start successfully from slot position
+        // The insert between stop and slot advance should be skipped
+        waitForStreamingRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9688")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to test slot advancement")
+    public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // Test that TRUST_GREATER_LSN handles slot > offset (jumps to slot)
+        // Start connector, process initial snapshot, then stop
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        SlotState slotBeforeStop = getDefaultReplicationSlot();
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // Manually advance the replication slot ahead of the stored offset
+        TestHelper.execute(INSERT_STMT);
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute(String.format(
+                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
+        }
+
+        SlotState slotAfterAdvance = getDefaultReplicationSlot();
+        assertThat(slotAfterAdvance.slotLastFlushedLsn())
+                .describedAs("Slot should be ahead of stored offset")
+                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+
+        // Restart with TRUST_GREATER_LSN - should use slot position (max of offset and slot)
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Connector should start successfully, advancing to the slot position
+        // This demonstrates that TRUST_GREATER_LSN chose max(offset, slot) = slot
+        waitForStreamingRunning();
+    }
+
+    @Test
     @FixFor("DBZ-5852")
     public void shouldInvokeSnapshotterAbortedMethod() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
