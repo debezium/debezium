@@ -104,7 +104,7 @@
         <version.build-helper.plugin>3.6.1</version.build-helper.plugin>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>4.1.0</version.kafka>
+        <version.kafka>4.1.1</version.kafka>
         <version.strimzi-test-container>0.112.0</version.strimzi-test-container>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
         <version.jackson>2.19.0</version.jackson>
