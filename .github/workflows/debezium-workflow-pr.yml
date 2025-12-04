@@ -43,7 +43,7 @@ jobs:
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
-      storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
+      storage-changed: ${{ steps.changed-files-storage.outputs.any_changed }}
       extensions-changed: ${{ steps.changed-files-extensions.outputs.any_changed }}
     steps:
       - name: Checkout Action
@@ -66,8 +66,8 @@ jobs:
             debezium-ide-configs/**
             debezium-parent/pom.xml
             debezium-bom/pom.xml
-            debezium-storage/** 
-            debezium-scripting/**          
+            debezium-storage/**
+            debezium-scripting/**
             pom.xml
             .mvn/**
             .github/actions/**
@@ -618,7 +618,7 @@ jobs:
     name: "Storage"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-only-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v6
