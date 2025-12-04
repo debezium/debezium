@@ -341,7 +341,7 @@ The time is based on the system clock in the JVM running the Kafka Connect task.
 These two fields provide the names of the database and schema that contain the change.
 The value of the `databaseName` field serves as the message key for the event record.
 
-`ddl::
+`ddl`::
 Provides the DDL that produced the schema change.
 The `ddl` field can contain multiple DDL statements.
 Each statement applies to the database that is specified in the `databaseName` field.
@@ -375,7 +375,7 @@ List of columns that compose the table's primary key.
 `columns`::
 Metadata for each column in the changed table.
 
-`"attributes`::
+`attributes`::
 Custom attribute metadata for each table change.
 
 For more information about schema change events, see xref:{context}-schema-history-topic[schema history topic].
@@ -2818,7 +2818,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 }
 ----
 
-where:
+The following list describes each of the fields in the preceding configuration example:
 
 `name`::
 Specifies the connector name (`inventory-connector`) to register with the Kafka Connect service.
