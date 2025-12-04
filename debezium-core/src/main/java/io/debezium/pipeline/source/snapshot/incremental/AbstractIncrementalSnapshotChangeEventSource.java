@@ -509,16 +509,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         // This means that for multitask connector cross signaling is not permitted.
         String signalTableId = connectorConfig.getSignalingDataCollectionIds().get(0);
-        String signalDatabase = getDatabaseName(signalTableId);
+        Optional<String> signalDatabase = getDatabaseName(signalTableId);
 
-        if (signalDatabase == null) {
+        if (signalDatabase.isEmpty()) {
             return;
         }
 
         // Check if any data collection is from a different database than the signal table
         for (DataCollection<T> dataCollection : dataCollections) {
-            String targetDatabase = getDatabaseName(dataCollection.getId());
-            if (targetDatabase != null && !targetDatabase.equals(signalDatabase)) {
+            Optional<String> targetDatabase = getDatabaseName(dataCollection.getId());
+            if (targetDatabase.isPresent() && !targetDatabase.get().equals(signalDatabase.get())) {
                 LOGGER.warn("Incremental snapshot for table '{}' in database '{}' is using signal table from database '{}'. " +
                         "This may result in incorrect partition/offset context in emitted events. " +
                         "For multi-database connectors, configure one signal table per database using a comma-separated list " +
@@ -533,16 +533,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Extract the database name from a data collection ID.
      * Default implementation handles TableId, subclasses may override.
      */
-    protected String getDatabaseName(Object dataCollectionId) {
+    protected Optional<String> getDatabaseName(Object dataCollectionId) {
 
-        if (dataCollectionId instanceof io.debezium.relational.TableId) {
-            return ((io.debezium.relational.TableId) dataCollectionId).catalog();
+        if (dataCollectionId instanceof io.debezium.relational.TableId tableId) {
+            return Optional.ofNullable(tableId.catalog());
         }
-        if (dataCollectionId instanceof String) {
-            io.debezium.relational.TableId tableId = io.debezium.relational.TableId.parse((String) dataCollectionId);
-            return tableId.catalog();
+        if (dataCollectionId instanceof String tableId) {
+            return Optional.ofNullable(io.debezium.relational.TableId.parse(tableId).catalog());
         }
-        return null;
+
+        return Optional.empty();
     }
 
     @Override

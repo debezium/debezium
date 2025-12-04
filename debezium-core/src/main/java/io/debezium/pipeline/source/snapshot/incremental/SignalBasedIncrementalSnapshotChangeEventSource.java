@@ -69,7 +69,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         }
 
         return connectorConfig.getSignalingDataCollectionIds().stream()
-                .filter(signalCollection -> partitionDatabase.equals(getDatabaseName(signalCollection)))
+                .filter(signalCollection -> partitionDatabase.equals(getDatabaseName(signalCollection).get()))
                 .map(this::getSignalTableName)
                 .findFirst()
                 .orElse(null);
