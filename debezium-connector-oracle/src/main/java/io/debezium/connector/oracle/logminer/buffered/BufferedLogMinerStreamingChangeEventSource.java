@@ -651,6 +651,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
         }
 
+        abandonTransactions(getConfig().getLogMiningTransactionRetention());
+
         // Cleanup caches based on current state of the transaction cache
         final Scn minCacheScn;
         final Instant minCacheScnChangeTime;
@@ -665,8 +667,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
 
         if (!minCacheScn.isNull()) {
-            abandonTransactions(getConfig().getLogMiningTransactionRetention());
-
             getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
             getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
@@ -942,12 +942,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @VisibleForTesting
     protected void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
+            final Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache()
+                    .map(LogMinerTransactionCache.ScnDetails::scn)
+                    .orElse(Scn.NULL);
+
+            // Only perform transaction abandonment if the cache has any entries
+            // If the cache is empty, this can be skipped.
+            if (smallestScn.isNull()) {
+                return;
+            }
+
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(getConnection(), retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache().map(LogMinerTransactionCache.ScnDetails::scn).orElse(Scn.NULL);
-                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
-
+                if (thresholdScn.compareTo(smallestScn) >= 0) {
                     Map<String, Transaction> abandoned = getTransactionCache().streamTransactionsAndReturn(stream -> stream
                             .filter(t -> t.getStartScn().compareTo(thresholdScn) <= 0)
                             .collect(Collectors.toMap(Transaction::getTransactionId, t -> t)));
