@@ -62,9 +62,9 @@ The following example, shows the JSON for an incremental snapshot event that is 
 
 The following list describes select fields in the preceding example of an incremental snapshot event message:
 
-`"snapshot":"incremental"`::
-Specifies the type of snapshot that ran.
+`snapshot`::
+Specifies the type of the snapshot.
 
-`"op":"r",`::
-Specifies the event type.
-The value for snapshot events is `r`, signifying a `READ` operation.
+`op`::
+Specifies the type of operation.
+For snapshot events, the value of the `op` field value is `r`, because a snapshot is a `READ` operation.

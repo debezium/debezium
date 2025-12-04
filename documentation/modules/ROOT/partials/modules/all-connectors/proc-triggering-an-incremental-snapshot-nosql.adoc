@@ -52,41 +52,33 @@ The values of the `id`,`type`, and `data` parameters in the command correspond t
 +
 The following list describes the parameters in the incremental snapshot example:
 +
-signalDataCollection::
-value::: `db.debeziumSignal.insert`
-+
+`db.debeziumSignal.insert`::
 Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
 `type`::
-value::: `execute-snapshot`
-+
-The `type` parameter specifies the operation that the signal triggers.
+Specifies the kind of signal to send, in this case, an `execute-snapshot` signal.
 
-`id`::
-value::: `null`
-+
-The `_id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request.
+`_id`::
+An optional parameter that assigna an arbitrary string to be the identifier for the signal request.
 In the preceding example, the signal omits the optional `_id` parameter.
-Because the document does not explicitly assign a value to the parameter, MongoDB automatically assigns an arbitrary id to the document.
+Because the signal does not explicitly assign a value to the parameter, MongoDB automatically assigns an arbitrary id to the document.
 This `id` becomes the identifier for the signal request.
 {prodname} does not use this identifier string; however you can use the `id` to collate log messages with documents in the signaling {data-collection}.
 
 
 `data.data-collections`::
-value::: `public.Collection1, public.Collection2`
-+
-A required component in the `data` field of an execute snapshot signal that specifies an array of {data-collection} names or regular expressions that specify the names of the {data-collection}s to include in the snapshot.
+A required component in the `data` field of an execute snapshot signal that specifies an array of {data-collection} names or regular expressions that represent the {data-collection}s that you want to include in the snapshot, in this case, `public.Collection1` and `public.Collection2`.
 
 `data.type`::
-value::: `incremental`
-+
 An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run.
 Valid values are `incremental` or `blocking`.
 
 `additional-conditions`::
-value::: `data-collection: schema1.table1, filter:color='blue'`
-+
 An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot.
+You can specify one or more data collections along with an optional filter parameter for each collection.
+Specify a filter to instruct the snapshot to capture  only fields that contain a specified value.
+In this case, the parameter instructs the signal to capture only documents in the `schema1.table1` data collection in which the field `color` is present and contains the value `'blue'`.
+
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
 
@@ -113,9 +105,9 @@ The following example, shows the JSON for an incremental snapshot event that is 
 
 The following list describes select parameters in the preceding event message example:
 
-`"snapshot":"incremental"`::
-Specifies the type of snapshot operation to run.
+`snapshot`::
+Specifies the type of snapshot operation, in this case an incremental snapshot.
 
-`"op":"r",`::
+`op`::
 Specifies the event type.
 The value for snapshot events is `r`, signifying a `READ` operation.
