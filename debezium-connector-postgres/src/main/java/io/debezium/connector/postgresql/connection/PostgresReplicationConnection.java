@@ -1009,6 +1009,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 stream.forceUpdateStatus();
                                 metronome.pause();
                             }
+                            catch (InterruptedException ie) {
+                                LOGGER.debug("Keep-alive thread interrupted, shutting down");
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
                             catch (Exception exp) {
                                 // Immediately log the error. Don't rethrow the exception, because it will
                                 // never be seen (or be seen in a timely manner).

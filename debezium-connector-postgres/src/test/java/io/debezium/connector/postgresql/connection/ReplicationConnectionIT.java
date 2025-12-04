@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -430,6 +432,30 @@ public class ReplicationConnectionIT {
             try (ReplicationStream stream = connection.startStreaming(new WalPositionLocator())) {
                 expectedMessagesFromStream(stream, 3);
             }
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-14")
+    public void shouldHandleKeepAliveThreadInterruption() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        try (ReplicationConnection connection = TestHelper.createForReplication("test_keepalive", true)) {
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
+            ExecutorService keepAliveService = Executors.newSingleThreadExecutor();
+            stream.startKeepAlive(keepAliveService);
+
+            // Wait for the thread to enter the blocking pause state (after first status update)
+            // The keep-alive thread sends a status update then sleeps, so we need to give it time
+            // to start and enter the sleep/pause state before interrupting
+            Thread.sleep(200);
+
+            stream.stopKeepAlive();
+
+            Awaitility.await()
+                    .atMost(10, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(logInterceptor.containsMessage("Keep-alive thread interrupted, shutting down")).isTrue());
+
+            stream.close();
         }
     }
 
