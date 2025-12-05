@@ -17,10 +17,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.AbstractSourceInfo;
@@ -41,16 +41,16 @@ public class ExtractNewDocumentStateTest {
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
 
-    @BeforeEach
-    void setup() {
+    @Before
+    public void setup() {
         transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collect.hashMapOf(
                 "array.encoding", "array",
                 "delete.tombstone.handling.mode", "tombstone"));
     }
 
-    @AfterEach
-    void closeSmt() {
+    @After
+    public void closeSmt() {
         transformation.close();
     }
 

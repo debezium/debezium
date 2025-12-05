@@ -12,12 +12,12 @@ import java.util.stream.IntStream;
 
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.bson.Document;
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +47,8 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractAsyncEngineC
     private static final int INIT_DOCUMENT_COUNT = 10;
     protected static MongoDbReplicaSet mongo;
 
-    @BeforeAll
-    static void beforeAll() {
+    @BeforeClass
+    public static void beforeAll() {
         Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.dockerAuthReplicaSet();
@@ -58,22 +58,22 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractAsyncEngineC
         mongo.createUser(TEST_USER, TEST_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE);
     }
 
-    @AfterAll
-    static void afterAll() {
+    @AfterClass
+    public static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
         }
     }
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         stopConnector();
         initializeConnectorTestFramework();
         cleanDatabase(mongo, TEST_DATABASE);
     }
 
-    @AfterEach
+    @After
     public void afterEach() {
         stopConnector();
     }

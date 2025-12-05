@@ -21,9 +21,9 @@ import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -44,7 +44,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     private MongoEventRouter<SourceRecord> outboxEventRouter;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         // Use the DB configuration to define the connector's configuration ...
         Configuration config = TestHelper.getConfiguration(mongo).edit()
@@ -83,14 +83,14 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
         start(MongoDbConnector.class, config);
     }
 
-    @AfterEach
+    @After
     public void afterEach() {
         stopConnector();
         outboxEventRouter.close();
     }
 
     @Test
-    void shouldConsumeRecordsFromInsert() throws Exception {
+    public void shouldConsumeRecordsFromInsert() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
@@ -129,7 +129,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldSendEventTypeAsHeader() throws Exception {
+    public void shouldSendEventTypeAsHeader() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
@@ -169,7 +169,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldSendEventTypeAsValue() throws Exception {
+    public void shouldSendEventTypeAsValue() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
@@ -207,7 +207,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldSupportAllFeatures() throws Exception {
+    public void shouldSupportAllFeatures() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
@@ -270,7 +270,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
+    public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
@@ -313,7 +313,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldProduceTombstoneEventForNullPayload() throws Exception {
+    public void shouldProduceTombstoneEventForNullPayload() throws Exception {
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()

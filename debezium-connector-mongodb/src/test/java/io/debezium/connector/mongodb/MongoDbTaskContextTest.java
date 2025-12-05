@@ -7,8 +7,8 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -18,8 +18,8 @@ public class MongoDbTaskContextTest implements Testing {
     private Configuration config;
     private MongoDbTaskContext context;
 
-    @BeforeEach
-    void setup() {
+    @Before
+    public void setup() {
         this.config = Configuration.create()
                 .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://dummy:27017")
                 .with(MongoDbConnectorConfig.TASK_ID, 42)
@@ -30,14 +30,14 @@ public class MongoDbTaskContextTest implements Testing {
     }
 
     @Test
-    void shouldConfigureCommonTaskPropertiesFromConfig() {
+    public void shouldConfigureCommonTaskPropertiesFromConfig() {
         assertThat(context.getTaskId()).isEqualTo(config.getString(MongoDbConnectorConfig.TASK_ID));
         assertThat(context.getConnectorLogicalName()).isEqualTo(config.getString(CommonConnectorConfig.TOPIC_PREFIX));
         assertThat(context.getConnectorType()).isEqualTo(Module.contextName());
     }
 
     @Test
-    void shouldConfigureMongoDbTaskPropertiesFromConfig() {
+    public void shouldConfigureMongoDbTaskPropertiesFromConfig() {
         assertThat(context.getConfig().getConfig()).isEqualTo(config);
         assertThat(context.getConfig().getCaptureMode()).isEqualTo(MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS);
     }

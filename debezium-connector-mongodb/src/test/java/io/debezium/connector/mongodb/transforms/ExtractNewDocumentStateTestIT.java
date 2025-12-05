@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb.transforms;
 import static io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.REWRITE_TOMBSTONE_DELETES_WITH_ID;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -33,7 +32,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
@@ -154,7 +153,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldTransformEvents() throws InterruptedException, IOException {
+    public void shouldTransformEvents() throws InterruptedException, IOException {
         final Map<String, String> transformationConfig = new HashMap<>();
         // transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
         transformationConfig.put(HANDLE_TOMBSTONE_DELETES, "tombstone");
@@ -507,7 +506,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldTransformRecordForInsertEvent() throws InterruptedException {
+    public void shouldTransformRecordForInsertEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -570,7 +569,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldTransformRecordForInsertEventWithComplexIdType() throws InterruptedException {
+    public void shouldTransformRecordForInsertEventWithComplexIdType() throws InterruptedException {
         waitForStreamingRunning();
         transformation.configure(Collect.hashMapOf(HANDLE_TOMBSTONE_DELETES, "tombstone"));
 
@@ -619,7 +618,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
+    public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -750,7 +749,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldGenerateRecordForSetOnlyPartialUpdateEvent() throws InterruptedException {
+    public void shouldGenerateRecordForSetOnlyPartialUpdateEvent() throws InterruptedException {
         Configuration config = getBaseConfigBuilder()
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS)
                 .build();
@@ -1149,7 +1148,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldGenerateRecordForDeleteEvent() throws InterruptedException {
+    public void shouldGenerateRecordForDeleteEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -1246,7 +1245,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldNotFlattenTransformRecordForInsertEvent() throws InterruptedException {
+    public void shouldNotFlattenTransformRecordForInsertEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         transformation.configure(Collect.hashMapOf(HANDLE_TOMBSTONE_DELETES, "tombstone"));
@@ -1299,7 +1298,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldFlattenTransformRecordForInsertEvent() throws InterruptedException {
+    public void shouldFlattenTransformRecordForInsertEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -1350,7 +1349,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldFlattenWithDelimiterTransformRecordForInsertEvent() throws InterruptedException {
+    public void shouldFlattenWithDelimiterTransformRecordForInsertEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -1402,7 +1401,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    void shouldFlattenWithDelimiterTransformRecordForUpdateEvent() throws InterruptedException {
+    public void shouldFlattenWithDelimiterTransformRecordForUpdateEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
@@ -1778,23 +1777,21 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     }
 
-    @Test
+    @Test(expected = DebeziumException.class)
     @FixFor("DBZ-2316")
-    void testShouldThrowExceptionWithElementsDifferingStructures() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            waitForStreamingRunning();
+    public void testShouldThrowExceptionWithElementsDifferingStructures() throws Exception {
+        waitForStreamingRunning();
 
-            final Map<String, String> props = new HashMap<>();
-            props.put(ARRAY_ENCODING, "array");
-            props.put(ADD_FIELDS, "op,source.ts_ms");
-            props.put(HANDLE_TOMBSTONE_DELETES, "tombstone");
-            transformation.configure(props);
+        final Map<String, String> props = new HashMap<>();
+        props.put(ARRAY_ENCODING, "array");
+        props.put(ADD_FIELDS, "op,source.ts_ms");
+        props.put(HANDLE_TOMBSTONE_DELETES, "tombstone");
+        transformation.configure(props);
 
-            final SourceRecords records = createCreateRecordFromJson("dbz-2316.json");
-            for (SourceRecord record : records.allRecordsInOrder()) {
-                transformation.apply(record);
-            }
-        });
+        final SourceRecords records = createCreateRecordFromJson("dbz-2316.json");
+        for (SourceRecord record : records.allRecordsInOrder()) {
+            transformation.apply(record);
+        }
     }
 
     @Test

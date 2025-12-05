@@ -19,7 +19,7 @@ import javax.management.ObjectName;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.junit.Assert;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * @author Chris Cranford
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 public class MongoMetricsIT extends AbstractMongoConnectorIT {
 
     @Test
-    void testLifecycle() throws Exception {
+    public void testLifecycle() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -68,7 +68,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void testSnapshotOnlyMetrics() throws Exception {
+    public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -110,7 +110,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void testStreamingOnlyMetrics() throws Exception {
+    public void testStreamingOnlyMetrics() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -150,7 +150,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void testPauseResumeSnapshotMetrics() throws Exception {
+    public void testPauseResumeSnapshotMetrics() throws Exception {
         final String DOCUMENT_ID = "_id";
         final int NUM_RECORDS = 1_000;
 

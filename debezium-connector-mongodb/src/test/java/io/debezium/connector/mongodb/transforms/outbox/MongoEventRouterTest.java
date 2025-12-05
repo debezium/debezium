@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb.transforms.outbox;
 import static io.debezium.connector.mongodb.MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -31,8 +30,8 @@ import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
 import org.junit.Assert;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.MongoDbFieldName;
@@ -58,13 +57,13 @@ public class MongoEventRouterTest {
 
     MongoEventRouter<SourceRecord> router;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         this.router = new MongoEventRouter<>();
     }
 
     @Test
-    void canSkipTombstone() {
+    public void canSkipTombstone() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -82,7 +81,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSkipDeletion() {
+    public void canSkipDeletion() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -107,7 +106,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -133,7 +132,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
+    public void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -159,7 +158,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -186,7 +185,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -213,7 +212,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSkipUpdates() {
+    public void canSkipUpdates() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -240,39 +239,37 @@ public class MongoEventRouterTest {
         assertThat(eventRouted).isNull();
     }
 
-    @Test
-    void canFailOnUpdates() {
-        assertThrows(IllegalStateException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(
-                    MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
-                    EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
-            router.configure(config);
+    @Test(expected = IllegalStateException.class)
+    public void canFailOnUpdates() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
+                EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
+        router.configure(config);
 
-            final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
-            Envelope envelope = Envelope.defineSchema()
-                    .withName("dummy.Envelope")
-                    .withRecord(recordSchema)
-                    .withSource(SchemaBuilder.struct().build())
-                    .build();
-            final Struct before = new Struct(recordSchema);
-            before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-            final Struct payload = envelope.update(before, before, null, Instant.now());
-            final SourceRecord eventRecord = new SourceRecord(
-                    new HashMap<>(),
-                    new HashMap<>(),
-                    "db.outbox",
-                    SchemaBuilder.STRING_SCHEMA,
-                    "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
-                    envelope.schema(),
-                    payload);
+        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+        final Struct before = new Struct(recordSchema);
+        before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
+        final Struct payload = envelope.update(before, before, null, Instant.now());
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                envelope.schema(),
+                payload);
 
-            router.apply(eventRecord);
-        });
+        router.apply(eventRecord);
     }
 
     @Test
-    void canExtractTableFields() {
+    public void canExtractTableFields() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -286,7 +283,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetDefaultMessageKey() {
+    public void canSetDefaultMessageKey() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -299,7 +296,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetMessageKey() {
+    public void canSetMessageKey() {
         final Map<String, String> config = new HashMap<>();
 
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "customField");
@@ -319,20 +316,18 @@ public class MongoEventRouterTest {
         assertThat(eventRouted.key()).isEqualTo("dummy");
     }
 
-    @Test
-    void failsOnInvalidSetMessageKey() {
-        assertThrows(DataException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "fakefield");
-            router.configure(config);
+    @Test(expected = DataException.class)
+    public void failsOnInvalidSetMessageKey() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "fakefield");
+        router.configure(config);
 
-            final SourceRecord eventRecord = createEventRecord();
-            router.apply(eventRecord);
-        });
+        final SourceRecord eventRecord = createEventRecord();
+        router.apply(eventRecord);
     }
 
     @Test
-    void canSetTimestampFromDebeziumEnvelopeByDefault() {
+    public void canSetTimestampFromDebeziumEnvelopeByDefault() {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
@@ -347,7 +342,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetTimestampByUserDefinedConfiguration() {
+    public void canSetTimestampByUserDefinedConfiguration() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP.name(), "event_timestamp");
@@ -372,7 +367,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canRouteBasedOnField() {
+    public void canRouteBasedOnField() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.ROUTE_BY_FIELD.name(),
@@ -409,7 +404,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canConfigureEveryTableField() {
+    public void canConfigureEveryTableField() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
@@ -456,7 +451,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canInfluenceDocumentFieldTypes() {
+    public void canInfluenceDocumentFieldTypes() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
@@ -522,7 +517,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetSchemaVersionWhenMoreThanPayloadIsInEnvelope() {
+    public void canSetSchemaVersionWhenMoreThanPayloadIsInEnvelope() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name(), "version");
         config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope:eventType");
@@ -572,7 +567,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void shouldNotSetSchemaVersionByDefault() {
+    public void shouldNotSetSchemaVersionByDefault() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name(), "version");
         router.configure(config);
@@ -619,7 +614,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetPayloadTypeIntoTheEnvelope() {
+    public void canSetPayloadTypeIntoTheEnvelope() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
         router.configure(config);
@@ -631,7 +626,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetPayloadTypeIntoTheEnvelopeWithAlias() {
+    public void canSetPayloadTypeIntoTheEnvelopeWithAlias() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope:aggregateType");
         router.configure(config);
@@ -643,7 +638,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canSetMultipleFieldsIntoTheEnvelope() {
+    public void canSetMultipleFieldsIntoTheEnvelope() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
@@ -659,44 +654,36 @@ public class MongoEventRouterTest {
         assertThat(eventRouted.headers().lastWithName("payloadType").value()).isEqualTo("UserCreated");
     }
 
-    @Test
-    void shouldFailOnInvalidConfigurationForTopicRegex() {
-        assertThrows(ConfigException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(MongoEventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
-            router.configure(config);
-        });
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForTopicRegex() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
+        router.configure(config);
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFields() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type");
+        router.configure(config);
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFieldsEmpty() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "");
+        router.configure(config);
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForOperationBehavior() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(), "invalidOption");
+        router.configure(config);
     }
 
     @Test
-    void shouldFailOnInvalidConfigurationForAdditionalFields() {
-        assertThrows(ConfigException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type");
-            router.configure(config);
-        });
-    }
-
-    @Test
-    void shouldFailOnInvalidConfigurationForAdditionalFieldsEmpty() {
-        assertThrows(ConfigException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "");
-            router.configure(config);
-        });
-    }
-
-    @Test
-    void shouldFailOnInvalidConfigurationForOperationBehavior() {
-        assertThrows(ConfigException.class, () -> {
-            final Map<String, String> config = new HashMap<>();
-            config.put(MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(), "invalidOption");
-            router.configure(config);
-        });
-    }
-
-    @Test
-    void canSetBinaryMessageKey() {
+    public void canSetBinaryMessageKey() {
         final byte[] eventType = "a UserCreated".getBytes(StandardCharsets.UTF_8);
 
         final Map<String, String> config = new HashMap<>();
@@ -720,13 +707,13 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canPassBinaryKey() {
+    public void canPassBinaryKey() {
         final byte[] key = "a binary key".getBytes(StandardCharsets.UTF_8);
         canPassKeyByType(SchemaBuilder.bytes(), key);
     }
 
     @Test
-    void canPassIntKey() {
+    public void canPassIntKey() {
         final int key = 54321;
         canPassKeyByType(SchemaBuilder.int32(), key);
     }
@@ -750,7 +737,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canPassBinaryMessage() {
+    public void canPassBinaryMessage() {
         final byte[] value = "a binary message".getBytes(StandardCharsets.UTF_8);
         final String key = "a key";
 
@@ -774,7 +761,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canMarkAnEventAsDeleted() {
+    public void canMarkAnEventAsDeleted() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
@@ -815,7 +802,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void noTombstoneIfNotConfigured() {
+    public void noTombstoneIfNotConfigured() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
@@ -856,7 +843,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void canExpandJsonPayloadIfConfigured() {
+    public void canExpandJsonPayloadIfConfigured() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
@@ -898,7 +885,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void shouldNotExpandJSONPayloadIfNotConfigured() {
+    public void shouldNotExpandJSONPayloadIfNotConfigured() {
         router.configure(new HashMap<>());
 
         final SourceRecord eventRecord = createEventRecord(
@@ -995,7 +982,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void tracingCustomConfigParsing() throws Exception {
+    public void tracingCustomConfigParsing() throws Exception {
         final Map<String, String> config = new HashMap<>();
         config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
         config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
@@ -1023,7 +1010,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void tracingCustomConfigParsing_default_TRACING_SPAN_CONTEXT_FIELD() throws Exception {
+    public void tracingCustomConfigParsing_default_TRACING_SPAN_CONTEXT_FIELD() throws Exception {
         final Map<String, String> config = new HashMap<>();
         config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "true");
         config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
@@ -1050,7 +1037,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void tracingCustomConfigParsing_default_TRACING_CONTEXT_FIELD_REQUIRED() throws Exception {
+    public void tracingCustomConfigParsing_default_TRACING_CONTEXT_FIELD_REQUIRED() throws Exception {
         final Map<String, String> config = new HashMap<>();
         config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
         config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
@@ -1077,7 +1064,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    void tracingCustomConfigParsing_default_TRACING_OPERATION_NAME() throws Exception {
+    public void tracingCustomConfigParsing_default_TRACING_OPERATION_NAME() throws Exception {
         final Map<String, String> config = new HashMap<>();
         config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
         config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");

@@ -13,7 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.data.VerifyRecord;
@@ -32,7 +32,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/addToSet/#up._S_addToSet">MongoDB operator array update $addToSet</a>
      */
     @Test
-    void shouldTransformOperationAddToSet() throws InterruptedException {
+    public void shouldTransformOperationAddToSet() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$addToSet': {dataArrayOfStr: 'b'}}");
 
@@ -51,7 +51,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/pop/#up._S_pop">MongoDB operator array update $pop</a>
      */
     @Test
-    void shouldTransformOperationPop() throws InterruptedException {
+    public void shouldTransformOperationPop() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$pop': {dataArrayOfStr: -1}}");
 
@@ -70,7 +70,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/pull/#pull">MongoDB operator array update $pull</a>
      */
     @Test
-    void shouldTransformOperationPull() throws InterruptedException {
+    public void shouldTransformOperationPull() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$pull': {dataArrayOfStr: {$in: ['c']}}}");
 
@@ -89,7 +89,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/pullAll/#up._S_pullAll">MongoDB operator array update $pullAll</a>
      */
     @Test
-    void shouldTransformOperationPullAll() throws InterruptedException {
+    public void shouldTransformOperationPullAll() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$pullAll': {dataArrayOfStr: ['c']}}");
 
@@ -108,7 +108,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/push/#push">MongoDB operator array update $push</a>
      */
     @Test
-    void shouldTransformOperationPush() throws InterruptedException {
+    public void shouldTransformOperationPush() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$push': {dataArrayOfStr: 'g'}}");
 

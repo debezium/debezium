@@ -12,7 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import com.mongodb.client.model.UpdateOptions;
 
@@ -33,7 +33,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/inc/#up._S_inc">MongoDB operator update $inc</a>
      */
     @Test
-    void shouldTransformOperationInc() throws InterruptedException {
+    public void shouldTransformOperationInc() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$inc': {'dataInt': 123, 'nested.dataInt': -23}}");
 
@@ -54,7 +54,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/min/#up._S_min">MongoDB operator update $min</a>
      */
     @Test
-    void shouldTransformOperationMin() throws InterruptedException {
+    public void shouldTransformOperationMin() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$min': {'dataInt': 122, 'nested.dataInt': 124}}");
 
@@ -73,7 +73,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/max/#up._S_max">MongoDB operator update $max</a>
      */
     @Test
-    void shouldTransformOperationMax() throws InterruptedException {
+    public void shouldTransformOperationMax() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$max': {'dataInt': 122, 'nested.dataInt': 124}}");
 
@@ -91,7 +91,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/mul/#up._S_mul">MongoDB operator update $mul</a>
      */
     @Test
-    void shouldTransformOperationMul() throws InterruptedException {
+    public void shouldTransformOperationMul() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$mul': {'dataInt': 3, 'nested.dataInt': 2, 'nonExistentField': 123}}");
 
@@ -114,7 +114,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/rename/#up._S_rename">MongoDB operator update $rename</a>
      */
     @Test
-    void shouldTransformOperationRename() throws InterruptedException {
+    public void shouldTransformOperationRename() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$rename': {'dataInt': 'dataIntNewName', 'nonExistentField': 'nonExistentFieldRenamed'}}");
 
@@ -137,7 +137,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * {@link io.debezium.connector.mongodb.transforms.LegacyExtractNewDocumentStateTestIT}
      */
     @Test
-    void shouldTransformOperationSet() throws InterruptedException {
+    public void shouldTransformOperationSet() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$set': {'dataStr': 'Setting new value', 'newDataInt': 456}}");
 
@@ -157,7 +157,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/setOnInsert/#up._S_setOnInsert">MongoDB operator update $setOnInsert</a>
      */
     @Test
-    void shouldTransformOperationSetOnInsert() throws InterruptedException {
+    public void shouldTransformOperationSetOnInsert() throws InterruptedException {
         Bson setOnInsert = Document.parse("{'$setOnInsert': {'onlySetIfInsertDataInt': 789}}");
         UpdateOptions updateOptions = new UpdateOptions();
         updateOptions.upsert(true);
@@ -204,7 +204,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
      * @see <a href="https://github.com/debezium/debezium/pull/669">DBZ-612 Implementation</a>
      */
     @Test
-    void shouldTransformOperationUnset() throws InterruptedException {
+    public void shouldTransformOperationUnset() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$unset': {'dataStr': '', 'nonExistentField': ''}}");
 

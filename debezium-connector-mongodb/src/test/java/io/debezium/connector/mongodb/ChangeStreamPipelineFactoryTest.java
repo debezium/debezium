@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bson.conversions.Bson;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -116,31 +116,31 @@ public class ChangeStreamPipelineFactoryTest {
     private FilterConfig filterConfig;
 
     @Test
-    void testCreateWithInternalFirstAndOversizeHandlingFail() {
+    public void testCreateWithInternalFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
         testCreateLiterals(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
-    void testCreateWithUserFirstAndOversizeHandlingFail() {
+    public void testCreateWithUserFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
         testCreateLiterals(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
     }
 
     @Test
-    void testCreateWithInternalFirstAndOversizeHandlingSkip() {
+    public void testCreateWithInternalFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
         testCreateLiteralsWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
-    void testCreateWithUserFirstAndOversizeHandlingSkip() {
+    public void testCreateWithUserFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
         testCreateLiteralsWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
     }
 
     @Test
-    void testCreateWithUserOnly() {
+    public void testCreateWithUserOnly() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.USER_ONLY);
@@ -159,7 +159,7 @@ public class ChangeStreamPipelineFactoryTest {
     }
 
     @Test
-    void testCollectionIncludeListTrimsWhitespace() {
+    public void testCollectionIncludeListTrimsWhitespace() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
@@ -182,7 +182,7 @@ public class ChangeStreamPipelineFactoryTest {
     }
 
     @Test
-    void testCollectionIncludeListTrimsAllWhitespace() {
+    public void testCollectionIncludeListTrimsAllWhitespace() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
@@ -205,7 +205,7 @@ public class ChangeStreamPipelineFactoryTest {
     }
 
     @Test
-    void testCollectionExcludeListTrimsWhitespace() {
+    public void testCollectionExcludeListTrimsWhitespace() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
@@ -228,7 +228,7 @@ public class ChangeStreamPipelineFactoryTest {
     }
 
     @Test
-    void testDatabaseIncludeListTrimsWhitespace() {
+    public void testDatabaseIncludeListTrimsWhitespace() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
@@ -251,7 +251,7 @@ public class ChangeStreamPipelineFactoryTest {
     }
 
     @Test
-    void testDatabaseExcludeListTrimsWhitespace() {
+    public void testDatabaseExcludeListTrimsWhitespace() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.INTERNAL_FIRST);

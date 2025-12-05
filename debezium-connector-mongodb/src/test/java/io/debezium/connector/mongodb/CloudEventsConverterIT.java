@@ -18,8 +18,8 @@ import org.apache.kafka.connect.transforms.HeaderFrom;
 import org.apache.kafka.connect.transforms.InsertHeader;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -40,7 +40,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
     protected static final String DB_NAME = "dbA";
     protected static final String COLLECTION_NAME = "c1";
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         // Testing.Print.enable();
         config = getConfiguration();
@@ -51,7 +51,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void testCorrectFormat() throws Exception {
+    public void testCorrectFormat() throws Exception {
         // Wait for snapshot completion
         waitForSnapshotToBeCompleted("mongodb", "mongo1");
 

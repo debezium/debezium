@@ -14,7 +14,7 @@ import java.util.stream.IntStream;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import com.mongodb.client.model.Updates;
 
@@ -46,7 +46,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabase() throws InterruptedException {
+    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException {
         var documentCount = 0;
         var topic = String.format("%s.%s.%s", TOPIC_PREFIX, shardedDatabase(), shardedCollection());
 

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.engine.DebeziumEngine;
@@ -69,7 +69,7 @@ public class ShardedIncrementalSnapshotIT extends AbstractShardedMongoConnectorI
     }
 
     @Test
-    void snapshotOnlyWithInt64() throws Exception {
+    public void snapshotOnlyWithInt64() throws Exception {
         long firstKey = Integer.MAX_VALUE + 1L;
         snapshotOnly(firstKey, k -> k + 1);
     }

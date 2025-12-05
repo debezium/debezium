@@ -13,7 +13,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.connector.Connector;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * @author Randall Hauch
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 public class MongoDbConnectorTest {
 
     @Test
-    void shouldReturnConfigurationDefinition() {
+    public void shouldReturnConfigurationDefinition() {
         assertConfigDefIsValid(new MongoDbConnector(), MongoDbConnectorConfig.ALL_FIELDS);
     }
 

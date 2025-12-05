@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import com.mongodb.MongoSocketOpenException;
 import com.mongodb.ServerAddress;
@@ -31,7 +31,7 @@ import io.debezium.util.Collect;
 public class MongoUtilTest {
 
     @Test
-    void shouldGetClusterDescription() {
+    public void shouldGetClusterDescription() {
         ClusterDescription expectedClusterDescription = new ClusterDescription(
                 ClusterConnectionMode.MULTIPLE,
                 ClusterType.REPLICA_SET,
@@ -45,7 +45,7 @@ public class MongoUtilTest {
     }
 
     @Test
-    void shouldGetClusterDescriptionAfterForcedConnection() {
+    public void shouldGetClusterDescriptionAfterForcedConnection() {
         ClusterDescription unknwonClusterDescription = new ClusterDescription(
                 ClusterConnectionMode.MULTIPLE,
                 ClusterType.UNKNOWN,
@@ -71,7 +71,7 @@ public class MongoUtilTest {
     }
 
     @Test
-    void shouldGetReplicaSetName() {
+    public void shouldGetReplicaSetName() {
         var rsNames = Collect.arrayListOf(null, "rs0", "rs1");
         var addresses = Collect.arrayListOf(new ServerAddress("host0"),
                 new ServerAddress("host1"),
@@ -105,7 +105,7 @@ public class MongoUtilTest {
     }
 
     @Test
-    void shouldNotGetReplicaSetName() {
+    public void shouldNotGetReplicaSetName() {
         var address = new ServerAddress("host0");
 
         List<ServerDescription> serverDescriptions = List.of(

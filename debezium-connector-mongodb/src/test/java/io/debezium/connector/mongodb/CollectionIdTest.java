@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * @author Randall Hauch
@@ -18,49 +18,49 @@ public class CollectionIdTest {
     private CollectionId id;
 
     @Test
-    void shouldParseString() {
+    public void shouldParseString() {
         assertParseable("b", "c");
     }
 
     @Test
-    void shouldParseStringWithDottedCollection() {
+    public void shouldParseStringWithDottedCollection() {
         assertParseable("b", "c.d");
     }
 
     @Test
-    void shouldNotParseStringWithDotAtStart() {
+    public void shouldNotParseStringWithDotAtStart() {
         assertThat(CollectionId.parse(".a.b")).isNull();
     }
 
     @Test
-    void shouldNotParseStringWithDotAtEnd() {
+    public void shouldNotParseStringWithDotAtEnd() {
         assertThat(CollectionId.parse("a.")).isNull();
     }
 
     @Test
-    void shouldNotParseStringWithOneSegment() {
+    public void shouldNotParseStringWithOneSegment() {
         assertThat(CollectionId.parse("a")).isNull();
     }
 
     @Test
-    void shouldNotFullParseStringWithDot() {
+    public void shouldNotFullParseStringWithDot() {
         final CollectionId collectionId = CollectionId.parse("a.b.c");
         assertThat(collectionId.dbName()).isEqualTo("a");
         assertThat(collectionId.name()).isEqualTo("b.c");
     }
 
     @Test
-    void shouldNotFullParseStringWithDotAtStart() {
+    public void shouldNotFullParseStringWithDotAtStart() {
         assertThat(CollectionId.parse(".rs0.a.b")).isNull();
     }
 
     @Test
-    void shouldNotParseFullStringWithDotAtEnd() {
+    public void shouldNotParseFullStringWithDotAtEnd() {
         assertThat(CollectionId.parse("a.")).isNull();
     }
 
     @Test
-    void shouldNotParseFullStringWithMissingSegment() {
+    public void shouldNotParseFullStringWithMissingSegment() {
         assertThat(CollectionId.parse("a")).isNull();
     }
 

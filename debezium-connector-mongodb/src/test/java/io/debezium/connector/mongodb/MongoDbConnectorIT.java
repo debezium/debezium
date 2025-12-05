@@ -40,7 +40,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import com.mongodb.DBRef;
 import com.mongodb.client.ClientSession;
@@ -82,7 +82,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the Mongo server.
      */
     @Test
-    void shouldNotStartWithInvalidConfiguration() {
+    public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
                 .with(MongoDbConnectorConfig.SSL_ENABLED, "true")
                 .build();
@@ -97,7 +97,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldFailToValidateInvalidConfiguration() {
+    public void shouldFailToValidateInvalidConfiguration() {
         Configuration config = Configuration.create().build();
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
@@ -120,7 +120,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldFailToValidateWithReplicaSetModeParams() {
+    public void shouldFailToValidateWithReplicaSetModeParams() {
         config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnector.DEPRECATED_SHARD_CS_PARAMS_FILED, "readPreference=primary")
@@ -133,77 +133,77 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
+    public void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartIsOnlyProvided() {
+    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory.collectionA", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartsAreMissing() {
+    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartsAreMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, ".name", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldExcludeListFieldPartIsMissing() {
+    public void shouldThrowExceptionWhenFieldExcludeListFieldPartIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.", 1);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldExcludeListHasLeadingWhiteSpaces() {
+    public void shouldNotThrowExceptionWhenFieldExcludeListHasLeadingWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, " *.collectionA.name", 0);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldExcludeListHasWhiteSpaces() {
+    public void shouldNotThrowExceptionWhenFieldExcludeListHasWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name ,db2.collectionB.house ", 0);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldExcludeListIsValid() {
+    public void shouldNotThrowExceptionWhenFieldExcludeListIsValid() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name1", 0);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
+    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, ".name=new_name", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.namenew_name", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.=new_name", 1);
     }
 
     @Test
-    void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name=", 1);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldRenamesHasLeadingWhiteSpaces() {
+    public void shouldNotThrowExceptionWhenFieldRenamesHasLeadingWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, " db1.collectionA.name:newname", 0);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldRenamesHasWhiteSpaces() {
+    public void shouldNotThrowExceptionWhenFieldRenamesHasWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "*.collectionA.name:new_name, db2.collectionB.house:new_house ", 0);
     }
 
     @Test
-    void shouldNotThrowExceptionWhenFieldRenamesIsValid() {
+    public void shouldNotThrowExceptionWhenFieldRenamesIsValid() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name1:new_name1", 0);
     }
 
@@ -223,7 +223,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldValidateAcceptableConfiguration() {
+    public void shouldValidateAcceptableConfiguration() {
         config = TestHelper.getConfiguration(mongo);
 
         // Add data to the databases so that the databases will be listed ...
@@ -477,7 +477,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldConsumeFullUpdateWithLookup() throws InterruptedException {
+    public void shouldConsumeFullUpdateWithLookup() throws InterruptedException {
         shouldConsumeFullUpdate(FullUpdateType.LOOKUP, "updated", "final");
     }
 
@@ -643,7 +643,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldLogInvalidOffsetWithSnapshotModeInitial() throws InterruptedException {
+    public void shouldLogInvalidOffsetWithSnapshotModeInitial() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         // Configuration to capture changes from both databases
@@ -683,7 +683,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
+    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -1338,12 +1338,12 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
         shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.REGEX);
     }
 
     @Test
-    void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
         shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.LITERAL);
     }
 
@@ -2148,7 +2148,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldGenerateRecordForInsertEvent() throws Exception {
+    public void shouldGenerateRecordForInsertEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2191,7 +2191,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldGenerateRecordForUpdateEvent() throws Exception {
+    public void shouldGenerateRecordForUpdateEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2250,7 +2250,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldGeneratorRecordForDeleteEvent() throws Exception {
+    public void shouldGeneratorRecordForDeleteEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2357,7 +2357,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
+    public void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2422,7 +2422,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldSkipNonPipelineRecords() throws Exception {
+    public void shouldSkipNonPipelineRecords() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{$match:{'fullDocument.name':'Dennis'}}]")
@@ -2457,7 +2457,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldSupportDbRef2() throws Exception {
+    public void shouldSupportDbRef2() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2509,7 +2509,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldReplicateContent() throws Exception {
+    public void shouldReplicateContent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2661,7 +2661,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotReplicateSnapshot() throws Exception {
+    public void shouldNotReplicateSnapshot() throws Exception {
         // todo: this configuration causes NPE at MongoDbStreamingChangeEventSource.java:143
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
@@ -2771,7 +2771,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @FixFor("DBZ-6522")
     @Test
-    void shouldConsumeDocumentsWithComplexIds() throws Exception {
+    public void shouldConsumeDocumentsWithComplexIds() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2806,7 +2806,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @FixFor("DBZ-6522")
     @Test
-    void shouldConsumeEventsFromOffsetWithDataResumeToken() throws InterruptedException {
+    public void shouldConsumeEventsFromOffsetWithDataResumeToken() throws InterruptedException {
         LogInterceptor logInterceptor = new LogInterceptor(MongoDbOffsetContext.class);
 
         config = TestHelper.getConfiguration(mongo).edit()
@@ -2865,7 +2865,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldAlwaysSnapshot() throws Exception {
+    public void shouldAlwaysSnapshot() throws Exception {
 
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
@@ -2944,7 +2944,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldAllowForCustomSnapshot() throws Exception {
+    public void shouldAllowForCustomSnapshot() throws Exception {
 
         final LogInterceptor logInterceptor = new LogInterceptor(CustomTestSnapshot.class);
 

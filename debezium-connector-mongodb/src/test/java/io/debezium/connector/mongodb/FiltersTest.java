@@ -10,8 +10,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.Document;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,7 @@ public class FiltersTest {
     private Filters filters;
     private Field.Set configFields;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         build = new Configurator().with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://dummy:27017");
         filters = null;
@@ -37,7 +37,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeDatabaseCoveredByLiteralInIncludeList() {
+    public void shouldIncludeDatabaseCoveredByLiteralInIncludeList() {
         filters = build.includeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
 
@@ -46,7 +46,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeDatabaseCoveredByMultipleLiteralsInIncludeList() {
+    public void shouldIncludeDatabaseCoveredByMultipleLiteralsInIncludeList() {
         filters = build.includeDatabases("db1,db2").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
         assertThat(filters.databaseFilter().test("db2")).isTrue();
@@ -57,7 +57,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeDatabaseCoveredByMultipleLiteralsWithSpacesInIncludeListForLiteralFilters() {
+    public void shouldIncludeDatabaseCoveredByMultipleLiteralsWithSpacesInIncludeListForLiteralFilters() {
         filters = build
                 .useLiteralFilters()
                 .includeDatabases(" db1 ,  db2 ")
@@ -67,20 +67,20 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeDatabaseCoveredByWildcardInIncludeList() {
+    public void shouldIncludeDatabaseCoveredByWildcardInIncludeList() {
         filters = build.includeDatabases("db.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
     }
 
     @Test
-    void shouldIncludeDatabaseCoveredByMultipleWildcardsInIncludeList() {
+    public void shouldIncludeDatabaseCoveredByMultipleWildcardsInIncludeList() {
         filters = build.includeDatabases("db.*,mongo.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
         assertThat(filters.databaseFilter().test("mongo2")).isTrue();
     }
 
     @Test
-    void shouldExcludeDatabaseCoveredByLiteralInExcludeList() {
+    public void shouldExcludeDatabaseCoveredByLiteralInExcludeList() {
         filters = build.excludeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
 
@@ -89,7 +89,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeDatabaseCoveredByMultipleLiteralsInExcludeList() {
+    public void shouldExcludeDatabaseCoveredByMultipleLiteralsInExcludeList() {
         filters = build.excludeDatabases("db1,db2").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
         assertThat(filters.databaseFilter().test("db2")).isFalse();
@@ -100,7 +100,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeDatabaseCoveredByMultipleLiteralsWithSpacesInExcludeListForLiteralFilters() {
+    public void shouldExcludeDatabaseCoveredByMultipleLiteralsWithSpacesInExcludeListForLiteralFilters() {
         filters = build
                 .useLiteralFilters()
                 .excludeDatabases(" db1 ,  db2 ")
@@ -110,7 +110,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldNotExcludeDatabaseNotCoveredByLiteralInExcludeList() {
+    public void shouldNotExcludeDatabaseNotCoveredByLiteralInExcludeList() {
         filters = build.excludeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db2")).isTrue();
 
@@ -119,27 +119,27 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeDatabaseCoveredByWildcardInExcludeList() {
+    public void shouldExcludeDatabaseCoveredByWildcardInExcludeList() {
         filters = build.excludeDatabases("db.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
     }
 
     @Test
-    void shouldExcludeDatabaseCoveredByMultipleWildcardsInExcludeList() {
+    public void shouldExcludeDatabaseCoveredByMultipleWildcardsInExcludeList() {
         filters = build.excludeDatabases("db.*,mongo.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
         assertThat(filters.databaseFilter().test("mongo2")).isFalse();
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByLiteralWithPeriodAsWildcardInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByLiteralWithPeriodAsWildcardInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.coll[.]?ection[x]?A,db1[.](.*)B").createFilters();
         assertCollectionIncluded("db1xcoll.ectionA"); // first '.' is an unescaped wildcard in regex
         assertCollectionIncluded("db1.collectionA");
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByLiteralInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByLiteralInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collectionA").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionExcluded("db1.collectionB");
@@ -152,7 +152,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByLiteralWithEscapedPeriodInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByLiteralWithEscapedPeriodInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1[.]collectionA").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionExcluded("db1.collectionB");
@@ -165,7 +165,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByMultipleLiteralsInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByMultipleLiteralsInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collectionA,db1.collectionB").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionB");
@@ -180,7 +180,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByMultipleLiteralsWithSpacesInIncludeListAndNoExcludeListForLiteralFilters() {
+    public void shouldIncludeCollectionCoveredByMultipleLiteralsWithSpacesInIncludeListAndNoExcludeListForLiteralFilters() {
         filters = build
                 .useLiteralFilters()
                 .includeCollections(" db1.collectionA ,  db1.collectionB ")
@@ -192,7 +192,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByMultipleRegexInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByMultipleRegexInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collection[x]?A,db1[.](.*)B").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionxA");
@@ -209,7 +209,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeCollectionCoveredByRegexWithWildcardInIncludeListAndNoExcludeList() {
+    public void shouldIncludeCollectionCoveredByRegexWithWildcardInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1[.](.*)").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionxA");
@@ -226,7 +226,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeCollectionCoveredByLiteralInExcludeList() {
+    public void shouldExcludeCollectionCoveredByLiteralInExcludeList() {
         filters = build.excludeCollections("db1.collectionA").createFilters();
         assertCollectionExcluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionB");
@@ -239,7 +239,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeCollectionCoveredByMultipleLiteralsnExcludeList() {
+    public void shouldExcludeCollectionCoveredByMultipleLiteralsnExcludeList() {
         filters = build.excludeCollections("db1.collectionA,db1.collectionB").createFilters();
         assertCollectionExcluded("db1.collectionA");
         assertCollectionExcluded("db1.collectionB");
@@ -254,7 +254,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldExcludeCollectionCoveredByMultipleLiteralsWithSpacesInExcludeListForLiteralFilters() {
+    public void shouldExcludeCollectionCoveredByMultipleLiteralsWithSpacesInExcludeListForLiteralFilters() {
         filters = build
                 .useLiteralFilters()
                 .excludeCollections(" db1.collectionA ,  db1.collectionB ")
@@ -266,7 +266,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeAllCollectionsFromDatabaseWithSignalingCollection() {
+    public void shouldIncludeAllCollectionsFromDatabaseWithSignalingCollection() {
         filters = build.includeDatabases("db1")
                 .signalingCollection("db1.singal")
                 .createFilters();
@@ -277,7 +277,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeSignalingCollectionAndNoIncludeListAndNoExcludeList() {
+    public void shouldIncludeSignalingCollectionAndNoIncludeListAndNoExcludeList() {
         filters = build.signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");
 
@@ -286,7 +286,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeSignalingCollectionNotCoveredByIncludeList() {
+    public void shouldIncludeSignalingCollectionNotCoveredByIncludeList() {
         filters = build.includeCollections("db1.table")
                 .signalingCollection("db1.signal")
                 .createFilters();
@@ -297,7 +297,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeSignalingCollectionCoveredByLiteralInExcludeList() {
+    public void shouldIncludeSignalingCollectionCoveredByLiteralInExcludeList() {
         filters = build.excludeCollections("db1.signal")
                 .signalingCollection("db1.signal")
                 .createFilters();
@@ -308,7 +308,7 @@ public class FiltersTest {
     }
 
     @Test
-    void shouldIncludeSignalingCollectionCoveredByRegexInExcludeList() {
+    public void shouldIncludeSignalingCollectionCoveredByRegexInExcludeList() {
         filters = build.excludeCollections("db1.*")
                 .signalingCollection("db1.signal")
                 .createFilters();
@@ -316,7 +316,7 @@ public class FiltersTest {
     }
 
     @Test
-    void excludeFilterShouldRemoveMatchingField() {
+    public void excludeFilterShouldRemoveMatchingField() {
         filters = build.excludeFields("db1.collectionA.key1").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse("db1.collectionA");
@@ -326,7 +326,7 @@ public class FiltersTest {
     }
 
     @Test
-    void excludeFilterShouldRemoveMatchingFieldWithLeadingWhiteSpaces() {
+    public void excludeFilterShouldRemoveMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.excludeFields(" *.collectionA.key1").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse(" *.collectionA");
@@ -347,7 +347,7 @@ public class FiltersTest {
     }
 
     @Test
-    void excludeFilterShouldRemoveMatchingFieldWithTrailingWhiteSpaces() {
+    public void excludeFilterShouldRemoveMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.excludeFields("db.collectionA.key1 ,db.collectionA.key2 ").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse("db.collectionA");
@@ -357,7 +357,7 @@ public class FiltersTest {
     }
 
     @Test
-    void renameFilterShouldRenameMatchingField() {
+    public void renameFilterShouldRenameMatchingField() {
         filters = build.renameFields("db1.collectionA.key1:key2").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse("db1.collectionA");
@@ -367,7 +367,7 @@ public class FiltersTest {
     }
 
     @Test
-    void renameFilterShouldRenameMatchingFieldWithLeadingWhiteSpaces() {
+    public void renameFilterShouldRenameMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.renameFields(" *.collectionA.key2:key3").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse(" *.collectionA");
@@ -388,7 +388,7 @@ public class FiltersTest {
     }
 
     @Test
-    void renameFilterShouldRenameMatchingFieldWithTrailingWhiteSpaces() {
+    public void renameFilterShouldRenameMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.renameFields("db2.collectionA.key1:key2 ,db2.collectionA.key3:key4 ").createFilters();
         validateConfigFields();
         CollectionId id = CollectionId.parse("db2.collectionA");

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.data.VerifyRecord;
@@ -29,7 +29,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/bit/#bitwise-and">MongoDB operator update $bit AND</a>
      */
     @Test
-    void shouldTransformOperationBitAnd() throws InterruptedException {
+    public void shouldTransformOperationBitAnd() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$bit': {dataInt: {and: NumberInt(1010)}}}");
 
@@ -47,7 +47,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/bit/#bitwise-or">MongoDB operator update $bit OR</a>
      */
     @Test
-    void shouldTransformOperationBitOr() throws InterruptedException {
+    public void shouldTransformOperationBitOr() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$bit': {dataInt: {or: NumberInt(1001)}}}");
 
@@ -65,7 +65,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/bit/#bitwise-xor">MongoDB operator update $bit XOR</a>
      */
     @Test
-    void shouldTransformOperationBitXor() throws InterruptedException {
+    public void shouldTransformOperationBitXor() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
                 "{'$bit': {dataInt: {xor: NumberInt(111)}}}");
 

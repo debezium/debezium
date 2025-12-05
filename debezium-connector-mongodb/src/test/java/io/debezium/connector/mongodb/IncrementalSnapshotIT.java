@@ -35,10 +35,10 @@ import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.junit.After;
 import org.junit.Assume;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -73,16 +73,16 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     private static final String DOCUMENT_ID = "_id";
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config().build());
 
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
@@ -389,7 +389,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldStreamWithDatabaseIncludeList() throws InterruptedException {
+    public void shouldStreamWithDatabaseIncludeList() throws InterruptedException {
         startConnector(
                 config -> config
                         .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
@@ -406,47 +406,47 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void snapshotOnlyInt32() throws Exception {
+    public void snapshotOnlyInt32() throws Exception {
         snapshotOnly(0, k -> k + 1);
     }
 
     @Test
-    void snapshotOnlyWithInt64() throws Exception {
+    public void snapshotOnlyWithInt64() throws Exception {
         long firstKey = Integer.MAX_VALUE + 1L;
         snapshotOnly(firstKey, k -> k + 1);
     }
 
     @Test
-    void snapshotOnlyDouble() throws Exception {
+    public void snapshotOnlyDouble() throws Exception {
         snapshotOnly(0.0, k -> k + 1);
     }
 
     @Test
-    void snapshotOnlyDecimal128() throws Exception {
+    public void snapshotOnlyDecimal128() throws Exception {
         Assume.assumeTrue("Decimal 128 not supported", TestHelper.decimal128Supported());
         BigDecimal firstKey = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
         snapshotOnly(firstKey, k -> k.add(BigDecimal.ONE));
     }
 
     @Test
-    void snapshotOnlyObjectId() throws Exception {
+    public void snapshotOnlyObjectId() throws Exception {
         ObjectId firstKey = new ObjectId();
         snapshotOnly(firstKey, k -> new ObjectId());
     }
 
     @Test
-    void snapshotOnlyUUID() throws Exception {
+    public void snapshotOnlyUUID() throws Exception {
         snapshotOnly(UUID.randomUUID(), k -> UUID.randomUUID());
     }
 
     @Test
-    void snapshotOnlyString() throws Exception {
+    public void snapshotOnlyString() throws Exception {
         Supplier<String> keySupplier = () -> java.util.UUID.randomUUID().toString();
         snapshotOnly(keySupplier.get(), k -> keySupplier.get());
     }
 
     @Test
-    void invalidTablesInTheList() throws Exception {
+    public void invalidTablesInTheList() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -462,7 +462,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void snapshotOnlyWithRestart() throws Exception {
+    public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
 
         LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
@@ -502,7 +502,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void inserts() throws Exception {
+    public void inserts() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -520,7 +520,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void updates() throws Exception {
+    public void updates() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -539,7 +539,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void updatesWithRestart() throws Exception {
+    public void updatesWithRestart() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -575,7 +575,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void updatesLargeChunk() throws Exception {
+    public void updatesLargeChunk() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -747,7 +747,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void pauseDuringSnapshot() throws Exception {
+    public void pauseDuringSnapshot() throws Exception {
         populateDataCollection();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
         waitForConnectorToStart();
@@ -781,7 +781,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void insertInsertWatermarkingStrategy() throws Exception {
+    public void insertInsertWatermarkingStrategy() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();
@@ -805,7 +805,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void insertDeleteWatermarkingStrategy() throws Exception {
+    public void insertDeleteWatermarkingStrategy() throws Exception {
         // Testing.Print.enable();
 
         populateDataCollection();

@@ -20,7 +20,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
@@ -40,7 +40,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static final String ID = "_id";
 
     @Test
-    void shouldNotRenameMissingFieldsForReadEvent() throws Exception {
+    public void shouldNotRenameMissingFieldsForReadEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append(ID, objId)
@@ -56,7 +56,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedMissingFieldsForReadEvent() throws Exception {
+    public void shouldNotRenameNestedMissingFieldsForReadEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append(ID, objId)
@@ -76,7 +76,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameMissingFieldsForInsertEvent() throws Exception {
+    public void shouldNotRenameMissingFieldsForInsertEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append(ID, objId)
@@ -92,7 +92,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedMissingFieldsForInsertEvent() throws Exception {
+    public void shouldNotRenameNestedMissingFieldsForInsertEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append(ID, objId)
@@ -112,7 +112,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedMissingFieldsForUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldNotRenameNestedMissingFieldsForUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append(ID, objId)
@@ -144,7 +144,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameFieldsForEventOfOtherCollection() throws Exception {
+    public void shouldNotRenameFieldsForEventOfOtherCollection() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -160,7 +160,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForReadEvent() throws Exception {
+    public void shouldRenameFieldsForReadEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -186,7 +186,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForReadEvent() throws Exception {
+    public void shouldRenameNestedFieldsForReadEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -221,7 +221,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsToExistingNamesForReadEvent() throws Exception {
+    public void shouldNotRenameNestedFieldsToExistingNamesForReadEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -238,7 +238,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForInsertEvent() throws Exception {
+    public void shouldRenameFieldsForInsertEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -264,7 +264,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForInsertEvent() throws Exception {
+    public void shouldRenameNestedFieldsForInsertEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -299,7 +299,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsToExistingNamesForInsertEvent() throws Exception {
+    public void shouldNotRenameNestedFieldsToExistingNamesForInsertEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -316,7 +316,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForUpdateEvent() throws Exception {
+    public void shouldRenameFieldsForUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -363,7 +363,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameMissingFieldsForUpdateEvent() throws Exception {
+    public void shouldNotRenameMissingFieldsForUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -410,7 +410,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldRenameNestedFieldsForUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -480,7 +480,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsToExistingNamesForUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldNotRenameNestedFieldsToExistingNamesForUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -507,7 +507,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -602,7 +602,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsForUpdateEventWithArrayOfArrays() throws Exception {
+    public void shouldNotRenameNestedFieldsForUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -702,7 +702,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForSetTopLevelFieldUpdateEvent() throws Exception {
+    public void shouldRenameFieldsForSetTopLevelFieldUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -739,7 +739,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameFieldsToExistingNamesForSetTopLevelFieldUpdateEvent() throws Exception {
+    public void shouldNotRenameFieldsToExistingNamesForSetTopLevelFieldUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -754,7 +754,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForUnsetTopLevelFieldUpdateEvent() throws Exception {
+    public void shouldRenameFieldsForUnsetTopLevelFieldUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -787,7 +787,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameFieldsToExistingNamesForUnsetTopLevelFieldUpdateEvent() throws Exception {
+    public void shouldNotRenameFieldsToExistingNamesForUnsetTopLevelFieldUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -802,7 +802,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -862,7 +862,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -947,7 +947,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws Exception {
+    public void shouldNotRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1036,7 +1036,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1086,7 +1086,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1136,7 +1136,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsToExistingNamesForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldNotRenameNestedFieldsToExistingNamesForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1156,7 +1156,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws Exception {
+    public void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1206,7 +1206,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws Exception {
+    public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1256,7 +1256,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1306,7 +1306,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1361,7 +1361,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithEmbeddedDocument() throws Exception {
+    public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1404,7 +1404,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1447,7 +1447,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsToExistingNamesForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldNotRenameNestedFieldsToExistingNamesForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1465,7 +1465,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldNotRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws Exception {
+    public void shouldNotRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1508,7 +1508,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws Exception {
+    public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1551,7 +1551,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
+    public void shouldRenameFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1594,7 +1594,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForDeleteEvent() throws Exception {
+    public void shouldRenameFieldsForDeleteEvent() throws Exception {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
@@ -1629,7 +1629,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    void shouldRenameFieldsForDeleteTombstoneEvent() throws Exception {
+    public void shouldRenameFieldsForDeleteTombstoneEvent() throws Exception {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
