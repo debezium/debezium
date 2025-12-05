@@ -6,12 +6,11 @@
 package io.debezium.text;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.text.TokenStream.BasicTokenizer;
 import io.debezium.text.TokenStream.Tokenizer;
@@ -32,7 +31,7 @@ public class TokenStreamTest {
     private String content;
     private TokenStream tokens;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         tokenizer = TokenStream.basicTokenizer(false);
         content = "Select all columns from this table";
@@ -49,36 +48,28 @@ public class TokenStreamTest {
         tokens.start();
     }
 
-    @Test
-    void shouldNotAllowConsumeBeforeStartIsCalled() {
-        assertThrows(IllegalStateException.class, () -> {
-            tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
-            tokens.consume("Select");
-        });
+    @Test(expected = IllegalStateException.class)
+    public void shouldNotAllowConsumeBeforeStartIsCalled() {
+        tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
+        tokens.consume("Select");
     }
 
-    @Test
-    void shouldNotAllowHasNextBeforeStartIsCalled() {
-        assertThrows(IllegalStateException.class, () -> {
-            tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
-            tokens.hasNext();
-        });
+    @Test(expected = IllegalStateException.class)
+    public void shouldNotAllowHasNextBeforeStartIsCalled() {
+        tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
+        tokens.hasNext();
     }
 
-    @Test
-    void shouldNotAllowMatchesBeforeStartIsCalled() {
-        assertThrows(IllegalStateException.class, () -> {
-            tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
-            tokens.matches("Select");
-        });
+    @Test(expected = IllegalStateException.class)
+    public void shouldNotAllowMatchesBeforeStartIsCalled() {
+        tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
+        tokens.matches("Select");
     }
 
-    @Test
-    void shouldNotAllowCanConsumeBeforeStartIsCalled() {
-        assertThrows(IllegalStateException.class, () -> {
-            tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
-            tokens.canConsume("Select");
-        });
+    @Test(expected = IllegalStateException.class)
+    public void shouldNotAllowCanConsumeBeforeStartIsCalled() {
+        tokens = new TokenStream(content, TokenStream.basicTokenizer(false), false);
+        tokens.canConsume("Select");
     }
 
     @Test
@@ -101,14 +92,12 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test
-    void shouldFailToConsumeInCaseSensitiveMannerWithExpectedValuesWhenMatchingIncorrectCase() {
-        assertThrows(ParsingException.class, () -> {
-            makeCaseSensitive();
-            tokens.consume("Select");
-            tokens.consume("all");
-            tokens.consume("Columns");
-        });
+    @Test(expected = ParsingException.class)
+    public void shouldFailToConsumeInCaseSensitiveMannerWithExpectedValuesWhenMatchingIncorrectCase() {
+        makeCaseSensitive();
+        tokens.consume("Select");
+        tokens.consume("all");
+        tokens.consume("Columns");
     }
 
     @Test
@@ -123,14 +112,12 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test
-    void shouldFailToConsumeInCaseInsensitiveMannerWithExpectedValuesWhenMatchingStringIsInLowerCase() {
-        assertThrows(ParsingException.class, () -> {
-            makeCaseInsensitive();
-            tokens.consume("SELECT");
-            tokens.consume("ALL");
-            tokens.consume("columns");
-        });
+    @Test(expected = ParsingException.class)
+    public void shouldFailToConsumeInCaseInsensitiveMannerWithExpectedValuesWhenMatchingStringIsInLowerCase() {
+        makeCaseInsensitive();
+        tokens.consume("SELECT");
+        tokens.consume("ALL");
+        tokens.consume("columns");
     }
 
     @Test
@@ -328,12 +315,10 @@ public class TokenStreamTest {
         assertThat(tokens.hasNext()).isFalse();
     }
 
-    @Test
-    void shouldFailToConsumeMultipleTokensIfTheyDoNotMatch() {
-        assertThrows(ParsingException.class, () -> {
-            makeCaseInsensitive();
-            tokens.consume("SELECT", "ALL", "COLUMNS", "FROM", "TABLE");
-        });
+    @Test(expected = ParsingException.class)
+    public void shouldFailToConsumeMultipleTokensIfTheyDoNotMatch() {
+        makeCaseInsensitive();
+        tokens.consume("SELECT", "ALL", "COLUMNS", "FROM", "TABLE");
     }
 
     @Test

@@ -6,19 +6,18 @@
 package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * Unit test for {@link Collect}.
  *
  * @author Gunnar Morling
  */
-class CollectTest {
+public class CollectTest {
 
     @Test
     public void unmodifiableSetForIteratorShouldReturnExpectedElements() {
@@ -26,11 +25,9 @@ class CollectTest {
         assertThat(values).containsOnly(1, 2, 3, 42);
     }
 
-    @Test
-    void unmodifiableSetForIteratorShouldRaiseExceptionUponModification() {
-        assertThrows(UnsupportedOperationException.class, () -> {
-            Set<Integer> values = Collect.unmodifiableSet(Arrays.asList(1, 2, 3, 42).iterator());
-            values.remove(1);
-        });
+    @Test(expected = UnsupportedOperationException.class)
+    public void unmodifiableSetForIteratorShouldRaiseExceptionUponModification() {
+        Set<Integer> values = Collect.unmodifiableSet(Arrays.asList(1, 2, 3, 42).iterator());
+        values.remove(1);
     }
 }

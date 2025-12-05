@@ -7,7 +7,6 @@ package io.debezium.transforms.outbox;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -24,7 +23,9 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
@@ -38,6 +39,9 @@ import io.debezium.time.Timestamp;
  * @author Renato mefi (gh@mefi.in)
  */
 public class EventRouterTest {
+
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
 
     @Test
     public void canSkipTombstone() {
@@ -116,32 +120,32 @@ public class EventRouterTest {
     }
 
     @Test
-    void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
-        DataException exception = assertThrows(DataException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            router.configure(config);
+    public void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
 
-            Schema valueSchema = SchemaBuilder.struct()
-                    .name("io.debezium.connector.common.Heartbeat.Envelope")
-                    .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                    .build();
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat.Envelope")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
 
-            Struct value = new Struct(valueSchema);
-            value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
+        Struct value = new Struct(valueSchema);
+        value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
 
-            final SourceRecord eventRecord = new SourceRecord(
-                    new HashMap<>(),
-                    new HashMap<>(),
-                    "db.outbox",
-                    SchemaBuilder.STRING_SCHEMA,
-                    "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
-                    valueSchema,
-                    value);
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                valueSchema,
+                value);
 
-            router.apply(eventRecord);
-        });
-        assertThat(exception.getMessage()).contains("op is not a valid field name");
+        exceptionRule.expect(DataException.class);
+        exceptionRule.expectMessage("op is not a valid field name");
+
+        router.apply(eventRecord);
     }
 
     @Test
@@ -231,36 +235,34 @@ public class EventRouterTest {
         assertThat(eventRouted).isNull();
     }
 
-    @Test
-    void canFailOnUpdates() {
-        assertThrows(IllegalStateException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(
-                    EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
-                    EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
-            router.configure(config);
+    @Test(expected = IllegalStateException.class)
+    public void canFailOnUpdates() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
+                EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
+        router.configure(config);
 
-            final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
-            Envelope envelope = Envelope.defineSchema()
-                    .withName("dummy.Envelope")
-                    .withRecord(recordSchema)
-                    .withSource(SchemaBuilder.struct().build())
-                    .build();
-            final Struct before = new Struct(recordSchema);
-            before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-            final Struct payload = envelope.update(before, before, null, Instant.now());
-            final SourceRecord eventRecord = new SourceRecord(
-                    new HashMap<>(),
-                    new HashMap<>(),
-                    "db.outbox",
-                    SchemaBuilder.STRING_SCHEMA,
-                    "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
-                    envelope.schema(),
-                    payload);
+        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+        final Struct before = new Struct(recordSchema);
+        before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
+        final Struct payload = envelope.update(before, before, null, Instant.now());
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                envelope.schema(),
+                payload);
 
-            router.apply(eventRecord);
-        });
+        router.apply(eventRecord);
     }
 
     @Test
@@ -308,17 +310,15 @@ public class EventRouterTest {
         assertThat(eventRouted.key()).isEqualTo("UserCreated");
     }
 
-    @Test
-    void failsOnInvalidSetMessageKey() {
-        assertThrows(DataException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(EventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "fakefield");
-            router.configure(config);
+    @Test(expected = DataException.class)
+    public void failsOnInvalidSetMessageKey() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "fakefield");
+        router.configure(config);
 
-            final SourceRecord eventRecord = createEventRecord();
-            router.apply(eventRecord);
-        });
+        final SourceRecord eventRecord = createEventRecord();
+        router.apply(eventRecord);
     }
 
     @Test
@@ -707,44 +707,36 @@ public class EventRouterTest {
         assertThat(eventRouted.kafkaPartition()).isEqualTo(123);
     }
 
-    @Test
-    void shouldFailOnInvalidConfigurationForTopicRegex() {
-        assertThrows(ConfigException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
-            router.configure(config);
-        });
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForTopicRegex() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
+        router.configure(config);
     }
 
-    @Test
-    void shouldFailOnInvalidConfigurationForAdditionalFields() {
-        assertThrows(ConfigException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type");
-            router.configure(config);
-        });
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFields() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type");
+        router.configure(config);
     }
 
-    @Test
-    void shouldFailOnInvalidConfigurationForAdditionalFieldsEmpty() {
-        assertThrows(ConfigException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "");
-            router.configure(config);
-        });
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFieldsEmpty() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "");
+        router.configure(config);
     }
 
-    @Test
-    void shouldFailOnInvalidConfigurationForOperationBehavior() {
-        assertThrows(ConfigException.class, () -> {
-            final EventRouter<SourceRecord> router = new EventRouter<>();
-            final Map<String, String> config = new HashMap<>();
-            config.put(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(), "invalidOption");
-            router.configure(config);
-        });
+    @Test(expected = ConfigException.class)
+    public void shouldFailOnInvalidConfigurationForOperationBehavior() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(), "invalidOption");
+        router.configure(config);
     }
 
     @Test

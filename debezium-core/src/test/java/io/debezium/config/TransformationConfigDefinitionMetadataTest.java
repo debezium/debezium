@@ -14,7 +14,7 @@ import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * Applies basic checks of completeness for the SMT-specific configuration metadata.

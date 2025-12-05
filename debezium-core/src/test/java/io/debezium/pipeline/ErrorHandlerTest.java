@@ -6,7 +6,6 @@
 package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -15,7 +14,8 @@ import java.util.Optional;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -170,7 +170,7 @@ public class ErrorHandlerTest {
     private void pollAndAssertRetriable(ChangeEventQueue<DataChangeEvent> queue) throws Exception {
         try {
             poll(queue);
-            fail("Exception must be thrown");
+            Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
             assertThat(e).isInstanceOf(RetriableException.class);
@@ -180,7 +180,7 @@ public class ErrorHandlerTest {
     private void pollAndAssertNonRetriable(ChangeEventQueue<DataChangeEvent> queue) throws Exception {
         try {
             poll(queue);
-            fail("Exception must be thrown");
+            Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
             assertThat(e).isNotInstanceOf(RetriableException.class);

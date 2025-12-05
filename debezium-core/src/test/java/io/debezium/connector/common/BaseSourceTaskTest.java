@@ -26,8 +26,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -41,7 +41,7 @@ public class BaseSourceTaskTest {
 
     private final MyBaseSourceTask baseSourceTask = new MyBaseSourceTask();
 
-    @BeforeEach
+    @Before
     public void setup() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
     }

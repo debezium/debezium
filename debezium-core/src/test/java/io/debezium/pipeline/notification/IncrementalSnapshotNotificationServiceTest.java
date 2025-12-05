@@ -18,13 +18,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
@@ -34,8 +32,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
+@RunWith(MockitoJUnitRunner.class)
 public class IncrementalSnapshotNotificationServiceTest {
 
     @Mock
@@ -53,7 +50,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
     private IncrementalSnapshotNotificationService<Partition, OffsetContext> incrementalSnapshotNotificationService;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         when(connectorConfig.getLogicalName()).thenReturn("connector-test");
         when(incrementalSnapshotContext.getCorrelationId()).thenReturn("12345");

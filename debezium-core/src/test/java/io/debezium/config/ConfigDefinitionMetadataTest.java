@@ -12,7 +12,7 @@ import java.util.Map.Entry;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * Applies basic checks of completeness for the connector-specific configuration metadata.

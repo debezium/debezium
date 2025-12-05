@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
@@ -33,7 +33,7 @@ public class ColumnMappersTest {
     private ValueConverter converter;
     private String fullyQualifiedNames;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         column = Column.editor().name("firstName").jdbcType(Types.VARCHAR).type("VARCHAR").position(1).create();
         column2 = Column.editor().name("lastName").jdbcType(Types.VARCHAR).type("VARCHAR").position(2).create();

@@ -16,10 +16,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.junit.logging.LogInterceptor;
@@ -27,7 +27,7 @@ import io.debezium.pipeline.notification.channels.LogNotificationChannel;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.schema.SchemaFactory;
 
-@ExtendWith(MockitoExtension.class)
+@RunWith(MockitoJUnitRunner.class)
 public class NotificationServiceTest {
 
     public static final String NOTIFICATION_ID = UUID.fromString("a5dc3ab8-933d-4aae-a994-2e5f9d47acd2").toString();

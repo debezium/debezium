@@ -5,7 +5,6 @@
  */
 package io.debezium.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -31,13 +30,13 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 
-class JdbcConnectionTest {
+public class JdbcConnectionTest {
 
     @Test
     public void testNormalClose() throws SQLException {
@@ -55,14 +54,12 @@ class JdbcConnectionTest {
         conn.close();
     }
 
-    @Test
-    void testRogueConnection() {
-        assertThrows(SQLException.class, () -> {
-            ConnectionFactory connFactory = (config) -> new RogueConnection();
-            JdbcConnection conn = new JdbcConnection(JdbcConfiguration.empty(), connFactory, "\"", "\"");
-            conn.connect();
-            conn.close();
-        });
+    @Test(expected = SQLException.class)
+    public void testRogueConnection() throws SQLException {
+        ConnectionFactory connFactory = (config) -> new RogueConnection();
+        JdbcConnection conn = new JdbcConnection(JdbcConfiguration.empty(), connFactory, "\"", "\"");
+        conn.connect();
+        conn.close();
     }
 
     @Test

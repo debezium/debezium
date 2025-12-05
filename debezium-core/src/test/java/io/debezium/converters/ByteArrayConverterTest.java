@@ -20,8 +20,8 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -31,7 +31,7 @@ public class ByteArrayConverterTest {
 
     private final ByteArrayConverter converter = new ByteArrayConverter();
 
-    @BeforeEach
+    @Before
     public void setUp() {
         converter.configure(Collections.emptyMap(), false);
     }

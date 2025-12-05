@@ -15,7 +15,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * @author Randall Hauch

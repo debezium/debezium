@@ -6,7 +6,6 @@
 package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,7 +16,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.relational.history.HistoryRecord.Fields;
@@ -27,31 +26,27 @@ import io.debezium.relational.history.HistoryRecord.Fields;
  */
 public class ByLogicalTableRouterTest {
 
-    @Test
-    void testBrokenKeyReplacementConfigurationNullValue() {
-        assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
-            final Map<String, String> props = new HashMap<>();
+    @Test(expected = ConnectException.class)
+    public void testBrokenKeyReplacementConfigurationNullValue() {
+        final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
 
-            props.put("topic.regex", "someValidRegex(.*)");
-            props.put("topic.replacement", "$1");
-            props.put("key.field.regex", "If this is set, key.field.replacement must be non-empty");
-            subject.configure(props);
-        });
+        props.put("topic.regex", "someValidRegex(.*)");
+        props.put("topic.replacement", "$1");
+        props.put("key.field.regex", "If this is set, key.field.replacement must be non-empty");
+        subject.configure(props);
     }
 
-    @Test
-    void testBrokenKeyReplacementConfigurationEmptyValue() {
-        assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
-            final Map<String, String> props = new HashMap<>();
+    @Test(expected = ConnectException.class)
+    public void testBrokenKeyReplacementConfigurationEmptyValue() {
+        final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
 
-            props.put("topic.regex", "someValidRegex(.*)");
-            props.put("topic.replacement", "$1");
-            props.put("key.field.regex", "If this is set, key.field.replacement must be non-empty");
-            props.put("key.field.replacement", "");
-            subject.configure(props);
-        });
+        props.put("topic.regex", "someValidRegex(.*)");
+        props.put("topic.replacement", "$1");
+        props.put("key.field.regex", "If this is set, key.field.replacement must be non-empty");
+        props.put("key.field.replacement", "");
+        subject.configure(props);
     }
 
     @Test
@@ -191,29 +186,25 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed2.value()).isNull();
     }
 
-    @Test
-    void testBrokenTopicReplacementConfigurationNullValue() {
-        assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
-            final Map<String, String> props = new HashMap<>();
+    @Test(expected = ConnectException.class)
+    public void testBrokenTopicReplacementConfigurationNullValue() {
+        final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
 
-            // topic.replacement is not set, therefore null. Must crash.
-            props.put("topic.regex", "someValidRegex(.*)");
-            subject.configure(props);
-        });
+        // topic.replacement is not set, therefore null. Must crash.
+        props.put("topic.regex", "someValidRegex(.*)");
+        subject.configure(props);
     }
 
-    @Test
-    void testBrokenTopicReplacementConfigurationEmptyValue() {
-        assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
-            final Map<String, String> props = new HashMap<>();
+    @Test(expected = ConnectException.class)
+    public void testBrokenTopicReplacementConfigurationEmptyValue() {
+        final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
 
-            // topic.replacement is set to empty string. Must crash.
-            props.put("topic.regex", "someValidRegex(.*)");
-            props.put("topic.replacement", "");
-            subject.configure(props);
-        });
+        // topic.replacement is set to empty string. Must crash.
+        props.put("topic.regex", "someValidRegex(.*)");
+        props.put("topic.replacement", "");
+        subject.configure(props);
     }
 
     @Test

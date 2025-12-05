@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.document.Array;
 import io.debezium.document.Document;

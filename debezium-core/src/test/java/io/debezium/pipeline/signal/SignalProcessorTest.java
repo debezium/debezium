@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -46,7 +46,7 @@ public class SignalProcessorTest {
 
     private Offsets<TestPartition, OffsetContext> initialOffset;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         TestOffset testOffset = new TestOffset(new BaseSourceInfo(baseConfig()) {
             @Override

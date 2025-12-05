@@ -15,8 +15,8 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
@@ -31,7 +31,7 @@ public class ChangeEventSourceCoordinatorTest {
     ChangeEventSourceCoordinator coordinator;
     ChangeEventSource.ChangeEventSourceContext context;
 
-    @BeforeEach
+    @Before
     public void before() {
         snapshotterService = mock(SnapshotterService.class);
         snapshotter = mock(Snapshotter.class);

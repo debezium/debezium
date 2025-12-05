@@ -8,7 +8,7 @@ package io.debezium.pipeline.txmetadata;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Schema;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.schema.SchemaFactory;

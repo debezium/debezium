@@ -6,16 +6,15 @@
 package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * Unit test for {@link TableIdParser}.
  *
  * @author Gunnar Morling
  */
-class TableIdParserTest {
+public class TableIdParserTest {
 
     @Test
     public void canParseValidIdentifiers() {
@@ -39,32 +38,24 @@ class TableIdParserTest {
         assertThat(TableIdParser.parse("[db].[table with spaces]", new TestTableIdPredicates())).containsExactly("db", "table with spaces");
     }
 
-    @Test
-    void leadingSeparatorIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            TableIdParser.parse(".table");
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void leadingSeparatorIsInvalid() {
+        TableIdParser.parse(".table");
     }
 
-    @Test
-    void trailingSeparatorIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            TableIdParser.parse("table.");
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void trailingSeparatorIsInvalid() {
+        TableIdParser.parse("table.");
     }
 
-    @Test
-    void unclosedQuotingCharIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            TableIdParser.parse("\"table");
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void unclosedQuotingCharIsInvalid() {
+        TableIdParser.parse("\"table");
     }
 
-    @Test
-    void escapedQuoteDoesntCloseQuotedIdentifier() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            TableIdParser.parse("\"table\"\"");
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void escapedQuoteDoesntCloseQuotedIdentifier() {
+        TableIdParser.parse("\"table\"\"");
     }
 
     private static class TestTableIdPredicates implements TableIdPredicates {

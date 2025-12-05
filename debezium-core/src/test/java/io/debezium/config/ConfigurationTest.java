@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.function.Predicates;
@@ -37,7 +37,7 @@ public class ConfigurationTest {
 
     private Configuration config;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         config = Configuration.create().with("A", "a")
                 .with("B", "b")

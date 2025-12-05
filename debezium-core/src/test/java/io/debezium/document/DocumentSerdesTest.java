@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.util.Testing;
 
