@@ -16,10 +16,10 @@ import javax.xml.bind.DatatypeConverter;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -45,8 +45,8 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
 
     private Configuration config;
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         stopConnector();
         databaseDifferences = databaseGeoDifferences(isMySQL5() || isMariaDb());
 
@@ -58,8 +58,8 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }
@@ -69,7 +69,7 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
@@ -115,7 +115,7 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig().build();
 

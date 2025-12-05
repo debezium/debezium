@@ -13,9 +13,9 @@ import java.nio.file.Path;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -34,16 +34,16 @@ public abstract class BinlogTimestampColumnIT<C extends SourceConnector> extends
 
     private Configuration config;
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }

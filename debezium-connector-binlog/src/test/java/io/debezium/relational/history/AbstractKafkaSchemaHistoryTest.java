@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,11 +20,11 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -59,8 +58,8 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     private LogInterceptor interceptor;
     private static final int PARTITION_NO = 0;
 
-    @BeforeAll
-    static void startKafka() {
+    @BeforeClass
+    public static void startKafka() {
         Map<String, String> props = new HashMap<>();
         props.put("auto.create.topics.enable", "false");
 
@@ -74,15 +73,15 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
         kafkaCluster.start();
     }
 
-    @AfterAll
-    static void stopKafka() {
+    @AfterClass
+    public static void stopKafka() {
         if (kafkaCluster != null) {
             kafkaCluster.stop();
         }
     }
 
-    @BeforeEach
-    void beforeEach() throws Exception {
+    @Before
+    public void beforeEach() throws Exception {
         P source = createPartition("my-server", "my-db");
         Configuration config = Configuration.empty()
                 .edit()
@@ -94,8 +93,8 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
         history = new KafkaSchemaHistory();
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             if (history != null) {
                 history.stop();
@@ -107,7 +106,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
-    void shouldStartWithEmptyTopicAndStoreDataAndRecoverAllState() throws Exception {
+    public void shouldStartWithEmptyTopicAndStoreDataAndRecoverAllState() throws Exception {
         String topicName = "empty-and-recovery-schema-changes";
 
         // Create the empty topic ...
@@ -235,7 +234,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
-    void shouldIgnoreUnparseableMessages() throws Exception {
+    public void shouldIgnoreUnparseableMessages() throws Exception {
         String topicName = "ignore-unparseable-schema-changes";
 
         // Create the empty topic ...
@@ -277,34 +276,32 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
         testHistoryTopicContent(topicName, true);
     }
 
-    @Test
-    void shouldStopOnUnparseableSQL() throws Exception {
-        assertThrows(ParsingException.class, () -> {
-            String topicName = "stop-on-unparseable-schema-changes";
+    @Test(expected = ParsingException.class)
+    public void shouldStopOnUnparseableSQL() throws Exception {
+        String topicName = "stop-on-unparseable-schema-changes";
 
-            // Create the empty topic ...
-            KafkaClusterUtils.createTopic(topicName, 1, (short) 1, kafkaCluster.getBootstrapServers());
+        // Create the empty topic ...
+        KafkaClusterUtils.createTopic(topicName, 1, (short) 1, kafkaCluster.getBootstrapServers());
 
-            // Create invalid records
-            final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
-                    "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"xxxDROP TABLE foo;\"}");
+        // Create invalid records
+        final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"xxxDROP TABLE foo;\"}");
 
-            final Configuration intruderConfig = Configuration.create()
-                    .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers())
-                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
-                    .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-                    .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-                    .build();
-            try (KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
-                producer.send(invalidSQL).get();
-            }
+        final Configuration intruderConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
+            producer.send(invalidSQL).get();
+        }
 
-            testHistoryTopicContent(topicName, false);
-        });
+        testHistoryTopicContent(topicName, false);
     }
 
     @Test
-    void shouldSkipMessageOnDDLFilter() throws Exception {
+    public void shouldSkipMessageOnDDLFilter() throws Exception {
         String topicName = "stop-on-ddlfilter-schema-changes";
 
         final LogInterceptor logInterceptor = new LogInterceptor(Loggings.class);
@@ -335,7 +332,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
-    void testExists() throws InterruptedException {
+    public void testExists() throws InterruptedException {
         String topicName = "exists-schema-changes";
 
         // happy path

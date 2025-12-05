@@ -14,7 +14,7 @@ import java.sql.Types;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -36,7 +36,7 @@ public abstract class BinlogMetadataIT<C extends SourceConnector> extends Abstra
      * @throws SQLException if there's an error
      */
     @Test
-    void shouldLoadMetadataViaJdbc() throws SQLException {
+    public void shouldLoadMetadataViaJdbc() throws SQLException {
         final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("readbinlog_it", "readbinlog_test");
         DATABASE.createAndInitialize();
 

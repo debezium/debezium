@@ -10,9 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Path;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -28,16 +28,16 @@ public abstract class BinlogSpecialCharactersIT<C extends SourceConnector> exten
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("special_\"[`]$'_db", "special_characters_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }
@@ -47,7 +47,7 @@ public abstract class BinlogSpecialCharactersIT<C extends SourceConnector> exten
     }
 
     @Test
-    void testSnapshotSpecialCharactersTable() throws Exception {
+    public void testSnapshotSpecialCharactersTable() throws Exception {
         Configuration config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL_ONLY)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(TABLE_NAME))

@@ -10,7 +10,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.binlog.BinlogConnectionIT;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -23,7 +23,7 @@ import io.debezium.connector.binlog.util.UniqueDatabase;
 public class ConnectionIT extends BinlogConnectionIT<MariaDbConnector> implements MariaDbCommon {
 
     @Test
-    void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
 
         final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("readbinlog", "readbinlog_test");
         DATABASE.createAndInitialize();

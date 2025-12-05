@@ -7,7 +7,6 @@ package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -21,8 +20,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.AbstractAssert;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig;
@@ -52,8 +51,8 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     private long positionOfBeginEvent = 0L;
     private int eventNumberInTxn = 0;
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         offsetContext = createInitialOffsetContext(Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
                 .build());
@@ -64,7 +63,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromZeroBinlogCoordinates() {
+    public void shouldStartSourceInfoFromZeroBinlogCoordinates() {
         offsetContext.setBinlogStartPoint(FILENAME, 0);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
@@ -74,7 +73,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromNonZeroBinlogCoordinates() {
+    public void shouldStartSourceInfoFromNonZeroBinlogCoordinates() {
         offsetContext.setBinlogStartPoint(FILENAME, 100);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
@@ -87,7 +86,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     // -------------------------------------------------------------------------------------
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinates() {
+    public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinates() {
         sourceWith(offset(0, 0));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -97,7 +96,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinates() {
+    public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinates() {
         sourceWith(offset(100, 0));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -107,7 +106,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRow() {
+    public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(0, 5));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -117,7 +116,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRow() {
+    public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(100, 5));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -127,7 +126,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndSnapshot() {
+    public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(0, 0, true));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -137,7 +136,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndSnapshot() {
+    public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(100, 0, true));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -147,7 +146,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
+    public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(0, 5, true));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -157,7 +156,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
+    public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(100, 5, true));
         assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -167,7 +166,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinates() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinates() {
         sourceWith(offset(GTID_SET, 0, 0, false));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -177,7 +176,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRow() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(GTID_SET, 0, 5, false));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -187,7 +186,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinates() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinates() {
         sourceWith(offset(GTID_SET, 100, 0, false));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -197,7 +196,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRow() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(GTID_SET, 100, 5, false));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -207,7 +206,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndSnapshot() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(GTID_SET, 0, 0, true));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -217,7 +216,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(GTID_SET, 0, 5, true));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -227,7 +226,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndSnapshot() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(GTID_SET, 100, 0, true));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -237,7 +236,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
+    public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(GTID_SET, 100, 5, true));
         assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
@@ -251,7 +250,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     // -------------------------------------------------------------------------------------
 
     @Test
-    void shouldAdvanceSourceInfoFromNonZeroPositionAndRowZeroForEventsWithOneRow() {
+    public void shouldAdvanceSourceInfoFromNonZeroPositionAndRowZeroForEventsWithOneRow() {
         sourceWith(offset(100, 0));
 
         // Try a transactions with just one event ...
@@ -295,7 +294,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldAdvanceSourceInfoFromNonZeroPositionAndRowZeroForEventsWithMultipleRow() {
+    public void shouldAdvanceSourceInfoFromNonZeroPositionAndRowZeroForEventsWithMultipleRow() {
         sourceWith(offset(100, 0));
 
         // Try a transactions with just one event ...
@@ -467,28 +466,28 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
      * throw error "org.apache.avro.SchemaParseException: Illegal character in: server-id"
      */
     @Test
-    void shouldValidateSourceInfoSchema() {
+    public void shouldValidateSourceInfoSchema() {
         Schema kafkaSchema = source.schema();
         org.apache.avro.Schema avroSchema = avroData.fromConnectSchema(kafkaSchema);
         assertTrue(avroSchema != null);
     }
 
     @Test
-    void shouldConsiderPositionsWithSameGtidSetsAsSame() {
+    public void shouldConsiderPositionsWithSameGtidSetsAsSame() {
         assertPositionWithGtids(String.format("%s:1-5", IdA)).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA))); // same, single
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB))); // same, multiple
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)).isAtOrBefore(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA))); // equivalent
     }
 
     @Test
-    void shouldConsiderPositionsWithSameGtidSetsAndSnapshotAsSame() {
+    public void shouldConsiderPositionsWithSameGtidSetsAndSnapshotAsSame() {
         assertPositionWithGtids(String.format("%s:1-5", IdA), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA), true)); // same, single
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true)); // same, multiple
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA), true)); // equivalent
     }
 
     @Test
-    void shouldOrderPositionWithGtidAndSnapshotBeforePositionWithSameGtidButNoSnapshot() {
+    public void shouldOrderPositionWithGtidAndSnapshotBeforePositionWithSameGtidButNoSnapshot() {
         assertPositionWithGtids(String.format("%s:1-5", IdA), true).isBefore(positionWithGtids(String.format("%s:1-5", IdA), false)); // same, single
         assertPositionWithGtids(String.format("%s:1-5", IdA), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA))); // same, single
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB))); // same, multiple
@@ -496,36 +495,36 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldOrderPositionWithoutGtidAndSnapshotAfterPositionWithSameGtidAndSnapshot() {
+    public void shouldOrderPositionWithoutGtidAndSnapshotAfterPositionWithSameGtidAndSnapshot() {
         assertPositionWithGtids(String.format("%s:1-5", IdA), false).isAfter(positionWithGtids(String.format("%s:1-5", IdA), true)); // same, single
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), false).isAfter(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true)); // same, multiple
         assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), false).isAfter(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA), true)); // equivalent
     }
 
     @Test
-    void shouldOrderPositionWithGtidsAsBeforePositionWithExtraServerUuidInGtids() {
+    public void shouldOrderPositionWithGtidsAsBeforePositionWithExtraServerUuidInGtids() {
         assertPositionWithGtids(String.format("%s:1-5", IdA)).isBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)));
     }
 
     @Test
-    void shouldOrderPositionsWithSameServerButLowerUpperLimitAsBeforePositionWithSameServerUuidInGtids() {
+    public void shouldOrderPositionsWithSameServerButLowerUpperLimitAsBeforePositionWithSameServerUuidInGtids() {
         assertPositionWithGtids(String.format("%s:1-5", IdA)).isBefore(positionWithGtids(String.format("%s:1-6", IdA)));
         assertPositionWithGtids(String.format("%s:1-5:7-9", IdA)).isBefore(positionWithGtids(String.format("%s:1-10", IdA)));
         assertPositionWithGtids(String.format("%s:2-5:8-9", IdA)).isBefore(positionWithGtids(String.format("%s:1-10", IdA)));
     }
 
     @Test
-    void shouldOrderPositionWithoutGtidAsBeforePositionWithGtid() {
+    public void shouldOrderPositionWithoutGtidAsBeforePositionWithGtid() {
         assertPositionWithoutGtids("filename.01", Integer.MAX_VALUE, 0, 0).isBefore(positionWithGtids("IdA:1-5"));
     }
 
     @Test
-    void shouldOrderPositionWithGtidAsAfterPositionWithoutGtid() {
+    public void shouldOrderPositionWithGtidAsAfterPositionWithoutGtid() {
         assertPositionWithGtids(String.format("%s:1-5", IdA)).isAfter(positionWithoutGtids("filename.01", 0, 0, 0));
     }
 
     @Test
-    void shouldComparePositionsWithoutGtids() {
+    public void shouldComparePositionsWithoutGtids() {
         // Same position ...
         assertPositionWithoutGtids("fn.01", 1, 0, 0).isAt(positionWithoutGtids("fn.01", 1, 0, 0));
         assertPositionWithoutGtids("fn.01", 1, 0, 1).isAt(positionWithoutGtids("fn.01", 1, 0, 1));
@@ -553,7 +552,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldComparePositionsWithDifferentFields() {
+    public void shouldComparePositionsWithDifferentFields() {
         Document history = positionWith("mysql-bin.000008", 380941551, "01261278-6ade-11e6-b36a-42010af00790:1-378422946,"
                 + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11002284,"
                 + "716ec46f-d522-11e5-bb56-0242ac110004:1-34673215,"
@@ -572,7 +571,7 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldComparePositionsWithDifferentFilenames() {
+    public void shouldComparePositionsWithDifferentFilenames() {
         Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
         assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.000001", 1, 0, 0));
         assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.000002", 1, 0, 0));
@@ -582,33 +581,27 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.1000111", 1, 0, 0));
     }
 
-    @Test
-    void shouldNotComparePositionsWithDifferentFilenameFormats() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
-            assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-binlog-filename.000001", 1, 0, 0));
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithDifferentFilenameFormats() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-binlog-filename.000001", 1, 0, 0));
     }
 
-    @Test
-    void shouldNotComparePositionsWithInvalidFilenameFormat() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
-            assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin", 1, 0, 0));
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithInvalidFilenameFormat() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin", 1, 0, 0));
     }
 
-    @Test
-    void shouldNotComparePositionsWithNotNumericFilenameExtension() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
-            assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.not-numeric", 1, 0, 0));
-        });
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithNotNumericFilenameExtension() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.not-numeric", 1, 0, 0));
     }
 
     @FixFor("DBZ-107")
     @Test
-    void shouldRemoveNewlinesFromGtidSet() {
+    public void shouldRemoveNewlinesFromGtidSet() {
         String gtidExecuted = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2,\n" +
                 "7145bf69-d1ca-11e5-a588-0242ac110004:1-3149,\n" +
                 "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-39";
@@ -621,20 +614,20 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
 
     @FixFor("DBZ-107")
     @Test
-    void shouldNotSetBlankGtidSet() {
+    public void shouldNotSetBlankGtidSet() {
         offsetContext.setCompletedGtidSet("");
         assertThat(offsetContext.gtidSet()).isNull();
     }
 
     @FixFor("DBZ-107")
     @Test
-    void shouldNotSetNullGtidSet() {
+    public void shouldNotSetNullGtidSet() {
         offsetContext.setCompletedGtidSet(null);
         assertThat(offsetContext.gtidSet()).isNull();
     }
 
     @Test
-    void shouldHaveTimestamp() {
+    public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setSourceTime(Instant.ofEpochSecond(1_024, 0));
         source.databaseEvent("mysql");
@@ -642,21 +635,21 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void versionIsPresent() {
+    public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
         source.databaseEvent("mysql");
         assertThat(source.struct().getString(BinlogSourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(getModuleVersion());
     }
 
     @Test
-    void connectorIsPresent() {
+    public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
         source.databaseEvent("mysql");
         assertThat(source.struct().getString(BinlogSourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(getModuleName());
     }
 
     @Test
-    void schemaIsCorrect() {
+    public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name(String.format("io.debezium.connector.%s.Source", getModuleName()))
                 .field("version", Schema.STRING_SCHEMA)

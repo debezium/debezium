@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * @author Omar Al-Safi
@@ -17,31 +17,31 @@ import org.junit.jupiter.api.Test;
 public class BinlogUnsignedIntegerConverterTest {
 
     @Test
-    void shouldConvertSignedBinlogTinyintToUnsigned() {
+    public void shouldConvertSignedBinlogTinyintToUnsigned() {
         assertEquals((short) 255, BinlogUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
         assertEquals((short) 255, BinlogUnsignedIntegerConverter.convertUnsignedTinyint((short) 255));
     }
 
     @Test
-    void shouldConvertSignedBinlogSmallintToUnsigned() {
+    public void shouldConvertSignedBinlogSmallintToUnsigned() {
         assertEquals(65535, BinlogUnsignedIntegerConverter.convertUnsignedSmallint(-1));
         assertEquals(65535, BinlogUnsignedIntegerConverter.convertUnsignedSmallint(65535));
     }
 
     @Test
-    void shouldConvertSignedBinlogMediumintToUnsigned() {
+    public void shouldConvertSignedBinlogMediumintToUnsigned() {
         assertEquals(16777215, BinlogUnsignedIntegerConverter.convertUnsignedMediumint(-1));
         assertEquals(16777215, BinlogUnsignedIntegerConverter.convertUnsignedMediumint(16777215));
     }
 
     @Test
-    void shouldConvertSignedBinlogIntToUnsigned() {
+    public void shouldConvertSignedBinlogIntToUnsigned() {
         assertEquals(4294967295L, BinlogUnsignedIntegerConverter.convertUnsignedInteger(-1L));
         assertEquals(4294967295L, BinlogUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
     }
 
     @Test
-    void shouldConvertSignedBinlogBigintToUnsigned() {
+    public void shouldConvertSignedBinlogBigintToUnsigned() {
         assertEquals(new BigDecimal("18446744073709551615"), BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-1")));
         assertEquals(new BigDecimal("18446744073709551615"), BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("18446744073709551615")));
     }

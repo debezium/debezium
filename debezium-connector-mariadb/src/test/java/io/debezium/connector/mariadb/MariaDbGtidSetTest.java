@@ -7,7 +7,7 @@ package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet;
 
@@ -23,7 +23,7 @@ public class MariaDbGtidSetTest {
     private MariaDbGtidSet gtids;
 
     @Test
-    void shouldParseGtid() {
+    public void shouldParseGtid() {
         gtids = new MariaDbGtidSet(DOMAIN_SERVER_ID + "-3");
         assertThat(gtids.forStreamId(new MariaDbGtidSet.MariaDbGtidStreamId(1, 2)).hasSequence(3)).isTrue();
     }

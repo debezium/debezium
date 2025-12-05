@@ -22,10 +22,10 @@ import java.util.concurrent.TimeoutException;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -68,16 +68,16 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     public SkipTestRule skipTest = new SkipTestRule();
     private Configuration config;
 
-    @BeforeEach
-    void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
+    @Before
+    public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() throws SQLException {
+    @After
+    public void afterEach() throws SQLException {
         try {
             stopConnector();
             // MariaDB's binlog compression is set globally, so we need to toggle this off after the test.
@@ -91,7 +91,7 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     }
 
     @Test
-    void shouldCaptureMultipleWriteEvents() throws Exception {
+    public void shouldCaptureMultipleWriteEvents() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
                 .build();
@@ -144,7 +144,7 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     }
 
     @Test
-    void shouldCorrectlySkipEventsInCompressedTransaction() throws Exception {
+    public void shouldCorrectlySkipEventsInCompressedTransaction() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
                 // Since we rely on event counts to determine where to stop and restart,

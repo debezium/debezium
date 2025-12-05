@@ -8,7 +8,6 @@ package io.debezium.connector.binlog;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -27,10 +26,10 @@ import java.util.function.Function;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
@@ -80,8 +79,8 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         Files.delete(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
@@ -89,8 +88,8 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         CONFLICT_NAMES_DATABASE.createAndInitialize();
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }
@@ -115,32 +114,32 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     protected abstract String getSnapshotLockingModeNone();
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabase() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
         snapshotOfSingleDatabase(true, false, true);
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
         snapshotOfSingleDatabase(false, false, true);
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTables() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTables() throws Exception {
         snapshotOfSingleDatabase(false, true, true);
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseNoData() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseNoData() throws Exception {
         snapshotOfSingleDatabase(true, false, false);
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockNoData() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockNoData() throws Exception {
         snapshotOfSingleDatabase(false, false, false);
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTablesNoData() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTablesNoData() throws Exception {
         snapshotOfSingleDatabase(false, true, false);
     }
 
@@ -510,7 +509,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
         config = simpleConfig().with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
 
         // Start the connector ...
@@ -600,26 +599,24 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
-    @Test
-    void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            config = simpleConfig().with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY).build();
+    @Test(expected = DebeziumException.class)
+    public void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
+        config = simpleConfig().with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY).build();
 
-            // Start the connector ...
-            AtomicReference<Throwable> exception = new AtomicReference<>();
-            start(getConnectorClass(), config, (success, message, error) -> {
-                exception.set(error);
-            });
-
-            // a poll is required in order to get the connector to initiate the snapshot
-            waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
-
-            throw (RuntimeException) exception.get();
+        // Start the connector ...
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(getConnectorClass(), config, (success, message, error) -> {
+            exception.set(error);
         });
+
+        // a poll is required in order to get the connector to initiate the snapshot
+        waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
+
+        throw (RuntimeException) exception.get();
     }
 
     @Test
-    void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
         Builder builder = simpleConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("customers"))
@@ -652,7 +649,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() throws Exception {
+    public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() throws Exception {
         config = simpleConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST,
                         "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
@@ -706,7 +703,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldSnapshotTablesInRowCountOrderAsc() throws Exception {
+    public void shouldSnapshotTablesInRowCountOrderAsc() throws Exception {
         try (
                 BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
                 JdbcConnection connection = db.connect();
@@ -742,7 +739,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldSnapshotTablesInRowCountOrderDesc() throws Exception {
+    public void shouldSnapshotTablesInRowCountOrderDesc() throws Exception {
         try (
                 BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
                 JdbcConnection connection = db.connect();
@@ -778,7 +775,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldSnapshotTablesInLexicographicalOrder() throws Exception {
+    public void shouldSnapshotTablesInLexicographicalOrder() throws Exception {
         config = simpleConfig().build();
         // Start the connector ...
         start(getConnectorClass(), config);
@@ -806,7 +803,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
-    void shouldCreateSnapshotSchemaOnly() throws Exception {
+    public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)

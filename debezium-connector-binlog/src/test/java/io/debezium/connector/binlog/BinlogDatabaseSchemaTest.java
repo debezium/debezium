@@ -6,7 +6,6 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -15,9 +14,9 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
@@ -57,8 +56,8 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         this.ddlStatements = ddlStatements;
     }
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         Testing.Files.delete(TEST_FILE_PATH);
     }
 
@@ -66,8 +65,8 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     protected abstract S getSchema(Configuration config);
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         if (schema != null) {
             try {
                 schema.close();
@@ -79,7 +78,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
+    public void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig().build();
         DebeziumOpenLineageEmitter.init(config.asMap(), "mysql");
@@ -105,7 +104,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
+    public void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -135,29 +134,27 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertHistoryRecorded(config, partition, offset);
     }
 
-    @Test
-    void shouldFailOnUnparseableDdl() throws InterruptedException {
-        assertThrows(ParsingException.class, () -> {
-            // Testing.Print.enable();
-            final Configuration config = DATABASE.defaultConfig()
-                    .build();
-            DebeziumOpenLineageEmitter.init(config.asMap(), "mysql");
-            schema = getSchema(config);
-            schema.initializeStorage();
-            final P partition = initializePartition(connectorConfig, config);
-            final O offset = initializeOffset(connectorConfig);
+    @Test(expected = ParsingException.class)
+    public void shouldFailOnUnparseableDdl() throws InterruptedException {
+        // Testing.Print.enable();
+        final Configuration config = DATABASE.defaultConfig()
+                .build();
+        DebeziumOpenLineageEmitter.init(config.asMap(), "mysql");
+        schema = getSchema(config);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
 
-            // Set up the server ...
-            offset.setBinlogStartPoint("binlog.001", 400);
-            schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
-                    offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-            schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
-                    offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        });
+        // Set up the server ...
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
+                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
+                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
     }
 
     @Test
-    void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
+    public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -191,7 +188,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
+    public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -226,7 +223,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldAllowDecimalPrecision() throws InterruptedException {
+    public void shouldAllowDecimalPrecision() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -383,7 +380,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void addCommentToSchemaTest() {
+    public void addCommentToSchemaTest() {
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "captured")

@@ -25,11 +25,11 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -54,14 +54,14 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         super.before();
         KafkaClusterUtils.createTopic(getSignalsTopic(), 1, (short) 1, kafkaCluster.getBootstrapServers());
     }
 
-    @BeforeAll
-    static void startKafka() {
+    @BeforeClass
+    public static void startKafka() {
         Map<String, String> props = new HashMap<>();
         props.put("auto.create.topics.enable", "false");
 
@@ -73,8 +73,8 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         kafkaCluster.start();
     }
 
-    @AfterAll
-    static void stopKafka() {
+    @AfterClass
+    public static void stopKafka() {
         if (kafkaCluster != null) {
             kafkaCluster.stop();
         }
@@ -140,7 +140,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    void emptyHighWatermark() throws Exception {
+    public void emptyHighWatermark() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -156,7 +156,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    void filteredEvents() throws Exception {
+    public void filteredEvents() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -195,7 +195,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    void inserts4Pks() throws Exception {
+    public void inserts4Pks() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -217,7 +217,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    void inserts4PksWithSignalFile() throws Exception {
+    public void inserts4PksWithSignalFile() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -241,7 +241,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
 
     @FixFor("DBZ-7441")
     @Test
-    void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
+    public void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -301,7 +301,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    void testPauseDuringSnapshotKafkaSignal() throws Exception {
+    public void testPauseDuringSnapshotKafkaSignal() throws Exception {
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
         waitForConnectorToStart();

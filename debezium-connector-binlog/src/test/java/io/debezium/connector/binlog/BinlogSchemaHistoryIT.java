@@ -14,9 +14,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -40,8 +40,8 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
 
     private Configuration config;
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         stopConnector();
         DATABASE = TestHelper.getUniqueDatabase("history", "history-dbz")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -51,8 +51,8 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }
@@ -166,7 +166,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreView() throws SQLException, InterruptedException {
+    public void shouldNotStoreView() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -202,7 +202,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreFunction() throws SQLException, InterruptedException {
+    public void shouldNotStoreFunction() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -237,7 +237,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreTrigger() throws SQLException, InterruptedException {
+    public void shouldNotStoreTrigger() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -277,7 +277,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreProcedure() throws SQLException, InterruptedException {
+    public void shouldNotStoreProcedure() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -313,7 +313,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreTruncateIfSkipped() throws SQLException, InterruptedException {
+    public void shouldNotStoreTruncateIfSkipped() throws SQLException, InterruptedException {
         skipAvroValidation();
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
@@ -346,7 +346,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldStoreTruncateIfNotSkipped() throws SQLException, InterruptedException {
+    public void shouldStoreTruncateIfNotSkipped() throws SQLException, InterruptedException {
         skipAvroValidation();
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
@@ -386,7 +386,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreAnalyzeOrOptimize() throws SQLException, InterruptedException {
+    public void shouldNotStoreAnalyzeOrOptimize() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -419,7 +419,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreUserStatements() throws SQLException, InterruptedException {
+    public void shouldNotStoreUserStatements() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
@@ -452,7 +452,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    void shouldNotStoreRoleStatements() throws SQLException, InterruptedException {
+    public void shouldNotStoreRoleStatements() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();

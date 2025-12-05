@@ -20,11 +20,11 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -47,8 +47,8 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected static StrimziKafkaCluster kafkaCluster;
 
-    @BeforeAll
-    static void startKafka() {
+    @BeforeClass
+    public static void startKafka() {
         Map<String, String> props = new HashMap<>();
         props.put("auto.create.topics.enable", "false");
 
@@ -61,23 +61,23 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         kafkaCluster.start();
     }
 
-    @AfterAll
-    static void stopKafka() {
+    @AfterClass
+    public static void stopKafka() {
         if (kafkaCluster != null) {
             kafkaCluster.stop();
         }
     }
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         try {
             stopConnector();
         }
@@ -101,7 +101,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
-    void givenOffsetCommitDisabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
+    public void givenOffsetCommitDisabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws Exception {
 
         final String signalTopic = "signals_topic-1";
@@ -121,7 +121,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
-    void givenOffsetCommitEnabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
+    public void givenOffsetCommitEnabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws Exception {
 
         final String signalTopic = "signals_topic-3";
@@ -138,7 +138,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
-    void givenOffsetCommitEnabledAndMultipleSignalsSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
+    public void givenOffsetCommitEnabledAndMultipleSignalsSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws Exception {
 
         final String signalTopic = "signals_topic-4";
@@ -167,7 +167,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
-    void givenOffsetCommitEnabledAndASignalSentWithConnectorNotRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
+    public void givenOffsetCommitEnabledAndASignalSentWithConnectorNotRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws Exception {
 
         final String signalTopic = "signals_topic-5";

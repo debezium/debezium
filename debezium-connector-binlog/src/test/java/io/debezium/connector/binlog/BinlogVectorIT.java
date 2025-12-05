@@ -12,9 +12,9 @@ import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -40,8 +40,8 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
         this.databaseName = databaseName;
     }
 
-    @BeforeEach
-    void beforeEach() {
+    @Before
+    public void beforeEach() {
         stopConnector();
 
         DATABASE = TestHelper.getUniqueDatabase("vectorit", databaseName)
@@ -52,8 +52,8 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void afterEach() {
+    @After
+    public void afterEach() {
         try {
             stopConnector();
         }
@@ -111,7 +111,7 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
      */
 
     @Test
-    void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig().build();
 
@@ -142,7 +142,7 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)

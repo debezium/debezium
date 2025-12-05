@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.After;
+import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
@@ -31,16 +31,16 @@ public abstract class BinlogNotificationsIT<C extends SourceConnector> extends A
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         try {
             stopConnector();
         }
