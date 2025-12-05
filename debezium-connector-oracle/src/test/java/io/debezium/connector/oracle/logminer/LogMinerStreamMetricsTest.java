@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -44,7 +44,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
-    void testMetrics() {
+    public void testMetrics() {
         metrics.setLastCapturedDmlCount(1);
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
@@ -113,7 +113,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
-    void testLagMetrics() {
+    public void testLagMetrics() {
         // no time difference between connector and database
         long lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(0);
@@ -235,7 +235,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
-    void testOtherMetrics() {
+    public void testOtherMetrics() {
         metrics.incrementScnFreezeCount();
         assertThat(metrics.getScnFreezeCount()).isEqualTo(1);
 

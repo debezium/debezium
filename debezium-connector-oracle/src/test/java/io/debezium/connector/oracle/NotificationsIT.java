@@ -9,8 +9,8 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.After;
+import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -21,8 +21,8 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
 
     private OracleConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
         TestHelper.dropAllTables();
@@ -34,8 +34,8 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
 
         TestHelper.dropAllTables();

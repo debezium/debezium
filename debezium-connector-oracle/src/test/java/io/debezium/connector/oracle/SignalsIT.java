@@ -15,12 +15,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -53,20 +53,20 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     @Rule
     public TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
     }
 
-    @AfterAll
-    static void closeConnection() throws SQLException {
+    @AfterClass
+    public static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.debezium_signal");
 
@@ -97,14 +97,14 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         TestHelper.dropTable(connection, "debezium.debezium_signal");
         TestHelper.dropTable(connection, "debezium.customer");
     }
 
     @Test
-    void signalSchemaChange() throws Exception {
+    public void signalSchemaChange() throws Exception {
         // Testing.Print.enable();
 
         Configuration config = TestHelper.defaultConfig()

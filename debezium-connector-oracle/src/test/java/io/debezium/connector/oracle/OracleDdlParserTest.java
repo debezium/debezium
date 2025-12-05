@@ -15,8 +15,8 @@ import java.util.Optional;
 
 import jakarta.validation.constraints.NotNull;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -40,15 +40,15 @@ public class OracleDdlParserTest {
     private OracleDdlParser parser;
     private Tables tables;
 
-    @BeforeEach
-    void setUp() {
+    @Before
+    public void setUp() {
         final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
         parser = new OracleDdlParser(true, null, config.getTableFilters().dataCollectionFilter());
         tables = new Tables();
     }
 
     @Test
-    void shouldParseCreateAndAlterTable() throws Exception {
+    public void shouldParseCreateAndAlterTable() throws Exception {
         final String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
         Objects.requireNonNull(createStatement);
         parser.setCurrentDatabase(PDB_NAME);
@@ -139,7 +139,7 @@ public class OracleDdlParserTest {
      * this is original test by Gunnar Morling
      */
     @Test
-    void shouldParseCreateTable() {
+    public void shouldParseCreateTable() {
         parser = new OracleDdlParser(true, false, true, null, Tables.TableFilter.includeAll());
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("DEBEZIUM");
@@ -195,7 +195,7 @@ public class OracleDdlParserTest {
     }
 
     @Test
-    void testParsingMultiStatementTableMetadataResult() throws Exception {
+    public void testParsingMultiStatementTableMetadataResult() throws Exception {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("IDENTITYDB");
 

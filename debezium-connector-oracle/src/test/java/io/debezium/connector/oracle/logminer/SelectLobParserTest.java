@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Rule;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;

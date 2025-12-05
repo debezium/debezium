@@ -29,10 +29,10 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -91,8 +91,8 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
     private DecimalHandlingMode decimalHandlingMode;
     private TemporalPrecisionMode temporalPrecisionMode;
 
-    @BeforeEach
-    void beforeEach() throws Exception {
+    @Before
+    public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         decimalHandlingMode = DecimalHandlingMode.PRECISE; // default
         temporalPrecisionMode = TemporalPrecisionMode.ADAPTIVE; // default
@@ -104,8 +104,8 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.dropAllTables();
     }
 
-    @AfterEach
-    void afterEach() throws Exception {
+    @After
+    public void afterEach() throws Exception {
         if (connection != null) {
             TestHelper.dropAllTables();
             connection.close();

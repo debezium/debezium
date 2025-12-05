@@ -8,9 +8,9 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -69,8 +69,8 @@ public class OracleMetricsIT extends AbstractMetricsTest<OracleConnector> {
         return true;
     }
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
 
         TestHelper.dropAllTables();
@@ -90,16 +90,16 @@ public class OracleMetricsIT extends AbstractMetricsTest<OracleConnector> {
         connection.execute("ALTER TABLE debezium.customer ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
-    @AfterAll
-    static void closeConnection() throws SQLException {
+    @AfterClass
+    public static void closeConnection() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.customer");
             connection.close();
         }
     }
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         connection.execute("delete from debezium.customer");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -20,8 +20,8 @@ import io.debezium.util.Testing;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
 public class EmbeddedInfinispanStreamingChangeEventSourceIT extends AbstractBufferedLogMinerStreamingChangeEventSourceIT {
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         super.before();
 
         // Before each test make sure to clear all infinispan caches

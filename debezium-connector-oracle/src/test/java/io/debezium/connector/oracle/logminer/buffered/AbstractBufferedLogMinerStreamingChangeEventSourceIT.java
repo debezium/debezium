@@ -13,10 +13,10 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -43,8 +43,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -56,8 +56,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         TestHelper.streamTable(connection, "dbz3752");
     }
 
-    @AfterEach
-    void after() throws Exception {
+    @After
+    public void after() throws Exception {
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "dbz3752");

@@ -13,7 +13,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.doc.FixFor;
@@ -205,7 +205,7 @@ public class CommitScnTest {
     }
 
     @Test
-    void shouldCommitAlreadyBeenHandled() throws Exception {
+    public void shouldCommitAlreadyBeenHandled() throws Exception {
         CommitScn commitScn = CommitScn.valueOf("12345:1:123456789-234567890");
         LogMinerEventRow row = mock(LogMinerEventRow.class);
         when(row.getThread()).thenReturn(1);
@@ -226,7 +226,7 @@ public class CommitScnTest {
     }
 
     @Test
-    void shouldNotCommitAlreadyBeenHandled() throws Exception {
+    public void shouldNotCommitAlreadyBeenHandled() throws Exception {
         CommitScn commitScn = CommitScn.valueOf("12345:1:123456789-234567890");
         LogMinerEventRow row = mock(LogMinerEventRow.class);
         when(row.getThread()).thenReturn(1);

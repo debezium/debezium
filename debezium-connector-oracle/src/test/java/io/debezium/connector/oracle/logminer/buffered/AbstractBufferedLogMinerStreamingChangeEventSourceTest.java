@@ -21,10 +21,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -92,7 +92,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     protected OracleOffsetContext offsetContext;
     protected OracleConnection connection;
 
-    @BeforeEach
+    @Before
     @SuppressWarnings({ "unchecked" })
     public void before() throws Exception {
         DebeziumOpenLineageEmitter.init(getConfig().build().asMap(), "oracle");
@@ -110,8 +110,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         this.metrics = createMetrics(schema);
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         if (schema != null) {
             try {
                 schema.close();
@@ -129,14 +129,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCacheIsEmpty() throws Exception {
+    public void testCacheIsEmpty() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
     @Test
-    void testCacheIsNotEmptyWhenTransactionIsAdded() throws Exception {
+    public void testCacheIsNotEmptyWhenTransactionIsAdded() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(1, TRANSACTION_ID_1));
@@ -156,7 +156,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCacheIsEmptyWhenTransactionIsCommitted() throws Exception {
+    public void testCacheIsEmptyWhenTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -178,7 +178,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCacheIsEmptyWhenTransactionIsRolledBack() throws Exception {
+    public void testCacheIsEmptyWhenTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -200,7 +200,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCacheIsNotEmptyWhenFirstTransactionIsRolledBack() throws Exception {
+    public void testCacheIsNotEmptyWhenFirstTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -227,7 +227,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCacheIsNotEmptyWhenSecondTransactionIsRolledBack() throws Exception {
+    public void testCacheIsNotEmptyWhenSecondTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -254,7 +254,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCalculateScnWhenTransactionIsCommitted() throws Exception {
+    public void testCalculateScnWhenTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -278,7 +278,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
+    public void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -311,7 +311,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
+    public void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -402,7 +402,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testAbandonOneTransaction() throws Exception {
+    public void testAbandonOneTransaction() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
@@ -441,7 +441,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    void testAbandonTransactionHavingAnotherOne() throws Exception {
+    public void testAbandonTransactionHavingAnotherOne() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }

@@ -8,8 +8,8 @@ package io.debezium.connector.oracle;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.After;
+import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
@@ -36,7 +36,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<OracleConnector
 
     private OracleConnection connection;
 
-    @BeforeEach
+    @Before
     @Override
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
@@ -48,7 +48,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<OracleConnector
         super.beforeEach();
     }
 
-    @AfterEach
+    @After
     @Override
     public void afterEach() throws Exception {
         super.afterEach();

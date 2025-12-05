@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -38,15 +38,15 @@ public class OracleDatabaseSchemaTest {
     protected OracleConnection connection;
     protected OracleDatabaseSchema schema;
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         this.connection = Mockito.mock(OracleConnection.class);
         Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
         this.schema = createOracleDatabaseSchema();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         if (schema != null) {
             try {
                 schema.close();

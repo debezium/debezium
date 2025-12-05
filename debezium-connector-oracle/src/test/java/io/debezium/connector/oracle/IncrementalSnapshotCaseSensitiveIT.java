@@ -9,9 +9,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -34,8 +34,8 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "a");
@@ -57,8 +57,8 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws Exception {
+    @After
+    public void after() throws Exception {
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "a");

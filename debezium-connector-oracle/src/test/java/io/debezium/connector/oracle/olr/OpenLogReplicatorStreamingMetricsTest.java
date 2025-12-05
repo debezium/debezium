@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -38,7 +38,7 @@ public class OpenLogReplicatorStreamingMetricsTest extends OracleStreamingMetric
     }
 
     @Test
-    void testCheckpointDetalisMetrics() {
+    public void testCheckpointDetalisMetrics() {
         metrics.setCheckpointDetails(Scn.valueOf("12345"), 98765L);
         assertThat(metrics.getCheckpointScn()).isEqualTo(Scn.valueOf("12345").asBigInteger());
         assertThat(metrics.getCheckpointIndex()).isEqualTo(98765L);

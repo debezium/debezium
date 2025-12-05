@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 
 import org.junit.Rule;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.Scn;
@@ -25,21 +25,21 @@ public class SqlUtilsTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @Test
-    void testDatabaseSupplementalLogMinCheckSql() {
+    public void testDatabaseSupplementalLogMinCheckSql() {
         String result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
         String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void testTableSupplementalLogCheckSql() {
+    public void testTableSupplementalLogCheckSql() {
         String result = SqlUtils.tableSupplementalLoggingCheckQuery();
         String expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void testScnByTimeDeltaSql() {
+    public void testScnByTimeDeltaSql() {
         String result = SqlUtils.getScnByTimeDeltaQuery(Scn.valueOf(123L), Duration.ofMinutes(1));
         String expected = "select timestamp_to_scn(CAST(scn_to_timestamp(123) as date) - INTERVAL '1' MINUTE) from dual";
         assertThat(expected.equals(result)).isTrue();
@@ -48,14 +48,14 @@ public class SqlUtilsTest {
     }
 
     @Test
-    void testRedoLogStatusSql() {
+    public void testRedoLogStatusSql() {
         String result = SqlUtils.redoLogStatusQuery();
         String expected = "SELECT F.MEMBER, R.STATUS FROM V$LOGFILE F, V$LOG R WHERE F.GROUP# = R.GROUP# ORDER BY 2";
         assertThat(expected.equals(result)).isTrue();
     }
 
     @Test
-    void testLogSwitchHistorySql() {
+    public void testLogSwitchHistorySql() {
         String result = SqlUtils.switchHistoryQuery(null);
         String expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG WHERE FIRST_TIME > TRUNC(SYSDATE)" +
                 " AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1)";
@@ -68,28 +68,28 @@ public class SqlUtilsTest {
     }
 
     @Test
-    void testCurrentRedoLogFileNameSql() {
+    public void testCurrentRedoLogFileNameSql() {
         String result = SqlUtils.currentRedoNameQuery();
         String expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void testCurrentRedoLogSequenceSql() {
+    public void testCurrentRedoLogSequenceSql() {
         String result = SqlUtils.currentRedoLogSequenceQuery();
         String expected = "SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT' ORDER BY SEQUENCE#";
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void testDatabaseSupplementalLogAllCheckSql() {
+    public void testDatabaseSupplementalLogAllCheckSql() {
         String result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();
         String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void testOldestFirstArchiveLogChangeSql() {
+    public void testOldestFirstArchiveLogChangeSql() {
         final String sqlStem = "SELECT MIN(FIRST_CHANGE#) " +
                 "FROM (" +
                 "SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
@@ -121,7 +121,7 @@ public class SqlUtilsTest {
     }
 
     @Test
-    void testAllMinableLogsSql() {
+    public void testAllMinableLogsSql() {
         final String onlineLogsStem = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
                 "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
                 "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD " +

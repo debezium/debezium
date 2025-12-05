@@ -6,12 +6,11 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.sql.SQLException;
 
 import org.junit.Rule;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
@@ -69,19 +68,17 @@ public class XmlBeginParserTest {
         assertThat(entry.getObjectName()).isEqualTo("XML_TEST OBJ");
     }
 
-    @Test
+    @Test(expected = ParsingException.class)
     @FixFor("DBZ-3605")
     public void shouldNotParseSimpleXmlBeginRedoSqlWithInvalidPreamble() {
-        assertThrows(ParsingException.class, () -> {
-            final Table table = Table.editor()
-                    .tableId(TableId.parse("DEBEZIUM.XML_TEST"))
-                    .addColumn(Column.editor().name("ID").create())
-                    .addColumn(Column.editor().name("DATA").create())
-                    .create();
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.XML_TEST"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
 
-            String redoSql = "XMLDOCBEGIN:  select \"DATA\" from \"DEBEZIUM\".\"XML_TEST\" where \"ID\" = '1'";
-            parser.parse(redoSql, table);
-        });
+        String redoSql = "XMLDOCBEGIN:  select \"DATA\" from \"DEBEZIUM\".\"XML_TEST\" where \"ID\" = '1'";
+        parser.parse(redoSql, table);
     }
 
     @Test

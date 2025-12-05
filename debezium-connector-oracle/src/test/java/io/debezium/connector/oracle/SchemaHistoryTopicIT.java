@@ -14,9 +14,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
@@ -38,8 +38,8 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.dropTable(connection, "debezium.tablea");
         TestHelper.dropTable(connection, "debezium.tableb");
@@ -60,8 +60,8 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.tablea");
             TestHelper.dropTable(connection, "debezium.tableb");

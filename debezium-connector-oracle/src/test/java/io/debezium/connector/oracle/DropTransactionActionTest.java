@@ -14,9 +14,9 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.Optional;
 
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
@@ -45,7 +45,7 @@ public class DropTransactionActionTest {
     private BufferedLogMinerStreamingChangeEventSource streamingSource;
     private OraclePartition partition;
 
-    @BeforeEach
+    @Before
     @SuppressWarnings("unchecked")
     public void setUp() throws Exception {
         coordinator = mock(ChangeEventSourceCoordinator.class);

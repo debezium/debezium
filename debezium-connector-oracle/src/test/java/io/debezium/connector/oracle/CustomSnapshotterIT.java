@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -30,8 +30,8 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String PK_FIELD = "PK";
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
 
         connection = TestHelper.testConnection();
 
@@ -45,8 +45,8 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("ALTER TABLE debezium.b ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
-    @AfterAll
-    static void closeConnection() throws SQLException {
+    @AfterClass
+    public static void closeConnection() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.a");
             TestHelper.dropTable(connection, "debezium.b");
@@ -54,8 +54,8 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -63,7 +63,7 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         connection.execute("INSERT INTO debezium.a (pk, aa) VALUES (1, 1)");
         connection.execute("INSERT INTO debezium.b (pk, aa) VALUES (1, 1)");

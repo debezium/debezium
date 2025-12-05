@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -50,8 +50,8 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
 
     private OracleConnection connection;
 
-    @BeforeEach
-    void beforeEach() throws SQLException {
+    @Before
+    public void beforeEach() throws SQLException {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -61,8 +61,8 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
         connection = TestHelper.testConnection();
     }
 
-    @AfterEach
-    void afterEach() throws SQLException {
+    @After
+    public void afterEach() throws SQLException {
         stopConnector();
 
         if (connection != null) {

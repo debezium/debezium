@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.Rule;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -64,17 +64,17 @@ public class LogMinerQueryBuilderTest {
             "START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# FROM V$LOGMNR_CONTENTS WHERE ";
 
     @Test
-    void testLogMinerQueryFilterNone() {
+    public void testLogMinerQueryFilterNone() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.NONE);
     }
 
     @Test
-    void testLogMinerQueryFilterIn() {
+    public void testLogMinerQueryFilterIn() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.IN);
     }
 
     @Test
-    void testLogMinerQueryFilterRegEx() {
+    public void testLogMinerQueryFilterRegEx() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.REGEX);
     }
 

@@ -13,10 +13,10 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -44,13 +44,13 @@ public class CteQueryIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
     }
 
-    @AfterAll
-    static void closeConnection() throws SQLException {
+    @AfterClass
+    public static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }

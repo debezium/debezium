@@ -8,9 +8,9 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.rules.TestName;
 
 import io.debezium.config.Configuration;
@@ -29,8 +29,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
     @Rule
     public TestName name = new TestName();
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         AbstractOracleDatatypesTest.beforeClass();
         createTables();
 
@@ -44,8 +44,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         insertGeometryTypes();
     }
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         init(TemporalPrecisionMode.ADAPTIVE);
     }
 

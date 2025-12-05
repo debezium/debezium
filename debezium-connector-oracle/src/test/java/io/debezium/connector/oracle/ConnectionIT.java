@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -19,7 +19,7 @@ import io.debezium.util.Testing;
 public class ConnectionIT implements Testing {
 
     @Test
-    void shouldDoStuffWithDatabase() throws SQLException {
+    public void shouldDoStuffWithDatabase() throws SQLException {
 
         Configuration config = TestHelper.testConfig().with("database.query.timeout.ms", "1000").build();
 
@@ -39,7 +39,7 @@ public class ConnectionIT implements Testing {
     }
 
     @Test
-    void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
 
         Configuration config = TestHelper.defaultConfig().with("database.query.timeout.ms", "1000").build();
 

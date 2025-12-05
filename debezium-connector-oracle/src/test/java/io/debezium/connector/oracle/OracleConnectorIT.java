@@ -15,7 +15,6 @@ import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -52,13 +51,13 @@ import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionTimeoutException;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
+import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,8 +131,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
 
         // Several tests in this class expect the existence of the following tables and only these
@@ -196,8 +195,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("ALTER TABLE debezium.dt_table ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
-    @AfterAll
-    static void closeConnection() throws SQLException {
+    @AfterClass
+    public static void closeConnection() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.customer2");
             TestHelper.dropTable(connection, "customer");
@@ -208,8 +207,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropTable(connection, "debezium.dbz800a");
         TestHelper.dropTable(connection, "debezium.dbz800b");
         connection.execute("delete from debezium.customer");
@@ -282,7 +281,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldTakeSnapshot() throws Exception {
+    public void shouldTakeSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
@@ -332,7 +331,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-6276")
-    @Disabled("Requires database to be configured without ARCHIVELOG_MODE enabled; which conflicts with dbz-oracle images")
+    @Ignore("Requires database to be configured without ARCHIVELOG_MODE enabled; which conflicts with dbz-oracle images")
     public void shouldSkipCheckingArchiveLogIfNoCdc() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
@@ -351,7 +350,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldContinueWithStreamingAfterSnapshot() throws Exception {
+    public void shouldContinueWithStreamingAfterSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
@@ -535,7 +534,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldStreamAfterRestart() throws Exception {
+    public void shouldStreamAfterRestart() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
@@ -579,7 +578,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldStreamAfterRestartAfterSnapshot() throws Exception {
+    public void shouldStreamAfterRestartAfterSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
@@ -623,7 +622,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReadChangeStreamForExistingTable() throws Exception {
+    public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
@@ -755,7 +754,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
+    public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
         try {
             Configuration config = TestHelper.defaultConfig()
@@ -2911,22 +2910,20 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         return localDateTime.toEpochSecond(ZoneOffset.UTC) * MICROS_PER_SECOND;
     }
 
-    @Test
+    @Test(expected = DebeziumException.class)
     @FixFor("DBZ-3986")
     public void shouldCreateSnapshotSchemaOnlyRecoveryExceptionWithoutOffset() {
-        assertThrows(DebeziumException.class, () -> {
-            final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
-            Configuration config = defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
-                    .with(FileSchemaHistory.FILE_PATH, path)
-                    .build();
+        final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
+        Configuration config = defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
+                .with(FileSchemaHistory.FILE_PATH, path)
+                .build();
 
-            // Start the connector ...
-            AtomicReference<Throwable> exception = new AtomicReference<>();
-            start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
-            Testing.Files.delete(path);
-            throw (RuntimeException) exception.get();
-        });
+        // Start the connector ...
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
+        Testing.Files.delete(path);
+        throw (RuntimeException) exception.get();
     }
 
     @Test
@@ -2962,27 +2959,25 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @Test(expected = DebeziumException.class)
     @FixFor("DBZ-3986")
     public void shouldCreateSnapshotSchemaOnlyExceptionWithoutHistory() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            try {
-                Configuration.Builder builder = defaultConfig()
-                        .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                        .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
-                        .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
-                        .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
-                Configuration config = builder.build();
-                consumeRecords(config);
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
+                    .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
+                    .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
+            Configuration config = builder.build();
+            consumeRecords(config);
 
-                AtomicReference<Throwable> exception = new AtomicReference<>();
-                start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
-                throw (RuntimeException) exception.get();
-            }
-            finally {
-                TestHelper.dropTable(connection, "DBZ3986");
-            }
-        });
+            AtomicReference<Throwable> exception = new AtomicReference<>();
+            start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
+            throw (RuntimeException) exception.get();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3986");
+        }
     }
 
     @Test
@@ -3975,7 +3970,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4963")
-    @Disabled("Waits 60 seconds by default, so disabled by default")
+    @Ignore("Waits 60 seconds by default, so disabled by default")
     public void shouldNotRestartLogMiningSessionWithMaxSessionZero() throws Exception {
         TestHelper.dropTable(connection, "dbz4963");
         try {
@@ -5550,7 +5545,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-6660")
-    @Disabled("Test can be flaky when using a brand new docker instance")
+    @Ignore("Test can be flaky when using a brand new docker instance")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
     public void shouldUseEndScnIfDeviationProducesScnOutsideOfUndoRetention() throws Exception {
         try {
@@ -5988,7 +5983,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @Disabled("This test requires manual execution of RMAN steps, so it cannot be automated")
+    @Ignore("This test requires manual execution of RMAN steps, so it cannot be automated")
     @FixFor("DBZ-9416")
     public void shouldNotFailWhenLogIsNoLongerAvailable() throws Exception {
         // Before manually running this test, login to Oracle container using

@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -40,8 +40,8 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "binary_mode_test");
@@ -54,8 +54,8 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         stopConnector();
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "binary_mode_test");
@@ -64,7 +64,7 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveRawBinary() throws InterruptedException {
+    public void shouldReceiveRawBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BYTES);
 
         ByteBuffer expectedValue = ByteBuffer.wrap(new byte[]{ 1, 2, 3 });
@@ -72,7 +72,7 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveHexBinary() throws InterruptedException {
+    public void shouldReceiveHexBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.HEX);
 
         String expectedValue = "010203";
@@ -80,7 +80,7 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveBase64Binary() throws InterruptedException {
+    public void shouldReceiveBase64Binary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BASE64);
 
         String expectedValue = "AQID";
@@ -88,7 +88,7 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
+    public void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BASE64_URL_SAFE);
 
         String expectedValue = "AQID";

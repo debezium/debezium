@@ -7,7 +7,7 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.doc.FixFor;
 
@@ -35,35 +35,35 @@ public class OracleDatabaseVersionTest {
     }
 
     @Test
-    void shouldParseOracle19c() throws Exception {
+    public void shouldParseOracle19c() throws Exception {
         String banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production\nVersion 19.3.0.0.0";
         OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
         assertOracleVersion(version, 19, 3, 0, 0, 0, banner);
     }
 
     @Test
-    void shouldParseOracle21c() throws Exception {
+    public void shouldParseOracle21c() throws Exception {
         String banner = "Oracle Database 21c Express Edition Release 21.0.0.0.0 - Production\nVersion 21.3.0.0.0";
         OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
         assertOracleVersion(version, 21, 3, 0, 0, 0, banner);
     }
 
     @Test
-    void shouldParseOracle23cFree() throws Exception {
+    public void shouldParseOracle23cFree() throws Exception {
         String banner = "Oracle Database 23c Free Release 23.0.0.0.0 - Develop, Learn, and Run for Free\nVersion 23.3.0.23.09";
         OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
         assertOracleVersion(version, 23, 3, 0, 23, 9, banner);
     }
 
     @Test
-    void shouldParseOracle23c() throws Exception {
+    public void shouldParseOracle23c() throws Exception {
         String banner = "Oracle Database 23c Enterprise Edition Release 23.0.0.0.0\nVersion 23.4.0.23.10";
         OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
         assertOracleVersion(version, 23, 4, 0, 23, 10, banner);
     }
 
     @Test
-    void shouldParseOracle23AiDatabase() throws Exception {
+    public void shouldParseOracle23AiDatabase() throws Exception {
         String banner = "Oracle AI Database 26ai Free Release 23.26.0.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.0.0.0";
         OracleDatabaseVersion version = OracleDatabaseVersion.parse(banner);
         assertOracleVersion(version, 23, 26, 0, 0, 0, banner);

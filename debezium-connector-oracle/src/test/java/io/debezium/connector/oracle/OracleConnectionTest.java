@@ -17,8 +17,8 @@ import java.sql.Statement;
 import java.time.Duration;
 
 import org.apache.kafka.connect.errors.RetriableException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -29,8 +29,8 @@ public class OracleConnectionTest {
     private JdbcConfiguration jdbcConfiguration;
     private JdbcConnection.ConnectionFactory connectionFactory;
 
-    @BeforeEach
-    void setUp() throws Exception {
+    @Before
+    public void setUp() throws Exception {
 
         jdbcConfiguration = mock(JdbcConfiguration.class);
         when(jdbcConfiguration.getQueryTimeout()).thenReturn(Duration.ZERO);
@@ -43,7 +43,7 @@ public class OracleConnectionTest {
     }
 
     @Test
-    void whenOracleConnectionGetSQLRecoverableExceptionThenARetriableExceptionWillBeThrown() throws SQLException {
+    public void whenOracleConnectionGetSQLRecoverableExceptionThenARetriableExceptionWillBeThrown() throws SQLException {
 
         when(statement.executeQuery(any()))
                 .thenThrow(new SQLRecoverableException("IO Error: The Network Adapter could not establish the connection (CONNECTION_ID=u/VErjYySfO0HgLtwdCuTQ==)"));

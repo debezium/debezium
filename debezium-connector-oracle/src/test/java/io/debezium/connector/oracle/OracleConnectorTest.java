@@ -16,21 +16,21 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Connector;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 
 public class OracleConnectorTest {
     OracleConnector connector;
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         connector = new OracleConnector();
     }
 
     @Test
-    void testValidateUnableToConnectNoThrow() {
+    public void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
         config.put(CommonConnectorConfig.TOPIC_PREFIX.name(), "dbserver1");
         config.put(OracleConnectorConfig.HOSTNAME.name(), "narnia");
@@ -52,7 +52,7 @@ public class OracleConnectorTest {
     }
 
     @Test
-    void shouldReturnConfigurationDefinition() {
+    public void shouldReturnConfigurationDefinition() {
         assertConfigDefIsValid(connector, OracleConnectorConfig.ALL_FIELDS);
     }
 
