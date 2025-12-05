@@ -534,8 +534,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                             getPartition(),
                             getOffsetContext(),
                             Envelope.Operation.TRUNCATE,
-                            truncateEvent.getDmlEntry().getOldValues(),
-                            truncateEvent.getDmlEntry().getNewValues(),
+                            truncateEvent.getOldValues(),
+                            truncateEvent.getNewValues(),
                             getSchema().tableFor(truncateEvent.getTableId()),
                             getSchema(),
                             Clock.system()));
@@ -566,9 +566,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                             getConfig(),
                             getPartition(),
                             getOffsetContext(),
-                            dmlEvent.getDmlEntry().getEventType(),
-                            dmlEvent.getDmlEntry().getOldValues(),
-                            dmlEvent.getDmlEntry().getNewValues(),
+                            dmlEvent.getEventType(),
+                            dmlEvent.getOldValues(),
+                            dmlEvent.getNewValues(),
                             getSchema().tableFor(dmlEvent.getTableId()),
                             getSchema(),
                             Clock.system()));
