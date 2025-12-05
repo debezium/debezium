@@ -5,14 +5,11 @@
  */
 package io.debezium.connector.postgresql.connection;
 
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 
 /**
@@ -39,13 +36,10 @@ public class WalPositionLocator {
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
     private final Operation lastProcessedMessageType;
-    private Lsn txStartLsn = null;
-    private Lsn lsnAfterLastEventStoredLsn = null;
     private Lsn firstLsnReceived = null;
     private boolean passMessages = true;
     private Lsn startStreamingLsn = null;
-    private boolean storeLsnAfterLastEventStoredLsn = false;
-    private Set<Lsn> lsnSeen = new HashSet<>(1_000);
+    private boolean foundLastProcessedLsn = false;
 
     public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
@@ -71,76 +65,66 @@ public class WalPositionLocator {
     public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message) {
         LOGGER.trace("Processing LSN '{}', operation '{}'", currentLsn, message.getOperation());
 
-        lsnSeen.add(currentLsn);
-
         if (firstLsnReceived == null) {
             firstLsnReceived = currentLsn;
             LOGGER.info("First LSN '{}' received", firstLsnReceived);
         }
-        if (storeLsnAfterLastEventStoredLsn) {
-            // Event that immediately follows the last event seen
-            // We can resume streaming from it
-            if (currentLsn.equals(lastEventStoredLsn)) {
-                // BEGIN and first message after change have the same LSN
-                if (txStartLsn != null
-                        && (lastProcessedMessageType == null || lastProcessedMessageType == Operation.BEGIN || lastProcessedMessageType == Operation.COMMIT)) {
-                    // start from the BEGIN tx; prevent skipping of unprocessed event after BEGIN or previous tx COMMIT
-                    LOGGER.info("Will restart from LSN '{}' corresponding to the event following the BEGIN event", txStartLsn);
-                    startStreamingLsn = txStartLsn;
-                    return Optional.of(startStreamingLsn);
-                }
-                return Optional.empty();
-            }
-            lsnAfterLastEventStoredLsn = currentLsn;
-            storeLsnAfterLastEventStoredLsn = false;
-            LOGGER.info("LSN after last stored change LSN '{}' received", lsnAfterLastEventStoredLsn);
-            startStreamingLsn = lsnAfterLastEventStoredLsn;
-            return Optional.of(startStreamingLsn);
-        }
-        if (currentLsn.equals(lastEventStoredLsn)) {
-            storeLsnAfterLastEventStoredLsn = true;
-        }
 
-        if (lastCommitStoredLsn == null) {
+        // Case 1: No previous state exists - start from the beginning
+        if (lastEventStoredLsn == null) {
+            LOGGER.info("No previous state found, starting from first LSN '{}'", firstLsnReceived);
             startStreamingLsn = firstLsnReceived;
             return Optional.of(startStreamingLsn);
         }
 
-        switch (message.getOperation()) {
-            case BEGIN:
-                txStartLsn = currentLsn;
-                break;
-            case COMMIT:
-                if (currentLsn.compareTo(lastCommitStoredLsn) > 0) {
-                    LOGGER.info("Received COMMIT LSN '{}' larger than than last stored commit LSN '{}'", currentLsn,
-                            lastCommitStoredLsn);
-                    if (lsnAfterLastEventStoredLsn != null) {
-                        startStreamingLsn = lsnAfterLastEventStoredLsn;
-                        LOGGER.info("Will restart from LSN '{}' that follows the lastest stored", startStreamingLsn);
-                        return Optional.of(startStreamingLsn);
-                    }
-                    else if (txStartLsn != null) {
-                        // Transaction that has not been processed and at the same
-                        // time the event following the last seen was not met so
-                        // replaying from the start of transaction
-                        startStreamingLsn = txStartLsn;
-                        LOGGER.info("Will restart from LSN '{}' that is start of the first unprocessed transaction", startStreamingLsn);
-                        return Optional.of(startStreamingLsn);
-                    }
-                    else {
-                        // Transaction that has not been processed and at the same
-                        // time the event following the last seen was not met and
-                        // transaction start event has not been met so replaying
-                        // from the very first event
-                        startStreamingLsn = firstLsnReceived;
-                        LOGGER.info("Will restart from LSN '{}' that is the first LSN available", startStreamingLsn);
-                        return Optional.of(startStreamingLsn);
-                    }
+        // Case 2: Found the last processed LSN earlier - now looking for the next LSN to resume from
+        if (foundLastProcessedLsn) {
+            /*
+             * Even after discovering the lastEventStoredLsn, it is possible that the current LSN is still
+             * equals to lastEventStoredLsn, because of the following scenario:
+             *
+             *   LSN | operation
+             *   ---------------
+             *   123 | COMMIT
+             *   123 | BEGIN
+             *   123 | INSERT
+             *   124 | COMMIT
+             */
+            if (currentLsn.equals(lastEventStoredLsn)) {
+                // If the last processed message was of type BEGIN or COMMIT, we can start streaming from the current LSN
+                // as it will prevent skipping of unprocessed event after BEGIN or previous tx COMMIT with same LSN
+                // Case 2.1: last processed message was BEGIN or COMMIT - start from the same LSN
+                if (lastProcessedMessageType == Operation.BEGIN || lastProcessedMessageType == Operation.COMMIT) {
+                    LOGGER.info("Will restart from LSN '{}' corresponding to the event following the last stored event", currentLsn);
+                    startStreamingLsn = currentLsn;
+                    return Optional.of(startStreamingLsn);
                 }
-                break;
-            default:
-                break;
+                // If the last processed message type is not BEGIN or COMMIT, we need to wait for the next LSN
+                LOGGER.info("Waiting for next LSN after last stored event '{}'", lastEventStoredLsn);
+                return Optional.empty();
+            }
+
+            // Case 2.2: Found the next LSN after lastEventStoredLsn - can start streaming from here
+            LOGGER.info("LSN after last stored change LSN '{}' received", currentLsn);
+            startStreamingLsn = currentLsn;
+            return Optional.of(startStreamingLsn);
         }
+
+        // Found the last processed LSN in the stream
+        if (currentLsn.equals(lastEventStoredLsn)) {
+            foundLastProcessedLsn = true;
+        }
+
+        if (message.getOperation().equals(Operation.COMMIT) && !foundLastProcessedLsn) {
+            // Case 3: We found a COMMIT without seeing the lastEventStoredLsn yet
+            // If the current LSN is greater than the last commit stored LSN, we can start streaming from the first LSN
+            if (lastCommitStoredLsn == null || currentLsn.compareTo(lastCommitStoredLsn) > 0) {
+                LOGGER.info("Will restart from LSN '{}' corresponding to the first LSN available", firstLsnReceived);
+                startStreamingLsn = firstLsnReceived;
+                return Optional.of(startStreamingLsn);
+            }
+        }
+
         return Optional.empty();
     }
 
@@ -158,14 +142,7 @@ public class WalPositionLocator {
         if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
             passMessages = true;
-            lsnSeen = new HashSet<>(); // Empty the Map as it might be large and is no longer needed
             return false;
-        }
-        if (lsn.isValid() && !lsnSeen.contains(lsn)) {
-            throw new DebeziumException(String.format(
-                    "Message with LSN '%s' not present among LSNs seen in the location phase '%s'. This is unexpected and can lead to an infinite loop or a data loss.",
-                    lsn,
-                    lsnSeen));
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
@@ -196,9 +173,9 @@ public class WalPositionLocator {
     @Override
     public String toString() {
         return "WalPositionLocator [lastCommitStoredLsn=" + lastCommitStoredLsn + ", lastEventStoredLsn="
-                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType + ", txStartLsn="
-                + txStartLsn + ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn + ", firstLsnReceived="
-                + firstLsnReceived + ", passMessages=" + passMessages + ", startStreamingLsn=" + startStreamingLsn
-                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + "]";
+                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType
+                + ", firstLsnReceived=" + firstLsnReceived + ", passMessages=" + passMessages
+                + ", startStreamingLsn=" + startStreamingLsn + ", storeLsnAfterLastEventStoredLsn="
+                + foundLastProcessedLsn + "]";
     }
 }
