@@ -7,10 +7,11 @@ package io.debezium.pipeline.signal;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.actions.SignalAction;
@@ -31,6 +33,8 @@ import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.AbstractPartition;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Threads;
 
 /**
@@ -43,6 +47,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
 
     public static final int SEMAPHORE_WAIT_TIME = 10;
+    public static final String DATA_COLLECTIONS_FIELD_NAME = "data-collections";
+    public static final String POINT_REGEX = "\\.";
 
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
 
@@ -56,7 +62,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private final DocumentReader documentReader;
 
-    private Offsets<P, O> previousOffsets;
+    private final Map<P, O> partitionOffsets = new ConcurrentHashMap<>();
 
     private final Semaphore semaphore = new Semaphore(1);
 
@@ -69,7 +75,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         this.connectorConfig = config;
         this.signalChannelReaders = signalChannelReaders;
         this.documentReader = documentReader;
-        this.previousOffsets = previousOffsets;
+        if (previousOffsets != null) {
+            previousOffsets.getOffsets().entrySet().stream()
+                    .filter(entry -> entry.getValue() != null)
+                    .forEach(entry -> this.partitionOffsets.put(entry.getKey(), entry.getValue()));
+        }
         this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getSimpleName(), false);
 
         // filter single channel reader based on configuration
@@ -91,8 +101,14 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                 .collect(Collectors.toList());
     }
 
-    public void setContext(O offset) {
-        previousOffsets = Offsets.of(Collections.singletonMap(previousOffsets.getTheOnlyPartition(), offset));
+    public void setContext(Offsets<P, O> offsets) {
+        partitionOffsets.clear();
+        if (offsets != null) {
+            offsets.getOffsets().entrySet().stream()
+                    .filter(entry -> entry.getValue() != null)
+                    .forEach(entry -> partitionOffsets.put(entry.getKey(), entry.getValue()));
+        }
+        LOGGER.debug("Updated offset contexts for {} partition(s)", partitionOffsets.size());
     }
 
     public void start() {
@@ -135,20 +151,31 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             enabledChannelReaders.stream()
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
-                    .forEach(this::processSignal);
+                    .forEach(signalRecord -> processSignal(signalRecord, null));
         });
     }
 
-    public void processSourceSignal() {
+    public void processSourceSignal(P partition) {
 
         executeWithSemaphore(() -> {
-            LOGGER.trace("Processing source signals");
+            LOGGER.trace("Processing source signals for partition {}", partition);
             enabledChannelReaders.stream()
                     .filter(isSignal(SourceSignalChannel.class))
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
-                    .forEach(this::processSignal);
+                    .forEach(signalRecord -> processSignal(signalRecord, partition));
         });
+    }
+
+    /**
+     * The method permits to get specified SignalChannelReader instance from the available SPI implementations
+     * @param channel the class of the channel to get
+     * @return the specified instance from the available SPI implementations
+     */
+    public <T extends SignalChannelReader> T getSignalChannel(Class<T> channel) {
+        return channel.cast(signalChannelReaders.stream()
+                .filter(isSignal(channel))
+                .findFirst().get());
     }
 
     private void executeWithSemaphore(Runnable operation) {
@@ -170,9 +197,9 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
-    private void processSignal(SignalRecord signalRecord) {
+    private void processSignal(SignalRecord signalRecord, P knownPartition) {
 
-        LOGGER.debug("Signal Processor offset context {}", previousOffsets.getOffsets());
+        LOGGER.debug("Signal Processor partition offsets: {}", partitionOffsets.keySet());
         LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", signalRecord.getId(), signalRecord.getType(), signalRecord.getData());
         final SignalAction<P> action = signalActions.get(signalRecord.getType());
         if (action == null) {
@@ -183,8 +210,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             final Document jsonData = (signalRecord.getData() == null || signalRecord.getData().isEmpty()) ? Document.create()
                     : documentReader.read(signalRecord.getData());
 
-            action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
-                    previousOffsets.getTheOnlyOffset(), signalRecord.getAdditionalData()));
+            Offsets<P, O> finalOffsets = getOffsets(knownPartition, jsonData);
+
+            for (Map.Entry<P, O> entry : finalOffsets.getOffsets().entrySet()) {
+                executeSignal(action, signalRecord, jsonData, entry.getKey(), entry.getValue());
+            }
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
@@ -198,15 +228,88 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
-    /**
-     * The method permits to get specified SignalChannelReader instance from the available SPI implementations
-     * @param channel the class of the channel to get
-     * @return the specified instance from the available SPI implementations
-     */
-    public <T extends SignalChannelReader> T getSignalChannel(Class<T> channel) {
-        return channel.cast(signalChannelReaders.stream()
-                .filter(isSignal(channel))
-                .findFirst().get());
+    private Offsets<P, O> getOffsets(P knownPartition, Document jsonData) {
+
+        if (knownPartition != null) {
+            return Offsets.of(knownPartition, partitionOffsets.get(knownPartition));
+        }
+
+        // External signal (Kafka/JMX/File)
+        if (partitionOffsets.size() == 1) {
+            return Offsets.of(partitionOffsets);
+        }
+
+        Optional<P> targetPartition = extractPartitionFromData(jsonData);
+
+        if (targetPartition.isPresent()) {
+            O offset = partitionOffsets.get(targetPartition.get());
+            if (offset != null) {
+                return Offsets.of(targetPartition.get(), offset);
+            }
+            else {
+                LOGGER.warn("Signal references partition {} which is not managed by this task. " +
+                        "Available partitions: {}", targetPartition, partitionOffsets.keySet());
+                return Offsets.of(Map.of());
+            }
+        }
+
+        // No partition extracted - broadcast to all partitions (for signals without data-collections)
+        return Offsets.of(partitionOffsets);
+    }
+
+    private Optional<P> extractPartitionFromData(Document jsonData) {
+
+        final Array dataCollectionsArray = jsonData.getArray(DATA_COLLECTIONS_FIELD_NAME);
+        if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
+            LOGGER.debug("No data-collections found in signal data");
+            return Optional.empty();
+        }
+
+        // Extract database name from first data collection
+        for (Array.Entry entry : dataCollectionsArray) {
+            String dataCollection = entry.getValue().asString().trim();
+
+            String[] parts = dataCollection.split(POINT_REGEX);
+            if (parts.length >= 2) {
+                String databaseName = parts[0];
+
+                for (P partition : partitionOffsets.keySet()) {
+                    if (matchesDatabase(partition, databaseName)) {
+                        LOGGER.debug("Matched data collection '{}' to partition {}", dataCollection, partition);
+                        return Optional.of(partition);
+                    }
+                }
+            }
+            else {
+                LOGGER.debug("Data collection '{}' does not contain database qualifier", dataCollection);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private boolean matchesDatabase(P partition, String databaseName) {
+
+        if (partition instanceof AbstractPartition) {
+            Map<String, String> loggingContext = partition.getLoggingContext();
+            String partitionDatabaseName = loggingContext.get(LoggingContext.DATABASE_NAME);
+            return databaseName.equalsIgnoreCase(partitionDatabaseName);
+        }
+
+        return false;
+    }
+
+    private void executeSignal(SignalAction<P> action, SignalRecord signalRecord,
+                               Document jsonData, P partition, O offset)
+            throws InterruptedException {
+        SignalPayload<P> payload = new SignalPayload<>(
+                partition,
+                signalRecord.getId(),
+                signalRecord.getType(),
+                jsonData,
+                offset,
+                signalRecord.getAdditionalData());
+        action.arrived(payload);
     }
 
     private static <T extends SignalChannelReader> Predicate<SignalChannelReader> isSignal(Class<T> channelClass) {

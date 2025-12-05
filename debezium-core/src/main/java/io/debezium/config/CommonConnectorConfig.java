@@ -903,10 +903,12 @@ public abstract class CommonConnectorConfig {
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 20))
-            .withType(Type.STRING)
+            .withType(Type.LIST)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
+            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. " +
+                    "For multi-partition mode connectors, multiple signal data collections can be specified as a comma-separated list. " +
+                    "Signaling is disabled when not set.");
 
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")
@@ -1479,8 +1481,8 @@ public abstract class CommonConnectorConfig {
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
-    private final String signalingDataCollection;
-    private final TableId signalingDataCollectionId;
+    private final List<String> signalingDataCollections;
+    private final List<TableId> signalingDataCollectionIds;
 
     private final Duration signalPollInterval;
 
@@ -1527,7 +1529,7 @@ public abstract class CommonConnectorConfig {
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
-        this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        this.signalingDataCollections = getSignalingDataCollections(config);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
@@ -1552,9 +1554,9 @@ public abstract class CommonConnectorConfig {
         this.guardrailCollectionsMax = config.getInteger(GUARDRAIL_COLLECTIONS_MAX);
         this.guardrailCollectionsLimitAction = GuardrailCollectionsLimitAction.parse(config.getString(GUARDRAIL_COLLECTIONS_LIMIT_ACTION));
 
-        this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
-                ? TableId.parse(this.signalingDataCollection)
-                : null;
+        this.signalingDataCollectionIds = this.signalingDataCollections.stream()
+                .map(TableId::parse)
+                .collect(Collectors.toList());
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1564,6 +1566,22 @@ public abstract class CommonConnectorConfig {
         }
         return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
                 .map(String::trim)
+                .collect(Collectors.toList());
+    }
+
+    private static List<String> getSignalingDataCollections(Configuration config) {
+        if (!config.hasKey(SIGNAL_DATA_COLLECTION)) {
+            return Collections.emptyList();
+        }
+
+        List<String> collections = config.getList(SIGNAL_DATA_COLLECTION);
+        if (collections == null || collections.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return collections.stream()
+                .map(String::trim)
+                .filter(s -> !Strings.isNullOrBlank(s))
                 .collect(Collectors.toList());
     }
 
@@ -1989,8 +2007,12 @@ public abstract class CommonConnectorConfig {
         return fieldNameAdjustmentMode.createAdjuster();
     }
 
-    public String getSignalingDataCollectionId() {
-        return signalingDataCollection;
+    public List<String> getSignalingDataCollectionIds() {
+        return signalingDataCollections;
+    }
+
+    public List<TableId> getSignalingDataCollectionTableIds() {
+        return signalingDataCollectionIds;
     }
 
     public Duration getSignalPollInterval() {
@@ -2020,7 +2042,8 @@ public abstract class CommonConnectorConfig {
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollectionId != null && signalingDataCollectionId.equals(dataCollectionId);
+        return signalingDataCollectionIds.stream()
+                .anyMatch(id -> id.equals(dataCollectionId));
     }
 
     public Optional<String> customRetriableException() {

@@ -30,7 +30,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 /**
  * @author Chris Cranford
@@ -170,8 +169,8 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     }
 
     private static TableId getSignalDataCollectionId(MariaDbConnectorConfig connectorConfig) {
-        if (!Strings.isNullOrBlank(connectorConfig.getSignalingDataCollectionId())) {
-            return TableId.parse(connectorConfig.getSignalingDataCollectionId());
+        if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            return TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         }
         return null;
     }
