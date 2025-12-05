@@ -17,12 +17,15 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.util.Collect;
 
@@ -34,6 +37,9 @@ import io.debezium.util.Collect;
 public class ExtractNewDocumentStateTest {
 
     protected ExtractNewDocumentState<SourceRecord> transformation;
+
+    @Rule
+    public TestRule skipTestRule = new SkipTestRule();
 
     @BeforeEach
     void setup() {

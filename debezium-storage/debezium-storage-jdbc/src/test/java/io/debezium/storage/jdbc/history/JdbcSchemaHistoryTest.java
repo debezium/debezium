@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.jdbc.history;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,10 +19,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.relational.Column;
@@ -80,7 +80,7 @@ public class JdbcSchemaHistoryTest {
         return IntStream.range(0, 400).mapToObj(i -> "thisColumn" + i).collect(Collectors.toList());
     }
 
-    @BeforeAll
+    @BeforeClass
     public static void beforeClass() {
         source = Collect.linkMapOf("server", "abc");
         position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
@@ -138,7 +138,7 @@ public class JdbcSchemaHistoryTest {
         historyRecord2 = new HistoryRecord(source, position, databaseName, schemaName, ddl, tableChanges2, currentInstant);
     }
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         history = new JdbcSchemaHistory();
         history.configure(Configuration.create()
@@ -149,7 +149,7 @@ public class JdbcSchemaHistoryTest {
         history.start();
     }
 
-    @AfterEach
+    @After
     public void afterEach() throws IOException {
         if (history != null) {
             history.stop();

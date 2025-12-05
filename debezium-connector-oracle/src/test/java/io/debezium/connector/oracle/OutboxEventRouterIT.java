@@ -49,9 +49,9 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<OracleConnector
     }
 
     @AfterEach
+    @Override
     public void afterEach() throws Exception {
-        stopConnector();
-        assertNoRecordsToConsume();
+        super.afterEach();
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, tableName());
             connection.close();

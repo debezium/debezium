@@ -10,7 +10,6 @@ import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
 import static io.debezium.transforms.TransformsUtils.createMongoDbRecord;
 import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +17,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
@@ -49,32 +48,28 @@ public class RouterTest {
             .withSource(sourceSchema)
             .build();
 
-    @Test
-    void testExpressionRequired() {
-        assertThrows(DebeziumException.class, () -> {
-            try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(LANGUAGE, "jsr223.groovy");
-                transform.configure(props);
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void testExpressionRequired() {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldFailOnInvalidReturnValue() {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "1");
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+            transform.apply(createDeleteRecord(1));
+        }
     }
 
     @Test
-    void shouldFailOnInvalidReturnValue() {
-        assertThrows(DebeziumException.class, () -> {
-            try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "1");
-                props.put(LANGUAGE, "jsr223.groovy");
-                transform.configure(props);
-                transform.apply(createDeleteRecord(1));
-            }
-        });
-    }
-
-    @Test
-    void shouldRoute() {
+    public void shouldRoute() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
@@ -86,7 +81,7 @@ public class RouterTest {
     }
 
     @Test
-    void shouldRouteMongoDbFormat() {
+    public void shouldRouteMongoDbFormat() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : ((new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar' ? 'kretchmar' : null)");
@@ -111,7 +106,7 @@ public class RouterTest {
     }
 
     @Test
-    void shouldKeepNulls() {
+    public void shouldKeepNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
@@ -123,7 +118,7 @@ public class RouterTest {
     }
 
     @Test
-    void shouldDropNulls() {
+    public void shouldDropNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
@@ -136,7 +131,7 @@ public class RouterTest {
     }
 
     @Test
-    void shouldEvaluateNulls() {
+    public void shouldEvaluateNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");

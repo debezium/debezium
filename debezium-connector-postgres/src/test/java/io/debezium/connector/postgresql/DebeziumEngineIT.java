@@ -27,6 +27,7 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.SimpleString;
 import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.LoggingContext;
@@ -60,6 +62,9 @@ public class DebeziumEngineIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumEngineIT.class);
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("connector-offsets.txt").toAbsolutePath();
+
+    @Rule
+    public SkipTestRule skipTest = new SkipTestRule();
 
     @BeforeEach
     void before() throws SQLException {

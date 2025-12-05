@@ -5,38 +5,37 @@
  */
 package io.debezium.connector.oracle.junit;
 
-import org.junit.jupiter.api.extension.ConditionEvaluationResult;
-import org.junit.jupiter.api.extension.ExecutionCondition;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.junit.AnnotationBasedExtension;
+import io.debezium.junit.AnnotationBasedTestRule;
 
 /**
- * JUnit 5 extension that skips a test based on the {@link SkipWhenAdapterNameIs} annotation on
+ * JUnit rule that skips a test based on the {@link SkipWhenAdapterNameIs} annotation on
  * either a test method or test class.
  *
  * @author Chris Cranford
  */
-public class SkipTestDependingOnAdapterNameExtension extends AnnotationBasedExtension implements ExecutionCondition {
+public class SkipTestDependingOnAdapterNameRule extends AnnotationBasedTestRule {
 
     private static final String adapterName = determineAdapterName();
 
     @Override
-    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-        SkipWhenAdapterNameIs skipWhenAdpterName = hasAnnotation(context, SkipWhenAdapterNameIs.class);
+    public Statement apply(Statement base, Description description) {
+        SkipWhenAdapterNameIs skipWhenAdpterName = hasAnnotation(description, SkipWhenAdapterNameIs.class);
         if (skipWhenAdpterName != null && skipWhenAdpterName.value().isEqualTo(adapterName)) {
             String reasonForSkipping = "Adapter name is " + skipWhenAdpterName.value() + System.lineSeparator() + skipWhenAdpterName.reason();
-            return ConditionEvaluationResult.disabled(reasonForSkipping);
+            return emptyStatement(reasonForSkipping, description);
         }
 
-        SkipWhenAdapterNameIsNot skipWhenAdapterNameNot = hasAnnotation(context, SkipWhenAdapterNameIsNot.class);
+        SkipWhenAdapterNameIsNot skipWhenAdapterNameNot = hasAnnotation(description, SkipWhenAdapterNameIsNot.class);
         if (skipWhenAdapterNameNot != null && skipWhenAdapterNameNot.value().isNotEqualTo(adapterName)) {
             String reasonForSkipping = "Adapter name is not " + skipWhenAdapterNameNot.value() + System.lineSeparator() + skipWhenAdapterNameNot.reason();
-            return ConditionEvaluationResult.disabled(reasonForSkipping);
+            return emptyStatement(reasonForSkipping, description);
         }
 
-        return ConditionEvaluationResult.enabled("Adapter name is compatible");
+        return base;
     }
 
     public static String determineAdapterName() {

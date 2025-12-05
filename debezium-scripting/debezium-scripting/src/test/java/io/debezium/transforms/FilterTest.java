@@ -9,13 +9,12 @@ import static io.debezium.transforms.TransformsUtils.createDeleteCustomerRecord;
 import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
 import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.doc.FixFor;
@@ -30,54 +29,46 @@ public class FilterTest {
     public static final String EXPRESSION = "condition";
     public static final String NULL_HANDLING = "null.handling.mode";
 
-    @Test
-    void testLanguageRequired() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "operation != 'd'");
-                transform.configure(props);
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void testLanguageRequired() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "operation != 'd'");
+            transform.configure(props);
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void testExpressionRequired() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldFailOnUnkownLanguage() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "operation != 'd'");
+            props.put(LANGUAGE, "jsr223.jython");
+            transform.configure(props);
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldFailToParseCondition() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "operation != 'd");
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+        }
     }
 
     @Test
-    void testExpressionRequired() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(LANGUAGE, "jsr223.groovy");
-                transform.configure(props);
-            }
-        });
-    }
-
-    @Test
-    void shouldFailOnUnkownLanguage() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "operation != 'd'");
-                props.put(LANGUAGE, "jsr223.jython");
-                transform.configure(props);
-            }
-        });
-    }
-
-    @Test
-    void shouldFailToParseCondition() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "operation != 'd");
-                props.put(LANGUAGE, "jsr223.groovy");
-                transform.configure(props);
-            }
-        });
-    }
-
-    @Test
-    void shouldProcessCondition() {
+    public void shouldProcessCondition() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
@@ -133,7 +124,7 @@ public class FilterTest {
     }
 
     @Test
-    void shouldKeepNulls() {
+    public void shouldKeepNulls() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
@@ -145,7 +136,7 @@ public class FilterTest {
     }
 
     @Test
-    void shouldDropNulls() {
+    public void shouldDropNulls() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
@@ -157,23 +148,21 @@ public class FilterTest {
         }
     }
 
-    @Test
-    void shouldEvaluateNulls() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
-                props.put(LANGUAGE, "jsr223.groovy");
-                props.put(NULL_HANDLING, "evaluate");
-                transform.configure(props);
-                final SourceRecord record = createNullRecord();
-                transform.apply(record);
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void shouldEvaluateNulls() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
+            props.put(LANGUAGE, "jsr223.groovy");
+            props.put(NULL_HANDLING, "evaluate");
+            transform.configure(props);
+            final SourceRecord record = createNullRecord();
+            transform.apply(record);
+        }
     }
 
     @Test
-    void shouldRunJavaScript() {
+    public void shouldRunJavaScript() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");

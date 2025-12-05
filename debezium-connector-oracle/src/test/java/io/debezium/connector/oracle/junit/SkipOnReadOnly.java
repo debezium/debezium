@@ -10,8 +10,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
  * Marker annotation used to skip a given test if the session is marked as read-only.
  *
@@ -19,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
-@ExtendWith(SkipTestDependingOnReadOnlyExtension.class)
 public @interface SkipOnReadOnly {
     /**
      * Specifies the reason why the test is being skipped.

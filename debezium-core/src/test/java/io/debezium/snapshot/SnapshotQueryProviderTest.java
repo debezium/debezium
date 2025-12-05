@@ -18,9 +18,9 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ConnectorSpecific;
@@ -34,7 +34,7 @@ import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.spi.SnapshotQuery;
 import io.debezium.spi.schema.DataCollectionId;
 
-@ExtendWith(MockitoExtension.class)
+@RunWith(MockitoJUnitRunner.class)
 public class SnapshotQueryProviderTest {
 
     @Test

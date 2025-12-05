@@ -7,10 +7,9 @@ package io.debezium.connector.sqlserver;
 
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
+import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -26,6 +25,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -221,9 +221,9 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
             assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset()).hasSize(3);
 
-            assertTrue(record1.sourceOffset().containsKey("change_lsn"));
-            assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
-            assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
+            Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
+            Assert.assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
+            Assert.assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
             assertNull(value1.get("before"));
         }
     }

@@ -15,12 +15,15 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipOnDatabaseParameter;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseParameterRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -34,6 +37,9 @@ import io.debezium.util.Testing;
  */
 @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
 public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
+
+    @Rule
+    public TestRule skipOnDatabaseParameter = new SkipTestDependingOnDatabaseParameterRule();
 
     private OracleConnection connection;
 

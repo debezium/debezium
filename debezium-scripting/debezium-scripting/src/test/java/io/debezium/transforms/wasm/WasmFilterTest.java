@@ -12,7 +12,6 @@ import static io.debezium.transforms.TransformsUtils.createDeleteCustomerRecord;
 import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
 import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.util.HashMap;
@@ -21,7 +20,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
@@ -77,32 +76,28 @@ public class WasmFilterTest {
             .withSource(sourceSchema)
             .build();
 
-    @Test
-    void shouldFailOnUnkownLanguage() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "operation != 'd'");
-                props.put(LANGUAGE, "wasm.chasm");
-                transform.configure(props);
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void shouldFailOnUnkownLanguage() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "operation != 'd'");
+            props.put(LANGUAGE, "wasm.chasm");
+            transform.configure(props);
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldFailToParseCondition() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "ftp:/filter.wasm");
+            props.put(LANGUAGE, "wasm.chicory");
+            transform.configure(props);
+        }
     }
 
     @Test
-    void shouldFailToParseCondition() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, "ftp:/filter.wasm");
-                props.put(LANGUAGE, "wasm.chicory");
-                transform.configure(props);
-            }
-        });
-    }
-
-    @Test
-    void shouldProcessConditionWithWasmCompiler() {
+    public void shouldProcessConditionWithWasmCompiler() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_1);
@@ -115,7 +110,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldProcessConditionWithWasmInterpreter() {
+    public void shouldProcessConditionWithWasmInterpreter() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_1);
@@ -128,7 +123,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldProcessTopicWithWasm() {
+    public void shouldProcessTopicWithWasm() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_2);
@@ -141,7 +136,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldProcessHeader() {
+    public void shouldProcessHeader() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_3);
@@ -154,7 +149,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldApplyTopicRegex() {
+    public void shouldApplyTopicRegex() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(TOPIC_REGEX, "dum.*");
@@ -168,7 +163,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldKeepNulls() {
+    public void shouldKeepNulls() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_1);
@@ -180,7 +175,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldDropNulls() {
+    public void shouldDropNulls() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_1);
@@ -192,23 +187,21 @@ public class WasmFilterTest {
         }
     }
 
-    @Test
-    void shouldEvaluateNulls() {
-        assertThrows(DebeziumException.class, () -> {
-            try (Filter<SourceRecord> transform = new Filter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, FILTER_1);
-                props.put(LANGUAGE, "was,.chicory");
-                props.put(NULL_HANDLING, "evaluate");
-                transform.configure(props);
-                final SourceRecord record = createNullRecord();
-                transform.apply(record);
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void shouldEvaluateNulls() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, FILTER_1);
+            props.put(LANGUAGE, "was,.chicory");
+            props.put(NULL_HANDLING, "evaluate");
+            transform.configure(props);
+            final SourceRecord record = createNullRecord();
+            transform.apply(record);
+        }
     }
 
     @Test
-    void shouldRunFilterWithHeaderAndTopic() {
+    public void shouldRunFilterWithHeaderAndTopic() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_4);
@@ -221,7 +214,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldRunFilterWithComplexCreate() {
+    public void shouldRunFilterWithComplexCreate() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_5);
@@ -233,7 +226,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldRunFilterWithAllDataTypeSchemas() {
+    public void shouldRunFilterWithAllDataTypeSchemas() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_6);
@@ -246,7 +239,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldRunFilterWithArraySchemas() {
+    public void shouldRunFilterWithArraySchemas() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_7);
@@ -259,7 +252,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    void shouldAccessSchemaFields() {
+    public void shouldAccessSchemaFields() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_8);

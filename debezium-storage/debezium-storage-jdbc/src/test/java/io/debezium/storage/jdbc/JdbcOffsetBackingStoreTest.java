@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,10 +18,10 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.util.Callback;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 
@@ -38,7 +38,7 @@ public class JdbcOffsetBackingStoreTest {
     WorkerConfig config;
     File dbFile;
 
-    @BeforeEach
+    @Before
     public void setup() throws IOException {
         dbFile = File.createTempFile("test-", "db");
         store = new JdbcOffsetBackingStore();
@@ -67,7 +67,7 @@ public class JdbcOffsetBackingStoreTest {
         secondSet.put(store.toByteBuffer("key2secondSet"), store.toByteBuffer("value2secondSet"));
     }
 
-    @AfterEach
+    @After
     public void teardown() {
         dbFile.delete();
     }
@@ -92,7 +92,7 @@ public class JdbcOffsetBackingStoreTest {
 
         Map<ByteBuffer, ByteBuffer> values = store.get(Arrays.asList(store.toByteBuffer("key"), store.toByteBuffer("bad"))).get();
         assertEquals(store.toByteBuffer("value"), values.get(store.toByteBuffer("key")));
-        Assertions.assertNull(values.get(store.toByteBuffer("bad")));
+        Assert.assertNull(values.get(store.toByteBuffer("bad")));
     }
 
     @Test

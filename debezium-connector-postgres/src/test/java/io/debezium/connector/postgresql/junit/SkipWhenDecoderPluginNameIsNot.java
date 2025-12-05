@@ -10,15 +10,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
  * Marker annotation used together with the {@link SkipTestDependingOnDecoderPluginNameRule} JUnit rule, that allows
  * tests to be skipped based on the decoder plugin name that is not being used for testing.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
-@ExtendWith(SkipTestDependingOnDecoderPluginNameExtension.class)
 public @interface SkipWhenDecoderPluginNameIsNot {
     SkipWhenDecoderPluginNameIsNot.DecoderPluginName value();
 

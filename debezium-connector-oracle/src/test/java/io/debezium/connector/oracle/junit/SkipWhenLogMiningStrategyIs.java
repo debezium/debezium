@@ -10,8 +10,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 
 /**
@@ -23,7 +21,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
-@ExtendWith(SkipTestDependingOnStrategyExtension.class)
 public @interface SkipWhenLogMiningStrategyIs {
 
     SkipWhenLogMiningStrategyIs.Strategy value();

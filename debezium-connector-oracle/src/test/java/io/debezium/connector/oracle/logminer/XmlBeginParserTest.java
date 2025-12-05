@@ -10,8 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.sql.SQLException;
 
+import org.junit.Rule;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
@@ -28,6 +31,9 @@ import io.debezium.text.ParsingException;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class XmlBeginParserTest {
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static final XmlBeginParser parser = new XmlBeginParser();
 

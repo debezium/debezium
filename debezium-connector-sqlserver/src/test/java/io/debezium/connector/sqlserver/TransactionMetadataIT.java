@@ -6,8 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.assertNull;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,6 +19,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +31,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.Collect;
@@ -45,6 +46,9 @@ import io.debezium.util.Testing;
 public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
+
+    @Rule
+    public SkipTestRule skipRule = new SkipTestRule();
 
     @BeforeEach
     void before() throws SQLException {
@@ -164,7 +168,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                             return found.get();
                         }
                         catch (Exception e) {
-                            fail("Failed to fetch changes for tablea: " + e.getMessage());
+                            org.junit.Assert.fail("Failed to fetch changes for tablea: " + e.getMessage());
                         }
                     }
                 }

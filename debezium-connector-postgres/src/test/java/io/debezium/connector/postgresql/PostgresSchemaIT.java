@@ -27,6 +27,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.junit.Rule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,7 @@ import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
@@ -64,6 +66,9 @@ import io.debezium.util.Strings;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresSchemaIT {
+
+    @Rule
+    public final SkipTestRule skipTest = new SkipTestRule();
 
     private static final String[] TEST_TABLES = new String[]{ "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
             "public.cash_table", "public.bitbin_table", "public.network_address_table",

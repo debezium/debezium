@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.oracle.logminer.unbuffered;
 
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerAdapterTest;
 
@@ -18,6 +21,9 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerAdapterTest;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED)
 public class UnbufferedLogMinerAdapterTest extends AbstractLogMinerAdapterTest<UnbufferedLogMinerAdapter> {
+
+    @Rule
+    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     @Override
     protected UnbufferedLogMinerAdapter createAdapter(OracleConnectorConfig connectorConfig) {

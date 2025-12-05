@@ -13,13 +13,16 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.custom.snapshotter.CustomTestSnapshot;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -38,6 +41,9 @@ public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
             "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s2.a (pk SERIAL, aa integer, bb varchar(20), PRIMARY KEY(pk));";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
+
+    @Rule
+    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
     @BeforeAll
     static void beforeClass() throws SQLException {

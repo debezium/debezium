@@ -11,14 +11,13 @@ import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
 import static io.debezium.transforms.TransformsUtils.createMongoDbRecord;
 import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.transforms.ContentBasedRouter;
@@ -46,21 +45,19 @@ public class WasmRouterTest {
         return "file:" + new File(".").getAbsolutePath() + "/src/test/resources/wasm/compiled/" + filename + ".wasm";
     }
 
-    @Test
-    void shouldFailOnInvalidReturnValue() {
-        assertThrows(DebeziumException.class, () -> {
-            try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(EXPRESSION, ROUTER_1);
-                props.put(LANGUAGE, "wasm.chicory");
-                transform.configure(props);
-                transform.apply(createDeleteRecord(1));
-            }
-        });
+    @Test(expected = DebeziumException.class)
+    public void shouldFailOnInvalidReturnValue() {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, ROUTER_1);
+            props.put(LANGUAGE, "wasm.chicory");
+            transform.configure(props);
+            transform.apply(createDeleteRecord(1));
+        }
     }
 
     @Test
-    void shouldRoute() {
+    public void shouldRoute() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_2);
@@ -72,7 +69,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldRouteMongoDbFormat() {
+    public void shouldRouteMongoDbFormat() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_3);
@@ -83,7 +80,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldApplyTopicRegex() {
+    public void shouldApplyTopicRegex() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(TOPIC_REGEX, "orig.*");
@@ -96,7 +93,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldKeepNulls() {
+    public void shouldKeepNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_2);
@@ -108,7 +105,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldDropNulls() {
+    public void shouldDropNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_2);
@@ -121,7 +118,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldEvaluateNulls() {
+    public void shouldEvaluateNulls() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_2);
@@ -134,7 +131,7 @@ public class WasmRouterTest {
     }
 
     @Test
-    void shouldRouteWithComplexCreate() {
+    public void shouldRouteWithComplexCreate() {
         try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, ROUTER_4);

@@ -16,14 +16,17 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.CacheCapacityExceededException;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -40,6 +43,9 @@ import io.debezium.pipeline.ErrorHandler;
  */
 @SkipWhenAdapterNameIsNot(value = LOGMINER_BUFFERED)
 public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
+
+    @Rule
+    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private static OracleConnection connection;
 

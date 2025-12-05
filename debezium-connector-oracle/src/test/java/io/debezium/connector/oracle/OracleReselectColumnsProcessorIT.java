@@ -19,13 +19,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -42,6 +45,9 @@ import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
  * @author Chris Cranford
  */
 public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorTest<OracleConnector> {
+
+    @Rule
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private OracleConnection connection;
 

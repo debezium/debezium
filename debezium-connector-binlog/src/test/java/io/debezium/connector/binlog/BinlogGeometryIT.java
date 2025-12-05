@@ -7,7 +7,6 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -17,6 +16,7 @@ import javax.xml.bind.DatatypeConverter;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,7 +181,7 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
             databaseDifferences.geometryAssertPoints(expectedX, expectedY, point.getX(), point.getY());
         }
         else if (expectedX != null) {
-            fail("Got a null geometry but didn't expect to");
+            Assert.fail("Got a null geometry but didn't expect to");
         }
     }
 

@@ -8,82 +8,80 @@ package io.debezium.connector.binlog.junit;
 import java.sql.SQLException;
 import java.util.Set;
 
-import org.junit.jupiter.api.extension.ConditionEvaluationResult;
-import org.junit.jupiter.api.extension.ExecutionCondition;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestConnectionService;
-import io.debezium.junit.AnnotationBasedExtension;
+import io.debezium.junit.AnnotationBasedTestRule;
 import io.debezium.junit.DatabaseVersionResolver;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Strings;
 
 /**
- * JUnit 5 extension that processes {@link SkipWhenDatabaseIs} annotations and outputs a reason for the skip.
- * This is the JUnit 5 equivalent of {@link SkipTestDependingOnDatabaseRule}.
+ * A Junit rule that processes {@link SkipWhenDatabaseIs} annotations and outputs a reason for the skip.
  *
  * @author Chris Cranford
  */
-public class SkipTestDependingOnDatabaseExtension extends AnnotationBasedExtension implements ExecutionCondition {
+public class SkipTestDependingOnDatabaseRule extends AnnotationBasedTestRule {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SkipTestDependingOnDatabaseExtension.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SkipTestDependingOnDatabaseRule.class);
     private static final boolean IS_MARIADB = resolveMariaDb();
     private static final boolean IS_PERCONA = resolvePercona();
 
     @Override
-    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-        final SkipWhenDatabaseIsMultiple skipDatabaseIsMultiple = hasAnnotation(context, SkipWhenDatabaseIsMultiple.class);
+    public Statement apply(Statement base, Description description) {
+        final SkipWhenDatabaseIsMultiple skipDatabaseIsMultiple = hasAnnotation(description, SkipWhenDatabaseIsMultiple.class);
         if (skipDatabaseIsMultiple != null) {
             for (SkipWhenDatabaseIs skipWhenDatabaseIs : skipDatabaseIsMultiple.value()) {
-                final ConditionEvaluationResult result = applySkipWhenDatabaseIs(skipWhenDatabaseIs);
-                if (result.isDisabled()) {
+                final Statement result = applySkipWhenDatabaseIs(skipWhenDatabaseIs, description);
+                if (result != null) {
                     return result;
                 }
             }
         }
         else {
-            final SkipWhenDatabaseIs skipWhenDatabaseIs = hasAnnotation(context, SkipWhenDatabaseIs.class);
+            final SkipWhenDatabaseIs skipWhenDatabaseIs = hasAnnotation(description, SkipWhenDatabaseIs.class);
             if (skipWhenDatabaseIs != null) {
-                final ConditionEvaluationResult result = applySkipWhenDatabaseIs(skipWhenDatabaseIs);
-                if (result.isDisabled()) {
+                final Statement result = applySkipWhenDatabaseIs(skipWhenDatabaseIs, description);
+                if (result != null) {
                     return result;
                 }
             }
         }
-        // Do not skip
+        // Do no skip
         LOGGER.info("No skip performed");
-        return ConditionEvaluationResult.enabled("Database is compatible");
+        return base;
     }
 
-    private ConditionEvaluationResult applySkipWhenDatabaseIs(SkipWhenDatabaseIs skipWhenDatabaseIs) {
+    private Statement applySkipWhenDatabaseIs(SkipWhenDatabaseIs skipWhenDatabaseIs, Description description) {
         LOGGER.info("@SkipWhenDatabaseIs detected: " + skipWhenDatabaseIs.value());
         // Check if MariaDB is skipped
         if (IS_MARIADB && skipWhenDatabaseIs.value().equals(SkipWhenDatabaseIs.Type.MARIADB)) {
             final String reason = getDatabaseSkipReason(skipWhenDatabaseIs);
             if (!Strings.isNullOrBlank(reason)) {
-                return ConditionEvaluationResult.disabled(reason);
+                return emptyStatement(reason, description);
             }
         }
         // Check if Percona is skipped
         else if (IS_PERCONA && skipWhenDatabaseIs.value().equals(SkipWhenDatabaseIs.Type.PERCONA)) {
             final String reason = getDatabaseSkipReason(skipWhenDatabaseIs);
             if (!Strings.isNullOrBlank(reason)) {
-                return ConditionEvaluationResult.disabled(reason);
+                return emptyStatement(reason, description);
             }
         }
         // Check if MySQL is skipped
         else if (!IS_MARIADB && !IS_PERCONA && skipWhenDatabaseIs.value().equals(SkipWhenDatabaseIs.Type.MYSQL)) {
             final String reason = getDatabaseSkipReason(skipWhenDatabaseIs);
             if (!Strings.isNullOrBlank(reason)) {
-                return ConditionEvaluationResult.disabled(reason);
+                return emptyStatement(reason, description);
             }
         }
-        return ConditionEvaluationResult.enabled("Database is compatible");
+        return null;
     }
 
     private String getDatabaseSkipReason(SkipWhenDatabaseIs skipWhenDatabaseIs) {
@@ -110,6 +108,7 @@ public class SkipTestDependingOnDatabaseExtension extends AnnotationBasedExtensi
         return null;
     }
 
+    // todo: taken from SkipTestRule, eventually refactor this logic into a helper class
     private boolean isSkippedByDatabaseVersion(SkipWhenDatabaseVersion skipWhenDatabaseVersion) {
 
         final EqualityCheck equalityCheck = skipWhenDatabaseVersion.check();
@@ -167,4 +166,5 @@ public class SkipTestDependingOnDatabaseExtension extends AnnotationBasedExtensi
             throw new RuntimeException(e);
         }
     }
+
 }

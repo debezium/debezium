@@ -10,8 +10,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
  * Marker annotation used to skip a given test if the specified database option is or isn't enabled.
  * based on whether {@code required} is set to true or false.
@@ -20,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
-@ExtendWith(SkipTestDependingOnDatabaseOptionExtension.class)
 public @interface SkipOnDatabaseOption {
     /**
      * Returns the database option that is inspected.  The option's name should

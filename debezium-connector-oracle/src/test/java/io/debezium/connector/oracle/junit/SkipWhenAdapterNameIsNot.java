@@ -10,8 +10,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
  * Marker annotation used togehter with {@link SkipTestDependingOnAdapterNameRule} JUnit rule, that allows
  * tests to not be skipped based on the adapter name that is being used for testing.
@@ -20,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
-@ExtendWith(SkipTestDependingOnAdapterNameExtension.class)
 public @interface SkipWhenAdapterNameIsNot {
 
     SkipWhenAdapterNameIsNot.AdapterName value();

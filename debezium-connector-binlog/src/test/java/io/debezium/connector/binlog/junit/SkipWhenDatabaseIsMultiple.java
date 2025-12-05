@@ -10,17 +10,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
  * Marker annotation for allowing multiple {@link SkipWhenDatabaseIs} annotations.
- * This annotation automatically registers the {@link SkipTestDependingOnDatabaseExtension} to process the skip logic.
  *
  * @author Chris Cranford
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD })
-@ExtendWith(SkipTestDependingOnDatabaseExtension.class)
 public @interface SkipWhenDatabaseIsMultiple {
     /**
      * Specifies the constraints the test should be skipped for.

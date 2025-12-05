@@ -14,11 +14,14 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -33,6 +36,9 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
  * @author Chris Cranford
  */
 public class OraclePrimaryKeyLobReselectIT extends AbstractAsyncEngineConnectorTest {
+
+    @Rule
+    public TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private OracleConnection connection;
 

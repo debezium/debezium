@@ -22,15 +22,18 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.SourceInfo;
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -43,6 +46,9 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * @author Roman Kudryashov
  */
 public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngineConnectorTest {
+
+    @Rule
+    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
     private DecodeLogicalDecodingMessageContent<SourceRecord> decodeLogicalDecodingMessageContent;
 

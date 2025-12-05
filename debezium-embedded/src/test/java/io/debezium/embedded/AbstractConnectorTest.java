@@ -59,8 +59,11 @@ import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +73,9 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.junit.RequiresAssemblyProfileTestRule;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.TestLogger;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.HistoryRecord;
@@ -89,6 +95,15 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractConnectorTest implements Testing {
 
+    @ClassRule
+    public static TestRule requiresAssemblyProfileClassRule = new RequiresAssemblyProfileTestRule();
+
+    @Rule
+    public TestRule skipTestRule = new SkipTestRule();
+
+    @Rule
+    public TestRule requiresAssemblyProfileRule = new RequiresAssemblyProfileTestRule();
+
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
@@ -105,6 +120,9 @@ public abstract class AbstractConnectorTest implements Testing {
     private JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
     private boolean skipAvroValidation = false;
+
+    @Rule
+    public TestRule logTestName = new TestLogger(logger);
 
     /**
      * Creates instance of {@link DebeziumEngine} which should be used for testing across the testsuite.
@@ -1054,7 +1072,7 @@ public abstract class AbstractConnectorTest implements Testing {
         try {
             assertThat(consumedLines.isEmpty()).isTrue();
         }
-        catch (org.opentest4j.AssertionFailedError e) {
+        catch (org.junit.ComparisonFailure e) {
             System.out.println("---Assert Expected No Records, Found These---");
             consumedLines.forEach(System.out::println);
             throw e;

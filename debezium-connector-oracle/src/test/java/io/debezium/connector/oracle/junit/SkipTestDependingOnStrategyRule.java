@@ -5,32 +5,31 @@
  */
 package io.debezium.connector.oracle.junit;
 
-import org.junit.jupiter.api.extension.ConditionEvaluationResult;
-import org.junit.jupiter.api.extension.ExecutionCondition;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.junit.AnnotationBasedExtension;
+import io.debezium.junit.AnnotationBasedTestRule;
 
 /**
- * JUnit 5 extension that skips a test based on the {@link SkipWhenLogMiningStrategyIs} annotation on either a test
+ * JUnit rule that skips a test based on the {@link SkipWhenLogMiningStrategyIs} annotation on either a test
  * or a test class.
  *
  * @author Chris Cranford
  */
-public class SkipTestDependingOnStrategyExtension extends AnnotationBasedExtension implements ExecutionCondition {
+public class SkipTestDependingOnStrategyRule extends AnnotationBasedTestRule {
 
     private static final String strategyName = determineStrategyName();
 
     @Override
-    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-        SkipWhenLogMiningStrategyIs strategyIs = hasAnnotation(context, SkipWhenLogMiningStrategyIs.class);
+    public Statement apply(Statement base, Description description) {
+        SkipWhenLogMiningStrategyIs strategyIs = hasAnnotation(description, SkipWhenLogMiningStrategyIs.class);
         if (strategyIs != null && strategyIs.value().isEqualTo(strategyName)) {
             String reason = "Strategy is " + strategyIs.value() + System.lineSeparator() + strategyIs.reason();
-            return ConditionEvaluationResult.disabled(reason);
+            return emptyStatement(reason, description);
         }
-        return ConditionEvaluationResult.enabled("Strategy is compatible");
+        return base;
     }
 
     public static String determineStrategyName() {

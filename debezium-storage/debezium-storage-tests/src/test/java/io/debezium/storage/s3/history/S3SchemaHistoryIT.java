@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.s3.history;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.http.entity.ContentType;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
@@ -54,7 +54,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
     final private static S3MockContainer container = new S3MockContainer(IMAGE_TAG);
     private static S3Client client;
 
-    @BeforeAll
+    @BeforeClass
     public static void startS3() {
         container.start();
         client = S3Client.builder()
@@ -64,7 +64,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
                 .forcePathStyle(true).build();
     }
 
-    @AfterAll
+    @AfterClass
     public static void stopS3() {
         container.stop();
     }

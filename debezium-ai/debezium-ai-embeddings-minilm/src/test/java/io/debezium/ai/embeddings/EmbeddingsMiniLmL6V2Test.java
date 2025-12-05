@@ -13,7 +13,7 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /**
  * Basic tests for {@link FieldToEmbedding} SMT which uses {@link MiniLmL6V2ModeFactory}.
@@ -22,14 +22,14 @@ import org.junit.jupiter.api.Test;
  */
 public class EmbeddingsMiniLmL6V2Test {
     @Test
-    void testMiniLmEmbeddings() {
+    public void testMiniLmEmbeddings() {
         assertEmbeddingsForConfig(Map.of(
                 "field.source", "after.product",
                 "field.embedding", "after.prod_embedding"));
     }
 
     @Test
-    void testMiniLmEmbeddingsWithLegacyConfig() {
+    public void testMiniLmEmbeddingsWithLegacyConfig() {
         assertEmbeddingsForConfig(Map.of(
                 LEGACY_EMBEDDINGS_PREFIX + "field.source", "after.product",
                 LEGACY_EMBEDDINGS_PREFIX + "field.embedding", "after.prod_embedding"));

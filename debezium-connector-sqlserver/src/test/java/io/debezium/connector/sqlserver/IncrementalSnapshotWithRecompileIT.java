@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -15,7 +16,9 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
@@ -24,6 +27,11 @@ import io.debezium.util.Testing;
 public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnapshotTest<SqlServerConnector> {
 
     private SqlServerConnection connection;
+
+    @Rule
+    public SkipTestRule skipRule = new SkipTestRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @BeforeEach
     void before() throws SQLException {

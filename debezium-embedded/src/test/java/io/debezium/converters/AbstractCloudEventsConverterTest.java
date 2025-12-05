@@ -59,7 +59,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
     @BeforeEach
-    protected void beforeEach() throws Exception {
+    void beforeEach() throws Exception {
         startConnector();
     }
 

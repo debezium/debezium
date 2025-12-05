@@ -7,7 +7,7 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
@@ -27,9 +27,11 @@ import java.util.function.Function;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -38,6 +40,7 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
+import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -49,6 +52,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -69,6 +73,12 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     protected final UniqueDatabase CONFLICT_NAMES_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "mysql_dbz_6533");
 
     protected Configuration config;
+
+    @Rule
+    public TestRule skipDatabaseTypeRule = new SkipTestDependingOnDatabaseRule();
+
+    @Rule
+    public SkipTestRule skipRule = new SkipTestRule();
 
     @BeforeEach
     void beforeEach() {

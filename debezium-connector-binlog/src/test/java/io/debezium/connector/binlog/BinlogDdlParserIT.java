@@ -11,11 +11,14 @@ import java.nio.file.Path;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -33,6 +36,9 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-ddl-parser.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "binlog_ddl_parser").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @BeforeEach
     void beforeEach() {

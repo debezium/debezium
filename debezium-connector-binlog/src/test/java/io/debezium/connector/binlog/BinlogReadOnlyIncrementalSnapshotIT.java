@@ -25,6 +25,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaClusterUtils;
@@ -48,6 +50,9 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     public static final String EXCLUDED_TABLE = "b";
 
     private static final int PARTITION_NO = 0;
+
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @BeforeEach
     void before() throws Exception {
