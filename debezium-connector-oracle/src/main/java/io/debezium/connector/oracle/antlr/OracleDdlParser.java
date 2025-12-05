@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.antlr;
 
 import java.sql.Types;
 import java.util.Arrays;
+import java.util.List;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -20,9 +21,12 @@ import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.OracleDdlParserListener;
 import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
+import io.debezium.relational.Column;
 import io.debezium.relational.SystemVariables;
+import io.debezium.relational.TableEditor;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.text.ParsingException;
 
 import oracle.jdbc.OracleTypes;
 
@@ -175,5 +179,19 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
     public TableFilter getTableFilter() {
         return tableFilter;
+    }
+
+    public void setTablePrimaryKeyColumns(TableEditor editor, List<String> columnNames) {
+        // Iterate all columns of the primary key and make sure they're explicitly marked not nullable.
+        // In Oracle, primary key columns are implicitly not nullable, and cannot be nullable.
+        for (String columnName : columnNames) {
+            Column column = editor.columnWithName(columnName);
+            if (column == null) {
+                throw new ParsingException(null, "Expected primary key column " + columnName + " to be defined");
+            }
+            editor.addColumn(column.edit().optional(false).create());
+        }
+
+        editor.setPrimaryKeyNames(columnNames);
     }
 }
