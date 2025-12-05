@@ -77,7 +77,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                 buildProjection(table),
                 Optional.ofNullable(condition),
                 additionalCondition,
-                orderBy);
+                orderBy,
+                getTableAlias(table));
     }
 
     protected String buildProjection(Table table) {
@@ -225,9 +226,13 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                 .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
         String selectWithRowLimits = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
-                additionalCondition, orderBy);
+                additionalCondition, orderBy, getTableAlias(table));
         LOGGER.debug("MaxPrimaryKeyQuery {}", selectWithRowLimits);
         return selectWithRowLimits;
+    }
+
+    protected Optional<String> getTableAlias(Table table) {
+        return Optional.empty();
     }
 
     private KeyMapper getKeyMapper() {
