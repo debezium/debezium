@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.antlr.listener;
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
@@ -243,7 +244,7 @@ public class AlterTableParserListener extends BaseParserListener {
                     }
                 }
                 if (!primaryKeyColumns.isEmpty()) {
-                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                    parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
                 }
             }
             else if (ctx.MODIFY() != null && ctx.PRIMARY() != null && ctx.KEY() != null) {
@@ -253,7 +254,7 @@ public class AlterTableParserListener extends BaseParserListener {
                     primaryKeyColumns.add(getColumnName(columnNameContext));
                 }
                 if (!primaryKeyColumns.isEmpty()) {
-                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                    parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
                 }
             }
         }, tableEditor);
@@ -264,7 +265,7 @@ public class AlterTableParserListener extends BaseParserListener {
     public void enterDrop_constraint_clause(PlSqlParser.Drop_constraint_clauseContext ctx) {
         parser.runIfNotNull(() -> {
             if (ctx.PRIMARY() != null) {
-                tableEditor.setPrimaryKeyNames();
+                parser.setTablePrimaryKeyColumns(tableEditor, Collections.emptyList());
             }
         }, tableEditor);
         super.enterDrop_constraint_clause(ctx);
