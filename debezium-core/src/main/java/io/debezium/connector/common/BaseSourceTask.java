@@ -239,8 +239,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
-            DebeziumOpenLineageEmitter.init(props, connectorName());
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.INITIAL);
+            DebeziumOpenLineageEmitter.init(getMaskedConfigurationMap(props), connectorName());
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName()), DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -261,7 +261,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 this.coordinator = start(config);
                 setTaskState(DebeziumTaskState.RUNNING);
 
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.RUNNING);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName()),
+                        DebeziumTaskState.RUNNING);
 
             }
             catch (RetriableException e) {
@@ -304,6 +305,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return config.withMaskedPasswords();
+    }
+
+    protected Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
     /**
@@ -432,10 +437,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             else if (currentState == DebeziumTaskState.RESTARTING) {
 
                 getErrorHandler().ifPresentOrElse(
-                        handler -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
+                        handler -> DebeziumOpenLineageEmitter.emit(
+                                DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName()),
                                 DebeziumTaskState.RESTARTING,
                                 handler.getProducerThrowable()),
-                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
+                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName()),
                                 DebeziumTaskState.RESTARTING));
 
                 // we're in restart mode... check if it's time to restart
@@ -469,7 +475,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
         finally {
             stop(false);
-            DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()));
+            DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName()));
         }
     }
 
@@ -506,7 +512,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(DebeziumTaskState.STOPPED);
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()), DebeziumTaskState.STOPPED);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName()),
+                        DebeziumTaskState.STOPPED);
             }
         }
         finally {

@@ -94,7 +94,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
 
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), DebeziumTaskState.RUNNING,
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().withMaskedPasswords().asMap(), config.getConnectorName()),
+                    DebeziumTaskState.RUNNING,
                     List.of(new DatasetMetadata(collectionId.identifier(), INPUT, DatasetMetadata.TABLE_DATASET_TYPE, DATABASE, List.of())));
 
             return new MongoDbCollectionSchema(

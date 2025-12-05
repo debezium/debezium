@@ -70,7 +70,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), getMaskedConfigurationMap(props));
             DebeziumOpenLineageEmitter.init(connectorContext);
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
@@ -168,6 +168,10 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             }
         }
         return result;
+    }
+
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)

@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
@@ -110,7 +111,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), getMaskedConfigurationMap(props));
             DebeziumOpenLineageEmitter.init(connectorContext);
 
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
@@ -257,6 +258,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
     @VisibleForTesting
     public Throwable getLastProcessingException() {
         return previousPutException;
+    }
+
+    private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
     /**
