@@ -60,16 +60,15 @@ public class GuardrailValidator {
         this.connectorConfig = connectorConfig;
 
         // Extract table filters from the config if it's a relational connector config
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig) {
-            this.tableFilters = ((RelationalDatabaseConnectorConfig) connectorConfig).getTableFilters();
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relationalConfig) {
+            this.tableFilters = relationalConfig.getTableFilters();
         }
         else {
             this.tableFilters = null;
         }
 
         // Extract schema history settings from the schema if it's historized
-        if (schema instanceof HistorizedDatabaseSchema) {
-            HistorizedDatabaseSchema<?> historizedSchema = (HistorizedDatabaseSchema<?>) schema;
+        if (schema instanceof HistorizedDatabaseSchema<?> historizedSchema) {
             this.storeOnlyCapturedTables = historizedSchema.storeOnlyCapturedTables();
             this.storeOnlyCapturedDatabases = historizedSchema.storeOnlyCapturedDatabases();
         }
