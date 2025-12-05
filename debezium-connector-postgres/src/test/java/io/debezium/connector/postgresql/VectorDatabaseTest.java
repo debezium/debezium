@@ -6,19 +6,17 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import java.util.Map;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.data.vector.SparseDoubleVector;
 
 public class VectorDatabaseTest {
 
     @Test
-    void shouldParseSparseVector() {
+    public void shouldParseSparseVector() {
         final var expectedVector = Map.of((short) 1, 10.0, (short) 11, 20.0, (short) 111, 30.0);
         final var expectedDimensions = (short) 1000;
 
@@ -53,7 +51,7 @@ public class VectorDatabaseTest {
     }
 
     @Test
-    void shouldIgnoreErrorInSparseVectorFormat() {
+    public void shouldIgnoreErrorInSparseVectorFormat() {
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:30}")).isNull();
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:30/1000")).isNull();
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "1:10,11:20,111:30}/1000")).isNull();
@@ -63,10 +61,8 @@ public class VectorDatabaseTest {
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11#20,111:30}/1000")).isNull();
     }
 
-    @Test
-    void shouldFailOnNumberInSparseVectorFormat() {
-        assertThrows(NumberFormatException.class, () -> {
-            SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:x}/1000");
-        });
+    @Test(expected = NumberFormatException.class)
+    public void shouldFailOnNumberInSparseVectorFormat() {
+        SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:x}/1000");
     }
 }

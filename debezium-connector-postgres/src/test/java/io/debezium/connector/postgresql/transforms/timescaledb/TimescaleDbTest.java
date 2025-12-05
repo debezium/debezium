@@ -16,8 +16,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -28,15 +28,15 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
 
     private TimescaleDb<SourceRecord> transformation;
 
-    @BeforeEach
-    void initTransformation() {
+    @Before
+    public void initTransformation() {
         transformation = new TimescaleDb<>();
         transformation.setMetadata(new TestMetadata(Configuration.from(Collections.emptyMap())));
         transformation.configure(Collections.emptyMap());
     }
 
     @Test
-    void shouldProcessHypertable() {
+    public void shouldProcessHypertable() {
         final var record = createSourceRecord("_timescaledb_internal", "_hyper_1_1_chunk", 1);
         final var transformed = transformation.apply(record);
         final var source = ((Struct) transformed.value()).getStruct("source");
@@ -51,7 +51,7 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldRouteToDifferentTopic() {
+    public void shouldRouteToDifferentTopic() {
         final var config = Map.of("target.topic.prefix", "myprefix");
         transformation = new TimescaleDb<>();
         transformation.setMetadata(new TestMetadata(Configuration.from(config)));
@@ -67,7 +67,7 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProcessAggregate() {
+    public void shouldProcessAggregate() {
         final var record = createSourceRecord("_timescaledb_internal", "_hyper_2_2_chunk", 1);
         final var transformed = transformation.apply(record);
         final var source = ((Struct) transformed.value()).getStruct("source");
@@ -82,7 +82,7 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldIgnoreMessagesWithoutRequiredSource() {
+    public void shouldIgnoreMessagesWithoutRequiredSource() {
         final var record1 = createSourceRecord(null, null, 1);
         final var transformed1 = transformation.apply(record1);
         assertThat(transformed1).isSameAs(record1);
@@ -97,14 +97,14 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldIgnoreMessagesForNonTimescaleSchema() {
+    public void shouldIgnoreMessagesForNonTimescaleSchema() {
         final var record = createSourceRecord("different", "table", 1);
         final var transformed = transformation.apply(record);
         assertThat(transformed).isSameAs(record);
     }
 
     @Test
-    void shouldWarnOnOrphanChunk() {
+    public void shouldWarnOnOrphanChunk() {
         final var logInterceptor = new LogInterceptor(TimescaleDb.class);
         final var record = createSourceRecord("_timescaledb_internal", "_hyper_10_1_chunk", 1);
         final var transformed = transformation.apply(record);

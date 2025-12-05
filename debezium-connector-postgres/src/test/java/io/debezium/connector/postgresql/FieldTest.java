@@ -6,14 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.Before;
 
 import io.debezium.config.AbstractFieldTest;
 
 public class FieldTest extends AbstractFieldTest {
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         setAllConnectorFields(PostgresConnectorConfig.ALL_FIELDS);
     }
 

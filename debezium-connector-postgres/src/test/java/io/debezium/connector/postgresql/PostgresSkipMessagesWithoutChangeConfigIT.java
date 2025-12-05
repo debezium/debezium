@@ -13,9 +13,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -29,14 +29,14 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
  */
 public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         initializeConnectorTestFramework();
         TestHelper.dropAllSchemas();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

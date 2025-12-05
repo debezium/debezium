@@ -9,7 +9,7 @@ package io.debezium.connector.postgresql;
 import java.util.UUID;
 
 import org.apache.kafka.connect.data.Schema;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -38,7 +38,8 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<PostgresConnect
             "  payload       jsonb" +
             ");";
 
-    @BeforeEach
+    @Before
+    @Override
     public void beforeEach() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

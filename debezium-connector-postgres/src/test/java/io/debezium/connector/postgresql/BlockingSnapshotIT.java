@@ -13,9 +13,9 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -39,8 +39,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
     protected final Path signalsFile = Paths.get("src", "test", "resources")
             .resolve("debezium_signaling_blocking_file.txt");
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
 
         TestHelper.dropAllSchemas();
         TestHelper.dropDefaultReplicationSlot();
@@ -51,8 +51,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
         TestHelper.createPublicationForAllTables();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -135,7 +135,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
 
     @FixFor("DBZ-7311")
     @Test
-    void executeBlockingSnapshotWhenSnapshotModeIsNever() throws Exception {
+    public void executeBlockingSnapshotWhenSnapshotModeIsNever() throws Exception {
         // Testing.Print.enable();
 
         // Avoid to start the streaming from data inserted before the connector start
@@ -162,7 +162,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
 
     @FixFor("DBZ-7312")
     @Test
-    void executeBlockingSnapshotWhenASnapshotAlreadyExecuted() throws Exception {
+    public void executeBlockingSnapshotWhenASnapshotAlreadyExecuted() throws Exception {
         // Testing.Print.enable();
 
         // Avoid to start the streaming from data inserted before the connector start
@@ -192,7 +192,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
     }
 
     @Test
-    void executeBlockingSnapshotJustAfterInitialSnapshotAndNoEventStreamedYet() throws Exception {
+    public void executeBlockingSnapshotJustAfterInitialSnapshotAndNoEventStreamedYet() throws Exception {
         // Testing.Print.enable();
 
         populateTable();

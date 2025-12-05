@@ -16,10 +16,10 @@ import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -36,19 +36,19 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
     static String TOPIC_NAME = topicName("temporaltype.test_data_types");
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         initializeConnectorTestFramework();
         createTable();
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -90,7 +90,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    void shouldConvertTemporalsToIsoString() throws Exception {
+    public void shouldConvertTemporalsToIsoString() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -175,7 +175,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    void shouldConvertTemporalsMicroseconds() throws Exception {
+    public void shouldConvertTemporalsMicroseconds() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -260,7 +260,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    void shouldConvertTemporalsNanoseconds() throws Exception {
+    public void shouldConvertTemporalsNanoseconds() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -344,7 +344,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    void shouldReceiveDeletesWithInfinityDate() throws Exception {
+    public void shouldReceiveDeletesWithInfinityDate() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");
@@ -373,7 +373,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
+    public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");

@@ -17,13 +17,13 @@ import java.time.chrono.IsoEra;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 public class ISODateTimeFormatTest {
     private static final String BCE_DISPLAY_NAME = IsoEra.BCE.getDisplayName(TextStyle.SHORT, Locale.getDefault());
 
     @Test
-    void testTimestampToInstant() {
+    public void testTimestampToInstant() {
         ZoneOffset offset = ZoneOffset.UTC;
         assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30"))
                 .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 0, offset).toInstant());
@@ -42,7 +42,7 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
-    void testTimestampWithTimeZoneToOffsetTime() {
+    public void testTimestampWithTimeZoneToOffsetTime() {
         assertThat(DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime("2016-11-04 13:51:30+02"))
                 .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 0, ZoneOffset.ofHours(2)));
         assertThat(DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime("2016-11-04 13:51:30.123+02"))
@@ -60,7 +60,7 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
-    void testDate() {
+    public void testDate() {
         assertThat(DateTimeFormat.get().date("2016-11-04")).isEqualTo(LocalDate.of(2016, 11, 4));
         assertThat(DateTimeFormat.get().date("2016-11-04 " + BCE_DISPLAY_NAME)).isEqualTo(LocalDate.of(-2015, 11, 4));
         assertThat(DateTimeFormat.get().date("20160-11-04")).isEqualTo(LocalDate.of(20160, 11, 4));
@@ -69,17 +69,17 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
-    void testTime() {
+    public void testTime() {
         assertThat(DateTimeFormat.get().time("13:51:30")).isEqualTo(LocalTime.of(13, 51, 30));
     }
 
     @Test
-    void testTimeWithTimeZone() {
+    public void testTimeWithTimeZone() {
         assertThat(DateTimeFormat.get().timeWithTimeZone("13:51:30+02")).isEqualTo(OffsetTime.of(11, 51, 30, 0, ZoneOffset.UTC));
     }
 
     @Test
-    void testSystemTimestampToInstant() {
+    public void testSystemTimestampToInstant() {
         assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30Z"))
                 .isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC).toInstant());
         assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30.000Z"))

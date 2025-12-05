@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -43,13 +43,13 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
             "INSERT INTO over.t2 VALUES (102);" +
             "INSERT INTO over.t2 VALUES (103);";
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
     @Test
-    void shouldUseOverriddenSelectStatementDuringSnapshotting() throws Exception {
+    public void shouldUseOverriddenSelectStatementDuringSnapshotting() throws Exception {
         TestHelper.execute(STATEMENTS);
 
         buildProducer(TestHelper.defaultConfig()
@@ -67,7 +67,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
     }
 
     @Test
-    void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws Exception {
+    public void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws Exception {
         TestHelper.execute(STATEMENTS);
 
         buildProducer(TestHelper.defaultConfig()

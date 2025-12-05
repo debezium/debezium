@@ -20,11 +20,11 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -51,18 +51,18 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         initializeConnectorTestFramework();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

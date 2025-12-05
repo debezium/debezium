@@ -20,11 +20,11 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -52,25 +52,25 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @Rule
     public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         initializeConnectorTestFramework();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
     }
 
     @Test
-    void transactionMetadata() throws InterruptedException {
+    public void transactionMetadata() throws InterruptedException {
         // Testing.Print.enable();
 
         TestHelper.dropDefaultReplicationSlot();

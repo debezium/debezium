@@ -20,9 +20,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -46,21 +46,21 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
             "CREATE TABLE s2.a (pk SERIAL NOT NULL PRIMARY KEY, aa integer);";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         initializeConnectorTestFramework();
         getDebeziumTestTransport().clear();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
     }
 
     @Test
-    void shouldProduceOpenLineageStartEvent() {
+    public void shouldProduceOpenLineageStartEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -85,7 +85,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageRunningEvent() {
+    public void shouldProduceOpenLineageRunningEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -110,7 +110,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageCompleteEvent() {
+    public void shouldProduceOpenLineageCompleteEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -137,7 +137,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageInputDataset() throws Exception {
+    public void shouldProduceOpenLineageInputDataset() throws Exception {
 
         TestHelper.execute(SETUP_TABLES_STMT);
 
@@ -174,7 +174,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageInputDatasetUponDDLEvent() throws Exception {
+    public void shouldProduceOpenLineageInputDatasetUponDDLEvent() throws Exception {
 
         TestHelper.execute(SETUP_TABLES_STMT);
 
@@ -210,7 +210,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageFailEvent() {
+    public void shouldProduceOpenLineageFailEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -254,7 +254,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldProduceOpenLineageOutputDataset() throws Exception {
+    public void shouldProduceOpenLineageOutputDataset() throws Exception {
 
         TestHelper.execute(SETUP_TABLES_STMT);
 

@@ -8,7 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.relational.TableId;
@@ -16,7 +16,7 @@ import io.debezium.relational.TableId;
 public class ReplicaIdentityTestMapperTest {
 
     @Test
-    void shouldSetReplicaAutoSetValidValue() {
+    public void shouldSetReplicaAutoSetValidValue() {
 
         TableId tableId1 = new TableId("", "testSchema_1", "testTable_1");
         TableId tableId2 = new TableId("", "testSchema_2", "testTable_2");
@@ -30,7 +30,7 @@ public class ReplicaIdentityTestMapperTest {
     }
 
     @Test
-    void shouldSetReplicaAutoSetIndexValue() {
+    public void shouldSetReplicaAutoSetIndexValue() {
 
         TableId tableId1 = new TableId("", "testSchema_1", "testTable_1");
         TableId tableId2 = new TableId("", "testSchema_2", "testTable_2");

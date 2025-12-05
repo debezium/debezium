@@ -7,11 +7,10 @@
 package io.debezium.connector.postgresql.connection;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 import java.time.Duration;
@@ -25,10 +24,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.awaitility.Awaitility;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +62,8 @@ public class ReplicationConnectionIT {
     @Rule
     public TestRule logTestName = new TestLogger(logger);
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().asMap(), "postgresql");
         TestHelper.dropAllSchemas();
         String statement = "CREATE SCHEMA IF NOT EXISTS public;" +
@@ -72,7 +73,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldCreateAndDropReplicationSlots() throws Exception {
+    public void shouldCreateAndDropReplicationSlots() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test1", true)) {
             ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
@@ -87,100 +88,92 @@ public class ReplicationConnectionIT {
         }
     }
 
-    @Test
-    void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            // create a replication connection which should be dropped once it's closed
-            try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
-                conn1.startStreaming(new WalPositionLocator());
-                try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false)) {
-                    conn2.startStreaming(new WalPositionLocator());
-                    fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
-                }
-                catch (Exception e) {
-                    assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
-                    throw e;
-                }
-            }
-        });
-    }
-
-    @Test
-    @FixFor("DBZ-4517")
-    void shouldNotAllowRetryWhenConfigured() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            TestHelper.create().dropReplicationSlot("test1");
-            LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
-            // create a replication connection which should be dropped once it's closed
-            try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
-                conn1.startStreaming(new WalPositionLocator());
-                try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false,
-                        new PostgresConnectorConfig(TestHelper.defaultConfig()
-                                .with(PostgresConnectorConfig.MAX_RETRIES, 0)
-                                .build()))) {
-                    conn2.startStreaming(new WalPositionLocator());
-                    fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
-                }
-                catch (Exception e) {
-                    assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
-                    assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
-                    throw e;
-                }
-            }
-        });
-    }
-
-    @Test
-    void shouldNotRetryIfSlotCreationFailsWithoutTimeoutError() throws Exception {
-        assertThrows(SQLException.class, () -> {
-            LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
-            try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot1", true)) {
-                conn1.createReplicationSlot();
-                // try to create the replication slot with same name again
-                try (ReplicationConnection conn2 = TestHelper.createForReplication("testslot1", true)) {
-                    conn2.createReplicationSlot();
-                    fail("Should not be able to create 2 replication slots on same db and plugin");
-                }
-                catch (Exception e) {
-                    assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
-                    assertTrue(e.getMessage().contains("ERROR: replication slot \"testslot1\" already exists"));
-                    throw e;
-                }
-            }
-        });
-    }
-
-    @Test
-    void shouldRetryAndFailIfSlotCreationFailsWithTimeoutErrorOnLimitedRetries() throws Exception {
-        assertThrows(DebeziumException.class, () -> {
-            LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
-            // open a transaction and don't commit it, so the slot creation will fail with timeout error
-            String statement = "DROP TABLE IF EXISTS table_with_pk;" +
-                    "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
-                    "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
-            PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
-            try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot2", true,
-                    new PostgresConnectorConfig(TestHelper.defaultConfig()
-                            .with(PostgresConnectorConfig.MAX_RETRIES, 1)
-                            .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
-                            .with(PostgresConnectorConfig.CREATE_SLOT_COMMAND_TIMEOUT, 2)
-                            .build()))) {
-                conn1.createReplicationSlot();
+    @Test(expected = DebeziumException.class)
+    public void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
+        // create a replication connection which should be dropped once it's closed
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
+            conn1.startStreaming(new WalPositionLocator());
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false)) {
+                conn2.startStreaming(new WalPositionLocator());
+                fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
             }
             catch (Exception e) {
-                assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
-                assertTrue(((SQLException) e.getCause()).getSQLState().equals("57014"));
-                assertTrue(e.getMessage().contains("query to create replication slot timed out"));
+                assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
                 throw e;
             }
-            finally {
-                connection.commit();
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    @FixFor("DBZ-4517")
+    public void shouldNotAllowRetryWhenConfigured() throws Exception {
+        TestHelper.create().dropReplicationSlot("test1");
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        // create a replication connection which should be dropped once it's closed
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
+            conn1.startStreaming(new WalPositionLocator());
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false,
+                    new PostgresConnectorConfig(TestHelper.defaultConfig()
+                            .with(PostgresConnectorConfig.MAX_RETRIES, 0)
+                            .build()))) {
+                conn2.startStreaming(new WalPositionLocator());
+                fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
             }
-        });
+            catch (Exception e) {
+                assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
+                assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
+                throw e;
+            }
+        }
+    }
+
+    @Test(expected = SQLException.class)
+    public void shouldNotRetryIfSlotCreationFailsWithoutTimeoutError() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot1", true)) {
+            conn1.createReplicationSlot();
+            // try to create the replication slot with same name again
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("testslot1", true)) {
+                conn2.createReplicationSlot();
+                fail("Should not be able to create 2 replication slots on same db and plugin");
+            }
+            catch (Exception e) {
+                assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
+                assertTrue(e.getMessage().contains("ERROR: replication slot \"testslot1\" already exists"));
+                throw e;
+            }
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldRetryAndFailIfSlotCreationFailsWithTimeoutErrorOnLimitedRetries() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        // open a transaction and don't commit it, so the slot creation will fail with timeout error
+        String statement = "DROP TABLE IF EXISTS table_with_pk;" +
+                "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
+                "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
+        PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot2", true,
+                new PostgresConnectorConfig(TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                        .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
+                        .with(PostgresConnectorConfig.CREATE_SLOT_COMMAND_TIMEOUT, 2)
+                        .build()))) {
+            conn1.createReplicationSlot();
+        }
+        catch (Exception e) {
+            assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
+            assertTrue(((SQLException) e.getCause()).getSQLState().equals("57014"));
+            assertTrue(e.getMessage().contains("query to create replication slot timed out"));
+            throw e;
+        }
+        finally {
+            connection.commit();
+        }
     }
 
     @Test
-    void shouldSucceedIfSlotCreationSucceedsAfterTimeoutErrors() throws Exception {
+    public void shouldSucceedIfSlotCreationSucceedsAfterTimeoutErrors() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
         // open a transaction and don't commit it, so the slot creation will fail with timeout
         String statement = "DROP TABLE IF EXISTS table_with_pk;" +
@@ -218,7 +211,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldCloseConnectionOnInvalidSlotName() throws Exception {
+    public void shouldCloseConnectionOnInvalidSlotName() throws Exception {
         final int closeRetries = 60;
         final int waitPeriod = 2_000;
         final String slotQuery = "select count(*) from pg_stat_replication where state = 'startup'";
@@ -244,7 +237,7 @@ public class ReplicationConnectionIT {
                         break;
                     }
                     if (retry == closeRetries) {
-                        fail("Connection should not be active");
+                        Assert.fail("Connection should not be active");
                     }
                     Thread.sleep(waitPeriod);
                 }
@@ -258,7 +251,7 @@ public class ReplicationConnectionIT {
     // a timing issue.
     @Test
     @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT, reason = "An update on a table with no primary key throws PSQLException as tables must have a PK")
-    @Disabled
+    @Ignore
     public void shouldReceiveAndDecodeIndividualChanges() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
@@ -269,7 +262,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldReceiveSameChangesIfNotFlushed() throws Exception {
+    public void shouldReceiveSameChangesIfNotFlushed() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         // don't drop the replication slot once this is finished
         String slotName = "test";
@@ -284,7 +277,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldNotReceiveSameChangesIfFlushed() throws Exception {
+    public void shouldNotReceiveSameChangesIfFlushed() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         // don't drop the replication slot once this is finished
         String slotName = "test";
@@ -300,7 +293,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldReceiveMissedChangesWhileDown() throws Exception {
+    public void shouldReceiveMissedChangesWhileDown() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         String slotName = "test";
         startInsertStop(slotName, this::flushLsn);
@@ -318,7 +311,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldResumeFromLastReceivedLSN() throws Exception {
+    public void shouldResumeFromLastReceivedLSN() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         String slotName = "test";
         AtomicReference<Lsn> lastReceivedLsn = new AtomicReference<>();
@@ -333,7 +326,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldTolerateInvalidLSNValues() throws Exception {
+    public void shouldTolerateInvalidLSNValues() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         String slotName = "test";
         startInsertStop(slotName, null);
@@ -350,7 +343,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldReceiveOneMessagePerDMLOnTransactionCommit() throws Exception {
+    public void shouldReceiveOneMessagePerDMLOnTransactionCommit() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
             ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
@@ -366,7 +359,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldNotReceiveMessagesOnTransactionRollback() throws Exception {
+    public void shouldNotReceiveMessagesOnTransactionRollback() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
             ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             String statement = "DROP TABLE IF EXISTS table_with_pk;" +
@@ -379,7 +372,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    void shouldGeneratesEventsForMultipleSchemas() throws Exception {
+    public void shouldGeneratesEventsForMultipleSchemas() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
             ReplicationStream stream = connection.startStreaming(new WalPositionLocator());

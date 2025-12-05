@@ -15,9 +15,9 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,16 +86,16 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
         return false;
     }
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
 
         TestHelper.execute(INIT_STATEMENTS);
     }
 
-    @AfterEach
-    void after() throws Exception {
+    @After
+    public void after() throws Exception {
         stopConnector();
     }
 

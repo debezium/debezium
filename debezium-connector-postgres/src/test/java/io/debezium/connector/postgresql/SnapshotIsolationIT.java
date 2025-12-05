@@ -17,10 +17,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
@@ -43,40 +43,40 @@ public class SnapshotIsolationIT extends AbstractAsyncEngineConnectorTest {
             "CREATE TABLE s2.a (pk SERIAL NOT NULL PRIMARY KEY, aa integer);";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @BeforeEach
-    void before() {
+    @Before
+    public void before() {
         initializeConnectorTestFramework();
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
     }
 
     @Test
-    void takeSnapshotInSerializableMode() throws Exception {
+    public void takeSnapshotInSerializableMode() throws Exception {
         takeSnapshot(PostgresConnectorConfig.SnapshotIsolationMode.SERIALIZABLE);
     }
 
     @Test
-    void takeSnapshotInRepeatableReadMode() throws Exception {
+    public void takeSnapshotInRepeatableReadMode() throws Exception {
         takeSnapshot(PostgresConnectorConfig.SnapshotIsolationMode.REPEATABLE_READ);
     }
 
     @Test
-    void takeSnapshotInReadCommittedMode() throws Exception {
+    public void takeSnapshotInReadCommittedMode() throws Exception {
         takeSnapshot(PostgresConnectorConfig.SnapshotIsolationMode.READ_COMMITTED);
     }
 
     @Test
-    void takeSnapshotInReadUncommittedMode() throws Exception {
+    public void takeSnapshotInReadUncommittedMode() throws Exception {
         takeSnapshot(PostgresConnectorConfig.SnapshotIsolationMode.READ_UNCOMMITTED);
     }
 

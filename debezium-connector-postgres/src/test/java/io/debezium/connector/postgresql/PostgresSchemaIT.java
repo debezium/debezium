@@ -27,9 +27,9 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
@@ -80,14 +80,14 @@ public class PostgresSchemaIT {
 
     private PostgresSchema schema;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().asMap(), "postgresql");
         TestHelper.dropAllSchemas();
     }
 
     @Test
-    void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
+    public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
@@ -163,7 +163,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
+    public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
@@ -179,7 +179,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldLoadSchemaForPostgisTypes() throws Exception {
+    public void shouldLoadSchemaForPostgisTypes() throws Exception {
         TestHelper.executeDDL("init_postgis.ddl");
         TestHelper.executeDDL("postgis_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
@@ -197,7 +197,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldApplyFilters() throws Exception {
+    public void shouldApplyFilters() throws Exception {
         String statements = "CREATE SCHEMA s1; " +
                 "CREATE SCHEMA s2; " +
                 "DROP TABLE IF EXISTS s1.A;" +
@@ -270,7 +270,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldDetectNewChangesAfterRefreshing() throws Exception {
+    public void shouldDetectNewChangesAfterRefreshing() throws Exception {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  PRIMARY KEY(pk));";
@@ -309,7 +309,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldPopulateToastableColumnsCache() throws Exception {
+    public void shouldPopulateToastableColumnsCache() throws Exception {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  toasted text, untoasted int, PRIMARY KEY(pk));";
@@ -338,7 +338,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    void shouldProperlyGetDefaultColumnValues() throws Exception {
+    public void shouldProperlyGetDefaultColumnValues() throws Exception {
         String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE default_column_test (" +
                 "pk SERIAL, " +
                 "ss SMALLSERIAL, " +

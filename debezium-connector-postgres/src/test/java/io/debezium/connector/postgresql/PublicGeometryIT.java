@@ -15,10 +15,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
@@ -48,8 +47,8 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         // ensure the slot is deleted for each test
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
@@ -64,10 +63,9 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
         setupRecordsProducer(TestHelper.defaultConfig());
     }
 
-    @Test
-    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    @Test(timeout = 30000)
     @FixFor("DBZ-1144")
-    void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
+    public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         consumer = testConsumer(1, "public");
         waitForStreamingToStart();
         // need to wait for all the spatial_ref_sys to flow through and be ignored.

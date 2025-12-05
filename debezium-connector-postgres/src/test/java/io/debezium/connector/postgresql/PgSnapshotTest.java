@@ -6,14 +6,14 @@
 package io.debezium.connector.postgresql;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.DebeziumException;
 
 public class PgSnapshotTest {
 
     @Test
-    void parseCorrectPgSnapshotWithInProgressTransactions() {
+    public void parseCorrectPgSnapshotWithInProgressTransactions() {
 
         PgSnapshot snapshot = PgSnapshot.valueOf("795:799:795,797");
 
@@ -23,7 +23,7 @@ public class PgSnapshotTest {
     }
 
     @Test
-    void parseCorrectPgSnapshotWithoutInProgressTransactions() {
+    public void parseCorrectPgSnapshotWithoutInProgressTransactions() {
 
         PgSnapshot snapshot = PgSnapshot.valueOf("795:799:");
 
@@ -33,7 +33,7 @@ public class PgSnapshotTest {
     }
 
     @Test
-    void parseAWrongPgSnapshotWillThrowException() {
+    public void parseAWrongPgSnapshotWillThrowException() {
 
         Assertions.assertThatThrownBy(() -> PgSnapshot.valueOf("795::"))
                 .isInstanceOf(DebeziumException.class);

@@ -21,9 +21,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.TestHelper;
@@ -40,13 +40,13 @@ import io.debezium.util.Testing;
  */
 public class PostgresConnectionIT {
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         Testing.Print.disable();
     }
 
     @Test
-    void shouldReportValidTxId() throws SQLException {
+    public void shouldReportValidTxId() throws SQLException {
         try (PostgresConnection connection = TestHelper.create()) {
             connection.connect();
             assertTrue(connection.currentTransactionId() > 0);
@@ -63,7 +63,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldCovertXidBackwardCompatible() throws SQLException {
+    public void shouldCovertXidBackwardCompatible() throws SQLException {
         try (PostgresConnection connection = TestHelper.create()) {
             connection.connect();
             connection.setAutoCommit(false);
@@ -82,7 +82,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldReportValidXLogPos() throws SQLException {
+    public void shouldReportValidXLogPos() throws SQLException {
         try (PostgresConnection connection = TestHelper.create()) {
             connection.connect();
             assertTrue(connection.currentXLogLocation() > 0);
@@ -90,7 +90,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldReadServerInformation() throws Exception {
+    public void shouldReadServerInformation() throws Exception {
         try (PostgresConnection connection = TestHelper.create()) {
             ServerInfo serverInfo = connection.serverInfo();
             assertNotNull(serverInfo);
@@ -105,7 +105,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldReadReplicationSlotInfo() throws Exception {
+    public void shouldReadReplicationSlotInfo() throws Exception {
         try (PostgresConnection connection = TestHelper.create()) {
             ServerInfo.ReplicationSlot slotInfo = connection.readReplicationSlotInfo("test", "test");
             assertEquals(ServerInfo.ReplicationSlot.INVALID, slotInfo);
@@ -113,7 +113,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldPrintReplicateIdentityInfo() throws Exception {
+    public void shouldPrintReplicateIdentityInfo() throws Exception {
         String statement = "DROP SCHEMA IF EXISTS public CASCADE;" +
                 "CREATE SCHEMA public;" +
                 "CREATE TABLE test(pk serial, PRIMARY KEY (pk));";
@@ -124,7 +124,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldDropReplicationSlot() throws Exception {
+    public void shouldDropReplicationSlot() throws Exception {
         try (PostgresConnection connection = TestHelper.create()) {
             // try to drop a non existent slot
             assertFalse(connection.dropReplicationSlot("test"));
@@ -143,7 +143,7 @@ public class PostgresConnectionIT {
 
     @Test
     @FixFor("DBZ-934")
-    @Disabled
+    @Ignore
     // Temporary slots no longer supported due to DBZ-2338
     public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
         try (ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
@@ -172,7 +172,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldDetectRunningConncurrentTxOnInit() throws Exception {
+    public void shouldDetectRunningConncurrentTxOnInit() throws Exception {
         // Testing.Print.enable();
         // drop the slot from the previous connection
         final String slotName = "block";
@@ -238,7 +238,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldSupportPG95RestartLsn() throws Exception {
+    public void shouldSupportPG95RestartLsn() throws Exception {
         String slotName = "pg95";
         try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
             replConnection.initConnection();
@@ -254,7 +254,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
-    void shouldSupportFallbackToRestartLsn() throws Exception {
+    public void shouldSupportFallbackToRestartLsn() throws Exception {
         String slotName = "emptyconfirmed";
         try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
             replConnection.initConnection();

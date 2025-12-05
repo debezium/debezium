@@ -12,10 +12,10 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Optional;
 
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
@@ -32,8 +32,8 @@ public class PostgresDefaultValueConverterIT {
     private PostgresValueConverter postgresValueConverter;
     private PostgresDefaultValueConverter postgresDefaultValueConverter;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropAllSchemas();
 
         postgresConnection = TestHelper.create();
@@ -49,8 +49,8 @@ public class PostgresDefaultValueConverterIT {
                 postgresValueConverter, postgresConnection.getTimestampUtils(), typeRegistry);
     }
 
-    @AfterEach
-    void closeConnection() {
+    @After
+    public void closeConnection() {
         if (postgresConnection != null) {
             postgresConnection.close();
         }

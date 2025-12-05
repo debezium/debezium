@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.postgresql;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration.Builder;
@@ -18,28 +18,28 @@ public class RecordsSnapshotParallelProducerIT extends RecordsSnapshotProducerIT
         config.with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 3);
     }
 
-    @Disabled
+    @Ignore
     @Test
     @Override
     public void shouldGenerateSnapshotsForDefaultDatatypes() {
 
     }
 
-    @Disabled
+    @Ignore
     @Test
     @Override
     public void shouldGenerateSnapshotsForDecimalDatatypesUsingStringEncoding() {
 
     }
 
-    @Disabled
+    @Ignore
     @Test
     @Override
     public void shouldGenerateSnapshotsForDefaultDatatypesAdaptiveMicroseconds() {
 
     }
 
-    @Disabled
+    @Ignore
     @Test
     @Override
     public void shouldGenerateSnapshotsForPartitionedTables() {

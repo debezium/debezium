@@ -12,9 +12,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -36,8 +36,8 @@ public class PostgresVectorToJsonConverterIT extends AbstractAsyncEngineConnecto
 
     private PostgresConnection connection;
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         TestHelper.dropAllSchemas();
 
         TestHelper.execute("DROP SCHEMA IF EXISTS s1 CASCADE;CREATE SCHEMA s1;");
@@ -47,8 +47,8 @@ public class PostgresVectorToJsonConverterIT extends AbstractAsyncEngineConnecto
         connection.setAutoCommit(false);
     }
 
-    @AfterEach
-    void after() throws Exception {
+    @After
+    public void after() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
 
