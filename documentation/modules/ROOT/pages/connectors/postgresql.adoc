@@ -3179,9 +3179,13 @@ If the publication already exists, either for all tables or configured with a su
 |No default
 |The name of the PostgreSQL database from which to stream the changes.
 
+ifdef::community[]
 |[[postgresql-property-database-connection-class-factory]]<<postgresql-property-database-connection-class-factory, `+database.connection.factory.class+`>>
 |No default
-|The name of the ConnectionFactory. For example, can be used to handle AWS IAM Authentication (see xref:postgresql-on-amazon-rds[here]).
+|The name of the ConnectionFactory.
+One use of this property is to specify the interface that encapsulates credentials and other connection details when you use AWS IAM Authentication to establish a JDBC connection to a PostgreSQL database on Amazon RDS.
+For more information, see xref:postgresql-on-amazon-rds[PostgreSQL on Amazon RDS]).
+endif::community[]
 
 |[[postgresql-property-topic-prefix]]<<postgresql-property-topic-prefix, `+topic.prefix+`>>
 |No default
