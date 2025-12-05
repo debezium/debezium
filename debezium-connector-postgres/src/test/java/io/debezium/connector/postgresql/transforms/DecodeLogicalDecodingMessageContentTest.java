@@ -48,7 +48,6 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngine
 
     @BeforeEach
     void beforeEach() throws Exception {
-        TestHelper.dropAllSchemas();
         Configuration.Builder configBuilder = TestHelper.defaultConfig();
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -63,6 +62,8 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngine
         stopConnector();
         assertNoRecordsToConsume();
         decodeLogicalDecodingMessageContent.close();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
     }
 
     @Test
