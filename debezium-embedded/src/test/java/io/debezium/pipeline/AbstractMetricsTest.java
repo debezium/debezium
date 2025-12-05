@@ -6,7 +6,6 @@
 package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -24,7 +23,8 @@ import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -72,7 +72,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testLifecycle() throws Exception {
+    public void testLifecycle() throws Exception {
 
         start();
 
@@ -89,7 +89,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
             mBeanServer.getMBeanInfo(getSnapshotMetricsObjectName());
-            fail("Expected Snapshot Metrics no longer to exist");
+            Assert.fail("Expected Snapshot Metrics no longer to exist");
         }
         catch (InstanceNotFoundException e) {
             // expected
@@ -98,7 +98,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Verify streaming metrics no longer exist
         try {
             mBeanServer.getMBeanInfo(getStreamingMetricsObjectName());
-            fail("Expected Streaming Metrics no longer to exist");
+            Assert.fail("Expected Streaming Metrics no longer to exist");
         }
         catch (InstanceNotFoundException e) {
             // expected
@@ -106,7 +106,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testSnapshotOnlyMetrics() throws Exception {
+    public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -117,7 +117,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testSnapshotAndStreamingMetrics() throws Exception {
+    public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -133,7 +133,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     @Test
     @FixFor("DBZ-6603")
-    void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
+    public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -148,7 +148,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testStreamingOnlyMetrics() throws Exception {
+    public void testStreamingOnlyMetrics() throws Exception {
 
         // start connector
         start(this::noSnapshot);
@@ -159,7 +159,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testAdvancedStreamingMetrics() throws Exception {
+    public void testAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)
@@ -171,7 +171,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
+    public void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)

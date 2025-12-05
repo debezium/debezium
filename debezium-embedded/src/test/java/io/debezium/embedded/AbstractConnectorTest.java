@@ -6,7 +6,7 @@
 package io.debezium.embedded;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -59,10 +59,10 @@ import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,7 +135,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected abstract DebeziumEngine.Builder<SourceRecord> createEngineBuilder();
 
-    @BeforeEach
+    @Before
     public final void initializeConnectorTestFramework() {
         LoggingContext.forConnector(getClass().getSimpleName(), "", "test");
         keyJsonConverter = new JsonConverter();
@@ -158,7 +158,7 @@ public abstract class AbstractConnectorTest implements Testing {
     /**
      * Stop the connector and block until the connector has completely stopped.
      */
-    @AfterEach
+    @After
     public final void stopConnector() {
         stopConnector(null);
     }

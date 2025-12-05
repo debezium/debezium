@@ -7,8 +7,8 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -828,7 +828,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     @FixFor("DBZ-4834")
-    void shouldSnapshotNewlyAddedTableToIncludeListAfterRestart() throws Exception {
+    public void shouldSnapshotNewlyAddedTableToIncludeListAfterRestart() throws Exception {
         // Populate the second table
         populateTables();
 
@@ -885,7 +885,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
-    void testPauseDuringSnapshot() throws Exception {
+    public void testPauseDuringSnapshot() throws Exception {
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
@@ -974,7 +974,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
-    void shouldExecuteRegularSnapshotWhenAdditionalConditionEmpty() throws Exception {
+    public void shouldExecuteRegularSnapshotWhenAdditionalConditionEmpty() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -1067,7 +1067,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     // TODO seems slow try to speedup
-    void testNotification() throws Exception {
+    public void testNotification() throws Exception {
 
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")

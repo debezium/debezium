@@ -6,10 +6,10 @@
 package io.debezium.pipeline.source.snapshot.incremental;
 
 import static org.apache.kafka.connect.data.Schema.Type.INT32;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.util.Map;
@@ -21,7 +21,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
@@ -71,7 +71,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
         final int expectedRecordCount = ROW_COUNT + 11;
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            assertTrue(dbChanges.containsKey(i + 1), String.format("missing PK %d", i + 1));
+            assertTrue(String.format("missing PK %d", i + 1), dbChanges.containsKey(i + 1));
             SourceRecord record = dbChanges.get(i + 1);
             final Schema.Type valueType = record.valueSchema().field("after").schema().field(valueFieldName()).schema().type();
             if (valueType == INT32) {
@@ -244,23 +244,23 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
             SourceRecord record = dbChanges.get(i + 1);
             final Struct after = ((Struct) record.value()).getStruct("after");
             final Integer value = after.getInt32(valueFieldName());
-            assertNotNull(value, "value is null at pk=" + (i + 1));
-            assertEquals(-6, value, String.format("value is %d at pk = %d, expected -6", value, i + 1));
+            assertNotNull("value is null at pk=" + (i + 1), value);
+            assertEquals(String.format("value is %d at pk = %d, expected -6", value, i + 1), -6, value, 0);
         }
 
         for (int i = 2 * ROW_COUNT; i < 3 * ROW_COUNT; i++) {
             SourceRecord record = dbChanges.get(i + 1);
             final Struct after = ((Struct) record.value()).getStruct("after");
             final Integer value = after.getInt32(valueFieldName());
-            assertNotNull(value, "value is null at pk=" + (i + 1));
-            assertEquals(-9, value, String.format("value is %d at pk = %d, expected -9", value, i + 1));
+            assertNotNull("value is null at pk=" + (i + 1), value);
+            assertEquals(String.format("value is %d at pk = %d, expected -9", value, i + 1), -9, value, 0);
         }
 
         for (int i = 3 * ROW_COUNT; i < 4 * ROW_COUNT; i++) {
             SourceRecord record = dbChanges.get(i + 1);
             final Struct after = ((Struct) record.value()).getStruct("after");
             final Integer value = after.getInt32(valueFieldName());
-            assertNull(value, "value is not null at pk=" + (i + 1));
+            assertNull("value is not null at pk=" + (i + 1), value);
         }
     }
 
