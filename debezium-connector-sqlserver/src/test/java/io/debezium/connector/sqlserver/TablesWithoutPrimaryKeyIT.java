@@ -10,9 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -36,23 +36,23 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabase();
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    void shouldProcessFromSnapshot() throws Exception {
+    public void shouldProcessFromSnapshot() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
 
@@ -77,7 +77,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void shouldProcessFromStreaming() throws Exception {
+    public void shouldProcessFromStreaming() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE init (pk INT PRIMARY KEY);",

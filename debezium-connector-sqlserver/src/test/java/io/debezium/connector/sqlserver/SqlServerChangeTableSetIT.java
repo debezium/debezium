@@ -18,9 +18,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -43,8 +43,8 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -59,15 +59,15 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
         // Testing.Debug.enable();
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    void addTable() throws Exception {
+    public void addTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -132,7 +132,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void removeTable() throws Exception {
+    public void removeTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -173,7 +173,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void addColumnToTableEndOfBatchWithoutLsnLimit() throws Exception {
+    public void addColumnToTableEndOfBatchWithoutLsnLimit() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -191,7 +191,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void addColumnToTableMiddleOfBatchWithoutLsnLimit() throws Exception {
+    public void addColumnToTableMiddleOfBatchWithoutLsnLimit() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -319,7 +319,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void removeColumnFromTable() throws Exception {
+    public void removeColumnFromTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -441,7 +441,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void addColumnToTableWithParallelWrites() throws Exception {
+    public void addColumnToTableWithParallelWrites() throws Exception {
         final int RECORDS_PER_TABLE = 20;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -540,7 +540,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void readHistoryAfterRestart() throws Exception {
+    public void readHistoryAfterRestart() throws Exception {
         final int RECORDS_PER_TABLE = 1;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -633,7 +633,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void renameColumn() throws Exception {
+    public void renameColumn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -720,7 +720,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    void changeColumn() throws Exception {
+    public void changeColumn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;

@@ -21,8 +21,8 @@ import java.util.function.Predicate;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
@@ -52,8 +52,8 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     private SqlServerConnection connection;
     private boolean isSendStringParametersAsUnicode;
 
-    @BeforeAll
-    static void beforeClass() throws IOException {
+    @BeforeClass
+    public static void beforeClass() throws IOException {
         IoUtil.readLines("dbz-7359-ids.txt",
                 IncrementalSnapshotCollationSortOrderMismatchIT.class.getClassLoader(),
                 IncrementalSnapshotCollationSortOrderMismatchIT.class,
@@ -65,12 +65,12 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     //
     // PK CHAR
     @Test
-    void orderMismatchPkCharValueIntParamsAsUnicodeFalse() throws Exception {
+    public void orderMismatchPkCharValueIntParamsAsUnicodeFalse() throws Exception {
         orderMismatchPkTypecharValueInt(false, ALL_IDS.size(), "char(50) COLLATE " + SQL_COLLATION);
     }
 
     @Test
-    void orderMismatchPkCharValueIntParamsAsUnicodeTrueSkip36() throws Exception {
+    public void orderMismatchPkCharValueIntParamsAsUnicodeTrueSkip36() throws Exception {
         orderMismatchPkTypecharValueInt(true, ALL_IDS.size() - SKIPPED_IDS.size(), "char(50) COLLATE " + SQL_COLLATION);
     }
 
@@ -80,35 +80,35 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     //
     // PK VARCHAR
     @Test
-    void orderMismatchPkVarcharValueIntParamsAsUnicodeFalse() throws Exception {
+    public void orderMismatchPkVarcharValueIntParamsAsUnicodeFalse() throws Exception {
         orderMismatchPkTypecharValueInt(false, ALL_IDS.size(), "varchar(50) COLLATE " + SQL_COLLATION);
     }
 
     @Test
-    void orderMismatchPkVarcharValueIntParamsAsUnicodeTrueSkip36() throws Exception {
+    public void orderMismatchPkVarcharValueIntParamsAsUnicodeTrueSkip36() throws Exception {
         orderMismatchPkTypecharValueInt(true, ALL_IDS.size() - SKIPPED_IDS.size(), "varchar(50) COLLATE " + SQL_COLLATION);
     }
 
     // Ensure unicode values are read back ok
     @Test
-    void orderMismatchPkVarcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
+    public void orderMismatchPkVarcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
         orderMismatchPkVarcharValueNvarchar(false, ALL_IDS.size());
     }
 
     @Test
-    void orderMismatchPkVarcharValueNvarcharParamsAsUnicodeTrueSkip36() throws Exception {
+    public void orderMismatchPkVarcharValueNvarcharParamsAsUnicodeTrueSkip36() throws Exception {
         orderMismatchPkVarcharValueNvarchar(true, ALL_IDS.size() - SKIPPED_IDS.size());
     }
 
     //
     // PK - NCHAR
     @Test
-    void orderMismatchPkNcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
+    public void orderMismatchPkNcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
         orderMismatchPkNtypeValueNvarchar(false, ALL_IDS.size(), "nchar(50)");
     }
 
     @Test
-    void orderMismatchPkNcharValueNvarcharParamsAsUnicodeTrue() throws Exception {
+    public void orderMismatchPkNcharValueNvarcharParamsAsUnicodeTrue() throws Exception {
         orderMismatchPkNtypeValueNvarchar(true, ALL_IDS.size(), "nchar(50)");
     }
 
@@ -118,12 +118,12 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     //
     // PK - NVARCHAR
     @Test
-    void orderMismatchPkNvarcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
+    public void orderMismatchPkNvarcharValueNvarcharParamsAsUnicodeFalse() throws Exception {
         orderMismatchPkNtypeValueNvarchar(false, ALL_IDS.size(), "nvarchar(50)");
     }
 
     @Test
-    void orderMismatchPkNvarcharValueNvarcharParamsAsUnicodeTrue() throws Exception {
+    public void orderMismatchPkNvarcharValueNvarcharParamsAsUnicodeTrue() throws Exception {
         orderMismatchPkNtypeValueNvarchar(true, ALL_IDS.size(), "nvarchar(50)");
     }
 

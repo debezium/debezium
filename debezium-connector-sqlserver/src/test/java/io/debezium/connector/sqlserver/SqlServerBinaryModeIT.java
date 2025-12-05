@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
@@ -28,8 +28,8 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
 
@@ -42,8 +42,8 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         stopConnector();
 
         if (connection != null) {
@@ -52,7 +52,7 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveRawBinary() throws InterruptedException {
+    public void shouldReceiveRawBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BYTES);
 
         ByteBuffer expectedValue = ByteBuffer.wrap(new byte[]{ 1, 2, 3 });
@@ -61,7 +61,7 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveHexBinary() throws InterruptedException {
+    public void shouldReceiveHexBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.HEX);
 
         String expectedValue = "010203";
@@ -70,7 +70,7 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveBase64Binary() throws InterruptedException {
+    public void shouldReceiveBase64Binary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BASE64);
 
         String expectedValue = "AQID";
@@ -79,7 +79,7 @@ public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
+    public void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
         Struct data = consume(BinaryHandlingMode.BASE64_URL_SAFE);
 
         String expectedValue = "AQID";

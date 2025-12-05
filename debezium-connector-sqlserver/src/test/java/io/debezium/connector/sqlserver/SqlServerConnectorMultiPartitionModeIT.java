@@ -12,9 +12,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -26,8 +26,8 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractAsyncEngineC
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         connection = TestHelper.multiPartitionTestConnection();
 
@@ -65,15 +65,15 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractAsyncEngineC
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    void snapshotAndStreaming() throws Exception {
+    public void snapshotAndStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1,
                 TestHelper.TEST_DATABASE_2)

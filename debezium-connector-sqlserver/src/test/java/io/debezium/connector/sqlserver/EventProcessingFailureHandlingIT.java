@@ -11,9 +11,9 @@ import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
@@ -36,8 +36,8 @@ public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnect
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -51,15 +51,15 @@ public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnect
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    void warn() throws Exception {
+    public void warn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -102,7 +102,7 @@ public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnect
     }
 
     @Test
-    void ignore() throws Exception {
+    public void ignore() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -138,7 +138,7 @@ public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnect
     }
 
     @Test
-    void fail() throws Exception {
+    public void fail() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()

@@ -11,8 +11,8 @@ import java.time.Instant;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -24,7 +24,7 @@ public class SourceInfoTest {
 
     private SourceInfo source;
 
-    @BeforeEach
+    @Before
     public void beforeEach() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
@@ -40,54 +40,54 @@ public class SourceInfoTest {
     }
 
     @Test
-    void versionIsPresent() {
+    public void versionIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
-    void connectorIsPresent() {
+    public void connectorIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
-    void serverNameIsPresent() {
+    public void serverNameIsPresent() {
         assertThat(source.struct().getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
     }
 
     @Test
-    void changeLsnIsPresent() {
+    public void changeLsnIsPresent() {
         assertThat(source.struct().getString(SourceInfo.CHANGE_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte[]{ 0x01 }).toString());
     }
 
     @Test
-    void commitLsnIsPresent() {
+    public void commitLsnIsPresent() {
         assertThat(source.struct().getString(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte[]{ 0x02 }).toString());
     }
 
     @Test
-    void eventSerialNoIsPresent() {
+    public void eventSerialNoIsPresent() {
         assertThat(source.struct().getInt64(SourceInfo.EVENT_SERIAL_NO_KEY)).isEqualTo(30L);
     }
 
     @Test
-    void snapshotIsPresent() {
+    public void snapshotIsPresent() {
         assertThat(source.struct().getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
     }
 
     @Test
-    void timestampIsPresent() {
+    public void timestampIsPresent() {
         assertThat(source.struct().getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(3000);
     }
 
     @Test
-    void tableIdIsPresent() {
+    public void tableIdIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("c");
         assertThat(source.struct().getString(SourceInfo.SCHEMA_NAME_KEY)).isEqualTo("s");
         assertThat(source.struct().getString(SourceInfo.TABLE_NAME_KEY)).isEqualTo("t");
     }
 
     @Test
-    void schemaIsCorrect() {
+    public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.sqlserver.Source")
                 .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)

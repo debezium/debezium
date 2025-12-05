@@ -8,9 +8,9 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -33,8 +33,8 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnectionWithOptionRecompile();
         connection.execute(
@@ -48,8 +48,8 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }

@@ -15,9 +15,9 @@ import java.util.Map;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -87,8 +87,8 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     private SqlServerConnection connection;
 
-    @BeforeEach
-    void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         // Testing.Print.enable();
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
@@ -102,8 +102,8 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         TestHelper.waitForMaxLsnAvailable(connection, TEST_DATABASE_1);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }

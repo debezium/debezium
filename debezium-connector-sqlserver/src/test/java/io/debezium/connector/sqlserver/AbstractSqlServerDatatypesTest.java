@@ -20,9 +20,9 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -189,18 +189,18 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
 
     private boolean useSnapshot = true;
 
-    @AfterAll
-    static void dropTables() throws SQLException {
+    @AfterClass
+    public static void dropTables() throws SQLException {
         TestHelper.dropTestDatabase();
     }
 
-    @BeforeAll
-    static void beforeClass() throws SQLException {
+    @BeforeClass
+    public static void beforeClass() throws SQLException {
         TestHelper.createTestDatabase();
     }
 
     @Test
-    void intTypes() throws Exception {
+    public void intTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -219,7 +219,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     }
 
     @Test
-    void fpTypes() throws Exception {
+    public void fpTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -238,7 +238,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     }
 
     @Test
-    void stringTypes() throws Exception {
+    public void stringTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -257,7 +257,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     }
 
     @Test
-    void dateTimeTypes() throws Exception {
+    public void dateTimeTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -276,7 +276,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     }
 
     @Test
-    void dateTimeTypesAsConnect() throws Exception {
+    public void dateTimeTypesAsConnect() throws Exception {
         stopConnector();
         init(TemporalPrecisionMode.CONNECT, useSnapshot);
 
@@ -298,7 +298,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     }
 
     @Test
-    void otherTypes() throws Exception {
+    public void otherTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {

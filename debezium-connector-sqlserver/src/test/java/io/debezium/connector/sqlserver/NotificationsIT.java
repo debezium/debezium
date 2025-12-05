@@ -20,9 +20,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Percentage;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -33,8 +33,8 @@ import io.debezium.util.Testing;
 
 public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector> {
 
-    @BeforeEach
-    void before() throws SQLException, InterruptedException {
+    @Before
+    public void before() throws SQLException, InterruptedException {
 
         TestHelper.createTestDatabase();
         SqlServerConnection sqlServerConnection = TestHelper.testConnection();
@@ -53,8 +53,8 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
         Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
-    @AfterEach
-    void after() {
+    @After
+    public void after() {
         stopConnector();
         TestHelper.dropTestDatabase();
     }
@@ -100,7 +100,7 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     }
 
     @Test
-    void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
+    public void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
         startConnector(config -> config
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.NO_DATA)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")

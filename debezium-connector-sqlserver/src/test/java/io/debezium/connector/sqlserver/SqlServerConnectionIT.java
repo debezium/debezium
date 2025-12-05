@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -52,8 +52,8 @@ public class SqlServerConnectionIT {
 
     private ZoneOffset databaseZoneOffset;
 
-    @BeforeEach
-    void before() throws SQLException {
+    @Before
+    public void before() throws SQLException {
         databaseZoneOffset = getDatabaseZoneOffset();
         TestHelper.dropTestDatabase();
     }
@@ -70,7 +70,7 @@ public class SqlServerConnectionIT {
     }
 
     @Test
-    void shouldEnableCdcForDatabase() throws Exception {
+    public void shouldEnableCdcForDatabase() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
             connection.execute("CREATE DATABASE testDB1");
@@ -81,7 +81,7 @@ public class SqlServerConnectionIT {
     }
 
     @Test
-    void shouldEnableCdcWithWrapperFunctionsForTable() throws Exception {
+    public void shouldEnableCdcWithWrapperFunctionsForTable() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
             connection.execute("CREATE DATABASE testDB1");
@@ -584,7 +584,7 @@ public class SqlServerConnectionIT {
     }
 
     @Test
-    void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
 
         TestHelper.createTestDatabase();
         Configuration config = TestHelper.defaultConnectorConfig()

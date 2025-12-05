@@ -10,9 +10,9 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -36,8 +36,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();
 
-    @BeforeEach
-    void before() throws SQLException, InterruptedException {
+    @Before
+    public void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -56,8 +56,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis() * 2);
     }
 
-    @AfterEach
-    void after() throws SQLException {
+    @After
+    public void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
