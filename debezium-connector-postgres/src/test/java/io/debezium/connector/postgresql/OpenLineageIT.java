@@ -48,8 +48,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @BeforeEach
     void before() {
-        getDebeziumTestTransport().clear();
         initializeConnectorTestFramework();
+        getDebeziumTestTransport().clear();
     }
 
     @AfterEach

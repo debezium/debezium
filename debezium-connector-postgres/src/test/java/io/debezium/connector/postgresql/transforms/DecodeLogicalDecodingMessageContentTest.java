@@ -62,6 +62,11 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngine
         stopConnector();
         assertNoRecordsToConsume();
         decodeLogicalDecodingMessageContent.close();
+    }
+
+    @AfterEach
+    void after() {
+        stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
     }

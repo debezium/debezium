@@ -44,17 +44,18 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
 
         TestHelper.dropAllSchemas();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        initializeConnectorTestFramework();
 
         TestHelper.createDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.createPublicationForAllTables();
-        initializeConnectorTestFramework();
     }
 
     @AfterEach
     void after() {
         stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
     }
 
     protected Configuration.Builder config() {

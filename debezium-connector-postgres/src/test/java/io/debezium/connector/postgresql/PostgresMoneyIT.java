@@ -33,8 +33,8 @@ public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
 
     @BeforeEach
     void before() throws Exception {
-        TestHelper.dropAllSchemas();
         initializeConnectorTestFramework();
+        TestHelper.dropAllSchemas();
     }
 
     @AfterEach

@@ -31,8 +31,8 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
 
     @BeforeEach
     void before() throws Exception {
-        TestHelper.dropAllSchemas();
         initializeConnectorTestFramework();
+        TestHelper.dropAllSchemas();
     }
 
     @AfterEach

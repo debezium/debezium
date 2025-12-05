@@ -40,8 +40,6 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
         TestHelper.execute(
                 "CREATE TABLE pgvector.table_vector (pk SERIAL, f_vector pgvector.vector(3), f_halfvec pgvector.halfvec(3), f_sparsevec pgvector.sparsevec(3000), PRIMARY KEY(pk));",
                 "INSERT INTO pgvector.table_vector (f_vector, f_halfvec, f_sparsevec) VALUES ('[1,2,3]', '[101,102,103]', '{1: 201, 9: 209}/3000');");
-
-        // Re-initialize the connector framework AFTER database cleanup to ensure clean state
         initializeConnectorTestFramework();
     }
 
