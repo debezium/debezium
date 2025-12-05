@@ -6,6 +6,7 @@
 package io.debezium.connector.common;
 
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.kafka.connect.source.SourceTask;
 
@@ -30,6 +31,7 @@ public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
     private final Clock clock;
     private final T connectorConfig;
     private final Configuration rawConfig;
+    private final UUID runId;
 
     public CdcSourceTaskContext(Configuration rawConfig,
                                 T connectorConfig,
@@ -43,6 +45,7 @@ public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
         this.connectorConfig = connectorConfig;
         this.rawConfig = rawConfig;
         this.clock = Clock.system();
+        this.runId = UUIDUtils.generateNewUUID();
     }
 
     public CdcSourceTaskContext(Configuration rawConfig,
@@ -112,5 +115,9 @@ public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
 
     public Configuration getRawConfig() {
         return rawConfig;
+    }
+
+    public UUID getRunId() {
+        return runId;
     }
 }

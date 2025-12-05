@@ -69,7 +69,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false, new CustomConverterRegistry(emptyList()));
+                false, new CustomConverterRegistry(emptyList()), new MySqlTaskContext(config, connectorConfig));
     }
 
     @Override

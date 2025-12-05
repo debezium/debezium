@@ -40,7 +40,6 @@ import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -55,7 +54,6 @@ public class ReplicationConnectionIT {
 
     @BeforeEach
     void before() throws Exception {
-        DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().asMap(), "postgresql");
         TestHelper.dropAllSchemas();
         String statement = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +

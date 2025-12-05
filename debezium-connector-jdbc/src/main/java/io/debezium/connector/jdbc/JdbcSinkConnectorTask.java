@@ -38,6 +38,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.connector.common.UUIDUtils;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.openlineage.ConnectorContext;
@@ -110,8 +111,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
-            DebeziumOpenLineageEmitter.init(connectorContext);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(), props);
 
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
                 LOGGER.info("Connector has already been started");

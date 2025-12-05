@@ -1239,7 +1239,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // Perform transformation
         final SourceRecord transformed = transformation.apply(record);
 
-        assertThat(transformed.headers()).hasSize(4);
+        assertThat(transformed.headers()).hasSize(5);
         Iterator<Header> headers = transformed.headers().allWithName("application/debezium-test-header");
         assertThat(headers.hasNext()).isTrue();
         assertThat(headers.next().value().toString()).isEqualTo("shouldPropagatePreviousRecordHeaders");
@@ -1482,7 +1482,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
-        assertThat(transformed.headers()).hasSize(4);
+        assertThat(transformed.headers()).hasSize(5);
         assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Envelope.Operation.CREATE.code());
     }
 
@@ -1498,7 +1498,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
-        assertThat(transformed.headers()).hasSize(5);
+        assertThat(transformed.headers()).hasSize(6);
         assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Envelope.Operation.CREATE.code());
         assertThat(getSourceRecordHeaderByKey(transformed, "__id")).isNull();
     }
@@ -1516,7 +1516,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
-        assertThat(transformed.headers()).hasSize(5);
+        assertThat(transformed.headers()).hasSize(6);
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.op")).isEqualTo(Envelope.Operation.CREATE.code());
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.source_collection")).isEqualTo(getCollectionName());
     }
@@ -1555,7 +1555,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformed = transformation.apply(createRecord);
 
         assertThat(((Struct) transformed.value()).get(fieldPrefix + "OP")).isEqualTo(Envelope.Operation.CREATE.code());
-        assertThat(transformed.headers()).hasSize(4);
+        assertThat(transformed.headers()).hasSize(5);
         assertThat(getSourceRecordHeaderByKey(transformed, headerPrefix + "OPERATION")).isEqualTo(Envelope.Operation.CREATE.code());
     }
 

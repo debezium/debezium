@@ -11,6 +11,8 @@ import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -42,8 +44,9 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                                  TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-                                                 boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
-        super(config, topicNamingStrategy, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
+                                                 boolean tableIdCaseInsensitive, KeyMapper customKeysMapper,
+                                                 CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
+        super(config, topicNamingStrategy, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper, taskContext);
 
         this.schemaHistory = config.getSchemaHistory();
         this.schemaHistory.start();

@@ -78,6 +78,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
+    private CdcSourceTaskContext<? extends CommonConnectorConfig> cdcSourceTaskContext;
 
     protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
                                          DatabaseSchema schema,
@@ -227,6 +228,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 .collect(Collectors.toList());
     }
 
+    public abstract CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config);
+
     @Override
     public final void start(Map<String, String> props) {
         if (context == null) {
@@ -239,8 +242,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
-            DebeziumOpenLineageEmitter.init(props, connectorName());
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.INITIAL);
+            cdcSourceTaskContext = preStart(config);
+
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName(), cdcSourceTaskContext.getRunId()),
+                    DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -261,7 +266,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 this.coordinator = start(config);
                 setTaskState(DebeziumTaskState.RUNNING);
 
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.RUNNING);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName(), cdcSourceTaskContext.getRunId()),
+                        DebeziumTaskState.RUNNING);
 
             }
             catch (RetriableException e) {
@@ -432,10 +438,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             else if (currentState == DebeziumTaskState.RESTARTING) {
 
                 getErrorHandler().ifPresentOrElse(
-                        handler -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
+                        handler -> DebeziumOpenLineageEmitter.emit(
+                                DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName(), cdcSourceTaskContext.getRunId()),
                                 DebeziumTaskState.RESTARTING,
                                 handler.getProducerThrowable()),
-                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
+                        () -> DebeziumOpenLineageEmitter.emit(
+                                DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName(), cdcSourceTaskContext.getRunId()),
                                 DebeziumTaskState.RESTARTING));
 
                 // we're in restart mode... check if it's time to restart
@@ -469,7 +477,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
         finally {
             stop(false);
-            DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()));
+            DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName(), cdcSourceTaskContext.getRunId()));
         }
     }
 
@@ -506,7 +514,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(DebeziumTaskState.STOPPED);
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()), DebeziumTaskState.STOPPED);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName(), cdcSourceTaskContext.getRunId()),
+                        DebeziumTaskState.STOPPED);
             }
         }
         finally {

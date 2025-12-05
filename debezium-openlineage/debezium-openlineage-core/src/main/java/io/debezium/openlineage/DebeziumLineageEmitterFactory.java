@@ -6,7 +6,6 @@
 package io.debezium.openlineage;
 
 import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +26,6 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumLineageEmitterFactory.class);
     private static final ServiceLoader<DatasetNamespaceResolverFactory> datasetNamespaceResolverFactory = ServiceLoader.load(DatasetNamespaceResolverFactory.class);
-    private final AtomicReference<OpenLineageContext> contextRef = new AtomicReference<>();
 
     @Override
     public LineageEmitter get(ConnectorContext connectorContext) {
@@ -37,14 +35,11 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
         if (debeziumOpenLineageConfiguration.enabled()) {
             DebeziumOpenLineageClient emitter = new DebeziumOpenLineageClient(connectorContext, debeziumOpenLineageConfiguration);
 
-            if (contextRef.get() == null) {
-                LOGGER.debug("OpenLineageContext was null, getting instance");
-                OpenLineageContext ctx = new OpenLineageContext(
-                        new OpenLineage(emitter.getProducer()),
-                        debeziumOpenLineageConfiguration,
-                        OpenLineageJobIdentifier.from(connectorContext, debeziumOpenLineageConfiguration));
-                contextRef.compareAndSet(null, ctx);
-            }
+            OpenLineageContext ctx = new OpenLineageContext(
+                    new OpenLineage(emitter.getProducer()),
+                    debeziumOpenLineageConfiguration,
+                    OpenLineageJobIdentifier.from(connectorContext, debeziumOpenLineageConfiguration),
+                    connectorContext.runId());
 
             DatasetNamespaceResolverFactory namespaceResolverFactory = datasetNamespaceResolverFactory
                     .stream()
@@ -52,8 +47,8 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
                     .map(ServiceLoader.Provider::get)
                     .orElse(new DefaultDatasetNamespaceResolverFactory());
 
-            LOGGER.debug("OpenLineageContext {}", contextRef.get());
-            return new OpenLineageEmitter(connectorContext, contextRef.get(), emitter, namespaceResolverFactory);
+            LOGGER.debug("OpenLineageContext {}", ctx);
+            return new OpenLineageEmitter(connectorContext, ctx, emitter, namespaceResolverFactory);
         }
 
         return new NoOpLineageEmitter();
