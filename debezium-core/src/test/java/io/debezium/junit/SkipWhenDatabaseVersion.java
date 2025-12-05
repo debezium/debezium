@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Marker annotation used together with the {@link SkipTestExtension} JUnit extension, that allows tests to be skipped
+ * Marker annotation used together with the {@link SkipTestRule} JUnit rule, that allows tests to be skipped
  * based on the database version used for testing.
  *
  * @author Chris Cranford

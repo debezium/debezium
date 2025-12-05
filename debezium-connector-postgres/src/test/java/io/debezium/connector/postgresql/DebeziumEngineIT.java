@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
-import org.junit.jupiter.api.Assertions;
+import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -138,7 +138,7 @@ public class DebeziumEngineIT {
         final ExecutorService executor = Executors.newFixedThreadPool(1);
         DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
-                    Assertions.fail("Should not be invoked due to serialization error");
+                    Assert.fail("Should not be invoked due to serialization error");
                 })
                 .using(new CompletionCallback() {
 

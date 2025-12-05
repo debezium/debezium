@@ -6,7 +6,7 @@
 package io.debezium.time;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.fail;
 
 import java.time.Instant;
 import java.time.LocalDate;

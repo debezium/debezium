@@ -137,16 +137,6 @@
             <groupId>io.opentelemetry.javaagent</groupId>
             <artifactId>opentelemetry-testing-common</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.spockframework</groupId>
-                    <artifactId>spock-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.spockframework</groupId>
-                    <artifactId>spock-junit4</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry.javaagent</groupId>

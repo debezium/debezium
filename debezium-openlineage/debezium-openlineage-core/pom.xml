@@ -28,11 +28,6 @@
         </dependency>
 
         <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage-api</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>io.openlineage</groupId>
             <artifactId>openlineage-java</artifactId>
         </dependency>
@@ -40,6 +35,18 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-common</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -61,6 +68,10 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-api</artifactId>
         </dependency>
     </dependencies>
 

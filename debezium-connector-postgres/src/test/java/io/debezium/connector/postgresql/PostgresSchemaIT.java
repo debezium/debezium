@@ -9,10 +9,10 @@ package io.debezium.connector.postgresql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -544,7 +544,7 @@ public class PostgresSchemaIT {
             String fieldName = fields[i].trim();
 
             Field field = actualSchema.field(Strings.unquoteIdentifierPart(fieldName));
-            assertNotNull(field, fieldName + " not found in schema");
+            assertNotNull(fieldName + " not found in schema", field);
             VerifyRecord.assertConnectSchemasAreEqual(fieldName, field.schema(), expectedSchemas[i]);
         }
     }
@@ -552,7 +552,7 @@ public class PostgresSchemaIT {
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
             TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
-            assertNotNull(tableSchema, fullyQualifiedTableName + " not included");
+            assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             assertThat(tableSchema.keySchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Key"));
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
         });
@@ -576,10 +576,10 @@ public class PostgresSchemaIT {
             String fullyQualifiedTableName = fqColumnName.substring(0, lastDotIdx);
             String columnName = lastDotIdx > 0 ? fqColumnName.substring(lastDotIdx + 1) : fqColumnName;
             TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
-            assertNotNull(tableSchema, fullyQualifiedTableName + " not included");
+            assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
             Schema valueSchema = tableSchema.valueSchema();
-            assertNotNull(valueSchema, fullyQualifiedTableName + ".Value schema not included");
-            assertNull(valueSchema.field(columnName), columnName + " not excluded;");
+            assertNotNull(fullyQualifiedTableName + ".Value schema not included", valueSchema);
+            assertNull(columnName + " not excluded;", valueSchema.field(columnName));
         });
     }
 

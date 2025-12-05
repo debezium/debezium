@@ -35,8 +35,8 @@ import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.junit.Assume;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -423,7 +423,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     @Test
     void snapshotOnlyDecimal128() throws Exception {
-        Assumptions.assumeTrue(TestHelper.decimal128Supported(), "Decimal 128 not supported");
+        Assume.assumeTrue("Decimal 128 not supported", TestHelper.decimal128Supported());
         BigDecimal firstKey = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
         snapshotOnly(firstKey, k -> k.add(BigDecimal.ONE));
     }

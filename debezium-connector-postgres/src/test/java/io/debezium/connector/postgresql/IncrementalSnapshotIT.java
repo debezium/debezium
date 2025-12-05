@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -441,9 +441,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
         assertThat(ROW_COUNT == entries.size());
         for (Map.Entry<Integer, Struct> e : entries) {
-            Assertions.assertTrue(e.getValue().getInt64("xmin") == null);
-            Assertions.assertTrue(e.getValue().getInt64("lsn") == null);
-            Assertions.assertTrue(e.getValue().getInt64("txId") == null);
+            Assert.assertTrue(e.getValue().getInt64("xmin") == null);
+            Assert.assertTrue(e.getValue().getInt64("lsn") == null);
+            Assert.assertTrue(e.getValue().getInt64("txId") == null);
         }
     }
 

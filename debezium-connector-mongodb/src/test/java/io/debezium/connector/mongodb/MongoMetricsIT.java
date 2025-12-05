@@ -6,7 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.fail;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import javax.management.ObjectName;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.jupiter.api.Assertions;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -197,11 +197,11 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         consumeRecords(NUM_RECORDS, record -> {
             records.add(record);
         });
-        Assertions.assertTrue(records.size() >= NUM_RECORDS);
+        Assert.assertTrue(records.size() >= NUM_RECORDS);
 
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         final ObjectName objectName = getSnapshotMetricsObjectName("mongodb", "mongo1");
         final long snapshotPauseDuration = (Long) mBeanServer.getAttribute(objectName, "SnapshotPausedDurationInSeconds");
-        Assertions.assertTrue(snapshotPauseDuration > 0);
+        Assert.assertTrue(snapshotPauseDuration > 0);
     }
 }

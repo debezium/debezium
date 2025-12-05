@@ -16,7 +16,7 @@ import java.util.Optional;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.junit.jupiter.api.Assertions;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -37,12 +37,12 @@ public class MongoDbConnectorConfigTest {
 
         Optional<String[]> resultOpt = mongoDbConnectorConfig.parseSignallingMessage(struct, Envelope.FieldName.AFTER);
 
-        Assertions.assertTrue(resultOpt.isPresent());
+        Assert.assertTrue(resultOpt.isPresent());
         String[] result = resultOpt.get();
-        Assertions.assertEquals(3, result.length);
-        Assertions.assertEquals("test-1", result[0]);
-        Assertions.assertEquals("execute-snapshot", result[1]);
-        Assertions.assertEquals("{\"data-collections\": [\"database.collection\"], \"type\": \"incremental\"}", result[2]);
+        Assert.assertEquals(3, result.length);
+        Assert.assertEquals("test-1", result[0]);
+        Assert.assertEquals("execute-snapshot", result[1]);
+        Assert.assertEquals("{\"data-collections\": [\"database.collection\"], \"type\": \"incremental\"}", result[2]);
     }
 
     @Test

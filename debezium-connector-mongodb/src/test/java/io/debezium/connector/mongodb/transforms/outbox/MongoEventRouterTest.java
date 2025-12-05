@@ -30,7 +30,7 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.Assertions;
+import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -154,7 +154,7 @@ public class MongoEventRouterTest {
                 valueSchema,
                 value);
 
-        DataException e = Assertions.assertThrows(DataException.class, () -> router.apply(eventRecord));
+        DataException e = Assert.assertThrows(DataException.class, () -> router.apply(eventRecord));
         assertThat(e).hasMessage("op is not a valid field name");
     }
 

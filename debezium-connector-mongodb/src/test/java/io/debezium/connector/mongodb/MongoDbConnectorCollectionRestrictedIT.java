@@ -12,9 +12,9 @@ import java.util.stream.IntStream;
 
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.bson.Document;
+import org.junit.Assume;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractAsyncEngineC
 
     @BeforeAll
     static void beforeAll() {
-        Assumptions.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
+        Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.dockerAuthReplicaSet();
         LOGGER.info("Starting {}...", mongo);

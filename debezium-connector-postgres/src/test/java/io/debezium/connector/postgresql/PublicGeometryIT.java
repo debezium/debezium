@@ -8,8 +8,8 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -106,7 +106,7 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
     }
 
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse(consumer.isEmpty(), "records not generated");
+        assertFalse("records not generated", consumer.isEmpty());
         SourceRecord insertedRecord = consumer.remove();
         assertEquals(topicName(expectedTopicName), insertedRecord.topic());
 

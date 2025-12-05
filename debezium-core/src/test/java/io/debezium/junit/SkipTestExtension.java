@@ -21,6 +21,7 @@ import io.debezium.util.Testing;
 
 /**
  * JUnit 5 Extension that inspects the presence of various skip annotations on a test method or test class.
+ * This is the JUnit 5 equivalent of {@link SkipTestRule}.
  *
  * Supported annotations:
  * - {@link SkipWhenJavaVersion}

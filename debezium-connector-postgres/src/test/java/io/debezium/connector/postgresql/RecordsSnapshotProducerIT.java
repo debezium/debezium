@@ -10,9 +10,9 @@ import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -381,7 +381,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidRead(record, PK_FIELD, 1);
         String topicName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
         List<SchemaAndValueField> expectedValuesAndSchemasForTopic = expectedValuesByTopicName.get(topicName);
-        assertNotNull(expectedValuesAndSchemasForTopic, "No expected values for " + topicName + " found");
+        assertNotNull("No expected values for " + topicName + " found", expectedValuesAndSchemasForTopic);
         assertRecordSchemaAndValues(expectedValuesAndSchemasForTopic, record, Envelope.FieldName.AFTER);
     }
 
@@ -511,7 +511,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         assertEquals(expectedTotalCount, ids.size());
 
         // verify each topic contains exactly the number of input records
-        assertTrue(expectedTopicCounts.entrySet().containsAll(actualTopicCounts.entrySet()), "Expected counts per topic don't match");
+        assertTrue("Expected counts per topic don't match", expectedTopicCounts.entrySet().containsAll(actualTopicCounts.entrySet()));
     }
 
     @Test
