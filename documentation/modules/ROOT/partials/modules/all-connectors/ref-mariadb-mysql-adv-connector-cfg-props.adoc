@@ -922,6 +922,7 @@ Default value::: `0`
 
 Description:::
 Specifies the maximum number of tables that the connector can capture.
+This limit applies not only to tables being captured for data changes but also to any tables whose schemas are tracked as part of schema history.
 Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
