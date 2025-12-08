@@ -34,50 +34,39 @@ INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'
 For example,
 +
 include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-signal-example]
-
-The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}]. +
-The following table describes the parameters in the example:
 +
-.Descriptions of fields in a SQL command for sending an incremental snapshot signal to the signaling {data-collection}
-[cols="1,2,6a",options="header"]
-|===
-|Item |Value |Description
+The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}]. +
+The following list describes the parameters in the preceding example:
 
-|1
-|`{collection-container}.debezium_signal`
-|Specifies the fully-qualified name of the signaling {data-collection} on the source database.
+`INSERT INTO {collection-container}.debezium_signal`::
+Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
-|2
-|`ad-hoc-1`
-|The `id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request.
+`values`::
+`id`:::
+The `id` parameter contains the value `ad-hoc`, an arbitrary string that serves as the `id` identifier for the signal request.
 
-Use this string to identify logging messages to entries in the signaling {data-collection}.
-{prodname} does not use this string.
-Rather, during the snapshot, {prodname} generates its own `id` string as a watermarking signal.
+`type`:::
+The `type` parameter specifies the type of operation to perform, in this case, `execute-snapshot`.
 
-|3
-|`execute-snapshot`
-|The `type` parameter specifies the operation that the signal is intended to trigger.
+`data`::: The the `data` field of a signal contains the following fields:
 
-|4
-|`data-collections`
-|A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot.
-
-The array lists regular expressions that use the format `{collection-container}.table` to match the fully-qualified names of the {data-collection}s.
-This format is the same as the one that you use to specify the name of the connector's {link-prefix}:{link-signalling}#format-for-specifying-fully-qualified-names-for-data-collections[signaling {data-collection}].
-Data collection names are case-sensitive.
-
-|5
-|`incremental`
-|An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
-Valid values are `incremental` and `blocking`. +
+`data-collections`:::: An array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot.
+`type`:::: An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run.
++
+Valid values are `incremental` and `blocking`.
++
 If you do not specify a value, the connector defaults to performing an incremental snapshot.
-
-|6
-|`additional-conditions`
-| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
-Each additional condition is an object with `data-collection` and `filter` properties.
-You can specify different filters for each data collection. +
-* The `data-collection` property is the fully-qualified name of the data collection that the filter applies to.
+`additional-conditions`::::
+An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot.
+Each additional condition in the array is an object with `data-collection` and `filter` properties.
++
+Each `data-collection` in the `additional-conditions` array is specified by its fully-qualified name.
+You can specify one or more data collections.
+Each collection can be paired with an optional `filter` parameter.
+You can pair a unique filter with each data collection.
+The value of a `filter` property consists a column label and a value.
+When the snapshot runs, for each collection that is named in the array, it captures only the rows that contain the specified filter criteria.
++
+In the example, for the `table1` data collection, the signal results in a snapshot that captures only the rows that include the field `color` where the field value is `'blue'`.
++
 For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
-|===
