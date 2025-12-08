@@ -671,21 +671,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withInvisibleRecommender()
             .withDescription(
                     "(Deprecated) Whether or not to seek to the last known offset on the replication slot. " +
-                            "Use 'offset.mismatch.strategy' instead. A value of 'true' maps to 'trust_offset' strategy, 'false' maps to 'fail' strategy.");
+                            "Use 'offset.mismatch.strategy' instead. A value of 'true' maps to 'trust_offset' strategy, 'false' maps to 'no_validation' strategy.");
 
     public static final Field OFFSET_SLOT_MISMATCH_STRATEGY = Field.create("offset.mismatch.strategy")
             .withDisplayName("Offset Slot Mismatch Strategy")
-            .withEnum(OffsetSlotMismatchStrategy.class, OffsetSlotMismatchStrategy.FAIL)
+            .withEnum(OffsetSlotMismatchStrategy.class, OffsetSlotMismatchStrategy.NO_VALIDATION)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
                     "Determines behavior when the connector's stored offset LSN differs from the replication slot's confirmed LSN. " +
-                            "'fail' (default) throws an exception on mismatch, requiring manual intervention; " +
-                            "'trust_offset' advances the slot to match the offset when offset_lsn > slot_lsn (replaces deprecated slot.seek.to.known.offset.on.start=true); "
-                            +
-                            "'trust_slot' advances the offset to match the slot when slot_lsn > offset_lsn, allowing recovery from manual slot advancement; " +
-                            "'trust_greater_lsn' automatically synchronizes to the greater of the two LSNs, providing self-healing behavior.");
+                            "'no_validation' (default) uses offset without validation, may fail if WAL unavailable; " +
+                            "'trust_offset' validates and advances slot to offset, detects slot recreation (recommended for preventing silent data issues); " +
+                            "'trust_slot' trusts slot, advances offset to slot. (recommended when slot is durable, even through primary-replica failover); " +
+                            "'trust_greater_lsn' uses max(offset, slot) for automatic self-healing in either direction.");
 
     public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
             .withDisplayName("Replication slot creation timeout")
@@ -1170,26 +1169,31 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public enum OffsetSlotMismatchStrategy implements EnumeratedValue {
         /**
-         * Throw an exception if LSNs do not match. (default behavior).
+         * Do not validate or seek slot/offset positions (legacy behavior).
+         * Attempts to stream from the stored offset without validating against the replication slot.
+         * Slot recreation is not detected. Replaces slot.seek.to.known.offset.on.start = false.
          */
-        FAIL("fail"),
+        NO_VALIDATION("no_validation"),
 
         /**
-         * Advance the Slot to the offset LSN if offset_lsn > slot_lsn, if offset_lsn < slot_lsn, fail.
-         * Replaces slot.seek.to.known.offset.on.start = true.
+         * Validate and advance slot to match offset when possible.
+         * Fails if slot position is ahead of offset, detecting slot recreation and preventing silent data issues.
+         * Recommended for production. Replaces slot.seek.to.known.offset.on.start = true.
          */
         TRUST_OFFSET("trust_offset"),
 
         /**
-         * Advance the Offset to the Slot LSN if slot_lsn > offset_lsn, if slot_lsn < offset_lsn, re-stream old events.
-         * Allows recovery from WAL advancement by trusting the database slot as the source of truth
+         * Trust the replication slot as the authoritative position (server-side source of truth).
+         * Advances offset to slot when slot is ahead.
+         * Useful where the slot is durable (even during primary-replica failover), and teams prefer server-side state over client-side offset tracking. Valuable for LsnFlushMode.CONNECTOR_AND_DRIVER
+         *
          */
-
         TRUST_SLOT("trust_slot"),
 
         /**
-         * Advance the Offset to the Slot LSN if slot_lsn > offset_lsn, if slot_lsn < offset_lsn, re-stream old events.
-         * Allows recovery from WAL advancement by trusting the database slot as the source of truth
+         * Self-healing mode that uses max(offset_lsn, slot_lsn).
+         * Automatically resolves mismatches in either direction, providing fully automatic recovery.
+         * Similar to TRUST_SLOT, but also makes use of the offset position to reduce duplicates in case of a crash. Valuable for LsnFlushMode.CONNECTOR_AND_DRIVER
          */
         TRUST_GREATER_LSN("trust_greater_lsn");
 
@@ -1721,11 +1725,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
                     SLOT_SEEK_TO_KNOWN_OFFSET.name(), OFFSET_SLOT_MISMATCH_STRATEGY.name());
             boolean deprecatedValue = config.getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
-            mode = deprecatedValue ? OffsetSlotMismatchStrategy.TRUST_OFFSET : OffsetSlotMismatchStrategy.FAIL;
+            mode = deprecatedValue ? OffsetSlotMismatchStrategy.TRUST_OFFSET : OffsetSlotMismatchStrategy.NO_VALIDATION;
         }
 
         if (mode == null) {
-            mode = OffsetSlotMismatchStrategy.FAIL; // Use default
+            mode = OffsetSlotMismatchStrategy.NO_VALIDATION; // Use default
         }
 
         logOffsetSlotMismatchStrategyInfo(mode);
@@ -1734,15 +1738,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static void logOffsetSlotMismatchStrategyInfo(OffsetSlotMismatchStrategy strategy) {
         switch (strategy) {
-            case FAIL ->
+            case NO_VALIDATION ->
                 LOGGER.info(
-                        "Using offset mismatch strategy 'fail': Connector will throw an exception if the stored offset LSN differs from the replication slot's confirmed LSN, requiring manual intervention.");
+                        "Using offset mismatch strategy 'no_validation': Connector will not validate slot position and will attempt to stream from the stored offset. Slot recreation is not detected.");
             case TRUST_OFFSET -> LOGGER.info(
-                    "Using offset mismatch strategy 'trust_offset': If offset_lsn > slot_lsn, the replication slot will be advanced to match the offset, preventing duplicate event streaming after offset commit but before slot flush.");
+                    "Using offset mismatch strategy 'trust_offset': Validates and advances slot to offset when offset is ahead. Fails when slot is ahead, detecting slot recreation and preventing silent data issues.");
             case TRUST_SLOT -> LOGGER.info(
-                    "Using offset mismatch strategy 'trust_slot': If slot_lsn > offset_lsn, the connector offset will be advanced to match the slot, allowing recovery from manual slot advancement or WAL position changes.");
+                    "Using offset mismatch strategy 'trust_slot': Treats the replication slot as authoritative. Advances offset to slot when slot is ahead, trusting server-side tracking.");
             case TRUST_GREATER_LSN -> LOGGER.info(
-                    "Using offset mismatch strategy 'trust_greater_lsn': The connector will automatically synchronize to max(offset_lsn, slot_lsn), providing self-healing behavior for both scenarios.");
+                    "Using offset mismatch strategy 'trust_greater_lsn': Self-healing mode that synchronizes to max(offset_lsn, slot_lsn), providing automatic recovery in either direction.");
         }
     }
 
