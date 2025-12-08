@@ -1316,7 +1316,7 @@ public class JdbcConnection implements AutoCloseable {
 
     protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
-                                                           final Set<TableId> viewIds)
+                                                           final Set<TableId> viewIds, boolean throwOnCaseInsensitiveColumnMismatch)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
@@ -1345,13 +1345,18 @@ public class JdbcConnection implements AutoCloseable {
                 String lowercaseColumnName = columnName.toLowerCase();
 
                 if (!seenLowercaseNames.add(lowercaseColumnName)) {
-                    throw new DebeziumException(
-                            String.format(
-                                    "Table '%s' has columns that differ only by case. " +
-                                            "Column name: '%s'. " +
-                                            "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
-                                            "Please rename one of the duplicate columns before running Debezium.",
-                                    tableId, columnName));
+                    String message = String.format("Table '%s' has columns that differ only by case. " +
+                            "Column name: '%s'. " +
+                            "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
+                            "Please rename one of the duplicate columns before running Debezium.",
+                            tableId, columnName);
+
+                    if (throwOnCaseInsensitiveColumnMismatch) {
+                        throw new DebeziumException(message);
+                    }
+                    else {
+                        LOGGER.warn(message);
+                    }
                 }
 
                 // add all included columns
@@ -1362,6 +1367,13 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return columnsByTable;
+    }
+
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, false);
     }
 
     protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId, String tableType) {
