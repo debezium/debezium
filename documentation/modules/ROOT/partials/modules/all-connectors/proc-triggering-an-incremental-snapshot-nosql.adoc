@@ -15,8 +15,7 @@ If the `data-collections` array is empty, {prodname} detects that no action is r
 
 [NOTE]
 ====
-If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
- +
+If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes.
 For example, to include a data collection that exists in the `*public*` database, and that has the name `*My.Collection*`, use the following format: `*"public"."My.Collection"*`.
 ====
 
@@ -44,7 +43,7 @@ db.debeziumSignal.insert({
 "data" : {
 "data-collections" ["\"public\".\"Collection1\"", "\"public\".\"Collection2\""],
 "type": "incremental"}
-"additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}');
+"additional-conditions":[{"data-collection": "public.Collection1" ,"filter":"color=\'blue\'"}]}');
 });
 ----
 +
@@ -53,13 +52,14 @@ The values of the `id`,`type`, and `data` parameters in the command correspond t
 The following list describes the parameters in the incremental snapshot example:
 +
 `db.debeziumSignal.insert`::
-Specifies the fully-qualified name of the signaling {data-collection} on the source database.
+Insert command that specifies the signaling {data-collection} to which you want to add the snapshot signal document.
+The data collection is specified by its fully-qualified name.
 
 `type`::
 Specifies the kind of signal to send, in this case, an `execute-snapshot` signal.
 
 `_id`::
-An optional parameter that assigna an arbitrary string to be the identifier for the signal request.
+An optional parameter that assigns an arbitrary string to be the identifier for the signal request.
 In the preceding example, the signal omits the optional `_id` parameter.
 Because the signal does not explicitly assign a value to the parameter, MongoDB automatically assigns an arbitrary id to the document.
 This `id` becomes the identifier for the signal request.
@@ -75,14 +75,14 @@ Valid values are `incremental` or `blocking`.
 
 `additional-conditions`::
 An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot.
-You can specify one or more data collections along with an optional filter parameter for each collection.
-Specify a filter to instruct the snapshot to capture  only fields that contain a specified value.
-In this case, the parameter instructs the signal to capture only documents in the `schema1.table1` data collection in which the field `color` is present and contains the value `'blue'`.
-
+You can specify one or more data collections and set a filter parameter for each collection.
+Each filter instructs the snapshot to capture only documents that contain a field with a specified value.
+In this case, the parameter instructs the signal to capture documents in the `public.Collection1` collection only if they include the field `color` with the value `'blue'`.
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
 
 .Example: Incremental snapshot event message
+====
 [source,json,index=0]
 ----
 {
@@ -102,6 +102,7 @@ The following example, shows the JSON for an incremental snapshot event that is 
     "transaction":null
 }
 ----
+====
 
 The following list describes select parameters in the preceding event message example:
 
