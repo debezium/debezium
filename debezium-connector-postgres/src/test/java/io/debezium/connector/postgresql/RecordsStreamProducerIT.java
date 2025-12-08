@@ -3939,7 +3939,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldFailDuringSnapshotForCaseSensitiveDuplicateColumns_snapshot_initial() {
-        // IMPORTANT: Create table BEFORE starting connector
+        final LogInterceptor logInterceptor = new LogInterceptor(JdbcConnection.class);
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_snapshot_case_dup;" +
                         "CREATE TABLE test_snapshot_case_dup (" +
@@ -3970,6 +3970,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Verify no corrupted snapshot data was emitted
         assertEquals(0, consumeAvailableRecords(record -> {
         }));
+        assertThat(logInterceptor.containsErrorMessage("Table 'public.test_snapshot_case_dup' has columns that differ only by case."));
     }
 
     @Test
@@ -4024,19 +4025,19 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Step 4: Wait for streaming to start
         waitForStreamingToStart();
 
-        // Step 6: NOW ALTER TABLE to add duplicate column during streaming
+        // Step 5: NOW ALTER TABLE to add duplicate column during streaming
         // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
         TestHelper.execute("ALTER TABLE test_alter_case ADD COLUMN \"Duration\" TEXT;");
 
-        // Step 7: Insert a record to trigger RELATION message processing
+        // Step 6: Insert a record to trigger RELATION message processing
         // The INSERT causes pgoutput to send a RELATION message with the new schema
         // handleRelationMessage() is called and Layer 2 validation runs
         TestHelper.execute("INSERT INTO test_alter_case (duration, \"Duration\") VALUES (200, 'test');");
 
-        // Step 8: Wait for some time to allow RELATION message processing
+        // Step 7: Wait for some time to allow RELATION message processing
         waitForAvailableRecords(5, TimeUnit.SECONDS);
 
-        // Step 9: Connector should fail due to Layer 2 validation in handleRelationMessage()
+        // Step 8: Connector should fail due to Layer 2 validation in handleRelationMessage()
         waitForEngineShutdown();
     }
 
