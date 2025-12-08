@@ -24,6 +24,7 @@ import io.debezium.connector.jdbc.Module;
 import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.NamingStyleUtils;
 import io.debezium.data.Envelope.FieldName;
+import io.debezium.data.SchemaUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
@@ -106,20 +107,18 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
      */
     @Override
     public R apply(final R record) {
-        if (record.value() == null) {
+        if (record.value() == null && record.valueSchema() == null) {
             LOGGER.debug("Skipping null record value");
             return record;
         }
 
-        if (!(record.value() instanceof Struct originalValue)) {
-            LOGGER.debug("Skipping non-Struct record value of type: {}", record.value().getClass().getName());
+        if (record.valueSchema() == null) {
+            LOGGER.debug("Skipping record with null value schema");
             return record;
         }
 
-        Schema originalSchema = record.valueSchema();
-
-        if (originalSchema == null) {
-            LOGGER.debug("Skipping record with null schema");
+        if (record.valueSchema().type() != Schema.Type.STRUCT) {
+            LOGGER.debug("Skipping non-Struct record value of type: {}", record.value().getClass().getName());
             return record;
         }
 
@@ -169,8 +168,7 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
         if (originalSchema != null && originalSchema.type() == Schema.Type.STRUCT) {
             final Struct originalValue = (Struct) record.value();
             if (isDebeziumPayloadSchema(originalSchema)) {
-                final SchemaBuilder schema = SchemaBuilder.struct();
-                copySchemaProperties(originalSchema, schema);
+                final SchemaBuilder schema = createSchemaBuilderWithBasics(originalSchema);
 
                 final Map<String, Object> newValues = new HashMap<>();
                 for (Field field : originalSchema.fields()) {
@@ -207,19 +205,22 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
      * @return the transformed schema and value
      */
     private TransformedSchemaValue transform(Schema originalSchema, Struct originalValue) {
-        if (originalValue == null) {
-            return new TransformedSchemaValue(originalSchema, originalValue);
+        final SchemaBuilder schemaBuilder = createSchemaBuilderWithBasics(originalSchema);
+
+        originalSchema.fields().forEach(field -> schemaBuilder.field(
+                transformFieldName(field.name()),
+                createSchemaBuilder(field.schema()).build()));
+
+        Struct value = null;
+        Schema valueSchema = schemaBuilder.build();
+        if (originalValue != null) {
+            value = new Struct(valueSchema);
+            for (Field field : originalSchema.fields()) {
+                value.put(transformFieldName(field.name()), originalValue.get(field));
+            }
         }
 
-        final SchemaBuilder schema = SchemaBuilder.struct();
-        copySchemaProperties(originalSchema, schema);
-
-        originalSchema.fields().forEach(field -> schema.field(transformFieldName(field.name()), copySchema(field.schema())));
-
-        Struct value = new Struct(schema.build());
-        originalSchema.fields().forEach(field -> value.put(transformFieldName(field.name()), originalValue.get(field)));
-
-        return new TransformedSchemaValue(value.schema(), value);
+        return new TransformedSchemaValue(valueSchema, value);
     }
 
     private boolean isDebeziumPayloadSchema(Schema schema) {
@@ -230,86 +231,48 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
     }
 
     /**
-     * Copies schema-level properties from the original schema to a schema builder.
+     * Creates a schema builder from the original schema, without copying fields.
      *
-     * @param source the source schema
-     * @param target the target schema builder
+     * @param originalSchema the original schema, must not be {@code null}
+     * @return the schema builder, never {@code null}
      */
-    private void copySchemaProperties(Schema source, SchemaBuilder target) {
-        if (source.name() != null) {
-            target.name(source.name());
+    private SchemaBuilder createSchemaBuilderWithBasics(Schema originalSchema) {
+        SchemaBuilder builder;
+        if (originalSchema.type() == Schema.Type.MAP) {
+            builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(
+                    originalSchema,
+                    SchemaBuilder.map(originalSchema.keySchema(), originalSchema.valueSchema()));
+            if (originalSchema.isOptional()) {
+                builder.optional();
+            }
+            else {
+                builder.required();
+            }
         }
-        if (source.version() != null) {
-            target.version(source.version());
+        else {
+            builder = SchemaUtil.copySchemaBasics(originalSchema);
         }
-        if (source.doc() != null) {
-            target.doc(source.doc());
+
+        if (originalSchema.defaultValue() != null) {
+            builder.defaultValue(originalSchema.defaultValue());
         }
+
+        return builder;
     }
 
     /**
-     * Creates a schema builder that preserves the properties of the original schema.
+     * Creates a schema builder, copying any existing fields
      *
-     * @param schema the schema to copy
-     * @return a schema builder with copied properties
+     * @param originalSchema the original schema, must not be {@code null}
+     * @return a schema builder, never {@code null}
      */
-    private SchemaBuilder copySchema(Schema schema) {
-        SchemaBuilder builder;
-
-        switch (schema.type()) {
-            case BOOLEAN:
-                builder = SchemaBuilder.bool();
-                break;
-            case INT8:
-                builder = SchemaBuilder.int8();
-                break;
-            case INT16:
-                builder = SchemaBuilder.int16();
-                break;
-            case INT32:
-                builder = SchemaBuilder.int32();
-                break;
-            case INT64:
-                builder = SchemaBuilder.int64();
-                break;
-            case FLOAT32:
-                builder = SchemaBuilder.float32();
-                break;
-            case FLOAT64:
-                builder = SchemaBuilder.float64();
-                break;
-            case STRING:
-                builder = SchemaBuilder.string();
-                break;
-            case BYTES:
-                builder = SchemaBuilder.bytes();
-                break;
-            case ARRAY:
-                builder = SchemaBuilder.array(schema.valueSchema());
-                break;
-            case MAP:
-                builder = SchemaBuilder.map(schema.keySchema(), schema.valueSchema());
-                break;
-            case STRUCT:
-                builder = SchemaBuilder.struct();
-                for (Field field : schema.fields()) {
-                    builder.field(field.name(), field.schema());
-                }
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported schema type: " + schema.type());
+    private SchemaBuilder createSchemaBuilder(Schema originalSchema) {
+        SchemaBuilder builder = createSchemaBuilderWithBasics(originalSchema);
+        if (originalSchema.type() == Schema.Type.STRUCT) {
+            for (Field field : originalSchema.fields()) {
+                builder.field(field.name(), field.schema());
+            }
         }
-
-        // Copy schema attributes
-        if (schema.isOptional()) {
-            builder.optional();
-        }
-        if (schema.defaultValue() != null) {
-            builder.defaultValue(schema.defaultValue());
-        }
-
-        copySchemaProperties(schema, builder);
-
         return builder;
     }
 

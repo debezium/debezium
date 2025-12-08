@@ -188,6 +188,24 @@ public class FieldNameTransformationTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-9747")
+    void testConvertFieldNameToLowerCaseDeleteRecord(SinkRecordFactory factory) {
+        try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
+            final Map<String, String> properties = new HashMap<>();
+            properties.put("column.naming.style", NamingStyle.LOWER_CASE.getValue());
+            transform.configure(properties);
+
+            var record = new KafkaDebeziumSinkRecord(transform.apply(deleteSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+            System.out.println(record.getOriginalKafkaRecord());
+            System.out.println(record.keySchema().fields());
+            assertSchemaFieldNames(record.keySchema()).containsOnly("doc_id");
+            assertSchemaFieldNames(record.getPayload().schema()).containsOnly("doc_id", "document_name", "nick_name_");
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-7051")
     void testConvertFieldNameToLowerCaseWithPrefixSuffix(SinkRecordFactory factory) {
         try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
@@ -232,6 +250,36 @@ public class FieldNameTransformationTest {
         final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
 
         final SinkRecordTypeBuilder builder = SinkRecordBuilder.create()
+                .flat(factory.isFlattened())
+                .name("prefix")
+                .topic("topic")
+                .offset(1)
+                .partition(0);
+
+        final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
+        Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
+            recordSchemaBuilder.field(payloadFieldName, optionalFields ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
+            builder.after(payloadFieldName, "randomValue");
+        });
+
+        return builder.keySchema(keySchema)
+                .recordSchema(recordSchemaBuilder.build())
+                .sourceSchema(sourceSchema)
+                .key(keyFieldName, (byte) 1)
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build()
+                .getOriginalKafkaRecord();
+    }
+
+    private static SinkRecord deleteSinkRecord(SinkRecordFactory factory, String keyFieldName, String... payloadFieldNames) {
+        return deleteSinkRecord(factory, keyFieldName, true, payloadFieldNames);
+    }
+
+    private static SinkRecord deleteSinkRecord(SinkRecordFactory factory, String keyFieldName, boolean optionalFields, String... payloadFieldNames) {
+        final Schema keySchema = SchemaBuilder.struct().field(keyFieldName, Schema.INT8_SCHEMA).build();
+        final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
+
+        final SinkRecordTypeBuilder builder = SinkRecordBuilder.delete()
                 .flat(factory.isFlattened())
                 .name("prefix")
                 .topic("topic")
