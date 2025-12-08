@@ -17,6 +17,7 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -649,6 +650,15 @@ public class PostgresConnection extends JdbcConnection {
         // where resolution of the column's JDBC type needs to be that of the root type instead of
         // the actual column to properly influence schema building and value conversion.
         return getTypeRegistry().get(nativeType).getRootType().getJdbcId();
+    }
+
+    @Override
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, Tables.TableFilter tableFilter, Tables.ColumnNameFilter columnFilter,
+                                                           DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, true);
     }
 
     @Override

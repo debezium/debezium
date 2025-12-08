@@ -93,6 +93,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
@@ -3932,7 +3933,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldFailDuringSnapshotForCaseSensitiveDuplicateColumns_snapshot_initial() {
-        // IMPORTANT: Create table BEFORE starting connector
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_snapshot_case_dup;" +
                         "CREATE TABLE test_snapshot_case_dup (" +
@@ -3963,11 +3964,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Verify no corrupted snapshot data was emitted
         assertEquals(0, consumeAvailableRecords(record -> {
         }));
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_snapshot_case_dup' has columns that differ only by case.")).isTrue();
     }
 
     @Test
     public void shouldFailOnTableWithCaseSensitiveDuplicateColumns_snapshot_nodata() {
-        // Create table BEFORE starting connector
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_case_columns;" +
                         "CREATE TABLE test_case_columns (" +
@@ -3993,10 +3995,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Wait for connector to fail and shutdown
         // With Layer 1: Fails during schema read, before any data is snapshotted
         waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_case_columns' has columns that differ only by case.")).isTrue();
     }
 
     @Test
     public void shouldFailOnAlterTableAddingCaseSensitiveDuplicateColumn() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         // Step 1: Create table WITHOUT duplicate columns
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_alter_case;" +
@@ -4017,24 +4021,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Step 4: Wait for streaming to start
         waitForStreamingToStart();
 
-        // Step 6: NOW ALTER TABLE to add duplicate column during streaming
+        // Step 5: NOW ALTER TABLE to add duplicate column during streaming
         // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
         TestHelper.execute("ALTER TABLE test_alter_case ADD COLUMN \"Duration\" TEXT;");
 
-        // Step 7: Insert a record to trigger RELATION message processing
+        // Step 6: Insert a record to trigger RELATION message processing
         // The INSERT causes pgoutput to send a RELATION message with the new schema
         // handleRelationMessage() is called and Layer 2 validation runs
         TestHelper.execute("INSERT INTO test_alter_case (duration, \"Duration\") VALUES (200, 'test');");
 
-        // Step 8: Wait for some time to allow RELATION message processing
+        // Step 7: Wait for some time to allow RELATION message processing
         waitForAvailableRecords(5, TimeUnit.SECONDS);
 
-        // Step 9: Connector should fail due to Layer 2 validation in handleRelationMessage()
+        // Step 8: Connector should fail due to Layer 2 validation in handleRelationMessage()
         waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_alter_case' has columns that differ only by case.")).isTrue();
     }
 
     @Test
     public void shouldFailOnRenameColumnCreatingDuplicate() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_rename;" +
                         "CREATE TABLE test_rename (" +
@@ -4054,6 +4060,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
         waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_rename' has columns that differ only by case.")).isTrue();
     }
 
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
