@@ -682,8 +682,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "Determines behavior when the connector's stored offset LSN differs from the replication slot's confirmed LSN. " +
                             "'no_validation' (default) uses offset without validation, may fail if WAL unavailable; " +
-                            "'trust_offset' validates and advances slot to offset, detects slot recreation (recommended for preventing silent data issues); " +
-                            "'trust_slot' trusts slot, advances offset to slot. (recommended when slot is durable, even through primary-replica failover); " +
+                            "'trust_offset' validates and advances slot to offset, detects slot recreation (prevents data loss when slot can't be trusted); " +
+                            "'trust_slot' slot is authoritative, advances offset to slot. (recommended when slot is durable, even through primary-replica failover); " +
                             "'trust_greater_lsn' uses max(offset, slot) for automatic self-healing in either direction.");
 
     public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
@@ -1178,7 +1178,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Validate and advance slot to match offset when possible.
          * Fails if slot position is ahead of offset, detecting slot recreation and preventing silent data issues.
-         * Recommended for production. Replaces slot.seek.to.known.offset.on.start = true.
+         * Recommended for preventing silent data loss when slot is untrustworthy. Replaces slot.seek.to.known.offset.on.start = true.
          */
         TRUST_OFFSET("trust_offset"),
 
