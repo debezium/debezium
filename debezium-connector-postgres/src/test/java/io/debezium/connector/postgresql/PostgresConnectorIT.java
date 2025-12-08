@@ -3630,9 +3630,6 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
-
-        // Connector should start successfully from slot position
-        // The insert between stop and slot advance should be skipped
         waitForStreamingRunning();
     }
 
@@ -3642,22 +3639,46 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
 
-        // Test that TRUST_GREATER_LSN handles slot > offset (jumps to slot)
-        // Start connector, process initial snapshot, then stop
+        // PART 1: Test offset > slot (should advance slot like TRUST_OFFSET)
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "manual"); // Prevent automatic slot flush
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         consumeRecordsByTopic(1);
 
-        SlotState slotBeforeStop = getDefaultReplicationSlot();
+        // Insert, process the record, and stop connector. With automatic flush disabled, this will create offset > slot scenario
+        TestHelper.execute(INSERT_STMT);
+        consumeRecordsByTopic(1);
         stopConnector();
         assertConnectorNotRunning();
 
+        SlotState slotBeforeStop = getDefaultReplicationSlot();
+
+        // Restart with TRUST_GREATER_LSN - should advance slot to offset (choosing max)
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn")
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        SlotState slotAfterFirstRestart = getDefaultReplicationSlot();
+        assertThat(slotAfterFirstRestart.slotLastFlushedLsn())
+                .describedAs("TRUST_GREATER_LSN should advance slot to offset when offset > slot")
+                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // PART 2: Test slot > offset (should advance offset like TRUST_SLOT)
         // Manually advance the replication slot ahead of the stored offset
         TestHelper.execute(INSERT_STMT);
         try (PostgresConnection connection = TestHelper.create()) {
@@ -3666,22 +3687,20 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                     ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
         }
 
-        SlotState slotAfterAdvance = getDefaultReplicationSlot();
-        assertThat(slotAfterAdvance.slotLastFlushedLsn())
-                .describedAs("Slot should be ahead of stored offset")
-                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+        SlotState slotAfterManualAdvance = getDefaultReplicationSlot();
+        assertThat(slotAfterManualAdvance.slotLastFlushedLsn())
+                .describedAs("Slot should be manually advanced ahead")
+                .isGreaterThan(slotAfterFirstRestart.slotLastFlushedLsn());
 
-        // Restart with TRUST_GREATER_LSN - should use slot position (max of offset and slot)
+        // Restart with TRUST_GREATER_LSN again - should now advance offset to slot (choosing max)
         configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn");
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn")
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
-
-        // Connector should start successfully, advancing to the slot position
-        // This demonstrates that TRUST_GREATER_LSN chose max(offset, slot) = slot
         waitForStreamingRunning();
     }
 
