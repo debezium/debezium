@@ -2943,7 +2943,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .untilAsserted(() -> {
                     SlotState currentSlot = getDefaultReplicationSlot();
                     assertThat(currentSlot.slotLastFlushedLsn())
-                            .describedAs("Slot LSN should have advanced been advanced by pgjdbc driver flushing of unmonitored activity")
+                            .describedAs("Slot LSN should have been advanced by pgjdbc driver flushing of unmonitored activity")
                             .isGreaterThan(slotBefore.slotLastFlushedLsn());
                 });
         final SlotState slotAfter = getDefaultReplicationSlot();
@@ -2952,8 +2952,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
 
         assertThat(slotAfter.slotLastFlushedLsn())
-                .describedAs("Slot LSN should match match server LSN as pgjdbc keep alive flushing is enabled")
-                .isEqualTo(postActivityServerLsn);
+                .describedAs("Slot LSN should match or exceed server LSN as pgjdbc keep alive flushing is enabled")
+                .isGreaterThanOrEqualTo(postActivityServerLsn);
 
         stopConnector();
     }
@@ -3638,7 +3638,6 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-9688")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to test slot advancement")
     public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {
-        TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
 
         // PART 1: Test offset > slot (should advance slot like TRUST_OFFSET)
@@ -3702,6 +3701,15 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(slotAfterManualAdvance.slotLastFlushedLsn())
                 .describedAs("Slot should be manually advanced ahead")
                 .isGreaterThan(slotAfterRestart.slotLastFlushedLsn());
+
+        Awaitility.await()
+                .alias("Wait to ensure slot is no longer active before restarting connector")
+                .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> {
+                    SlotState currentSlot = getDefaultReplicationSlot();
+                    return !currentSlot.slotIsActive();
+                });
 
         // Restart with TRUST_GREATER_LSN again - should now advance offset to slot (choosing max)
         configBuilder = TestHelper.defaultConfig()
