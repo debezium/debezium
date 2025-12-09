@@ -46,6 +46,7 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import io.debezium.pipeline.ErrorHandler;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -3878,6 +3879,145 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
+    }
+
+    @Test
+    public void shouldFailDuringSnapshotForCaseSensitiveDuplicateColumns_snapshot_initial() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_snapshot_case_dup;" +
+                        "CREATE TABLE test_snapshot_case_dup (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Insert data that would be snapshotted
+        TestHelper.execute("INSERT INTO test_snapshot_case_dup (duration, \"Duration\") VALUES (100, 'test');");
+
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_snapshot_case_dup")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
+        waitForEngineShutdown();
+
+        // Verify no corrupted snapshot data was emitted
+        assertEquals(0, consumeAvailableRecords(record -> {
+        }));
+
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_snapshot_case_dup' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnTableWithCaseSensitiveDuplicateColumns_snapshot_nodata() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        // Create table BEFORE starting connector
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_case_columns;" +
+                        "CREATE TABLE test_case_columns (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Start connector with NO_DATA (streaming only)
+        // With Layer 1: This will ALSO fail during schema read now
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
+        waitForEngineShutdown();
+
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_case_columns' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnAlterTableAddingCaseSensitiveDuplicateColumn() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        // Step 1: Create table WITHOUT duplicate columns
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_alter_case;" +
+                        "CREATE TABLE test_alter_case (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER" +
+                        ");");
+
+        // Step 2: Insert initial data
+        TestHelper.execute("INSERT INTO test_alter_case (duration) VALUES (100);");
+
+        // Step 3: Start connector - should succeed (no duplicates yet)
+        startConnector(config -> config
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_alter_case")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                true); // Wait for snapshot to complete
+
+        // Step 4: Wait for streaming to start
+        waitForStreamingToStart();
+
+        // Step 5: NOW ALTER TABLE to add duplicate column during streaming
+        // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
+        TestHelper.execute("ALTER TABLE test_alter_case ADD COLUMN \"Duration\" TEXT;");
+
+        // Step 6: Insert a record to trigger RELATION message processing
+        // The INSERT causes pgoutput to send a RELATION message with the new schema
+        // handleRelationMessage() is called and Layer 2 validation runs
+        TestHelper.execute("INSERT INTO test_alter_case (duration, \"Duration\") VALUES (200, 'test');");
+
+        // Step 7: Wait for some time to allow RELATION message processing
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        // Step 8: Connector should fail due to Layer 2 validation in handleRelationMessage()
+        waitForEngineShutdown();
+
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_alter_case' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnRenameColumnCreatingDuplicate() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_rename;" +
+                        "CREATE TABLE test_rename (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  status TEXT" +
+                        ");");
+
+        startConnector(config -> config
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_rename")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                false);
+
+        // Rename status to "Duration" (now conflicts with "duration")
+        TestHelper.execute("ALTER TABLE test_rename RENAME COLUMN status TO \"Duration\";");
+        TestHelper.execute("INSERT INTO test_rename (duration, \"Duration\") VALUES (100, 'test');");
+
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForEngineShutdown();
+
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_rename' has columns that differ only by case.")).isTrue();
     }
 
     private void assertHeartBeatRecord(SourceRecord heartbeat) {

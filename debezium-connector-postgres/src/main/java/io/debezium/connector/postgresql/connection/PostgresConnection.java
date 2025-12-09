@@ -650,6 +650,14 @@ public class PostgresConnection extends JdbcConnection {
         return doReadTableColumn(columnMetadata, tableId, columnFilter);
     }
 
+    @Override
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, Tables.TableFilter tableFilter, Tables.ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, true);
+    }
+
     public Optional<Column> readColumnForDecoder(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnNameFilter)
             throws SQLException {
         return doReadTableColumn(columnMetadata, tableId, columnNameFilter).map(ColumnEditor::create);
