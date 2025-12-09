@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Field.ValidationOutput;
@@ -71,6 +72,7 @@ public abstract class CommonConnectorConfig {
     public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
+    public static final String CONNECTOR_CLASS = "connector.class";
     protected SnapshotQueryMode snapshotQueryMode;
     protected String snapshotQueryModeCustomName;
     protected String snapshotLockingModeCustomName;
@@ -907,6 +909,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
+            .withValidation(CommonConnectorConfig::validateSignalDataCollection)
             .withDescription("The name of the data collection that is used to send signals/commands to Debezium. " +
                     "For multi-partition mode connectors, multiple signal data collections can be specified as a comma-separated list. " +
                     "Signaling is disabled when not set.");
@@ -1948,6 +1951,38 @@ public abstract class CommonConnectorConfig {
         if (noneSpecified && operationsSpecified) {
             problems.accept(field, "none", "'none' cannot be specified with other skipped operation types");
             return 1;
+        }
+
+        return 0;
+    }
+
+    private static int validateSignalDataCollection(Configuration configuration, Field field, ValidationOutput problems) {
+
+        List<String> signalDataCollection = configuration.getList(field);
+        String connectorClassName = configuration.getString(CONNECTOR_CLASS);
+        Class<?> connectorClass;
+
+        if (connectorClassName == null) {
+            return 0;
+        }
+
+        try {
+            connectorClass = Class.forName(connectorClassName);
+
+            boolean isMultiTask = connectorClass.isAnnotationPresent(SupportsMultiTask.class);
+
+            if (!isMultiTask && signalDataCollection.size() > 1) {
+                problems.accept(field, signalDataCollection, "For single task connector only on signal data collection is permitted.");
+                return 1;
+            }
+
+            if (isMultiTask && signalDataCollection.size() == 1) {
+                LOGGER.info(
+                        "You set a single data collection for a multi task connector. If you want to send signals for each database you need to provide a signal data collection per database.");
+            }
+        }
+        catch (ClassNotFoundException e) {
+            LOGGER.error("Unable to load connector class to validate signal data collection. It will be considered valid.", e);
         }
 
         return 0;

@@ -54,6 +54,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLState;
 
@@ -4073,5 +4074,21 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(records.topics()).hasSize(3);
 
         stopConnector();
+    }
+
+    @Test
+    @DisplayName("Configuring multiple signal data collection for single task connector should fail the configuration validation")
+    public void signalDataCollectionValidation() throws Exception {
+        // Testing.Print.enable();
+
+        Configuration config = Configuration.create()
+                .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, String.join(",", "s1.signal_table1", "s1.signal_table2"))
+                .build();
+
+        PostgresConnector connector = new PostgresConnector();
+        Config validatedConfig = connector.validate(config.asMap());
+
+        assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, 1);
     }
 }
