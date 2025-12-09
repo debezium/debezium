@@ -3638,6 +3638,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-9688")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to test slot advancement")
     public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
 
         // PART 1: Test offset > slot (should advance slot like TRUST_OFFSET)
@@ -3658,7 +3659,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
         assertConnectorNotRunning();
 
-        SlotState slotBeforeStop = getDefaultReplicationSlot();
+        SlotState slotBeforeRestart = getDefaultReplicationSlot();
 
         // Restart with TRUST_GREATER_LSN - should advance slot to offset (choosing max)
         configBuilder = TestHelper.defaultConfig()
@@ -3671,10 +3672,19 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        SlotState slotAfterFirstRestart = getDefaultReplicationSlot();
-        assertThat(slotAfterFirstRestart.slotLastFlushedLsn())
-                .describedAs("TRUST_GREATER_LSN should advance slot to offset when offset > slot")
-                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+        Awaitility.await()
+                .alias("Wait for slot to advance after restart with trust_greater_lsn")
+                .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    SlotState slotAfterRestart = getDefaultReplicationSlot();
+                    assertThat(slotAfterRestart.slotLastFlushedLsn())
+                            .describedAs("TRUST_GREATER_LSN should advance slot to offset when offset > slot")
+                            .isGreaterThan(slotBeforeRestart.slotLastFlushedLsn());
+                });
+
+        SlotState slotAfterRestart = getDefaultReplicationSlot();
+        logger.info("Slot Before {}, Slot after {}", slotBeforeRestart.slotLastFlushedLsn(), slotAfterRestart.slotLastFlushedLsn());
 
         stopConnector();
         assertConnectorNotRunning();
@@ -3691,7 +3701,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         SlotState slotAfterManualAdvance = getDefaultReplicationSlot();
         assertThat(slotAfterManualAdvance.slotLastFlushedLsn())
                 .describedAs("Slot should be manually advanced ahead")
-                .isGreaterThan(slotAfterFirstRestart.slotLastFlushedLsn());
+                .isGreaterThan(slotAfterRestart.slotLastFlushedLsn());
 
         // Restart with TRUST_GREATER_LSN again - should now advance offset to slot (choosing max)
         configBuilder = TestHelper.defaultConfig()
