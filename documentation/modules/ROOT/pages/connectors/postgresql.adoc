@@ -4132,8 +4132,7 @@ When the connector has no pending LSN to flush, the JDBC driver's keep-alive mec
 This LSN reflects all WAL activity, including unmonitored activity such as `CHECKPOINT`, `VACUUM`, or `pg_switch_wal()` that doesn't produce logical replication change events.
 Use this mode to prevent WAL growth on low-activity databases where monitored tables have infrequent changes.
 +
-NOTE: When using `connector_and_driver` mode, the JDBC driver can flush LSN positions for database activity that {prodname} has not yet processed into change events.
-Because the replication slot advances ahead of the stored offset, this can cause startup issues if the connector restarts.
+NOTE: When using `connector_and_driver` mode, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN, which may advance the replication slot beyond the stored offset when non-monitored WAL activity occurs.
 If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
 If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
 
