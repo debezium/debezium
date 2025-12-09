@@ -39,6 +39,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -302,13 +303,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     private void validateGuardrailLimits(MariaDbConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         try {
             Set<TableId> allTableIds = connection.getAllTableIds();
-
-            List<String> tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(TableId::toString)
-                    .collect(Collectors.toList());
-
-            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);

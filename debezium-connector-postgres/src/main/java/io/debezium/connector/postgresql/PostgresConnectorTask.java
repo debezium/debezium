@@ -41,6 +41,7 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -437,15 +438,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     private void validateGuardrailLimits(PostgresConnectorConfig connectorConfig, PostgresConnection connection) {
         try {
-            // Get all table IDs that match the connector's filters
             Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.databaseName());
-
-            List<String> tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(TableId::toString)
-                    .collect(java.util.stream.Collectors.toList());
-
-            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);

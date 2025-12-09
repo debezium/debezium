@@ -31,6 +31,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -283,15 +284,9 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 switchedToPdb = true;
             }
 
-            // Get all table IDs that match the connector's filters
             Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
-
-            List<String> tableNames = allTableIds.stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(TableId::toString)
-                    .collect(java.util.stream.Collectors.toList());
-
-            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
