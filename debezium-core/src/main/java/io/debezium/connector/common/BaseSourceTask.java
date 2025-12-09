@@ -449,6 +449,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");
+                    preStart(config);
                     this.coordinator = start(config);
                     LOGGER.info("Successfully restarted task");
                     restartDelay = null;
