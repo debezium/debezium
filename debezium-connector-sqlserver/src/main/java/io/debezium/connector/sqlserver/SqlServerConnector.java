@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -38,6 +39,7 @@ import io.debezium.util.Threads;
  * @author Jiri Pechanec
  *
  */
+@SupportsMultiTask
 public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
