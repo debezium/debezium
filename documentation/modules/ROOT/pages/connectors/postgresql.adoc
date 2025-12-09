@@ -3148,6 +3148,53 @@ If you omit this setting, or if the primary server runs PostgreSQL 16 or earlier
 NOTE: PostgreSQL uses the https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-SYNCHRONIZED-STANDBY-SLOTS[`synchronized_standby_slots`] parameter to configure replication slot synchronization between primary and standby servers.
 Set this parameter on the primary server to specify the physical replication slots that it synchronizes with on standby servers.
 
+|[[postgresql-property-offset-mismatch-strategy]]<<postgresql-property-offset-mismatch-strategy, `+offset.mismatch.strategy+`>>
+|`no_validation`
+|Specifies how the connector handles mismatches between the stored offset LSN and the replication slot's confirmed flush LSN when the connector starts.
+This property replaces the deprecated `slot.seek.to.known.offset.on.start` boolean property.
+
+A mismatch can occur in several scenarios:
+
+* The replication slot has been manually advanced using `pg_replication_slot_advance()`.
+* When using xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode=connector_and_driver`], the JDBC driver's keep-alive mechanism has flushed LSNs for unmonitored WAL activity, advancing the slot ahead of the stored offset.
+* The replication slot has been recreated after being dropped.
+* Kafka Connect offset storage has been corrupted or reset.
+
+Set one of the following options:
+
+`no_validation`::
+The connector attempts to stream from the stored offset without validating the replication slot state.
+If the slot is ahead of the offset, PostgreSQL returns an error because the requested LSN is no longer available in the WAL.
+
+`trust_offset`::
+The connector validates that the stored offset is not behind the replication slot's confirmed flush LSN.
+If the offset is behind the slot, the connector fails with an error indicating potential data loss.
+If the offset is ahead of or equal to the slot, the connector advances the slot to the offset position when possible.
+Use this strategy when you want to detect and be alerted to unexpected slot state changes that could indicate data loss.
+
+`trust_slot`::
+The connector treats the PostgreSQL replication slot as the authoritative source of truth.
+If the stored offset is behind the slot's confirmed flush LSN, the connector automatically advances the offset to match the slot position.
++
+NOTE: This strategy skips replaying events between the stored offset and the slot position.
+Use this strategy when you trust that the replication slot reliably represents all logical replication events you need to capture.
+This is appropriate when using xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode=connector_and_driver`], which requires trusting the slot position.
+When using a persistent offset store, ensure slot position is preserved during primary-replica failover, such as by using PostgreSQL 17 or later with xref:postgresql-property-slot-failover[`slot.failover=true`].
+
+`trust_greater_lsn`::
+The connector synchronizes to the maximum LSN between the stored offset and the slot's confirmed flush LSN.
+If the offset is behind the slot, the connector advances the offset to the slot position.
+If the offset is ahead of the slot, the connector advances the slot to the offset position when possible.
+This provides bidirectional synchronization and is useful when using xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode=connector_and_driver`].
+The same slot reliability requirements as `trust_slot` apply when using a persistent offset store.
++
+NOTE: When the slot is ahead of the offset, this strategy skips replaying events between the stored offset and the slot position.
+
+For backward compatibility, the deprecated `slot.seek.to.known.offset.on.start` property is automatically mapped:
+
+* `slot.seek.to.known.offset.on.start=false` maps to `offset.mismatch.strategy=no_validation`
+* `slot.seek.to.known.offset.on.start=true` maps to `offset.mismatch.strategy=trust_offset`
+
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
 |The name of the PostgreSQL publication created for streaming changes when using `pgoutput`.
@@ -4054,12 +4101,41 @@ When the connector creates the publication, the `CREATE PUBLICATION` statement o
 
 |[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
 |`true`
-|Determines whether the connector should commit the LSN of the processed records in the source PostgreSQL database so that the WAL logs can be deleted.
-Specify `false` if you do not want the connector to commit the LSN of processed records.
+|**Deprecated.** Use xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode`] instead.
 
-NOTE: If you set the value of this property to `false`, {prodname} does not acknowledge the LSN.
-Failure to acknowledge the LSN can lead to uncontrolled growth of the WAL logs, which stresses storage capacity, and could result degraded performance, and even data loss.
-To maintain normal service, if you set this property to `false`, you must configure some other mechanism to commit the LSN.
+For backward compatibility, this property is automatically mapped to `lsn.flush.mode`:
+
+* `flush.lsn.source=true` maps to `lsn.flush.mode=connector`
+* `flush.lsn.source=false` maps to `lsn.flush.mode=manual`
+
+|[[postgresql-property-lsn-flush-mode]]<<postgresql-property-lsn-flush-mode, `+lsn.flush.mode+`>>
+|`connector`
+|Specifies how the connector manages flushing the LSN (Log Sequence Number) to the PostgreSQL replication slot.
+This property replaces the deprecated xref:postgresql-property-flush-lsn-source[`flush.lsn.source`] property.
+
+Set one of the following options:
+
+`manual`::
+LSN flushing is managed externally by your application or another mechanism.
+The connector does not flush the LSN.
++
+NOTE: If you do not configure an external mechanism to flush the LSN, WAL files accumulate on the database server, potentially causing storage exhaustion and performance degradation.
+
+`connector`::
+{prodname} flushes the LSN after processing each logical replication change event.
+The PostgreSQL JDBC driver's keep-alive thread does not flush LSNs.
+This is the default mode.
+
+`connector_and_driver`::
+Both {prodname} and the PostgreSQL JDBC driver's keep-alive thread can flush LSNs.
+When the connector has no pending LSN to flush, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN.
+This LSN reflects all WAL activity, including unmonitored activity such as `CHECKPOINT`, `VACUUM`, or `pg_switch_wal()` that doesn't produce logical replication change events.
+Use this mode to prevent WAL growth on low-activity databases where monitored tables have infrequent changes.
++
+NOTE: When using `connector_and_driver` mode, the JDBC driver can flush LSN positions for database activity that {prodname} has not yet processed into change events.
+Because the replication slot advances ahead of the stored offset, this can cause startup issues if the connector restarts.
+If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
+If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
