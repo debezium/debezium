@@ -3179,7 +3179,7 @@ If the stored offset is behind the slot's confirmed flush LSN, the connector aut
 NOTE: This strategy skips replaying events between the stored offset and the slot position.
 Use this strategy when you trust that the replication slot reliably represents all logical replication events you need to capture.
 This is appropriate when using xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode=connector_and_driver`], which requires trusting the slot position.
-Double-check that the slot position is trustworthy in failover scenarios (see xref:postgresql-property-slot-failover[`slot.failover`]).
+Double-check that your environment ensures replication slot durability during primary-replica failover.
 
 `trust_greater_lsn`::
 The connector synchronizes to the maximum LSN between the stored offset and the slot's confirmed flush LSN.
