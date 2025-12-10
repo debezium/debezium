@@ -14,7 +14,7 @@ The `set-binlog-position` signal allows you to dynamically change the binlog rea
 When the signal is received, the connector:
 1. Updates its internal offset to the specified binlog position or GTID set
 2. Commits the new offset to the offset storage via a heartbeat event
-3. Takes the specified action (stop, continue, or restart)
+3. Stops the connector so the new position takes effect on restart
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ The signal supports two formats with an optional `action` field:
   "type": "set-binlog-position",
   "data": {
     "gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100",
-    "action": "continue"
+    "action": "stop"
   }
 }
 ```
@@ -59,7 +59,6 @@ The signal supports two formats with an optional `action` field:
 The `action` field controls connector behavior after the offset is updated:
 
 - **`stop`** (default): Automatically stops the connector after updating the offset. You must manually restart the connector for the new position to take effect.
-- **`continue`**: Updates the offset without stopping the connector. The connector continues processing, but will only use the new position after a restart.
 - **`restart`**: Reserved for future use. Currently behaves the same as `stop`.
 
 ## Sending the Signal
@@ -92,10 +91,7 @@ Write the signal to the configured signal file.
 
 3. **Schema Consistency**: The connector uses the current schema, not the schema at the specified position. Ensure no schema changes occurred between the current position and target position.
 
-4. **Restart Behavior**:
-   - With `action: stop` (default), the connector stops automatically and you must manually restart it.
-   - With `action: continue`, the connector continues running but the new position only takes effect after a restart.
-   - A connector restart is always required for the new position to take effect.
+4. **Restart Behavior**: The connector stops automatically after the signal is processed. You must manually restart the connector for the new position to take effect.
 
 5. **One-Time Operation**: Unlike configuration properties, this signal performs a one-time position adjustment.
 
