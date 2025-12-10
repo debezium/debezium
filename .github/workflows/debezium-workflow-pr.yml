@@ -516,6 +516,30 @@ jobs:
           path-core: core
           path-vitess: vitess
 
+  build_cockroachdb:
+    name: CockroachDB
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (CockroachDB)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cockroachdb
+          path: cockroachdb
+          ref: ${{ github.event.pull_request.base.ref }}
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-cockroachdb
+        with:
+          path-core: core
+          path-cockroachdb: cockroachdb
   ########################################################################################
   ## NON-CONNECTORS
   ## Please define callable workflows here in alphabetical item name order.
