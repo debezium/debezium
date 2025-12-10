@@ -197,8 +197,6 @@ public class FieldNameTransformationTest {
 
             var record = new KafkaDebeziumSinkRecord(transform.apply(deleteSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")),
                     new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
-            System.out.println(record.getOriginalKafkaRecord());
-            System.out.println(record.keySchema().fields());
             assertSchemaFieldNames(record.keySchema()).containsOnly("doc_id");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("doc_id", "document_name", "nick_name_");
         }
