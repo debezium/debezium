@@ -2369,6 +2369,10 @@ In subsequent phases of the snapshot, the connector uses a flashback query, whic
 `share`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
 The connector holds a read table lock that ensures read table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
 In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+If you prefer snapshots to run without setting any locks, set the following option, `none`.
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:informix-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
