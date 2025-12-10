@@ -216,26 +216,6 @@ public class SetBinlogPositionSignalTest {
     }
 
     @Test
-    public void shouldContinueConnectorWithContinueAction() throws Exception {
-        // Given
-        Document data = DocumentReader.defaultReader().read(
-                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"continue\"}");
-
-        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
-
-        // When
-        boolean result = signal.arrived(payload);
-
-        // Then
-        assertThat(result).isTrue();
-        verify(offsetContext).setBinlogStartPoint("mysql-bin.000003", 1234L);
-        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Verify that stop() was NOT called
-        verify(changeEventSourceCoordinator, org.mockito.Mockito.never()).stop();
-    }
-
-    @Test
     public void shouldStopConnectorWithRestartAction() throws Exception {
         // Given - RESTART is reserved for future use, should behave like STOP
         Document data = DocumentReader.defaultReader().read(

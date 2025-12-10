@@ -32,11 +32,10 @@ import io.debezium.util.Strings;
  *    {"binlog_filename": "mysql-bin.000003", "binlog_position": 1234, "action": "stop"}
  *
  * 2. For GTID:
- *    {"gtid_set": "server-uuid:1-100,other-uuid:1-50", "action": "continue"}
+ *    {"gtid_set": "server-uuid:1-100,other-uuid:1-50", "action": "stop"}
  *
  * The "action" field controls connector behavior after offset modification:
  * - "stop" (default): Automatically stop the connector after updating the offset
- * - "continue": Don't stop the connector, continue processing with the current position
  * - "restart": (Reserved for future use) Automatically restart the connector
  *
  * @author Debezium Authors
@@ -49,7 +48,6 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
 
     public enum Action {
         STOP,
-        CONTINUE,
         RESTART
     }
 
@@ -115,9 +113,6 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
                 case STOP:
                     LOGGER.info("Successfully updated binlog position. New offset: {}. Stopping connector to apply new position.", offsetContext);
                     changeEventSourceCoordinator.stop();
-                    break;
-                case CONTINUE:
-                    LOGGER.info("Successfully updated binlog position. New offset: {}. Continuing connector operation.", offsetContext);
                     break;
                 case RESTART:
                     LOGGER.warn("RESTART action is reserved for future use. Treating as STOP. New offset: {}", offsetContext);
