@@ -15,29 +15,36 @@
  *  - generate-release-notes
  *      Generates CHANGELOG.md and release-notes.asciidoc sections on stdout based
  *      on issues in the given iteration. Issues are grouped by:
- *        • type/enhancement  -&gt; “New features”
- *        • type/bug          -&gt; “Fixes”
- *        • type/task         -&gt; “Other changes”
+ *        • type/enhancement  -> “New features”
+ *        • type/bug          -> “Fixes”
+ *        • type/task         -> “Other changes”
  *      Issues labeled `backward-incompatible` are listed under “Breaking changes”.
  *
  *  - new-iteration
  *      Moves all items currently assigned to the given iteration to a new iteration
- *      (for all iteration-type fields where that iteration is selected).
+ *      (for all iteration-type fields where that iteration is selected). By default
+ *      only items with Status = `Done` are moved; use `--all-issues` to move all.
  *
  *  - close-issues
  *      Closes all GitHub issues that belong to the given iteration in the
  *      `${owner}/dbz` repository, assuming none of them has a `resolution/*` label.
  *
+ *  - release-issues
+ *      Sets Status = `Released` in the project for all issues in the given
+ *      iteration whose Status is currently `Done`. Exits with a non-zero status
+ *      if any issue in the iteration has a different Status.
+ *
  * Usage:
  *   groovy dbz-project-tool.groovy \\
  *     --owner debezium \\
  *     --project 5 \\
- *     --iteration \"3.4.0.Final\" \\
- *     --token \"<github-token>\" \\
- *     --action <check-issues-before-release|generate-release-notes|new-iteration|close-issues> \\
- *     [--previous-iteration \"3.4.0.CR1\"] \\
- *     [--kafka-version \"4.1.0.Final\"] \\
- *     [--new-iteration \"3.5.0.Alpha1\"] 
+ *     --iteration "3.4.0.Final" \\
+ *     --token "<github-token>" \\
+ *     --action <check-issues-before-release|generate-release-notes|new-iteration|close-issues|release-issues> \\
+ *     [--previous-iteration "3.4.0.CR1"] \\
+ *     [--kafka-version "4.1.0.Final"] \\
+ *     [--new-iteration "3.5.0.Alpha1"] \\
+ *     [--all-issues]
  *
  * Required options:
  *   -o, --owner              GitHub org or user login (e.g. `debezium`)
@@ -45,12 +52,14 @@
  *   -i, --iteration          Iteration title as shown in the project (e.g. `3.4.0.Final`)
  *   -t, --token              GitHub personal access token with project/issue access
  *   -a, --action             One of: check-issues-before-release, generate-release-notes,
- *                            new-iteration, close-issues
+ *                            new-iteration, close-issues, release-issues
  *
  * Additional options (per action):
  *   --previous-iteration     (generate-release-notes) Previous Debezium iteration name
  *   --kafka-version          (generate-release-notes) Kafka version used for compatibility text
  *   --new-iteration          (new-iteration) Target iteration title to move items to
+ *   --all-issues             (new-iteration) Move all issues in the iteration, not only
+ *                            those with Status = `Done`
  *
  * Notes:
  *   - The script uses GitHub’s GraphQL API for project/iteration data and the
@@ -84,10 +93,11 @@ cli.with {
     p longOpt: 'project',             args: 1, required: true,  'Project number from URL (e.g. 1)'
     i longOpt: 'iteration',           args: 1, required: true,  'Iteration title (exact, as shown in project)'
     t longOpt: 'token',               args: 1, required: true,  'GitHub token'
-    a longOpt: 'action',              args: 1, required: true,  'Action to perform: generate-release-notes/check-issues-before-release/change-iteration/close-issues'
+    a longOpt: 'action',              args: 1, required: true,  'Action to perform: generate-release-notes/check-issues-before-release/new-iteration/close-issues/release-issues'
     _ longOpt: 'previous-iteration',  args: 1, required: false, 'The previously released iteration'
     _ longOpt: 'kafka-version',       args: 1, required: false, 'Kafka version for this release'
-    _ longOpt: 'new-iteration',       args: 1, required: false, 'The itearition to rpelace the existing one'
+    _ longOpt: 'new-iteration',       args: 1, required: false, 'The iteration to replace the existing one'
+    _ longOpt: 'all-issues',          args: 0, required: false, 'Whether all issues should be affected or only those in defined state'
 }
 
 def options = cli.parse(args)
@@ -106,6 +116,7 @@ iterationTitle = options.i
 previousIterationTitle = options.'previous-iteration'
 newIterationTitle = options.'new-iteration'
 kafkaVersion = options.'kafka-version'
+allIssues = options.'all-issues'
 itemPageSize = 50
 
 token = options.t
@@ -137,6 +148,14 @@ fragment projectFields on ProjectV2 {
             startDate
             duration
           }
+        }
+      }
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+        options {
+          id
+          name
         }
       }
     }
@@ -194,7 +213,7 @@ fragment projectFields on ProjectV2 {
 }
 '''
 
-modifyIterationsPre = '''
+modifyOperationPre = '''
 mutation(
   $projectId: ID!
 ) {
@@ -202,6 +221,9 @@ mutation(
 
 availableIterations = null
 projectId = null
+
+statusField = null
+statusOptionsByName = null
 
 enum IssueType {
     bug, enhancement, task
@@ -310,6 +332,8 @@ def getProjectIssuesForIteration(iteration) {
         projectId = project.id
         availableIterations = project.fields.nodes.findAll({ it.__typename == 'ProjectV2IterationField' }).collectEntries { [(it.name):
             new Iteration(id: it.id, name: it.name, iterationNames: it.configuration.iterations.collectEntries { [(it.title): it.id] })] }
+        statusField = project.fields.nodes.find({ it.__typename == 'ProjectV2SingleSelectField' && it.name == 'Status'})
+        statusOptionsByName = statusField.options.collectEntries { [(it.name): it.id] }
 
         def items = project.items
         items.nodes.each { item ->
@@ -349,10 +373,10 @@ def checkIterationIsReadyForRelease() {
         checkFailed = true
     }
     if (issuesNotDone) {
-        println '========================================================================='
-        println 'All issues must have status Done, there are issues wit a different status'
+        println '=========================================================================='
+        println 'All issues must have status Done, there are issues with a different status'
         issuesNotDone.each { println it.url }
-        println '========================================================================='
+        println '=========================================================================='
         checkFailed = true
     }
 
@@ -491,9 +515,12 @@ If you are using our container images, then please do not forget to pull them fr
 def setNewIteration() {
     def issues = getProjectIssuesForIteration(iterationTitle)
     def issuesToUpdate = issues.collectEntries({ [(it): it.findIterationField(iterationTitle)] }).findAll { it.value }
-    def updateQuery = new StringBuilder(modifyIterationsPre)
+    def updateQuery = new StringBuilder(modifyOperationPre)
 
     issuesToUpdate.each { issue, iterationFieldName ->
+        if (!allIssues && (issue.status != 'Done' || issue.status != 'Released')) {
+            return
+        }
         def itemNo = issue.number
         def itemId = issue.itemId
         def fieldId = availableIterations[iterationFieldName].id
@@ -564,6 +591,72 @@ def closeIssuesInIteration() {
     issuesToClose.each { repo.getIssue(it.number).close() }
 }
 
+def setStatusToReleasedInIteration() {
+    def issuesToMarkAsReleased = getProjectIssuesForIteration(iterationTitle).findAll { it.status != 'Released' }
+    def issuesNotDone = issuesToMarkAsReleased.findAll { it.status != 'Done' }
+
+    if (issuesNotDone) {
+        println '=========================================================================='
+        println 'All issues must have status Done, there are issues with a different status'
+        issuesNotDone.each { println it.url }
+        println '=========================================================================='
+        checkFailed = true
+        System.exit(8)
+    }
+
+    def updateQuery = new StringBuilder(modifyOperationPre)
+    issuesToMarkAsReleased.each { issue ->
+        def itemNo = issue.number
+        def itemId = issue.itemId
+        def releaseOptionId = statusOptionsByName['Released']
+
+        def updateFragment = """
+  setStatus${itemNo}: updateProjectV2ItemFieldValue(
+    input: {
+      projectId: \$projectId,
+      itemId: \"${itemId}\",
+      fieldId: \"${statusField.id}\",
+      value: { singleSelectOptionId: \"${releaseOptionId}\" }
+    }
+  ) {
+    projectV2Item { id }
+  }
+"""
+        updateQuery << updateFragment
+    }
+    updateQuery << '}'
+
+    def client = new OkHttpClient()
+    def slurper = new JsonSlurper()
+    def variables = [
+        'projectId': projectId
+    ]
+
+    def payload = JsonOutput.toJson([query: updateQuery, variables: variables])
+
+    def requestBody = RequestBody.create(payload, MediaType.get("application/json"))
+    def request = new Request.Builder()
+            .url("https://api.github.com/graphql")
+            .addHeader("Authorization", "Bearer ${token}")
+            .addHeader("Accept", "application/vnd.github+json")
+            .post(requestBody)
+            .build()
+    def response = client.newCall(request).execute()
+    def body = response.body().string()
+
+    if (!response.isSuccessful()) {
+        System.err.println("GitHub GraphQL call failed: HTTP ${response.code()}")
+        System.err.println(body)
+        System.exit(3)
+    }
+
+    def json = slurper.parseText(body)
+    if (json.errors) {
+        System.err.println("Failed to parse GraphQL response with errors:")
+        json.errors.each { System.err.println(" - ${it.message}") }
+        System.exit(4)
+    }
+}
 
 switch (action) {
     case 'check-issues-before-release':
@@ -577,5 +670,8 @@ switch (action) {
         break
     case 'close-issues':
         closeIssuesInIteration()
+        break
+    case 'release-issues':
+        setStatusToReleasedInIteration()
         break
 }
