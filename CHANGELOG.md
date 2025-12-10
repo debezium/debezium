@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.CR1
+December 10th 2025 Detailed release notes [Jira](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12472381) [GitHub Issues](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.CR1)
+
+### New features since 3.4.0.Beta1
+
+* Support signalling in multi-task setup of SQL Server connector [DBZ-7243](https://issues.redhat.com/browse/DBZ-7243)
+* Add guardrails to prevent OOM due to too many tables configured [DBZ-9427](https://issues.redhat.com/browse/DBZ-9427)
+* Improve context sharing between openlineage core module and OpenLineage STM [DBZ-9541](https://issues.redhat.com/browse/DBZ-9541)
+* Secure Kafka Signaling - SASL Plain and SSL [DBZ-9705](https://issues.redhat.com/browse/DBZ-9705)
+* Log in-flight transactions when checking for stale offsets [debezium/dbz#20](https://github.com/debezium/dbz/issues/20)
+
+
+### Breaking changes since 3.4.0.Beta1
+
+None
+
+
+### Fixes since 3.4.0.Beta1
+
+* Debezium db2i CDC source connector randomly loses Events [DBZ-8538](https://issues.redhat.com/browse/DBZ-8538)
+* Minimum Cache SCN is not recalculated after transaction retention is applied [DBZ-9659](https://issues.redhat.com/browse/DBZ-9659)
+* Signal Processing With Idle Database [DBZ-9707](https://issues.redhat.com/browse/DBZ-9707)
+* Task getErrorHandler throws NullPointerException [DBZ-9708](https://issues.redhat.com/browse/DBZ-9708)
+* Debezium Cassandra Connector Silently Stops Processing After CommitLog Move Failure [DBZ-9710](https://issues.redhat.com/browse/DBZ-9710)
+* MongoDb connector throws null ref exception [DBZ-9719](https://issues.redhat.com/browse/DBZ-9719)
+* "io.debezium.connector.jdbc.transforms.FieldNameTransformation", "transforms.topic-lowercase.column.naming.style": "lower_case" is not work [DBZ-9747](https://issues.redhat.com/browse/DBZ-9747)
+* JDBC offset store requires PK when connecting with a MySQL cluster [debezium/dbz#5](https://github.com/debezium/dbz/issues/5)
+* Oracle connector can incorrectly build on-demand table schema with optional key fields. [debezium/dbz#7](https://github.com/debezium/dbz/issues/7)
+* Oracle numeric default values wrapped in `(` and `)` are mistakenly treated as expressions [debezium/dbz#16](https://github.com/debezium/dbz/issues/16)
+* PostgreSQL Connector: Keep-alive thread logs ERROR on normal shutdown due to InterruptedException [debezium/dbz#14](https://github.com/debezium/dbz/issues/14)
+* Migration to JUnit 5 missed new test classes [debezium/dbz#25](https://github.com/debezium/dbz/issues/25)
+
+
+### Other changes since 3.4.0.Beta1
+
+* Create a DDD for Debezium Engine Quarkus Extension [DBZ-8903](https://issues.redhat.com/browse/DBZ-8903)
+* Migrate from JUnit4 to JUnit 5 [debezium/dbz#11](https://github.com/debezium/dbz/issues/11)
+* Bump Pulsar Java client version in Debezium Server Pulsar connector [debezium/dbz#12](https://github.com/debezium/dbz/issues/12)
+
+
+
 ## 3.4.0.Beta1
 November 26th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471552)
 
