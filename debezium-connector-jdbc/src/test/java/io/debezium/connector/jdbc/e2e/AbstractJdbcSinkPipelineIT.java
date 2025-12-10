@@ -3753,9 +3753,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             registerSourceConnector(source, typeNames, tableName, configAdjuster);
         }
         else {
-            registerSourceConnector(source, typeNames, tableName, configAdjuster);
             source.execute(createSql);
             source.streamTable(tableName);
+            registerSourceConnector(source, typeNames, tableName, configAdjuster);
             source.execute(insertSql);
         }
 
