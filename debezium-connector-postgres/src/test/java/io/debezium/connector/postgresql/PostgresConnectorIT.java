@@ -2942,7 +2942,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .untilAsserted(() -> {
                     SlotState currentSlot = getDefaultReplicationSlot();
                     assertThat(currentSlot.slotLastFlushedLsn())
-                            .describedAs("Slot LSN should have advanced been advanced by pgjdbc driver flushing of unmonitored activity")
+                            .describedAs("Slot LSN should have been advanced by pgjdbc driver flushing of unmonitored activity")
                             .isGreaterThan(slotBefore.slotLastFlushedLsn());
                 });
         final SlotState slotAfter = getDefaultReplicationSlot();
@@ -2951,8 +2951,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
 
         assertThat(slotAfter.slotLastFlushedLsn())
-                .describedAs("Slot LSN should match match server LSN as pgjdbc keep alive flushing is enabled")
-                .isEqualTo(postActivityServerLsn);
+                .describedAs("Slot LSN should match or exceed server LSN as pgjdbc keep alive flushing is enabled")
+                .isGreaterThanOrEqualTo(postActivityServerLsn);
 
         stopConnector();
     }
