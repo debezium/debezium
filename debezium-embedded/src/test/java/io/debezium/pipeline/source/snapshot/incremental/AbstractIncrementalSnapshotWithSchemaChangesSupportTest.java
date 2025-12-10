@@ -50,6 +50,11 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
         populateTable();
         startConnector();
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
 
         sendAdHocSnapshotSignal();
 
@@ -98,6 +103,12 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
             connection.execute(String.format("ALTER TABLE %s ADD c varchar(5)", tableName(newTable)));
         }
         startConnector();
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
         sendAdHocSnapshotSignal();
 
         final int updatedRowCount = 10;
