@@ -3922,6 +3922,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // test that the loop in searchWalPosition is emitting heartbeats (DBZ-7316) when there
         // is no WAL to consume (since we just cleared it out and asserted there was none).
         startConnector(configMapper);
+        waitForStreamingToStart();
         waitForSeveralHeartbeats();
 
         // Manual cleanup, since DROP_SLOT_ON_STOP is false
