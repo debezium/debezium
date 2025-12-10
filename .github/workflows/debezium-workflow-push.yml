@@ -358,10 +358,40 @@ jobs:
           path-core: core
           path-vitess: vitess
 
+  # Approx 5m
+  build_cockroachdb:
+    name: "CockroachDB"
+    needs: [ check_style, build_storage ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Checkout Action (CockroachDB)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cockroachdb
+          path: cockroachdb
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-cockroachdb
+        with:
+          path-core: core
+          path-cockroachdb: cockroachdb
+
   # Approx 7m
   build_spanner:
     name: "Spanner"
-    needs: [ check_style, build_vitess ]
+    needs: [ check_style, build_storage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
