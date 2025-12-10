@@ -1171,7 +1171,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Do not validate or seek slot/offset positions (legacy behavior).
          * Attempts to stream from the stored offset without validating against the replication slot.
-         * Slot recreation is not detected. Replaces slot.seek.to.known.offset.on.start = false.
+         * Slot recreation is not detected. Replaces internal.slot.seek.to.known.offset.on.start = false.
          */
         NO_VALIDATION("no_validation"),
 
