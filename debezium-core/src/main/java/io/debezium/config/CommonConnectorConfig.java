@@ -1972,7 +1972,7 @@ public abstract class CommonConnectorConfig {
             boolean isMultiTask = connectorClass.isAnnotationPresent(SupportsMultiTask.class);
 
             if (!isMultiTask && signalDataCollection.size() > 1) {
-                problems.accept(field, signalDataCollection, "For single task connector only on signal data collection is permitted.");
+                problems.accept(field, signalDataCollection, "For single task connector only one signal data collection is permitted.");
                 return 1;
             }
 
@@ -1982,7 +1982,7 @@ public abstract class CommonConnectorConfig {
             }
         }
         catch (ClassNotFoundException e) {
-            LOGGER.error("Unable to load connector class to validate signal data collection. It will be considered valid.", e);
+            LOGGER.warn("Unable to load connector class to validate signal data collection. It will be considered valid.", e);
         }
 
         return 0;
