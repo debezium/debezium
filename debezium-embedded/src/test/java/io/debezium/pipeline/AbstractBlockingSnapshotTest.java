@@ -267,6 +267,8 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 20);
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
 
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
                 Map.of(tableDataCollectionIds().get(1), "SELECT WITH AN ERROR"), "", BLOCKING,
                 tableDataCollectionIds().get(1));
@@ -447,6 +449,8 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 20);
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
                 String.format("{\"data-collection\": \"%s\"}", tableDataCollectionIds().get(1)), "", BLOCKING,
