@@ -866,6 +866,9 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+        if (((PostgresConnectorConfig) config).offsetSeekToSlotOnStart()) {
+            return true; // skip validation if configured to seek to slot LSN on start
+        }
 
         final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCompletelyProcessedLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();
