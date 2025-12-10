@@ -170,6 +170,7 @@ Dennis Campagna
 Dennis Persson
 Derek Moore
 Dhrubajyoti G
+Dmitry Volontyr
 Dominique Chanet
 Dou Pengwei
 Duc Le Tu
@@ -218,6 +219,7 @@ Franz Emberger
 Frederic Laurent
 Gabor Andras
 Gabriel Cerioni
+Gabriel Miklós
 Gagan Agrawal
 Ganesh Bankar
 Ganesh Ramasubramanian
@@ -467,6 +469,7 @@ Nick Chomey
 Nick Murray
 Niels Pardon
 Nikhil Benesch
+Nikita Kokitkar
 Nikolay Angelov
 Nils Hartmann
 Nir Levy
@@ -505,6 +508,7 @@ Philip Sanetra
 Philipp Bouzid
 Philippe Labat
 Piotr Piastucki
+Piotr Wolny
 Plugaru Tudor
 Poonam Meghnani
 Pradeep Mamillapalli
@@ -616,6 +620,7 @@ Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Thomas Verhoeven
 Tim Loes
 tisonkun
 Timo Roeseler
@@ -663,6 +668,7 @@ Willie Zhu
 Wu Zhenhua
 Wout Scheepers
 Wouter Coekaerts
+Xiang Qiu Min
 Xiao Fu
 Xiaojian Sun
 Xiaolin Zhang
