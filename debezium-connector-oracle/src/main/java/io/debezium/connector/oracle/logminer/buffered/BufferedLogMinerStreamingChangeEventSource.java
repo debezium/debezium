@@ -32,6 +32,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
@@ -149,6 +150,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     if (restartRequired && getConfig().isLogMiningRestartConnection()) {
                         prepareJdbcConnection(true);
                     }
+                    else if (!restartRequired) {
+                        LOGGER.debug("SCN start position advanced to a new set of logs, restart required.");
+                    }
 
                     prepareLogsForMining(true, sessionStartScn);
                     sessionStartScnChanged = false;
@@ -164,8 +168,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     LOGGER.debug("ProcessResult MineStartScn={} ReadStartScn={}", result.miningSessionStartScn(), result.readStartScn());
 
                     if (!result.miningSessionStartScn.equals(sessionStartScn)) {
-                        sessionStartScnChanged = true;
-                        sessionStartScn = result.miningSessionStartScn;
+                        if (hasLogMiningStartingLogChanged(sessionStartScn, result)) {
+                            // LogMiner reads a log in totality, regardless if the start position is near the
+                            // beginning, middle, or end of the log. So by updating this value if and only if
+                            // the log changes, allows for maximum session reuse.
+                            sessionStartScnChanged = true;
+                            sessionStartScn = result.miningSessionStartScn;
+                        }
                     }
 
                     readScn = result.readStartScn();
@@ -195,6 +204,36 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         catch (Exception e) {
             LOGGER.warn("Failed to gracefully shutdown the cache provider", e);
         }
+    }
+
+    /**
+     * Check whether the log mining starting log position between the previous and last mining steps has
+     * put the connector reading from a new log across all redo threads.
+     *
+     * @param lastSessionStartScn the previous batch's mining session start position
+     * @param lastBatchResult the current batch's mining session start position
+     * @return {@code true} if the two SCNs refer to different sets of logs, or {@code false} if they're identical
+     */
+    private boolean hasLogMiningStartingLogChanged(Scn lastSessionStartScn, ProcessResult lastBatchResult) {
+        // DBZ-9680
+        //
+        // To avoid excessive session restarts when restart connection is enabled, we need to
+        // compare the last iteration and the next iteration logs and to indicate whether the
+        // Start SCN for these two iterations are in the same log or not. If the logs are not
+        // the same, we must enforce a restart.
+        //
+        // In addition, this also adds stability to when session restart is not enabled, as
+        // the connector will attempt to reuse the same session more often.
+        //
+        final List<LogFile> logsWithLastMiningStartPosition = getCurrentLogFiles().stream()
+                .filter(log -> log.isScnInLogFileRange(lastSessionStartScn))
+                .toList();
+
+        final List<LogFile> logsWithNextMiningStartPosition = getCurrentLogFiles().stream()
+                .filter(log -> log.isScnInLogFileRange(lastBatchResult.miningSessionStartScn))
+                .toList();
+
+        return !logsWithLastMiningStartPosition.equals(logsWithNextMiningStartPosition);
     }
 
     /**
