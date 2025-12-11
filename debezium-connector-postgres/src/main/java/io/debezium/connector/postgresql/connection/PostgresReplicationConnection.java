@@ -660,7 +660,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * 4. actually start the streamer
      * <p>
      * This method takes care of all of these and this method queries for a default starting position
-     * If you know where you are starting from you should call {@link #startStreaming(Lsn, WalPositionLocator)}, this method
+     * If you know where you are starting from you should call {@link #startStreaming(Lsn, PositionLocator)}, this method
      * delegates to that method
      *
      * @return
@@ -668,12 +668,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @throws InterruptedException
      */
     @Override
-    public ReplicationStream startStreaming(WalPositionLocator walPosition) throws SQLException, InterruptedException {
+    public ReplicationStream startStreaming(PositionLocator walPosition) throws SQLException, InterruptedException {
         return startStreaming(null, walPosition);
     }
 
     @Override
-    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException {
+    public ReplicationStream startStreaming(Lsn offset, PositionLocator walPosition) throws SQLException, InterruptedException {
         initConnection();
 
         connect();
@@ -712,7 +712,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
+    protected void validateSlotIsInExpectedState(PositionLocator walPosition) throws SQLException {
         Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
         if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
             return;
@@ -891,7 +891,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private ReplicationStream createReplicationStream(final Lsn startLsn, WalPositionLocator walPosition) throws SQLException, InterruptedException {
+    private ReplicationStream createReplicationStream(final Lsn startLsn, PositionLocator walPosition) throws SQLException, InterruptedException {
         PGReplicationStream s;
 
         try {
@@ -947,7 +947,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             @Override
-            public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+            public boolean readPending(ReplicationMessageProcessor processor, boolean isWalPositionLocator) throws SQLException, InterruptedException {
+                messageDecoder.isSearchingWal(isWalPositionLocator);
                 processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());

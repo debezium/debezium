@@ -38,13 +38,14 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.MessageDecoderContext;
+import io.debezium.connector.postgresql.connection.PositionLocator;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Column;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
-import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.data.Envelope;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -75,59 +76,39 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * Will be null for a non-transactional decoding message
      */
     private Long transactionId;
-
-    public enum MessageType {
-        RELATION,
-        BEGIN,
-        COMMIT,
-        INSERT,
-        UPDATE,
-        DELETE,
-        TYPE,
-        ORIGIN,
-        TRUNCATE,
-        LOGICAL_DECODING_MESSAGE;
-
-        public static MessageType forType(char type) {
-            switch (type) {
-                case 'R':
-                    return RELATION;
-                case 'B':
-                    return BEGIN;
-                case 'C':
-                    return COMMIT;
-                case 'I':
-                    return INSERT;
-                case 'U':
-                    return UPDATE;
-                case 'D':
-                    return DELETE;
-                case 'Y':
-                    return TYPE;
-                case 'O':
-                    return ORIGIN;
-                case 'T':
-                    return TRUNCATE;
-                case 'M':
-                    return LOGICAL_DECODING_MESSAGE;
-                default:
-                    throw new IllegalArgumentException("Unsupported message type: " + type);
-            }
-        }
-    }
+    private boolean isSearchingWal;
 
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         this.decoderContext = decoderContext;
         this.connection = connection;
     }
 
+    protected void logBufferDataIfTraceIsEnabled(ByteBuffer buffer) {
+        if (LOGGER.isTraceEnabled()) {
+            if (!buffer.hasArray()) {
+                throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
+            }
+            final byte[] source = buffer.array();
+            // Extend the array by two as we might need to append two chars and set them to space by default
+            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
+            final int lastPos = content.length - 1;
+            content[lastPos - 1] = SPACE;
+            content[lastPos] = SPACE;
+            LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
+        }
+    }
+
+    /*
+     * at the time of buffering - message should be processed
+     */
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition) {
         // Cache position as we're going to peak at the first byte to determine message type
         // We need to reprocess all BEGIN/COMMIT messages regardless.
         int position = buffer.position();
         try {
             MessageType type = MessageType.forType((char) buffer.get());
+
             LOGGER.trace("Message Type: {}", type);
             switch (type) {
                 case TYPE:
@@ -146,7 +127,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // call super.shouldMessageBeSkipped for rest of the types
             }
-            final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            final boolean candidateForSkipping = super.isMessageAlreadyProcessed(buffer, lastReceivedLsn, startLsn, walPosition, transactionId);
             switch (type) {
                 case COMMIT:
                 case BEGIN:
@@ -165,6 +146,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
+
                     return candidateForSkipping;
             }
         }
@@ -176,18 +158,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
-        if (LOGGER.isTraceEnabled()) {
-            if (!buffer.hasArray()) {
-                throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
-            }
-            final byte[] source = buffer.array();
-            // Extend the array by two as we might need to append two chars and set them to space by default
-            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
-            final int lastPos = content.length - 1;
-            content[lastPos - 1] = SPACE;
-            content[lastPos] = SPACE;
-            LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
-        }
+        logBufferDataIfTraceIsEnabled(buffer);
 
         final MessageType messageType = MessageType.forType((char) buffer.get());
         switch (messageType) {
@@ -239,6 +210,15 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         return builder;
     }
 
+    @Override
+    public void isSearchingWal(boolean isSearchingWal) {
+        this.isSearchingWal = isSearchingWal;
+    }
+
+    protected boolean isSearchingWal() {
+        return isSearchingWal;
+    }
+
     private boolean isTruncateEventsIncluded() {
         return !decoderContext.getConfig().getSkippedOperations().contains(Envelope.Operation.TRUNCATE);
     }
@@ -249,7 +229,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @param processor The replication message processor
      */
-    private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
         this.transactionId = Integer.toUnsignedLong(buffer.getInt());
@@ -257,7 +237,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
         LOGGER.trace("XID of transaction: {}", transactionId);
-        processor.process(new TransactionMessage(Operation.BEGIN, transactionId, commitTimestamp));
+        TransactionMessage transactionMessage = new TransactionMessage(Operation.BEGIN, transactionId, commitTimestamp);
+        processMessage(transactionMessage, processor);
     }
 
     /**
@@ -266,7 +247,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @param processor The replication message processor
      */
-    private void handleCommitMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void handleCommitMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int flags = buffer.get(); // flags, currently unused
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN of the commit
         final Lsn endLsn = Lsn.valueOf(buffer.getLong()); // End LSN of the transaction
@@ -276,7 +257,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Commit LSN: {}", lsn);
         LOGGER.trace("End LSN of transaction: {}", endLsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
-        processor.process(new TransactionMessage(Operation.COMMIT, transactionId, commitTimestamp));
+        TransactionMessage transactionMessage = new TransactionMessage(Operation.COMMIT, transactionId, commitTimestamp);
+        processMessage(transactionMessage, processor);
     }
 
     /**
@@ -285,7 +267,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @param typeRegistry The postgres type registry
      */
-    private void handleRelationMessage(ByteBuffer buffer, TypeRegistry typeRegistry) throws SQLException {
+    protected void handleRelationMessage(ByteBuffer buffer, TypeRegistry typeRegistry) throws SQLException {
         int relationId = buffer.getInt();
         String schemaName = readString(buffer);
         String tableName = readString(buffer);
@@ -395,7 +377,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
-    private void decodeInsert(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void decodeInsert(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int relationId = buffer.getInt();
         char tupleType = (char) buffer.get(); // Always 'N" for inserts
 
@@ -405,18 +387,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.INSERT));
+            NoopMessage noopMessage = new NoopMessage(transactionId, commitTimestamp, Operation.INSERT);
+            processMessage(noopMessage, processor);
         }
         else {
             Table table = resolvedTable.get();
             List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-            processor.process(new PgOutputReplicationMessage(
+            PgOutputReplicationMessage pgOutputReplicationMessage = new PgOutputReplicationMessage(
                     Operation.INSERT,
                     table.id().toDoubleQuotedString(),
                     commitTimestamp,
                     transactionId,
                     null,
-                    columns));
+                    columns);
+            processMessage(pgOutputReplicationMessage, processor);
         }
     }
 
@@ -427,7 +411,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
-    private void decodeUpdate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void decodeUpdate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int relationId = buffer.getInt();
 
         LOGGER.trace("Event: {}, RelationId: {}", MessageType.UPDATE, relationId);
@@ -436,7 +420,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.UPDATE));
+            NoopMessage noopMessage = new NoopMessage(transactionId, commitTimestamp, Operation.UPDATE);
+            processMessage(noopMessage, processor);
         }
         else {
             Table table = resolvedTable.get();
@@ -457,13 +442,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
 
             List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-            processor.process(new PgOutputReplicationMessage(
+            PgOutputReplicationMessage pgOutputReplicationMessage = new PgOutputReplicationMessage(
                     Operation.UPDATE,
                     table.id().toDoubleQuotedString(),
                     commitTimestamp,
                     transactionId,
                     oldColumns,
-                    columns));
+                    columns);
+            processMessage(pgOutputReplicationMessage, processor);
         }
     }
 
@@ -474,7 +460,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
-    private void decodeDelete(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void decodeDelete(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int relationId = buffer.getInt();
 
         char tupleType = (char) buffer.get();
@@ -485,18 +471,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.DELETE));
+            NoopMessage noopMessage = new NoopMessage(transactionId, commitTimestamp, Operation.DELETE);
+            processMessage(noopMessage, processor);
         }
         else {
             Table table = resolvedTable.get();
             List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-            processor.process(new PgOutputReplicationMessage(
+            PgOutputReplicationMessage pgOutputReplicationMessage = new PgOutputReplicationMessage(
                     Operation.DELETE,
                     table.id().toDoubleQuotedString(),
                     commitTimestamp,
                     transactionId,
                     columns,
-                    null));
+                    null);
+            processMessage(pgOutputReplicationMessage, processor);
         }
     }
 
@@ -507,7 +495,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor    The replication message processor
      */
-    private void decodeTruncate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    protected void decodeTruncate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         // As of PG11, the Truncate message format is as described:
         // Byte Message Type (Always 'T')
         // Int32 number of relations described by the truncate message
@@ -543,12 +531,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         for (int i = 0; i < noOfResolvedTables; i++) {
             Table table = tables.get(i);
             boolean lastTableInTruncate = (i + 1) == noOfResolvedTables;
-            processor.process(new PgOutputTruncateReplicationMessage(
+            PgOutputTruncateReplicationMessage pgOutputTruncateReplicationMessage = new PgOutputTruncateReplicationMessage(
                     Operation.TRUNCATE,
                     table.id().toDoubleQuotedString(),
                     commitTimestamp,
                     transactionId,
-                    lastTableInTruncate));
+                    lastTableInTruncate);
+
+            processMessage(pgOutputTruncateReplicationMessage, processor);
         }
     }
 
@@ -577,7 +567,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer       The replication stream buffer
      * @param processor    The replication message processor
      */
-    private void handleLogicalDecodingMessage(ByteBuffer buffer, ReplicationMessageProcessor processor)
+    protected void handleLogicalDecodingMessage(ByteBuffer buffer, ReplicationMessageProcessor processor)
             throws SQLException, InterruptedException {
         // As of PG14, the MESSAGE message format is as described:
         // Byte1 Always 'M'
@@ -608,13 +598,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Transactional: {}", isTransactional);
         LOGGER.trace("Prefix: {}", prefix);
 
-        processor.process(new LogicalDecodingMessage(
+        LogicalDecodingMessage logicalDecodingMessage = new LogicalDecodingMessage(
                 Operation.MESSAGE,
                 commitTimestamp,
                 transactionId,
                 isTransactional,
                 prefix,
-                content));
+                content);
+        processMessage(logicalDecodingMessage, processor);
     }
 
     /**
@@ -771,5 +762,21 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         if (connection != null) {
             connection.close();
         }
+    }
+
+    protected void processMessage(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        processor.process(replicationMessage, transactionId);
+    }
+
+    protected void setTransactionId(Long transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    protected void setCommitTimestamp(Instant commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
+    protected Long getTransactionId() {
+        return transactionId;
     }
 }

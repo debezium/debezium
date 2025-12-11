@@ -32,6 +32,7 @@ import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
+import io.debezium.connector.postgresql.connection.pgoutput.PgOutputStreamingMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
@@ -431,6 +432,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         PGOUTPUT("pgoutput") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
+                LogicalReplicationMode logicalReplicationMode = config.getConfig().logicalReplicationMode();
+
+                if (logicalReplicationMode == LogicalReplicationMode.IN_PROGRESS) {
+                    return new PgOutputStreamingMessageDecoder(config, connection);
+                }
+
                 return new PgOutputMessageDecoder(config, connection);
             }
 
@@ -607,6 +614,64 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public enum LogicalReplicationMode implements EnumeratedValue {
+
+        /**
+         * Only fully committed transactions will be streamed.
+         */
+        COMMITTED("committed"),
+
+        /**
+         * Stream large in-progress transactions before they are committed.
+         */
+        IN_PROGRESS("in-progress");
+
+        private final String value;
+
+        LogicalReplicationMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Parse the given string to a corresponding LogicalReplicationMode.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogicalReplicationMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogicalReplicationMode mode : LogicalReplicationMode.values()) {
+                if (mode.getValue().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Parse the given string to a corresponding LogicalReplicationMode, with a fallback default.
+         *
+         * @param value        the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the default is invalid
+         */
+        public static LogicalReplicationMode parse(String value, String defaultValue) {
+            LogicalReplicationMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
@@ -626,6 +691,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "' and '" + LogicalDecoder.PGOUTPUT.getValue()
                     + "'. " +
                     "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
+
+    public static final Field LOGICAL_REPLICATION_MODE = Field.create("logical.replication.mode")
+            .withDisplayName("Logical replication mode")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 14))
+            .withEnum(LogicalReplicationMode.class, LogicalReplicationMode.COMMITTED)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies the mode of logical replication used by the connector. "
+                    + "'committed' (default): Only fully committed transactions are replicated. "
+                    + "'streaming': Enables streaming of large in-progress transactions before they are committed. Requires protocol version 2.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
@@ -1320,6 +1395,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return LogicalDecoder.parse(getConfig().getString(PLUGIN_NAME));
     }
 
+    public LogicalReplicationMode logicalReplicationMode() {
+        return LogicalReplicationMode.parse(getConfig().getString(LOGICAL_REPLICATION_MODE));
+    }
+
     public String slotName() {
         return getConfig().getString(SLOT_NAME);
     }
@@ -1466,6 +1545,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     DATABASE_NAME,
                     QUERY_TIMEOUT_MS,
                     PLUGIN_NAME,
+                    LOGICAL_REPLICATION_MODE,
                     SLOT_NAME,
                     PUBLICATION_NAME,
                     PUBLICATION_AUTOCREATE_MODE,
