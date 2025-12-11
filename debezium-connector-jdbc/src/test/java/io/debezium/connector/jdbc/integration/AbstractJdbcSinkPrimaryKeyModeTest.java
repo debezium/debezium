@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -17,7 +17,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
-import org.fest.assertions.Index;
+import org.assertj.core.data.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
