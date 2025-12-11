@@ -244,7 +244,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             cdcSourceTaskContext = preStart(config);
 
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
+            DebeziumOpenLineageEmitter.emit(
+                    DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
                     DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
@@ -266,7 +267,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 this.coordinator = start(config);
                 setTaskState(DebeziumTaskState.RUNNING);
 
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
+                DebeziumOpenLineageEmitter.emit(
+                        DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
                         DebeziumTaskState.RUNNING);
 
             }
@@ -482,7 +484,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
         finally {
             stop(false);
-            DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()));
+            DebeziumOpenLineageEmitter
+                    .cleanup(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()));
         }
     }
 
@@ -519,7 +522,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(DebeziumTaskState.STOPPED);
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()),
+                DebeziumOpenLineageEmitter.emit(
+                        DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()),
                         DebeziumTaskState.STOPPED);
             }
         }
