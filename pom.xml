@@ -99,7 +99,7 @@
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
         <!-- Should be aligned with the jandex version used in quarkus version quarkus.version.runtime -->
-        <version.jandex>3.2.3</version.jandex>
+        <version.jandex>3.4.0</version.jandex>
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
         <version.build-helper.plugin>3.6.1</version.build-helper.plugin>
 
@@ -117,7 +117,7 @@
 
         <!-- Kafka no longer needs ZooKeeper and Neetty but it is kept for testing with older Kafka dependencies -->
         <version.zookeeper>3.8.4</version.zookeeper>
-        <version.netty>4.1.118.Final</version.netty>
+        <version.netty>4.1.128.Final</version.netty>
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
@@ -131,7 +131,7 @@
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.20.3</quarkus.version.runtime>
+        <quarkus.version.runtime>3.27.1</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>2.6.13.Final</version.apicurio>
