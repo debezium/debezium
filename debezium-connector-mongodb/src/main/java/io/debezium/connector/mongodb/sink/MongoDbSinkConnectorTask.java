@@ -92,7 +92,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         LOGGER.debug("Started MongoDB sink task");
     }
 
-
     /**
      * Put the records in the sink. Usually this should send the records to the sink asynchronously
      * and immediately return.
