@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
