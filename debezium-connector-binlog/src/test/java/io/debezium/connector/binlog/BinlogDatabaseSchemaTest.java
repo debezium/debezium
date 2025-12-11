@@ -108,7 +108,6 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
-        DebeziumOpenLineageEmitter.init(config.withMaskedPasswords().asMap(), "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
 
