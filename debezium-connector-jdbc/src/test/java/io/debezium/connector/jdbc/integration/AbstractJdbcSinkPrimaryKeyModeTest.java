@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.assertj.core.data.Index;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
-import org.assertj.core.data.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
