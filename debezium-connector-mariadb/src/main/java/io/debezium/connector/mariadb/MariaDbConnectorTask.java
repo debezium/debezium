@@ -125,9 +125,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 new MariaDbPartition.Provider(connectorConfig, config),
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
-
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
