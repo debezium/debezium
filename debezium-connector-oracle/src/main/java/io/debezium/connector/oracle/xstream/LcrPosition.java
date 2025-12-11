@@ -42,7 +42,7 @@ public class LcrPosition implements Comparable<LcrPosition> {
         catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
         }
-        LOGGER.trace("LCR position {} converted to SCN {}", rawPosition, stringFromat, scn);
+        LOGGER.trace("LCR position {} converted to SCN {}. Raw position: {}", stringFromat, scn, rawPosition);
     }
 
     public static LcrPosition valueOf(String rawPosition) {
