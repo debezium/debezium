@@ -25,6 +25,7 @@
     </properties>
 
     <modules>
+        <module>debezium-ai-docling</module>
         <module>debezium-ai-embeddings</module>
         <module>debezium-ai-embeddings-hugging-face</module>
         <module>debezium-ai-embeddings-minilm</module>
