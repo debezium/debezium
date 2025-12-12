@@ -14,9 +14,9 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
@@ -38,7 +38,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "signal_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private MySqlTestConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws SQLException {
         stopConnector();
         initializeConnectorTestFramework();
@@ -47,7 +47,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         Testing.Print.enable();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws SQLException {
         try {
             stopConnector();

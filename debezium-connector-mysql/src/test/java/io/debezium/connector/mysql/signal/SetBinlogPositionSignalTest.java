@@ -12,8 +12,8 @@ import static org.mockito.Mockito.verify;
 
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
@@ -40,7 +40,7 @@ public class SetBinlogPositionSignalTest {
     private MySqlOffsetContext offsetContext;
     private MySqlPartition partition;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         eventDispatcher = mock(EventDispatcher.class);
         changeEventSourceCoordinator = mock(ChangeEventSourceCoordinator.class);
