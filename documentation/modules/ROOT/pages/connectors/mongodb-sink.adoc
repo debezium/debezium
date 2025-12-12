@@ -171,9 +171,9 @@ Replace the placeholders in the example with the actual values for your environm
 ----
 
 
-// Type: assembly
-// ModuleID: debezium-mongodb-sink-connector-supported-data-format
-// Title: Which data formats the {prodname} MongoDB sink connector supports
+// Type: concept
+// ModuleID: debezium-mongodb-sink-connector-data-format-that-the-connector-supports
+// Title: Data formats that the {prodname} MongoDB sink connector supports
 [[mongodb-sink-supported-data-formats]]
 == Supported data formats
 
@@ -186,13 +186,13 @@ The {prodname} MongoDB sink connector supports the following data formats:
 * Raw binary BSON byte array
 
 
-// Type: assembly
-// ModuleID: debezium-mongodb-sink-connector-data-types-mapping
+// Type: concept
+// ModuleID: debezium-mongodb-sink-connector-how-the-connector-maps-data-types
 // Title: How the {prodname} MongoDB sink connector maps data types
 [[mongodb-sink-data-types-mapping]]
 == Data type mappings
 
-Before the {prodname} MongoDB sink connector sends stores data into a MongoDB instance, it converts data types from the original source record to a corresponding type in MongoDB.
+Before the {prodname} MongoDB sink connector sends data to a MongoDB instance, it converts the data types in the source records to corresponding types in MongoDB.
 Appropriate data type mapping ensures that the original data is accurately represented in the destination database.
 
 The {prodname} MongoDB sink connector resolves a column's data type by using a logical or primitive type-mapping system.
@@ -203,7 +203,7 @@ By contrast, to represent more complex data, {prodname} uses logical schema name
 These structured types take into account the semantic meaning of the data and provide a more opinionated interpretation about how to serialize the underlying primitive types.
 Logical types are useful in representing values that have a specific encoding, such as numbers that represent the time since the epoch.
 
-For a JSON string, a JSON map, or a raw BSON byte array the document is stored using the default data type mappings from MongoDB.
+For a JSON string, JSON map, or a raw BSON byte array, the connector uses the default data type mappings from MongoDB to store the document.
 
 The following examples show representative structures of primitive and logical data types:
 
@@ -233,8 +233,8 @@ The following examples show representative structures of primitive and logical d
 ====
 
 
-Kafka Connect is not the only source for these complex, logical types.
-In fact, when a {prodname} source connector emits a change event, it can assign similar logical types to event fields to represent such data types as timestamps, dates, and even JSON data.
+Kafka Connect is not the only source for these complex logical types.
+For example, when a {prodname} source connector emits a change event, it assigns similar logical types to event fields to represent such data types as timestamps, dates, and even JSON data.
 
 
 The {prodname} MongoDB sink connector uses these primitive and logical types to resolve a column's type to a MongoDB BSON document field type.
@@ -246,8 +246,8 @@ The following tables illustrate the primitive and logical mappings between Kafka
 
 // Type: reference
 // Title: Mappings between Kafka Connect primitive data types and MongoDB field types
+// ModuleID: debezium-mongodb-sink-connector-mappings-between-kc-primitive-data-types-and-mongodb-field-types
 [[mongodb-sink-kafka-connect-primitive-mappings]]
-=== Kafka Connect primitive data type mappings
 
 .Mappings between Kafka Connect primitive data types and MongoDB field data types
 |===
@@ -276,8 +276,8 @@ The following tables illustrate the primitive and logical mappings between Kafka
 
 // Type: reference
 // Title: Mappings between Kafka Connect logical data types and MongoDB field types
+// ModuleID: debezium-mongodb-connector-mappings-betw-kc-logical-data-types-and-mongodb-field-types
 [[mongodb-sink-kafka-connect-logical-mappings]]
-=== Kafka Connect logical data type mappings
 
 .Mappings between Kafka Connect logical data types and column data types
 |===
@@ -294,7 +294,7 @@ The following tables illustrate the primitive and logical mappings between Kafka
 
 [NOTE]
 ====
-Other data types, for example Debezium logical types, are not yet supported.
+Support for other data types, such as {prodname} logical types, is not currently available.
 ====
 
 
@@ -334,7 +334,7 @@ If you set this value to `topics.regex`, the connector consumes from all topics 
 
 |[[mongodb-sink-property-connection-string]]<<mongodb-sink-property-connection-string, `+mongodb.connection.string+`>>
 |No default value
-| A MongoDB connection string (URI) that the sink uses to connect to MongoDB. Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[connection string] that the connector uses to connect to a MongoDB instance.
+|Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[MongoDB connection string (URI)] that the connector uses to connect to a MongoDB instance.
 This URI follows the standard MongoDB connection string format.
 
 Example: `mongodb://localhost:27017/?replicaSet=my-replica-set`
