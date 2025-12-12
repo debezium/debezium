@@ -15,6 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.metrics.event.LagBehindSourceEvent;
+import io.debezium.metrics.stats.LagBehindSourceMeasurement;
+import io.debezium.metrics.stats.LongDDSketchStatistics;
+import io.debezium.metrics.stats.MeasurementCollector;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -27,11 +31,12 @@ import io.debezium.spi.schema.DataCollectionId;
 @ThreadSafe
 public class StreamingMeter implements StreamingMetricsMXBean {
 
-    private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
     private final AtomicLong numberOfUnchangedEventsSkipped = new AtomicLong(-1);
+    private final MeasurementCollector<LagBehindSourceEvent> measurementCollector = new MeasurementCollector<>();
+    private final LagBehindSourceMeasurement lagBehindSourceMeasurement = new LagBehindSourceMeasurement(new LongDDSketchStatistics<>());
 
     private final CapturedTablesSupplier capturedTablesSupplier;
     private final EventMetadataProvider metadataProvider;
@@ -39,6 +44,7 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     public StreamingMeter(CapturedTablesSupplier capturedTablesSupplier, EventMetadataProvider metadataProvider) {
         this.capturedTablesSupplier = capturedTablesSupplier != null ? capturedTablesSupplier : Collections::emptyList;
         this.metadataProvider = metadataProvider;
+        this.measurementCollector.addMeasurement(LagBehindSourceEvent.class, lagBehindSourceMeasurement);
     }
 
     @Override
@@ -56,8 +62,8 @@ public class StreamingMeter implements StreamingMetricsMXBean {
 
     @Override
     public long getMilliSecondsBehindSource() {
-        Duration lag = lagBehindSource.get();
-        return lag != null ? lag.toMillis() : -1;
+        final Long lag = lagBehindSourceMeasurement.getLastValue();
+        return lag != null ? lag : -1;
     }
 
     @Override
@@ -77,7 +83,7 @@ public class StreamingMeter implements StreamingMetricsMXBean {
 
     @Override
     public void resetLagBehindSource() {
-        lagBehindSource.set(null);
+        lagBehindSourceMeasurement.reset();
     }
 
     /*
@@ -98,7 +104,8 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         final Instant eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
         if (eventTimestamp != null) {
-            lagBehindSource.set(Duration.between(eventTimestamp, Instant.now()));
+            final Duration lag = Duration.between(eventTimestamp, Instant.now());
+            measurementCollector.accept(new LagBehindSourceEvent(lag.toMillis()));
         }
 
         final String transactionId = metadataProvider.getTransactionId(source, offset, key, value);
@@ -116,7 +123,7 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     }
 
     public void reset() {
-        lagBehindSource.set(null);
+        lagBehindSourceMeasurement.reset();
         numberOfCommittedTransactions.set(0);
         sourceEventPosition.set(Collections.emptyMap());
         lastTransactionId.set(null);
