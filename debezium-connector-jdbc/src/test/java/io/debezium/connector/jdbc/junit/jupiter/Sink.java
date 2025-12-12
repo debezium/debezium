@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.junit.jupiter;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;

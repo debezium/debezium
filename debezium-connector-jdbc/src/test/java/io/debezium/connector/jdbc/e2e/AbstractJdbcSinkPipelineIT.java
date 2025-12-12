@@ -6,7 +6,7 @@
 package io.debezium.connector.jdbc.e2e;
 
 import static io.debezium.connector.jdbc.util.assertions.ThrowableMessageAssert.assertThatThrowable;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigInteger;

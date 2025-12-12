@@ -64,18 +64,17 @@
         <version.openlineage>1.31.0</version.openlineage>
 
         <!-- Testing -->
-        <version.junit>5.9.1</version.junit>
-        <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
-        <version.fest>1.4</version.fest>
+        <version.junit>6.0.1</version.junit>
+        <version.junit.platform.launcher>${version.junit}</version.junit.platform.launcher>
         <version.assertj>3.27.6</version.assertj>
-        <version.jmh>1.21</version.jmh>
-        <version.awaitility>4.0.1</version.awaitility>
+        <version.jmh>1.37</version.jmh>
+        <version.awaitility>4.3.0</version.awaitility>
         <version.testcontainers>2.0.2</version.testcontainers>
-        <version.jsonpath>2.9.0</version.jsonpath>
-        <version.jsonassert>1.5.0</version.jsonassert>
-        <version.org.reflections>0.9.12</version.org.reflections>
-        <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
-        <version.logback>1.2.13</version.logback>
+        <version.jsonpath>2.10.0</version.jsonpath>
+        <version.jsonassert>1.5.3</version.jsonassert>
+        <version.org.reflections>0.10.2</version.org.reflections>
+        <version.cassandra.unit>4.3.1.0</version.cassandra.unit>
+        <version.logback>1.2.13</version.logback> <!-- Latest: 1.5.21 Update with SLF4J.-->
         <version.rest-assured>5.5.2</version.rest-assured>
     </properties>
 
@@ -624,11 +623,6 @@
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
                 <version>${version.rest-assured}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.easytesting</groupId>
-                <artifactId>fest-assert</artifactId>
-                <version>${version.fest}</version>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
