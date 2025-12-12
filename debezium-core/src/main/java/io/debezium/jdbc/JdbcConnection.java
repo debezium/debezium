@@ -1465,6 +1465,13 @@ public class JdbcConnection implements AutoCloseable {
                     continue;
                 }
 
+                // Table statistics are also returned as part of the index info, and these have a columnIndex of 0.
+                // There is type tableIndexStatistic for these records available but it is unsure whether all databases
+                // behaves the same way, so we simply ignore any record with a columnIndex of 0.
+                if (columnIndex == 0) {
+                    continue;
+                }
+
                 // Check whether the index and/or its column is included by the connector
                 boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
                 if (!indexIncluded) {
