@@ -6,20 +6,15 @@
 
 package io.quarkus.debezium.engine.deserializer;
 
-import jakarta.enterprise.inject.Produces;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
-import io.quarkus.arc.Unremovable;
 
 public class ObjectMapperProducer {
     private ObjectMapperProducer() {
     }
 
-    @Produces
-    @Unremovable
     static ObjectMapper get() {
         ObjectMapper objectMapper = null;
         ArcContainer container = Arc.container();
