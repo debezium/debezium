@@ -3151,7 +3151,7 @@ Set this parameter on the primary server to specify the physical replication slo
 |[[postgresql-property-offset-mismatch-strategy]]<<postgresql-property-offset-mismatch-strategy, `+offset.mismatch.strategy+`>>
 |`no_validation`
 |Specifies how the connector handles mismatches between the stored offset LSN and the replication slot's confirmed flush LSN when the connector starts.
-This property replaces the deprecated `slot.seek.to.known.offset.on.start` boolean property.
+This property replaces the deprecated `internal.slot.seek.to.known.offset.on.start` boolean property.
 
 A mismatch can occur in several scenarios:
 
@@ -3190,10 +3190,10 @@ The same slot reliability requirements as `trust_slot` apply.
 +
 NOTE: When the slot is ahead of the offset, this strategy skips replaying events between the stored offset and the slot position.
 
-For backward compatibility, the deprecated `slot.seek.to.known.offset.on.start` property is automatically mapped:
+For backward compatibility, the deprecated `internal.slot.seek.to.known.offset.on.start` property is automatically mapped:
 
-* `slot.seek.to.known.offset.on.start=false` maps to `offset.mismatch.strategy=no_validation`
-* `slot.seek.to.known.offset.on.start=true` maps to `offset.mismatch.strategy=trust_offset`
+* `internal.slot.seek.to.known.offset.on.start=false` maps to `offset.mismatch.strategy=no_validation`
+* `internal.slot.seek.to.known.offset.on.start=true` maps to `offset.mismatch.strategy=trust_offset`
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
