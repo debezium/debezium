@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -600,14 +601,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
         String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+        final TableId signalDataCollectionTableId = Strings.isNullOrBlank(getSignalingDataCollectionId()) ? null
+                : TableId.parse(getSignalingDataCollectionId(), useCatalogBeforeSchema);
 
         columnsFiltered = !(Strings.isNullOrEmpty(columnExcludeList) && Strings.isNullOrEmpty(columnIncludeList));
 
-        if (columnIncludeList != null) {
-            this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
+        ColumnNameFilter configuredColumnFilter = columnIncludeList != null
+                ? ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode)
+                : ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
+
+        if (columnIncludeList != null && signalDataCollectionTableId != null) {
+            this.columnFilter = includeSignalDataCollectionColumns(configuredColumnFilter, signalDataCollectionTableId);
         }
         else {
-            this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
+            this.columnFilter = configuredColumnFilter;
         }
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
@@ -717,6 +724,24 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public TableIdToStringMapper getTableIdMapper() {
         return tableIdMapper;
+    }
+
+    private static ColumnNameFilter includeSignalDataCollectionColumns(ColumnNameFilter delegate, TableId signalTableId) {
+        return (catalogName, schemaName, tableName, columnName) -> {
+            if (isSignalDataCollection(signalTableId, catalogName, schemaName, tableName)) {
+                return true;
+            }
+            return delegate.matches(catalogName, schemaName, tableName, columnName);
+        };
+    }
+
+    private static boolean isSignalDataCollection(TableId signalTableId, String catalogName, String schemaName, String tableName) {
+        if (signalTableId == null || tableName == null) {
+            return false;
+        }
+        return Objects.equals(signalTableId.catalog(), catalogName)
+                && Objects.equals(signalTableId.schema(), schemaName)
+                && Objects.equals(signalTableId.table(), tableName);
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
