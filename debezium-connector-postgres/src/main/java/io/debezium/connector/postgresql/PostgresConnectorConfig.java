@@ -1178,7 +1178,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Validate and advance slot to match offset when possible.
          * Fails if slot position is ahead of offset, detecting slot recreation and preventing silent data issues.
-         * Recommended for preventing silent data loss when slot is untrustworthy. Replaces slot.seek.to.known.offset.on.start = true.
+         * Recommended for preventing silent data loss when slot is untrustworthy. Replaces internal.slot.seek.to.known.offset.on.start = true.
          */
         TRUST_OFFSET("trust_offset"),
 
