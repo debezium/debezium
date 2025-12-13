@@ -136,9 +136,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-1', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and the connector to stop
-        // The signal with action: stop will automatically stop the connector
-        waitForConnectorShutdown("mysql", SERVER_NAME);
+        // Wait for the signal to be processed and the engine to shut down
+        // The signal with action: stop calls changeEventSourceCoordinator.stop() which stops the engine
+        waitForEngineShutdown();
 
         // Clean up the test framework's connector state before restarting
         stopConnector();
@@ -236,9 +236,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and the connector to stop
-        // The signal with action: stop will automatically stop the connector
-        waitForConnectorShutdown("mysql", SERVER_NAME);
+        // Wait for the signal to be processed and the engine to shut down
+        // The signal with action: stop calls changeEventSourceCoordinator.stop() which stops the engine
+        waitForEngineShutdown();
 
         // Clean up the test framework's connector state before restarting
         stopConnector();
