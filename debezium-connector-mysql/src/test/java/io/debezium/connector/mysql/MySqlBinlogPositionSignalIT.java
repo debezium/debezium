@@ -147,6 +147,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Stop and restart the connector to apply the new binlog position
         stopConnector();
         start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Verify we only get record 5 (skipped 3 and 4)
         // Account for heartbeat messages during streaming
@@ -253,6 +255,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.commit();
 
         start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", SERVER_NAME);
 
         // Verify we only get record 5 (skipped 3 and 4)
         // Account for heartbeat messages during streaming
