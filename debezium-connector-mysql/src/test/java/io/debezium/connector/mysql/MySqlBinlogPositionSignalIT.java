@@ -140,6 +140,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // The signal with action: stop will automatically stop the connector
         waitForConnectorShutdown("mysql", SERVER_NAME);
 
+        // Clean up the test framework's connector state before restarting
+        stopConnector();
+
         // Restart the connector to apply the new binlog position
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
@@ -236,6 +239,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Wait for the signal to be processed and the connector to stop
         // The signal with action: stop will automatically stop the connector
         waitForConnectorShutdown("mysql", SERVER_NAME);
+
+        // Clean up the test framework's connector state before restarting
+        stopConnector();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
