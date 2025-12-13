@@ -136,16 +136,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-1', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and offset to be committed
-        // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        // Wait for the signal to be processed and the connector to stop
+        // The signal with action: stop will automatically stop the connector
+        waitForConnectorShutdown("mysql", SERVER_NAME);
 
-        // Consume all pending records to ensure signal is processed
-        consumeAvailableRecords(record -> {
-        });
-
-        // Stop and restart the connector to apply the new binlog position
-        stopConnector();
+        // Restart the connector to apply the new binlog position
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
@@ -238,22 +233,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and offset to be committed
-        // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
-
-        // Consume all pending records to ensure signal is processed
-        consumeAvailableRecords(record -> {
-        });
-
-        // Stop and restart the connector to apply the new GTID position
-        stopConnector();
+        // Wait for the signal to be processed and the connector to stop
+        // The signal with action: stop will automatically stop the connector
+        waitForConnectorShutdown("mysql", SERVER_NAME);
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
 
+        // Restart the connector to apply the new GTID position
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
