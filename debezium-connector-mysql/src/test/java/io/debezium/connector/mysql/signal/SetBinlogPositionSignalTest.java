@@ -70,7 +70,8 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        verify(changeEventSourceCoordinator).stop(); // Default action is STOP
+        // Note: We no longer call changeEventSourceCoordinator.stop() in the signal
+        // as it interferes with the proper shutdown sequence
     }
 
     @Test
@@ -91,7 +92,7 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        verify(changeEventSourceCoordinator).stop(); // Default action is STOP
+        // Note: We no longer call changeEventSourceCoordinator.stop() in the signal
     }
 
     @Test
@@ -198,71 +199,9 @@ public class SetBinlogPositionSignalTest {
                 .hasMessageContaining("No offset context available");
     }
 
-    @Test
-    public void shouldStopConnectorWithStopAction() throws Exception {
-        // Given
-        Document data = DocumentReader.defaultReader().read(
-                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"stop\"}");
-
-        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
-
-        // When
-        boolean result = signal.arrived(payload);
-
-        // Then
-        assertThat(result).isTrue();
-        verify(changeEventSourceCoordinator).stop();
-    }
-
-    @Test
-    public void shouldStopConnectorWithRestartAction() throws Exception {
-        // Given - RESTART is reserved for future use, should behave like STOP
-        Document data = DocumentReader.defaultReader().read(
-                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"restart\"}");
-
-        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
-
-        // When
-        boolean result = signal.arrived(payload);
-
-        // Then
-        assertThat(result).isTrue();
-        verify(changeEventSourceCoordinator).stop();
-    }
-
-    @Test
-    public void shouldDefaultToStopActionWhenActionNotSpecified() throws Exception {
-        // Given
-        Document data = DocumentReader.defaultReader().read(
-                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234}");
-
-        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
-
-        // When
-        boolean result = signal.arrived(payload);
-
-        // Then
-        assertThat(result).isTrue();
-        verify(changeEventSourceCoordinator).stop(); // Should default to STOP
-    }
-
-    @Test
-    public void shouldDefaultToStopActionWhenInvalidActionSpecified() throws Exception {
-        // Given
-        Document data = DocumentReader.defaultReader().read(
-                "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234, \"action\": \"invalid\"}");
-
-        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
-
-        // When
-        boolean result = signal.arrived(payload);
-
-        // Then
-        assertThat(result).isTrue();
-        verify(changeEventSourceCoordinator).stop(); // Should default to STOP
-    }
+    // Note: Tests for 'action' field (stop, restart) were removed because
+    // we no longer call changeEventSourceCoordinator.stop() in the signal.
+    // This was causing issues with the embedded engine and Kafka Connect lifecycle.
+    // Users must now manually stop and restart the connector after sending
+    // the set-binlog-position signal for the new position to take effect.
 }
