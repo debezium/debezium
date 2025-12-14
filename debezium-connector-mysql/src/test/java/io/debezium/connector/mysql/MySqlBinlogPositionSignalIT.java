@@ -136,14 +136,16 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-1', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and the engine to shut down
-        // The signal with action: stop calls changeEventSourceCoordinator.stop() which stops the engine
-        waitForEngineShutdown();
+        // Wait for the signal to be processed and offset to be committed
+        // The signal processing will trigger a heartbeat event with the new offset
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Clean up the test framework's connector state before restarting
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {
+        });
+
+        // Stop and restart the connector to apply the new binlog position
         stopConnector();
-
-        // Restart the connector to apply the new binlog position
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
@@ -236,11 +238,15 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
                         SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
 
-        // Wait for the signal to be processed and the engine to shut down
-        // The signal with action: stop calls changeEventSourceCoordinator.stop() which stops the engine
-        waitForEngineShutdown();
+        // Wait for the signal to be processed and offset to be committed
+        // The signal processing will trigger a heartbeat event with the new offset
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Clean up the test framework's connector state before restarting
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {
+        });
+
+        // Stop and restart the connector to apply the new GTID position
         stopConnector();
 
         // Insert data we want to capture after the skip
@@ -248,7 +254,6 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
 
-        // Restart the connector to apply the new GTID position
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
