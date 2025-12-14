@@ -70,8 +70,9 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Note: We no longer call changeEventSourceCoordinator.stop() in the signal
-        // as it interferes with the proper shutdown sequence
+        // Default action is STOP, so connector should be stopped (async, wait for it)
+        Thread.sleep(200);
+        verify(changeEventSourceCoordinator).stop();
     }
 
     @Test
@@ -92,7 +93,9 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Note: We no longer call changeEventSourceCoordinator.stop() in the signal
+        // Default action is STOP, so connector should be stopped (async, wait for it)
+        Thread.sleep(200);
+        verify(changeEventSourceCoordinator).stop();
     }
 
     @Test
@@ -199,9 +202,50 @@ public class SetBinlogPositionSignalTest {
                 .hasMessageContaining("No offset context available");
     }
 
-    // Note: Tests for 'action' field (stop, restart) were removed because
-    // we no longer call changeEventSourceCoordinator.stop() in the signal.
-    // This was causing issues with the embedded engine and Kafka Connect lifecycle.
-    // Users must now manually stop and restart the connector after sending
-    // the set-binlog-position signal for the new position to take effect.
+    @Test
+    public void shouldStopConnectorWhenActionIsStop() throws Exception {
+        // Given
+        String binlogFilename = "mysql-bin.000003";
+        Long binlogPosition = 1234L;
+
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"" + binlogFilename + "\", \"binlog_position\": " + binlogPosition + ", \"action\": \"stop\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+        // Stop is async, wait for it
+        Thread.sleep(200);
+        verify(changeEventSourceCoordinator).stop();
+    }
+
+    @Test
+    public void shouldStopConnectorWithDefaultAction() throws Exception {
+        // Given - no action specified, should default to STOP
+        String gtidSet = "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100";
+
+        Document data = DocumentReader.defaultReader().read(
+                "{\"gtid_set\": \"" + gtidSet + "\"}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(offsetContext).setCompletedGtidSet(gtidSet);
+        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+        // Default action is STOP, so connector should be stopped (async, wait for it)
+        Thread.sleep(200);
+        verify(changeEventSourceCoordinator).stop();
+    }
 }
