@@ -108,14 +108,28 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             // Force a new offset commit to persist the change
             eventDispatcher.alwaysDispatchHeartbeatEvent(signalPayload.partition, offsetContext);
 
-            LOGGER.info("Successfully updated binlog position. New offset: {}. " +
-                    "Connector must be stopped and restarted for the new position to take effect.", offsetContext);
+            LOGGER.info("Successfully updated binlog position. New offset: {}", offsetContext);
 
-            // Note: We intentionally do NOT call changeEventSourceCoordinator.stop() here.
-            // The embedded engine and connector task lifecycle are managed by the Kafka Connect
-            // framework (or embedded engine in tests). Calling stop() here would interfere with
-            // the proper shutdown sequence. Users must stop and restart the connector manually
-            // (or let Kafka Connect handle it) for the new position to take effect.
+            // Stop the connector as requested by the action field (default: stop)
+            // This ensures the new offset takes effect on the next restart
+            // Schedule the stop in a separate thread to avoid lifecycle issues when
+            // calling stop from within the signal handler context
+            if (action == Action.STOP) {
+                LOGGER.info("Stopping connector to apply new binlog position. Restart the connector for changes to take effect.");
+                Thread stopThread = new Thread(() -> {
+                    try {
+                        // Small delay to allow signal processing to complete
+                        Thread.sleep(100);
+                        changeEventSourceCoordinator.stop();
+                    }
+                    catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        LOGGER.warn("Interrupted while waiting to stop connector");
+                    }
+                }, "set-binlog-position-stop");
+                stopThread.setDaemon(true);
+                stopThread.start();
+            }
 
             return true;
 
