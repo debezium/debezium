@@ -108,17 +108,14 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             // Force a new offset commit to persist the change
             eventDispatcher.alwaysDispatchHeartbeatEvent(signalPayload.partition, offsetContext);
 
-            // Handle the action
-            switch (action) {
-                case STOP:
-                    LOGGER.info("Successfully updated binlog position. New offset: {}. Stopping connector to apply new position.", offsetContext);
-                    changeEventSourceCoordinator.stop();
-                    break;
-                case RESTART:
-                    LOGGER.warn("RESTART action is reserved for future use. Treating as STOP. New offset: {}", offsetContext);
-                    changeEventSourceCoordinator.stop();
-                    break;
-            }
+            LOGGER.info("Successfully updated binlog position. New offset: {}. " +
+                    "Connector must be stopped and restarted for the new position to take effect.", offsetContext);
+
+            // Note: We intentionally do NOT call changeEventSourceCoordinator.stop() here.
+            // The embedded engine and connector task lifecycle are managed by the Kafka Connect
+            // framework (or embedded engine in tests). Calling stop() here would interfere with
+            // the proper shutdown sequence. Users must stop and restart the connector manually
+            // (or let Kafka Connect handle it) for the new position to take effect.
 
             return true;
 
