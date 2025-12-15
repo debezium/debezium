@@ -148,6 +148,7 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         TestHelper.waitForEnabledCdc(connection, "tablea");
 
         assertStreamingMetrics(false, expectedEvents());
+        assertStreamingStatistics(expectedEvents());
     }
 
     @Test
