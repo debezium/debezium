@@ -6,9 +6,9 @@
 package io.debezium.metrics.event;
 
 /**
- * // TODO: Document this
+ * General interface, which represents one measurement event, i.e. carries over a {@link io.debezium.metrics.stats.Measurement} instance.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public interface MeasurementEvent {
 }

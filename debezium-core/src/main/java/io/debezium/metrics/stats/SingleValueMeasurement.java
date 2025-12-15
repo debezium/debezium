@@ -8,9 +8,10 @@ package io.debezium.metrics.stats;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * A measurement which measures only a single variable.
+ * Supports basic statistics over some time period, like minimal, maximal and average values.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public interface SingleValueMeasurement<T extends SingleValueEvent<V>, V> extends Measurement<T> {
 

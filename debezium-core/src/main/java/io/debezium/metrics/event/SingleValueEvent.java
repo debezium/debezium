@@ -6,9 +6,9 @@
 package io.debezium.metrics.event;
 
 /**
- * // TODO: Document this
+ * Measurement which tracks only a single variable.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public class SingleValueEvent<T> implements MeasurementEvent {
     private final T value;
