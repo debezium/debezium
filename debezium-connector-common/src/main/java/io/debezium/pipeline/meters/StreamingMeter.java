@@ -21,6 +21,7 @@ import io.debezium.metrics.stats.LongDDSketchStatistics;
 import io.debezium.metrics.stats.MeasurementCollector;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
+import io.debezium.pipeline.metrics.traits.StreamingStatisticsMXBean;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.spi.schema.DataCollectionId;
@@ -29,7 +30,7 @@ import io.debezium.spi.schema.DataCollectionId;
  * Carries streaming metrics.
  */
 @ThreadSafe
-public class StreamingMeter implements StreamingMetricsMXBean {
+public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisticsMXBean {
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<>(Collections.emptyMap());
@@ -63,6 +64,36 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     public long getMilliSecondsBehindSource() {
         final Long lag = lagBehindSourceMeasurement.getLastValue();
         return lag != null ? lag : -1;
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceMinValue() {
+        return lagBehindSourceMeasurement.getMinValue();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceMaxValue() {
+        return lagBehindSourceMeasurement.getMaxValue();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceAverageValue() {
+        return lagBehindSourceMeasurement.getAverageValue();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP50() {
+        return lagBehindSourceMeasurement.getValueAtP50();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP95() {
+        return lagBehindSourceMeasurement.getValueAtP95();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP99() {
+        return lagBehindSourceMeasurement.getValueAtP99();
     }
 
     @Override
