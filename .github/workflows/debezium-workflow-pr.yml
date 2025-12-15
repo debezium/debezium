@@ -245,7 +245,7 @@ jobs:
       # GitHub actions seem to struggle returning actions/cache cache-hit
       # Directly use the cache action here to control whether to fetch dependencies
       - id: maven-cache-check
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
