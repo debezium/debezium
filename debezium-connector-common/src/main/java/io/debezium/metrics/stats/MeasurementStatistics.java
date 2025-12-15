@@ -10,7 +10,9 @@ import java.util.function.Consumer;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * Statistics of the {@link SingleValueMeasurement}s over some period of time.
+ * Currently, only quantiles are supported.
+ *
  * @author vjuranek
  */
 public interface MeasurementStatistics<T extends SingleValueEvent<V>, V> extends Consumer<T> {

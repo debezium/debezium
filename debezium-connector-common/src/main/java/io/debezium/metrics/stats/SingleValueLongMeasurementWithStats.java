@@ -8,9 +8,9 @@ package io.debezium.metrics.stats;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * {@link SingleValueMeasurement} of {@link Long} type, which provides support of more advanced statistics like quantiles.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public abstract class SingleValueLongMeasurementWithStats<T extends SingleValueEvent<Long>> extends SingleValueLongMeasurement<T>
         implements MeasurementStatistics<T, Long> {

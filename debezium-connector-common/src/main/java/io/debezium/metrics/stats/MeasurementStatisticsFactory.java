@@ -9,10 +9,10 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * Factory providing an instance of {@code MeasurementStatistics} implementation.
+ * If the statistic gathering is disabled, provides dummy implementation.
  *
  * @author vjuranek
- * @since 4.0
  */
 public class MeasurementStatisticsFactory {
 

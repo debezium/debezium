@@ -10,9 +10,10 @@ import java.util.function.Consumer;
 import io.debezium.metrics.event.MeasurementEvent;
 
 /**
- * // TODO: Document this
+ * General interface, which represents one measurement.
+ * One measurement event can contain several measured variables.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public interface Measurement<T extends MeasurementEvent> extends Consumer<T> {
     void accept(T event);
