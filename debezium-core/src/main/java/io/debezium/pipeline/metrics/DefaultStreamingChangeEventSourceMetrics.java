@@ -39,7 +39,7 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
                                                                                      EventMetadataProvider metadataProvider,
                                                                                      CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
-        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
     }
@@ -48,7 +48,7 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
                                                                                      EventMetadataProvider metadataProvider, Map<String, String> tags,
                                                                                      CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
-        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
     }

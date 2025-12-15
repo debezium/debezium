@@ -27,7 +27,7 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
                                        EventMetadataProvider metadataProvider,
                                        CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, tags, metadataProvider);
-        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
     }
 
     @Override
