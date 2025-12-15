@@ -8,6 +8,7 @@ package io.debezium.pipeline.metrics;
 import io.debezium.metrics.activity.ActivityMonitoringMXBean;
 import io.debezium.pipeline.metrics.traits.ConnectionMetricsMXBean;
 import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
+import io.debezium.pipeline.metrics.traits.StreamingStatisticsMXBean;
 
 /**
  * Metrics specific to streaming change event sources
@@ -15,5 +16,5 @@ import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
  * @author Randall Hauch, Jiri Pechanec
  */
 public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean,
-        ConnectionMetricsMXBean, StreamingMetricsMXBean, ActivityMonitoringMXBean {
+        ConnectionMetricsMXBean, StreamingMetricsMXBean, StreamingStatisticsMXBean, ActivityMonitoringMXBean {
 }

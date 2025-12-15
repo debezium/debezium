@@ -78,6 +78,36 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     }
 
     @Override
+    public Long getMilliSecondsBehindSourceMinValue() {
+        return streamingMeter.getMilliSecondsBehindSourceMinValue();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceMaxValue() {
+        return streamingMeter.getMilliSecondsBehindSourceMaxValue();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceAverageValue() {
+        return streamingMeter.getMilliSecondsBehindSourceAverageValue();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP50() {
+        return streamingMeter.getMilliSecondsBehindSourceP50();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP95() {
+        return streamingMeter.getMilliSecondsBehindSourceP95();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP99() {
+        return streamingMeter.getMilliSecondsBehindSourceP99();
+    }
+
+    @Override
     public long getNumberOfCommittedTransactions() {
         return streamingMeter.getNumberOfCommittedTransactions();
     }
