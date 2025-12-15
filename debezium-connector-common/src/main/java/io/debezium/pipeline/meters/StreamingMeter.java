@@ -15,10 +15,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.metrics.event.LagBehindSourceEvent;
 import io.debezium.metrics.stats.LagBehindSourceMeasurement;
-import io.debezium.metrics.stats.LongDDSketchStatistics;
 import io.debezium.metrics.stats.MeasurementCollector;
+import io.debezium.metrics.stats.MeasurementStatisticsFactory;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
 import io.debezium.pipeline.metrics.traits.StreamingStatisticsMXBean;
@@ -37,14 +38,15 @@ public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisti
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
     private final AtomicLong numberOfUnchangedEventsSkipped = new AtomicLong(-1);
     private final MeasurementCollector<LagBehindSourceEvent> measurementCollector = new MeasurementCollector<>();
-    private final LagBehindSourceMeasurement lagBehindSourceMeasurement = new LagBehindSourceMeasurement(new LongDDSketchStatistics<>());
+    private final LagBehindSourceMeasurement lagBehindSourceMeasurement;
 
     private final CapturedTablesSupplier capturedTablesSupplier;
     private final EventMetadataProvider metadataProvider;
 
-    public StreamingMeter(CapturedTablesSupplier capturedTablesSupplier, EventMetadataProvider metadataProvider) {
+    public StreamingMeter(CommonConnectorConfig config, CapturedTablesSupplier capturedTablesSupplier, EventMetadataProvider metadataProvider) {
         this.capturedTablesSupplier = capturedTablesSupplier != null ? capturedTablesSupplier : Collections::emptyList;
         this.metadataProvider = metadataProvider;
+        this.lagBehindSourceMeasurement = new LagBehindSourceMeasurement(MeasurementStatisticsFactory.createStatistics(config));
         this.measurementCollector.addMeasurement(LagBehindSourceEvent.class, lagBehindSourceMeasurement);
     }
 
