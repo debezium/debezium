@@ -17,11 +17,11 @@ public interface SingleValueMeasurement<T extends SingleValueEvent<V>, V> extend
 
     void reset();
 
-    Long getLastValue();
+    V getLastValue();
 
-    Long getMinValue();
+    V getMinValue();
 
-    Long getMaxValue();
+    V getMaxValue();
 
-    Long getAverageValue();
+    V getAverageValue();
 }
