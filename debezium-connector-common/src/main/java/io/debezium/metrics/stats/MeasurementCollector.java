@@ -19,9 +19,11 @@ import io.debezium.DebeziumException;
 import io.debezium.metrics.event.MeasurementEvent;
 
 /**
- * // TODO: Document this
+ * Single point for submitting all kind of measurements.
+ * Implementation needs to take into account that some statistics processing methods may be blocking and therefore needs to handle it in a way that prevents any
+ * contention during record processing, e.g. processing measurement events in a dedicated thread.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public class MeasurementCollector<T extends MeasurementEvent> implements Consumer<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementCollector.class);
@@ -67,7 +69,9 @@ public class MeasurementCollector<T extends MeasurementEvent> implements Consume
         publisherThread.interrupt();
     }
 
-    // TODO explain why we need publishing via queue
+    // In general processing statistics may be time-consuming or may require synchronized access and thus adding new measurement may be blocked later in the call stack
+    // and result in delays in processing records. To avoid it, measurements are added into the queue from this the events are consumed by dedicated thread and
+    // statistics is updated from a separate thread.
     private class MeasurementPublisher implements Runnable {
         @Override
         public void run() {

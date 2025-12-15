@@ -6,9 +6,9 @@
 package io.debezium.metrics.event;
 
 /**
- * // TODO: Document this
+ * Carries over one single measurement of {@link io.debezium.metrics.stats.LagBehindSourceMeasurement}.
+ *
  * @author vjuranek
- * @since 4.0
  */
 public class LagBehindSourceEvent extends SingleValueEvent<Long> {
 
