@@ -6,10 +6,9 @@
 package io.debezium.pipeline.metrics.traits;
 
 /**
- * // TODO: Document this
+ * Exposes statistics for streaming metrics.
  *
  * @author vjuranek
- * @since 4.0
  */
 public interface StreamingStatisticsMXBean {
     Long getMilliSecondsBehindSourceMinValue();

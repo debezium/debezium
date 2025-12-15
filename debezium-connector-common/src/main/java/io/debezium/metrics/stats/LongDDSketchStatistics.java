@@ -12,7 +12,8 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * Implementation of {@link MeasurementStatistics} which is backed by <a href="https://github.com/DataDog/sketches-java">DDSketch library</a>.
+ *
  * @author vjuranek
  */
 @ThreadSafe

@@ -9,9 +9,9 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
- * // TODO: Document this
+ * {@link SingleValueMeasurement} whole measured variable type is {@link Long} type
+ *
  * @author vjuranek
- * @since 4.0
  */
 @NotThreadSafe
 public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long>> implements SingleValueMeasurement<T, Long> {
