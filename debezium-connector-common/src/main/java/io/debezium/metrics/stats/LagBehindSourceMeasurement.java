@@ -13,7 +13,7 @@ import io.debezium.metrics.event.LagBehindSourceEvent;
  * @since 4.0
  */
 public class LagBehindSourceMeasurement extends SingleValueLongMeasurementWithStats<LagBehindSourceEvent> {
-    public LagBehindSourceMeasurement(LongDDSketchStatistics<LagBehindSourceEvent> statistics) {
+    public LagBehindSourceMeasurement(MeasurementStatistics<LagBehindSourceEvent, Long> statistics) {
         super(statistics);
     }
 }
