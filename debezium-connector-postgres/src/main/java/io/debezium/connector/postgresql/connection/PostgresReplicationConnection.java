@@ -704,7 +704,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     throw new DebeziumException(message, e);
                 }
                 else {
-                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries, e);
+                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay.toMillis(), tryCount, maxRetries, e);
                     final Metronome metronome = Metronome.sleeper(delay, Clock.SYSTEM);
                     metronome.pause();
                 }
