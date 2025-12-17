@@ -347,13 +347,14 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertThat(milliSecondsBehindSourceP99).isNotNull();
 
         // Few sanity checks
-        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThan(milliSecondsBehindSourceMinValue);
-        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThan(milliSecondsBehindSourceAverageValue);
-        assertThat(milliSecondsBehindSourceMinValue).isLessThan(milliSecondsBehindSourceAverageValue);
+        // Equality is needed for very small amount of events
         // Quantile values can have sometimes bigger values than max value. Very likely the issue is small statistics (2 numbers in many tests).
-        assertThat(milliSecondsBehindSourceMinValue).isLessThan(milliSecondsBehindSourceP95.longValue());
+        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThanOrEqualTo(milliSecondsBehindSourceMinValue);
+        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThanOrEqualTo(milliSecondsBehindSourceAverageValue);
+        assertThat(milliSecondsBehindSourceMinValue).isLessThanOrEqualTo(milliSecondsBehindSourceAverageValue);
+        assertThat(milliSecondsBehindSourceMinValue).isLessThanOrEqualTo(milliSecondsBehindSourceP95.longValue());
         assertThat(milliSecondsBehindSourceP50.longValue()).isLessThanOrEqualTo(milliSecondsBehindSourceMaxValue);
-        assertThat(milliSecondsBehindSourceP50).isLessThan(milliSecondsBehindSourceP95);
+        assertThat(milliSecondsBehindSourceP50).isLessThanOrEqualTo(milliSecondsBehindSourceP95);
         assertThat(milliSecondsBehindSourceP95).isLessThanOrEqualTo(milliSecondsBehindSourceP99);
     }
 
