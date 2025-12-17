@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.signal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import java.util.Map;
@@ -70,9 +71,8 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Default action is STOP, so connector should be stopped (async, wait for it)
-        Thread.sleep(200);
-        verify(changeEventSourceCoordinator).stop();
+        // Default action is STOP, so connector should be stopped (async)
+        verify(changeEventSourceCoordinator, timeout(1000)).stop();
     }
 
     @Test
@@ -93,9 +93,8 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Default action is STOP, so connector should be stopped (async, wait for it)
-        Thread.sleep(200);
-        verify(changeEventSourceCoordinator).stop();
+        // Default action is STOP, so connector should be stopped (async)
+        verify(changeEventSourceCoordinator, timeout(1000)).stop();
     }
 
     @Test
@@ -221,9 +220,8 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Stop is async, wait for it
-        Thread.sleep(200);
-        verify(changeEventSourceCoordinator).stop();
+        // Stop is async
+        verify(changeEventSourceCoordinator, timeout(1000)).stop();
     }
 
     @Test
@@ -244,8 +242,7 @@ public class SetBinlogPositionSignalTest {
         assertThat(result).isTrue();
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
-        // Default action is STOP, so connector should be stopped (async, wait for it)
-        Thread.sleep(200);
-        verify(changeEventSourceCoordinator).stop();
+        // Default action is STOP, so connector should be stopped (async)
+        verify(changeEventSourceCoordinator, timeout(1000)).stop();
     }
 }
