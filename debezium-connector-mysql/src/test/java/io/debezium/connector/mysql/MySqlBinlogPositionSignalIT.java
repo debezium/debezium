@@ -146,6 +146,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Stop and restart the connector to apply the new binlog position
         stopConnector();
+        // Wait for JMX metrics cleanup to complete before restarting
+        Thread.sleep(1000);
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
@@ -248,6 +250,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Stop and restart the connector to apply the new GTID position
         stopConnector();
+        // Wait for JMX metrics cleanup to complete before restarting
+        Thread.sleep(1000);
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
