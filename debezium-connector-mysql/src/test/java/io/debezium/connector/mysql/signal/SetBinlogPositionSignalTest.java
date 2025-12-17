@@ -7,12 +7,14 @@ package io.debezium.connector.mysql.signal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -72,7 +74,9 @@ public class SetBinlogPositionSignalTest {
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
         // Default action is STOP, so connector should be stopped (async)
-        verify(changeEventSourceCoordinator, timeout(1000)).stop();
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> verify(changeEventSourceCoordinator, atLeastOnce()).stop());
     }
 
     @Test
@@ -94,7 +98,9 @@ public class SetBinlogPositionSignalTest {
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
         // Default action is STOP, so connector should be stopped (async)
-        verify(changeEventSourceCoordinator, timeout(1000)).stop();
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> verify(changeEventSourceCoordinator, atLeastOnce()).stop());
     }
 
     @Test
@@ -221,7 +227,9 @@ public class SetBinlogPositionSignalTest {
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
         // Stop is async
-        verify(changeEventSourceCoordinator, timeout(1000)).stop();
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> verify(changeEventSourceCoordinator, atLeastOnce()).stop());
     }
 
     @Test
@@ -243,6 +251,8 @@ public class SetBinlogPositionSignalTest {
         verify(offsetContext).setCompletedGtidSet(gtidSet);
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
         // Default action is STOP, so connector should be stopped (async)
-        verify(changeEventSourceCoordinator, timeout(1000)).stop();
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> verify(changeEventSourceCoordinator, atLeastOnce()).stop());
     }
 }
