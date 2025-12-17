@@ -52,6 +52,7 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);
         Mockito.when(taskContext.getConnectorLogicalName()).thenReturn("connector name");
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
+        Mockito.when(taskContext.getConfig()).thenReturn(connectorConfig);
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
         fixedClock = Clock.fixed(Instant.parse("2021-05-15T12:30:00.00Z"), ZoneOffset.UTC);
