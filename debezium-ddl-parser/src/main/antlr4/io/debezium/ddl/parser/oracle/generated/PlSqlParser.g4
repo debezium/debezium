@@ -6604,6 +6604,7 @@ multiset_expression
 
 relational_expression
     : relational_expression relational_operator relational_expression
+    | relational_expression NOT? IN in_elements
     | compound_expression
     ;
 
