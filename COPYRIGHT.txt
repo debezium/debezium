@@ -47,6 +47,7 @@ Andrey Ignatenko
 Andrey Pustovetov
 Andrey Savchuk
 Andrey Yegorov
+Andy Coates
 Andy Pickler
 Andy Teijelo
 Angshuman Dey
@@ -58,6 +59,7 @@ Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Aravind Pedapudi
+archiedx
 Arik Cohen
 Aristofanis Lekkos
 Arkoprabho Chakraborti
@@ -70,6 +72,7 @@ Ashmeet Lamba
 Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
+Atsushi Torikoshi
 Auke van Leeuwen
 Avinash Vishwakarma
 Aykut Farsak
@@ -391,6 +394,7 @@ Lukasz Selwa
 Luke Alexander
 lyidataminr
 M Sazzadul Hoque
+Maarten Vercruysse
 Maciej Bryński
 Mans Singh
 MaoXiang Pan
@@ -548,6 +552,7 @@ Ricardo Rosales
 Rich O'Connell
 Richard Harrington
 Richard Kolkovich
+Rishabh Singh
 Robert Coup
 Robert Roldan
 Ruslan Gibaiev

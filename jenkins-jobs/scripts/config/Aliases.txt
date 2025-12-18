@@ -328,3 +328,5 @@ nagasreevalaboju,Nagasree Valaboju
 chaitra,Chaitra Dalawai
 william-xiang,William Xiang
 xiangqiumin,Xiang Qiu Min
+rishabh singh,Rishabh Singh
+maarten.vercruysse,Maarten Vercruysse
