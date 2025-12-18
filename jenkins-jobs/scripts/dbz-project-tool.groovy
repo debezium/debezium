@@ -471,7 +471,7 @@ def generateReleaseNotes() {
                                CHANGELOG.md
 ================================================================================
 ## $iterationTitle
-${today()}
+${today()} [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A${iterationTitle})
 """
 
     markdownSection('New features', newFeatures)
@@ -485,6 +485,8 @@ ${today()}
 ================================================================================
 [[release-${iterationTitle.toLowerCase().reverse().replaceFirst('\\.', '-').reverse()}]]
 == *Release $iterationTitle* _(${today()})_
+
+See the https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A${iterationTitle}[complete list of issues].
 
 === Kafka compatibility
 
