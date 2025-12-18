@@ -2,6 +2,49 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.Final
+December 18th 2025 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.Final)
+
+### New features since 3.4.0.CR1
+
+* Debezium Platform: Make connection as mandatory field for source and destination connector setup in UI [debezium/dbz#26](https://github.com/debezium/dbz/issues/26)
+* Add SnapshotLockingMode=NONE to Informix [debezium/dbz#31](https://github.com/debezium/dbz/issues/31)
+* Introduce flexible recovery from LSN desynchronisation [DBZ-9688] [debezium/dbz#1146](https://github.com/debezium/dbz/issues/1146)
+* fix README and CI for Quarkus Extensions repository [debezium/dbz#1449](https://github.com/debezium/dbz/issues/1449)
+
+
+### Breaking changes since 3.4.0.CR1
+
+None
+
+
+### Fixes since 3.4.0.CR1
+
+* Debezium Pipeline: Edit Flow is breaking for the source Connector [debezium/dbz#15](https://github.com/debezium/dbz/issues/15)
+* IndexOutOfBoundsException for a history table (temporal table) in SQL Server [debezium/dbz#28](https://github.com/debezium/dbz/issues/28)
+* [Debezium Server] HTTP sink, headers duplicate infinitely per message, since 3.2 [debezium/dbz#37](https://github.com/debezium/dbz/issues/37)
+* createConnector error [DBZ-8405] [debezium/dbz#1315](https://github.com/debezium/dbz/issues/1315)
+* ConnectorContext toString() - should sensitive configuration be masked? [DBZ-9666] [debezium/dbz#1432](https://github.com/debezium/dbz/issues/1432)
+* Debezium Oracle restarting mining session too frequently [DBZ-9680] [debezium/dbz#1435](https://github.com/debezium/dbz/issues/1435)
+* IndexOutOfBoundsException for PostgreSQL tables with case-sensitive duplicate column [DBZ-9693] [debezium/dbz#1147](https://github.com/debezium/dbz/issues/1147)
+* LcrPosition log line has two placeholders and three arguments [debezium/dbz#1448](https://github.com/debezium/dbz/issues/1448)
+* Incorrect time unit in retry log message [debezium/dbz#1459](https://github.com/debezium/dbz/issues/1459)
+
+
+### Other changes since 3.4.0.CR1
+
+* Migrate Debezium project management from Jira to GitHub [debezium/dbz#1](https://github.com/debezium/dbz/issues/1)
+* Migrate from JUnit 5 to JUnit 6 [debezium/dbz#18](https://github.com/debezium/dbz/issues/18)
+* Update to latest LTS of Quarkus 3.27.x [debezium/dbz#29](https://github.com/debezium/dbz/issues/29)
+* Improvements and Fixes on the current UI feedback [DBZ-9102] [debezium/dbz#1228](https://github.com/debezium/dbz/issues/1228)
+* Remove the use of Confluent Kafka from testing suite [DBZ-9214] [debezium/dbz#1371](https://github.com/debezium/dbz/issues/1371)
+* Remove callouts from code blocks [DBZ-9674] [debezium/dbz#1140](https://github.com/debezium/dbz/issues/1140)
+* Debezium Platform Stage: Update Node to LTS version 24 [debezium/dbz#1450](https://github.com/debezium/dbz/issues/1450)
+* Add `NOT? IN` support to `relational_expression` in Oracle grammar [debezium/dbz#1471](https://github.com/debezium/dbz/issues/1471)
+* Add optional keyword `FIELDS` for insert statements in Oracle grammar [debezium/dbz#1472](https://github.com/debezium/dbz/issues/1472)
+
+
+
 ## 3.4.0.CR1
 December 10th 2025 Detailed release notes [Jira](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12472381) [GitHub Issues](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.CR1)
 
