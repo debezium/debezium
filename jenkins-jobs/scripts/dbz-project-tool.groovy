@@ -518,7 +518,7 @@ def setNewIteration() {
     def updateQuery = new StringBuilder(modifyOperationPre)
 
     issuesToUpdate.each { issue, iterationFieldName ->
-        if (!allIssues && (issue.status != 'Done' || issue.status != 'Released')) {
+        if (!allIssues && (issue.status == 'Done' || issue.status == 'Released')) {
             return
         }
         def itemNo = issue.number
