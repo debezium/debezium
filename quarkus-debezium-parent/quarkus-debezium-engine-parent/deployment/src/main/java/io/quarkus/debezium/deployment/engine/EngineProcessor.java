@@ -522,4 +522,9 @@ public class EngineProcessor {
     public UnremovableBeanBuildItem avoidRemovalIfNotReferenced() {
         return UnremovableBeanBuildItem.beanTypes(FieldFilterStrategy.class);
     }
+
+    @BuildStep
+    public UnremovableBeanBuildItem keepObjectMapper() {
+        return UnremovableBeanBuildItem.beanTypes(com.fasterxml.jackson.databind.ObjectMapper.class);
+    }
 }
