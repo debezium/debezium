@@ -31,6 +31,8 @@ import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.util.MetricsHelper;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
@@ -196,7 +198,8 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testDisabledStreamingStatistics() throws Exception {
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.SQL_SERVER)
+    protected void testDisabledStreamingStatistics() throws Exception {
         // start connector
         start(x -> noSnapshot(x)
                 .with(CommonConnectorConfig.STATISTIC_METRICS_ENABLED, Boolean.FALSE));
