@@ -407,3 +407,48 @@ jobs:
             ORACLE_VERSION: 19.3.0
             ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
             TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-se"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930-se" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0-se
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-se-xs"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930-se-xs" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-xstream
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0-se-xs
+            TEST_PROFILE: oracle
+            ORACLE_ARG: "-Poracle-xstream"

@@ -12,15 +12,12 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -36,11 +33,8 @@ public class OracleRowIdDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
-    @BeforeClass
-    public static void beforeClass() throws Exception {
+    @BeforeAll
+    static void beforeClass() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.type_rowid");
@@ -56,16 +50,16 @@ public class OracleRowIdDataTypeIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.streamTable(connection, "debezium.type_rowid");
     }
 
-    @AfterClass
-    public static void afterClass() throws Exception {
+    @AfterAll
+    static void afterClass() throws Exception {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.type_rowid");
             connection.close();
         }
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection.execute("delete from debezium.type_rowid");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();

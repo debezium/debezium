@@ -80,12 +80,12 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 [source,json,subs="+attributes,+quotes"]
 ----
   "post.processors" : "reselector", // <1>
-  "reselector.type" : "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
-  "reselector.reselect.columns.include.list" : "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
-  "reselector.reselect.unavailable.values" : "true", // <4>
-  "reselector.reselect.null.values" : "true", // <5>
-  "reselector.reselect.use.event.key" : "false", // <6>
-  "reselector.reselect.error.handling.mode" : "WARN" // <7>
+  "post.processors.reselector.type" : "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
+  "post.processors.reselector.reselect.columns.include.list" : "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
+  "post.processors.reselector.reselect.unavailable.values" : "true", // <4>
+  "post.processors.reselector.reselect.null.values" : "true", // <5>
+  "post.processors.reselector.reselect.use.event.key" : "false", // <6>
+  "post.processors.reselector.reselect.error.handling.mode" : "WARN" // <7>
 ----
 [cols="1,7",options="header"]
 |===
@@ -128,33 +128,33 @@ The following table lists the configuration options that you can set for the Res
 |Default
 |Description
 
-|[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+reselect.columns.include.list+`>>
+|[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+post.processors.reselect.columns.include.list+`>>
 |No default
 |Comma-separated list of column names to reselect from the source database.
 Use the following format to specify column names: +
 
 `__<schema>__.__<table>__:__<column>__`
 
-Do not set this property if you set the `reselect.columns.exclude.list` property.
+Do not set this property if you set the `post.processors.reselect.columns.exclude.list` property.
 
-|[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+reselect.columns.exclude.list+`>>
+|[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+post.processors.reselect.columns.exclude.list+`>>
 |No default
 |Comma-separated list of column names in the source database to exclude from reselection.
 Use the following format to specify column names: +
 
 `__<schema>__.__<table>__:__<column>__`
 
-Do not set this property if you set the `reselect.columns.include.list` property.
+Do not set this property if you set the `post.processors.reselect.columns.include.list` property.
 
-|[[reselect-columns-post-processor-property-reselect-unavailable-values]]<<reselect-columns-post-processor-property-reselect-unavailable-values, `+reselect.unavailable.values+`>>
+|[[reselect-columns-post-processor-property-reselect-unavailable-values]]<<reselect-columns-post-processor-property-reselect-unavailable-values, `+post.processors.reselect.unavailable.values+`>>
 |`true`
-|Specifies whether the post processor reselects a column that matches the `reselect.columns.include.list` filter if the column value is provided by the connector's `unavailable.value.placeholder` property.
+|Specifies whether the post processor reselects a column that matches the `post.processors.reselect.columns.include.list` filter if the column value is provided by the connector's `unavailable.value.placeholder` property.
 
-|[[reselect-columns-post-processor-property-reselect-null-values]]<<reselect-columns-post-processor-property-reselect-null-values, `+reselect.null.values+`>>
+|[[reselect-columns-post-processor-property-reselect-null-values]]<<reselect-columns-post-processor-property-reselect-null-values, `+post.processors.reselect.null.values+`>>
 |`true`
-|Specifies whether the post processor reselects a column that matches the `reselect.columns.include.list` filter if the column value is `null`.
+|Specifies whether the post processor reselects a column that matches the `post.processors.reselect.columns.include.list` filter if the column value is `null`.
 
-|[[reselect-columns-post-processor-property-reselect-use-event-key]]<<reselect-columns-post-processor-property-reselect-use-event-key, `+reselect.use.event.key+`>>
+|[[reselect-columns-post-processor-property-reselect-use-event-key]]<<reselect-columns-post-processor-property-reselect-use-event-key, `+post.processors.reselect.use.event.key+`>>
 |`false`
 |Specifies whether the post processor reselects based on the event's key field names or uses the relational table's primary key column names. +
  +
@@ -162,7 +162,7 @@ By default, the reselection query is based on the relational table's primary key
 For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
 The post processor then uses the specified key field names as the primary key in the SQL reselection query.
 
-|[[reselect-columns-post-processor-property-reselect-error-handling-mode]]<<reselect-columns-post-processor-property-reselect-error-handling-mode, `+reselect.error.handling.mode+`>>
+|[[reselect-columns-post-processor-property-reselect-error-handling-mode]]<<reselect-columns-post-processor-property-reselect-error-handling-mode, `+post.processors.reselect.error.handling.mode+`>>
 |`WARN`
 |Specifies how the reselect post processor reacts to certain conditions. +
  +

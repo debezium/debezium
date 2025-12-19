@@ -245,26 +245,35 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
      * Returns a new {@link TableId} with all parts of the identifier using {@code "} character.
      */
     public TableId toDoubleQuoted() {
-        return toQuoted('"');
+        return toQuoted('"', '"');
+    }
+
+    /**
+     * Returns a new {@link TableId} with all parts of the identifier enclosed in {@code [}
+     * and {@code ]} character.
+     */
+    public TableId toBracketQuoted() {
+        return toQuoted('[', ']');
     }
 
     /**
      * Returns a new {@link TableId} that has all parts of the identifier quoted.
      *
-     * @param quotingChar the character to be used to quote the identifier parts.
+     * @param openingChar the character to be used to quote the opening of the identifier.
+     * @param closingChar the character to be used to quote the closing of the identifier.
      */
-    public TableId toQuoted(char quotingChar) {
+    public TableId toQuoted(char openingChar, char closingChar) {
         String catalogName = null;
         if (this.catalogName != null && !this.catalogName.isEmpty()) {
-            catalogName = quote(this.catalogName, quotingChar);
+            catalogName = quote(this.catalogName, openingChar, closingChar);
         }
 
         String schemaName = null;
         if (this.schemaName != null && !this.schemaName.isEmpty()) {
-            schemaName = quote(this.schemaName, quotingChar);
+            schemaName = quote(this.schemaName, openingChar, closingChar);
         }
 
-        return new TableId(catalogName, schemaName, quote(this.tableName, quotingChar));
+        return new TableId(catalogName, schemaName, quote(this.tableName, openingChar, closingChar));
     }
 
     /**
@@ -275,14 +284,14 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         StringBuilder quoted = new StringBuilder();
 
         if (catalogName != null && !catalogName.isEmpty()) {
-            quoted.append(quote(catalogName, quotingChar)).append(".");
+            quoted.append(quote(catalogName, quotingChar, quotingChar)).append(".");
         }
 
         if (schemaName != null && !schemaName.isEmpty()) {
-            quoted.append(quote(schemaName, quotingChar)).append(".");
+            quoted.append(quote(schemaName, quotingChar, quotingChar)).append(".");
         }
 
-        quoted.append(quote(tableName, quotingChar));
+        quoted.append(quote(tableName, quotingChar, quotingChar));
 
         return quoted.toString();
     }
@@ -301,20 +310,22 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     /**
-     * Quotes the given identifier part, e.g. schema or table name.
+     * Quotes the given identifier part, e.g. schema or table name in openingChar and closingChar.
      */
-    private static String quote(String identifierPart, char quotingChar) {
+    private static String quote(String identifierPart, char openingChar, char closingChar) {
         if (identifierPart == null) {
             return null;
         }
 
         if (identifierPart.isEmpty()) {
-            return repeat(quotingChar);
+            return String.valueOf(openingChar) + closingChar;
         }
 
-        if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
-            identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
-            identifierPart = quotingChar + identifierPart + quotingChar;
+        if (identifierPart.charAt(0) != openingChar && identifierPart.charAt(identifierPart.length() - 1) != closingChar) {
+            if (openingChar == closingChar) {
+                identifierPart = identifierPart.replace(String.valueOf(openingChar), repeat(openingChar));
+            }
+            identifierPart = openingChar + identifierPart + closingChar;
         }
 
         return identifierPart;

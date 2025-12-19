@@ -420,7 +420,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             tableDdl = jdbcConnection.getTableMetadataDdl(tableId);
         }
         catch (NonRelationalTableException e) {
-            LOGGER.warn("Table {} is not a relational table, the {} will be skipped.", tableId, eventType);
+            LOGGER.warn("{} The event will be skipped.", e.getMessage());
             streamingMetrics.incrementWarningCount();
             return Optional.empty();
         }

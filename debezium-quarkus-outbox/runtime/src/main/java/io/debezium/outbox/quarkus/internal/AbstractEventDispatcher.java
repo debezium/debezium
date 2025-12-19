@@ -38,7 +38,7 @@ public abstract class AbstractEventDispatcher extends AbstractEventWriter<Void> 
     protected Void persist(Map<String, Object> dataMap) {
         // Unwrap to Hibernate session and save
         Session session = entityManager.unwrap(Session.class);
-        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+        session.persist(OUTBOX_ENTITY_FULLNAME, dataMap);
         session.setReadOnly(dataMap, true);
         remove(dataMap, session);
 
@@ -48,7 +48,7 @@ public abstract class AbstractEventDispatcher extends AbstractEventWriter<Void> 
     private void remove(Map<String, Object> dataMap, Session session) {
         // Remove entity if the configuration deems doing so, leaving useful for debugging
         if (config.removeAfterInsert()) {
-            session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
+            session.remove(dataMap);
         }
     }
 }

@@ -13,6 +13,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.util.function.Supplier;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation that defines if a test failure should be reported or not base upon condition passed to the annotation.
  * If the condition evaluates to <code>true</code> and a test fails then the failure is ignored. If the test does not fail
@@ -24,6 +26,7 @@ import java.util.function.Supplier;
  */
 @Retention(RUNTIME)
 @Target({ METHOD, TYPE })
+@ExtendWith(ConditionalFailExtension.class)
 public @interface ShouldFailWhen {
     Class<? extends Supplier<Boolean>> value();
 }

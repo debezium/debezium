@@ -5,16 +5,14 @@
  */
 package io.debezium.connector.common;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.UUID;
 
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 
@@ -23,37 +21,37 @@ import io.debezium.util.LoggingContext;
  *
  * @author Gunnar Morling
  */
-public class CdcSourceTaskContext {
+public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
 
     private final String connectorType;
-    private final String connectorName;
+    private final String connectorLogicalName;
+    private final String connectorPluginName;
     private final String taskId;
     private final Map<String, String> customMetricTags;
     private final Clock clock;
-    private final CommonConnectorConfig config;
+    private final T connectorConfig;
+    private final Configuration rawConfig;
+    private final UUID runId;
 
-    /**
-     * Obtains the data collections captured at the point of invocation.
-     */
-    private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
-
-    public CdcSourceTaskContext(CommonConnectorConfig config,
+    public CdcSourceTaskContext(Configuration rawConfig,
+                                T connectorConfig,
                                 String taskId,
-                                Map<String, String> customMetricTags,
-                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this.connectorType = config.getContextName();
-        this.connectorName = config.getLogicalName();
+                                Map<String, String> customMetricTags) {
+        this.connectorType = connectorConfig.getContextName();
+        this.connectorLogicalName = connectorConfig.getLogicalName();
+        this.connectorPluginName = connectorConfig.getConnectorName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
-        this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
-        this.config = config;
+        this.connectorConfig = connectorConfig;
+        this.rawConfig = rawConfig;
         this.clock = Clock.system();
+        this.runId = UUIDUtils.generateNewUUID();
     }
 
-    public CdcSourceTaskContext(CommonConnectorConfig config,
-                                Map<String, String> customMetricTags,
-                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this(config, "0", customMetricTags, collectionsSupplier);
+    public CdcSourceTaskContext(Configuration rawConfig,
+                                T connectorConfig,
+                                Map<String, String> customMetricTags) {
+        this(rawConfig, connectorConfig, "0", customMetricTags);
     }
 
     /**
@@ -64,11 +62,11 @@ public class CdcSourceTaskContext {
      * @throws IllegalArgumentException if {@code contextName} is null
      */
     public LoggingContext.PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector(connectorType, connectorName, contextName);
+        return LoggingContext.forConnector(connectorType, connectorLogicalName, contextName);
     }
 
     public LoggingContext.PreviousContext configureLoggingContext(String contextName, Partition partition) {
-        return LoggingContext.forConnector(connectorType, connectorName, taskId, contextName, partition);
+        return LoggingContext.forConnector(connectorType, connectorLogicalName, taskId, contextName, partition);
     }
 
     /**
@@ -91,30 +89,35 @@ public class CdcSourceTaskContext {
         return clock;
     }
 
-    public String[] capturedDataCollections() {
-        return collectionsSupplier.get()
-                .stream()
-                .map(DataCollectionId::toString)
-                .toArray(String[]::new);
-    }
-
     public String getConnectorType() {
         return connectorType;
     }
 
-    public String getConnectorName() {
-        return connectorName;
+    public String getConnectorLogicalName() {
+        return connectorLogicalName;
     }
 
     public String getTaskId() {
         return taskId;
     }
 
+    public String getConnectorPluginName() {
+        return connectorPluginName;
+    }
+
     public Map<String, String> getCustomMetricTags() {
         return customMetricTags;
     }
 
-    public CommonConnectorConfig getConfig() {
-        return config;
+    public T getConfig() {
+        return connectorConfig;
+    }
+
+    public Configuration getRawConfig() {
+        return rawConfig;
+    }
+
+    public UUID getRunId() {
+        return runId;
     }
 }

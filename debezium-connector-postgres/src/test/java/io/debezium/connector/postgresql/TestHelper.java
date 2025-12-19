@@ -6,8 +6,8 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -20,7 +20,9 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
@@ -41,6 +44,7 @@ import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Throwables;
@@ -292,10 +296,10 @@ public final class TestHelper {
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         return new PostgresSchema(
-                config,
+                new CdcSourceTaskContext<>(config.getConfig(), config, Map.of()),
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
-                getPostgresValueConverter(typeRegistry, config));
+                getPostgresValueConverter(typeRegistry, config), new CustomConverterRegistry(Collections.emptyList()));
     }
 
     protected static Set<String> schemaNames() throws SQLException {
@@ -347,7 +351,7 @@ public final class TestHelper {
 
     protected static void executeDDL(String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
-        assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
+        assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
         String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
@@ -492,6 +496,31 @@ public final class TestHelper {
             catch (ConditionTimeoutException e) {
                 fail("Expected no open transactions but there was at least one.");
             }
+        }
+    }
+
+    protected static int setAndGetWalSenderTimeout(int seconds) throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute("ALTER SYSTEM SET wal_sender_timeout = '" + seconds + "s';", "SELECT pg_reload_conf();");
+            return connection.queryAndMap(
+                    "SELECT setting FROM pg_settings WHERE name = 'wal_sender_timeout';",
+                    rs -> {
+                        if (rs.next()) {
+                            String valueInMs = rs.getString(1);
+                            LOGGER.info("wal_sender_timeout has been set to `{}` milliseconds", valueInMs);
+                            return Integer.parseInt(valueInMs) / 1000;
+                        }
+                        throw new SQLException("Could not query wal_sender_timeout from pg_settings");
+                    });
+        }
+    }
+
+    protected static void resetWalSenderTimeout() {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.execute("ALTER SYSTEM RESET wal_sender_timeout;", "SELECT pg_reload_conf();");
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not reset wal_sender_timeout to default value", e);
         }
     }
 

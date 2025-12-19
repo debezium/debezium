@@ -55,7 +55,7 @@ public class ExtendedStringBeginEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the column name
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8)
     public String getColumnName(ExtendedStringBeginEvent event) {
         return event.getColumnName();
     }

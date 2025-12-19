@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -31,14 +31,14 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
  */
 public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
 
-    @Before
-    public void before() throws Exception {
-        initializeConnectorTestFramework();
+    @BeforeEach
+    void before() throws Exception {
         TestHelper.dropAllSchemas();
+        initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -153,6 +153,7 @@ public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
 
         var config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.ALWAYS)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "post_money.debezium_test")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".post_money.debezium_test",

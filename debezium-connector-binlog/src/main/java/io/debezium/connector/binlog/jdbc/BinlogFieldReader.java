@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
@@ -140,7 +141,7 @@ public abstract class BinlogFieldReader {
     }
 
     protected boolean hasValueConverter(Column column, TableId tableId) {
-        return connectorConfig.customConverterRegistry().getValueConverter(tableId, column).isPresent();
+        return connectorConfig.getServiceRegistry().getService(CustomConverterRegistry.class).getValueConverter(tableId, column).isPresent();
     }
 
     protected BinlogCharsetRegistry getCharsetRegistry() {

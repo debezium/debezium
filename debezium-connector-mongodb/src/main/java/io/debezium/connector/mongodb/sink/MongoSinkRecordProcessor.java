@@ -20,6 +20,9 @@ import io.debezium.sink.DebeziumSinkRecord;
 final class MongoSinkRecordProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoSinkRecordProcessor.class);
 
+    private MongoSinkRecordProcessor() {
+    }
+
     static List<List<MongoProcessedSinkRecordData>> orderedGroupByTopicAndNamespace(
                                                                                     final Collection<SinkRecord> records,
                                                                                     final MongoDbSinkConnectorConfig sinkConfig,
@@ -31,7 +34,7 @@ final class MongoSinkRecordProcessor {
         MongoProcessedSinkRecordData previous = null;
 
         for (SinkRecord kafkaSinkRecord : records) {
-            DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
+            DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord, sinkConfig.cloudEventsSchemaNamePattern());
             MongoProcessedSinkRecordData processedData = new MongoProcessedSinkRecordData(record, sinkConfig);
 
             if (processedData.getException() != null) {
@@ -63,8 +66,5 @@ final class MongoSinkRecordProcessor {
             orderedProcessedSinkRecordData.add(groupedBatch);
         }
         return orderedProcessedSinkRecordData;
-    }
-
-    private MongoSinkRecordProcessor() {
     }
 }

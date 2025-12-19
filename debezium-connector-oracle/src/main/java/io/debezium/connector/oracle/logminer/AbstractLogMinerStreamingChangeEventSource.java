@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -88,6 +90,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerStreamingChangeEventSource.class);
 
+    private static final String NO_REDO_SQL_FOR_TEMPORARY_TABLES = "/* No SQL_REDO for temporary tables */";
+
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
     private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
@@ -110,6 +114,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
+    private final String archiveDestinationName;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -139,13 +144,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
         this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
-        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy());
+        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
+                connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
+        this.archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(jdbcConnection);
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -241,6 +248,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     protected ChangeEventSourceContext getContext() {
         return context;
+    }
+
+    protected LogMinerSessionContext getLogMinerContext() {
+        return sessionContext;
     }
 
     protected OraclePartition getPartition() {
@@ -396,7 +407,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             getBatchMetrics().updateStreamingMetrics();
 
             if (getBatchMetrics().hasProcessedAnyTransactions()) {
-                getOffsetActivityMonitor().checkForStaleOffsets();
+                getOffsetActivityMonitor().checkForStaleOffsets(this::getActiveTransactionIds);
             }
 
             LOGGER.debug("{}.", getBatchMetrics());
@@ -583,6 +594,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 notifyEventProcessingFailure(event, null);
                 return;
             }
+        }
+
+        // There are some obscure corner cases where Oracle may mistakenly introduce a redo entry provided
+        // by LogMiner for temporary tables, which should not happen as they're officially unsupported nor
+        // are supported to be tracked by supplemental logging. Should any of these show up in the event
+        // stream, they should be gracefully discarded.
+        if (isNoSqlRedoForTemporaryTable(event)) {
+            Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped a change for a temporary table.");
+            return;
         }
 
         getBatchMetrics().dataChangeEventObserved(event.getEventType());
@@ -788,6 +808,40 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Waits for the range if it's not completely available in the archive logs yet.
+     *
+     * @param startScn the range starting SCN number
+     * @param endScn the range ending SCN number
+     * @return {@code true} if the connector loop should break, {@code false} otherwise
+     * @throws SQLException if a database exception occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected boolean waitForRangeAvailabilityInArchiveLogs(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+        if (endScn.isNull()) {
+            // There was no prior iteration yet, sanity check to verify starting SCN
+            if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
+                LOGGER.error("Could not find the start SCN {} in the archive logs, stopping connector.", startScn);
+                return true;
+            }
+        }
+        else if (isNoDataProcessedInBatchAndAtEndOfArchiveLogs()) {
+            if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
+                // Prior iteration mined up to the last entry in the archive logs and no data was returned.
+                return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
+            }
+            // The endScn + 1 is now available
+        }
+
+        // Connector loop should continue to iterate
+        return false;
+    }
+
+    /**
+     * @return {@code true} if no data was processed, and we've reached end of the archive logs, {@code false} otherwise.
+     */
+    protected abstract boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs();
+
+    /**
      * Calculates the mining session's upper boundary based on batch size limits.
      *
      * @param lowerBoundsScn the current lower boundary
@@ -801,6 +855,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
+        final Scn maxBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeMax());
 
         // Initially set the upper bounds based on batch size
         // The following logic will alter this value as needed based on specific rules
@@ -831,9 +886,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
         else {
             if (!previousUpperBounds.isNull() && maximumBatchScn.compareTo(previousUpperBounds) <= 0) {
-                // Batch size is too small, make a large leap and use current SCN
-                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, maximumScn);
-                result = maximumScn;
+                // Batch size is too small, make a large leap
+                // This will always add the max batch size window rather than smaller increments
+                // This fits more closely to the same semantics as maximumScn, but for very large bursts, it
+                // keeps the window relatively capped.
+                Scn extendedUpperBounds = previousUpperBounds.add(maxBatchSizeScn);
+                if (extendedUpperBounds.compareTo(maximumScn) > 0) {
+                    extendedUpperBounds = maximumScn;
+                }
+                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, extendedUpperBounds);
+                result = extendedUpperBounds;
             }
             else {
                 decrementSleepTime();
@@ -851,9 +913,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                             if (upperBoundsScnTimestamp.isPresent()) {
                                 long deltaTime = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), upperBoundsScnTimestamp.get());
                                 if (deltaTime < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                                    LOGGER.warn(
-                                            "Detected possible SCN gap, using upperBounds SCN, startSCN {}, prevEndSCN {}, timestamp {}, upperBounds SCN {} timestamp {}.",
-                                            lowerBoundsScn, previousUpperBounds, prevEndScnTimestamp.get(), maximumScn, upperBoundsScnTimestamp.get());
+                                    LOGGER.debug(
+                                            "SCN delta {} is less than {} within a time window of {} milliseconds. " +
+                                                    "This could indicate a high volume of changes or an unusual increase in the SCN over the time window. " +
+                                                    "Using upperbounds SCN {} at timestamp {} (start SCN {}, previous end SCN {} at timestamp {}).",
+                                            deltaScn,
+                                            connectorConfig.getLogMiningScnGapDetectionGapSizeMin(),
+                                            connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs(),
+                                            maximumScn,
+                                            upperBoundsScnTimestamp.get(),
+                                            lowerBoundsScn,
+                                            previousUpperBounds,
+                                            prevEndScnTimestamp.get());
                                     result = maximumScn;
                                 }
                             }
@@ -891,7 +962,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // LogMiner takes the range we provide and subtracts 1 from the start and adds 1 to the upper bounds
             // to create a non-inclusive range from our inclusive range. If we supply the last flushed SCN, the
             // non-inclusive range will specify an SCN beyond what is in the logs, leading to LogMiner failure.
-            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(Scn.ONE);
+            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(
+                    Scn.valueOf(connectorConfig.getLogMiningRedoThreadScnAdjustment()));
 
             if (minOpenRedoThreadLastScn.compareTo(result) < 0) {
                 // There are situations where on first start-up that the startScn may be higher
@@ -921,7 +993,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param scn the system change number to check, should never be {@code null}
      * @return {@code true} if archive log only mode and scn is available, {@code false} if connector is
-     *         not in archive log only mode or the connector is requesting to be shutdown
+     * not in archive log only mode or the connector is requesting to be shutdown
      * @throws SQLException if a database exception occurs
      * @throws InterruptedException if the thread is interrupted
      */
@@ -965,6 +1037,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         // This makes sure that specific LogMiner attributes are serialized in a consistent format
         // to minimize the various permutations needed in the value converters.
         setNlsSessionParameters();
+
+        setHashSortArea();
     }
 
     /**
@@ -1052,7 +1126,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(jdbcConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(connectorConfig.getArchiveLogDestinationName()),
+                    SqlUtils.switchHistoryQuery(archiveDestinationName),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -1123,9 +1197,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts) throws SQLException {
         try {
+
+            if (connectorConfig.isArchiveLogOnlyMode()) {
+                final Scn newEndScn = getMinNextScnAcrossAllThreadMaxNextScnValues();
+                if (!newEndScn.equals(endScn)) {
+                    LOGGER.debug("Adjusted archive log only mode upper bounds from {} to {}.", endScn, newEndScn);
+                    endScn = newEndScn;
+                }
+            }
+
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
+            metrics.setLastMiningSessionRange(startScn, endScn);
             sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly());
             metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 
@@ -1471,7 +1555,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (tableId != null && isUsingHybridStrategy()) {
             if (tableId.table().startsWith("BIN$")) {
                 // Object was dropped but has not been purged.
-                try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig())) {
+                try (OracleConnection connection = new OracleConnection(getConfig())) {
                     return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
                             ps -> ps.setString(1, tableId.table()),
                             rs -> {
@@ -1517,6 +1601,72 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Check whether an event with the given username should be skipped.
+     *
+     * @param userName the username, can be {@code null} or {@code empty}
+     * @return true to skip, false otherwise
+     */
+    protected boolean isUserNameSkipped(String userName) {
+        if (!Strings.isNullOrEmpty(userName)) {
+            final Set<String> userNameExcludes = connectorConfig.getLogMiningUsernameExcludes();
+            final Set<String> userNameIncludes = connectorConfig.getLogMiningUsernameIncludes();
+            if (userNameExcludes.contains(userName)) {
+                LOGGER.debug("Skipped transaction with excluded username {}", userName);
+                return true;
+            }
+            else if (!userNameIncludes.isEmpty() && !userNameIncludes.contains(userName)) {
+                LOGGER.debug("Skipped transaction with username {}", userName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check whether an event with the given client identifier should be skipped.
+     *
+     * @param clientId the client identifier, can be {@code null} or {@code empty}
+     * @return true to skip, false otherwise
+     */
+    protected boolean isClientIdSkipped(String clientId) {
+        if (!Strings.isNullOrEmpty(clientId)) {
+            final Set<String> clientIdExcludes = connectorConfig.getLogMiningClientIdExcludes();
+            final Set<String> clientIdIncludes = connectorConfig.getLogMiningClientIdIncludes();
+            if (clientIdExcludes.contains(clientId)) {
+                LOGGER.debug("Skipped transaction with excluded client id {}", clientId);
+                return true;
+            }
+            else if (!clientIdIncludes.isEmpty() && !clientIdIncludes.contains(clientId)) {
+                LOGGER.debug("Skipped transaction with client id {}", clientId);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Update common metrics on {@code COMMIT} events.
+     *
+     * @param event the event, should not be {@code null}
+     * @param commitDuration the duration of the commit operation, should not be {@code null}
+     * @param eventCount the number of events in the committed transaction
+     */
+    protected void updateCommitMetrics(LogMinerEventRow event, Duration commitDuration, int eventCount) {
+        getMetrics().incrementCommittedTransactionCount();
+        getMetrics().setCommitScn(event.getScn());
+        getMetrics().setOffsetScn(getOffsetContext().getScn());
+        getMetrics().setLastCommitDuration(commitDuration);
+        getMetrics().setLastCommitEventCount(eventCount);
+    }
+
+    /**
+     * Return a list of all active transactions, default returns an empty list.
+     */
+    protected List<String> getActiveTransactionIds() {
+        return Collections.emptyList();
+    }
+
+    /**
      * Check whether the event's table represents a dropped table that has been purged or is in the database's
      * object recycle-bin.
      *
@@ -1549,7 +1699,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
         LOGGER.warn("Obtaining schema for table {}, which should already be loaded.", tableId);
         // Given that the current connection is used for processing the event data, a separate connection is needed
-        try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(getConfig())) {
             connection.setAutoCommit(false);
             if (isUsingPluggableDatabase()) {
                 connection.setSessionToPdb(getConfig().getPdbName());
@@ -1582,8 +1732,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             return getSchema().tableFor(tableId);
         }
-        catch (OracleConnection.NonRelationalTableException e) {
-            LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+        catch (NonRelationalTableException e) {
+            LOGGER.warn("{} The event will be skipped.", e.getMessage());
             getMetrics().incrementWarningCount();
             return null;
         }
@@ -1604,6 +1754,25 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
         jdbcConnection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
+    }
+
+    /**
+     * Sets the hash/sort area for the mining session.
+     *
+     * @throws SQLException the hash/sort area
+     */
+    private void setHashSortArea() throws SQLException {
+        final long hashAreaSize = getConfig().getLogMiningHashAreaSize();
+        if (hashAreaSize > 0) {
+            LOGGER.debug("Setting LogMiner connection HASH_AREA_SIZE={}", hashAreaSize);
+            jdbcConnection.executeWithoutCommitting("ALTER SESSION SET HASH_AREA_SIZE = " + hashAreaSize);
+        }
+
+        final long sortAreaSize = getConfig().getLogMiningSortAreaSize();
+        if (sortAreaSize > 0) {
+            LOGGER.debug("Setting LogMiner connection SORT_AREA_SIZE={}", sortAreaSize);
+            jdbcConnection.executeWithoutCommitting("ALTER SESSION SET SORT_AREA_SIZE = " + sortAreaSize);
+        }
     }
 
     /**
@@ -1696,7 +1865,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
         return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
             while (rs.next()) {
-                if ("YES".equalsIgnoreCase(rs.getString(2))) {
+                final String value = rs.getString(2);
+                // YES - ADD SUPPLEMENTAL LOG DATA
+                // IMPLICIT - ADD SUPPLEMENTAL LOG DATA SUBSET DATABASE REPLICATION (Requires OGG)
+                if ("YES".equalsIgnoreCase(value) || "IMPLICIT".equalsIgnoreCase(value)) {
                     return true;
                 }
             }
@@ -1837,9 +2009,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if no system change number was found
      */
     private Scn getFirstScnAvailableInLogs() throws SQLException {
-        return jdbcConnection.getFirstScnInLogs(
-                connectorConfig.getArchiveLogRetention(),
-                connectorConfig.getArchiveLogDestinationName())
+        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName)
                 .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
     }
 
@@ -2035,10 +2205,27 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
     }
 
+    private boolean isNoSqlRedoForTemporaryTable(LogMinerEventRow event) {
+        return NO_REDO_SQL_FOR_TEMPORARY_TABLES.equals(event.getRedoSql());
+    }
+
     private OracleOffsetContext emptyContext() {
         return OracleOffsetContext.create().logicalName(connectorConfig)
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
+    }
+
+    private Scn getMinNextScnAcrossAllThreadMaxNextScnValues() {
+        return getCurrentLogFiles().stream()
+                .filter(LogFile::isArchive)
+                .collect(Collectors.groupingBy(
+                        LogFile::getThread,
+                        Collectors.mapping(LogFile::getNextScn, Collectors.maxBy(Scn::compareTo))))
+                .values()
+                .stream()
+                .flatMap(Optional::stream)
+                .min(Scn::compareTo)
+                .orElseThrow(() -> new DebeziumException("Failed to resolve archive logs upper bounds"));
     }
 }

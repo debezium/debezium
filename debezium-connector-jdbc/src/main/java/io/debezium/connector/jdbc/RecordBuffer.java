@@ -88,4 +88,9 @@ public class RecordBuffer implements Buffer {
     public TableDescriptor getTableDescriptor() {
         return tableDescriptor;
     }
+
+    @Override
+    public void remove(JdbcSinkRecord record) {
+        throw new IllegalStateException("Can't remove record in simple buffer");
+    }
 }

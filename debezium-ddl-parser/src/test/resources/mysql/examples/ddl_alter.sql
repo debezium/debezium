@@ -146,4 +146,5 @@ ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*247
 ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' AS 'REDACTED' RETAIN CURRENT PASSWORD;
 ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' BY '2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19' REPLACE 'current_auth_string' RETAIN CURRENT PASSWORD;
 ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' BY RANDOM PASSWORD REPLACE 'current_auth_string' RETAIN CURRENT PASSWORD;
+alter table wukong_meta02_test.grid_view_one add column locked tinyint(1) default 0 not null comment 'locking，0/false no locking，1/true locking'
 #end

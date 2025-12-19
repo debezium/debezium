@@ -6,7 +6,7 @@
 package io.debezium.time;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,7 +15,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Randall Hauch

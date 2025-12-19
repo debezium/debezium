@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -24,7 +24,7 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
 
     private SqlServerConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws Exception {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
@@ -36,7 +36,7 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         super.afterEach();
         if (connection != null) {
@@ -59,7 +59,7 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.dbz4321")
                 .with(SqlServerConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
-                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override

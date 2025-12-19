@@ -9,8 +9,8 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
@@ -55,7 +55,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
 
     private static final String INSERT_STMT = "INSERT INTO a VALUES (1, 1);";
 
-    @Before
+    @BeforeEach
     @Override
     public void beforeEach() throws Exception {
         stopConnector();
@@ -68,7 +68,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         try {
             stopConnector();

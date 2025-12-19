@@ -36,6 +36,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
             case DROP:
             case TOMBSTONE:
             case REWRITE:
+            case DELETE_TO_TOMBSTONE:
                 LOGGER.trace("Tombstone {} arrived and requested to be dropped", maybeRedactSensitiveData(record.key()));
                 return null;
             case REWRITE_WITH_TOMBSTONE:
@@ -57,6 +58,15 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
                 // a record only with null value that by JDBC connector is treated as a flattened delete.
                 // Any change to this behavior can have impact on JDBC connector.
                 return afterDelegate.apply(record);
+            case DELETE_TO_TOMBSTONE:
+                LOGGER.trace("Delete message {} requested to be converted to tombstone", maybeRedactSensitiveData(record.key()));
+                return record.newRecord(record.topic(),
+                        record.kafkaPartition(),
+                        record.keySchema(),
+                        record.key(),
+                        null, // value schema is null for tombstone
+                        null, // value is null for tombstone
+                        record.timestamp());
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
                 LOGGER.trace("Delete message {} requested to be rewritten", maybeRedactSensitiveData(record.key()));

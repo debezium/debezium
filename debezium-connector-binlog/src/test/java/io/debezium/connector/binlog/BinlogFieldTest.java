@@ -6,7 +6,7 @@
 package io.debezium.connector.binlog;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.AbstractFieldTest;
 import io.debezium.config.Field;
@@ -18,8 +18,8 @@ public abstract class BinlogFieldTest<C extends SourceConnector>
         extends AbstractFieldTest
         implements BinlogConnectorTest<C> {
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         setAllConnectorFields(getAllFields());
     }
 

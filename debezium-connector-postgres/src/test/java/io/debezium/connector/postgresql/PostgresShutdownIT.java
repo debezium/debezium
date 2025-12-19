@@ -10,9 +10,9 @@ import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -20,8 +20,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
@@ -71,22 +71,22 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
 
     private String oldContainerPort;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         postgresContainer.start();
         oldContainerPort = System.getProperty("database.port", "5432");
         System.setProperty("database.port", String.valueOf(postgresContainer.getMappedPort(5432)));
         try {
             TestHelper.dropAllSchemas();
+            initializeConnectorTestFramework();
         }
         catch (SQLException exception) {
             throw new RuntimeException(exception);
         }
-        initializeConnectorTestFramework();
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         stopConnector();
         postgresContainer.stop();
         System.setProperty("database.port", oldContainerPort);
@@ -102,7 +102,7 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.execute(INSERT_STMT);
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")

@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.jdbc;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,10 +18,10 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.util.Callback;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 
@@ -38,7 +38,7 @@ public class JdbcOffsetBackingStoreTest {
     WorkerConfig config;
     File dbFile;
 
-    @Before
+    @BeforeEach
     public void setup() throws IOException {
         dbFile = File.createTempFile("test-", "db");
         store = new JdbcOffsetBackingStore();
@@ -51,7 +51,8 @@ public class JdbcOffsetBackingStoreTest {
         props.put("offset.storage.jdbc.offset.table.ddl", "CREATE TABLE %s (id VARCHAR(36) NOT NULL, " +
                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                 "record_insert_ts TIMESTAMP NOT NULL," +
-                "record_insert_seq INTEGER NOT NULL" +
+                "record_insert_seq INTEGER NOT NULL," +
+                "PRIMARY KEY (id)" +
                 ")");
         props.put("offset.storage.jdbc.offset.table.select", "SELECT id, offset_key, offset_val FROM offsets_jdbc " +
                 "ORDER BY record_insert_ts, record_insert_seq");
@@ -67,7 +68,7 @@ public class JdbcOffsetBackingStoreTest {
         secondSet.put(store.toByteBuffer("key2secondSet"), store.toByteBuffer("value2secondSet"));
     }
 
-    @After
+    @AfterEach
     public void teardown() {
         dbFile.delete();
     }
@@ -92,7 +93,7 @@ public class JdbcOffsetBackingStoreTest {
 
         Map<ByteBuffer, ByteBuffer> values = store.get(Arrays.asList(store.toByteBuffer("key"), store.toByteBuffer("bad"))).get();
         assertEquals(store.toByteBuffer("value"), values.get(store.toByteBuffer("key")));
-        Assert.assertNull(values.get(store.toByteBuffer("bad")));
+        Assertions.assertNull(values.get(store.toByteBuffer("bad")));
     }
 
     @Test

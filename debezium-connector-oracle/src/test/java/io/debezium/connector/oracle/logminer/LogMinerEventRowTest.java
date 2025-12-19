@@ -22,13 +22,10 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Calendar;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
@@ -40,19 +37,16 @@ import io.debezium.doc.FixFor;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerEventRowTest {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     private static final String CATALOG_NAME = "DEBEZIUM";
     private ResultSet resultSet;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         resultSet = mock(ResultSet.class);
     }
 
     @Test
-    public void testChangeTime() throws Exception {
+    void testChangeTime() throws Exception {
         when(resultSet.getTimestamp(eq(4), any(Calendar.class))).thenReturn(new Timestamp(1000L));
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -65,7 +59,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testEventType() throws Exception {
+    void testEventType() throws Exception {
         when(resultSet.getInt(3)).thenReturn(EventType.UPDATE.getValue());
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -79,7 +73,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testTableName() throws Exception {
+    void testTableName() throws Exception {
         when(resultSet.getString(7)).thenReturn("TABLENAME");
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -93,7 +87,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testTablespaceName() throws Exception {
+    void testTablespaceName() throws Exception {
         when(resultSet.getString(8)).thenReturn("DEBEZIUM");
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -107,7 +101,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testScn() throws Exception {
+    void testScn() throws Exception {
         when(resultSet.getString(1)).thenReturn("12345");
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -121,7 +115,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testTransactionId() throws Exception {
+    void testTransactionId() throws Exception {
         when(resultSet.getBytes(5)).thenReturn("tr_id".getBytes(StandardCharsets.UTF_8));
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME);
@@ -135,7 +129,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testTableId() throws Exception {
+    void testTableId() throws Exception {
         when(resultSet.getString(8)).thenReturn("SCHEMA");
         when(resultSet.getString(7)).thenReturn("TABLE");
 
@@ -162,7 +156,7 @@ public class LogMinerEventRowTest {
     }
 
     @Test
-    public void testSqlRedo() throws Exception {
+    void testSqlRedo() throws Exception {
         when(resultSet.getInt(6)).thenReturn(0);
         when(resultSet.getString(2)).thenReturn("short_sql");
 

@@ -53,6 +53,10 @@ alter table default.task add column xxxx varchar(200) comment 'cdc test';
 alter table `some_table` add unique if not exists `id_unique` (`id`)
 alter table if exists `add_test` add column if not exists `new_col` text default 'my_default';
 alter table user_details add index if not exists `country_id_index` (country_id), algorithm=NOCOPY;
+alter table table_name CONVERT TO CHARACTER SET utf8mb4;
+alter table table_name CONVERT TO CHARSET utf8mb4;
+alter table table_name DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+alter table table_name DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 #end
 #begin
 -- Alter database
@@ -143,3 +147,9 @@ ALTER TABLE my_table
 ALTER SEQUENCE IF EXISTS s2 start=100;
 ALTER SEQUENCE s1 CACHE=1000 NOCYCLE RESTART WITH 1;
 ALTER TABLE `TABLE_NAME` DROP FOREIGN KEY `TABLE_NAME`.`FK_COLUMN`;
+
+ALTER TABLE test_table ADD PRIMARY KEY IF NOT EXISTS (id);
+
+ALTER TABLE IF EXISTS T1
+    MODIFY COLUMN IF EXISTS status ENUM ('PENDING', 'SENDING', 'SENT', 'SUCCESS', 'FAILED', 'FATAL') NOT NULL,
+    RENAME COLUMN IF EXISTS col TO new_col;

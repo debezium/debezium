@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Properties;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -28,7 +28,7 @@ import io.debezium.schema.SchemaUnicodeTopicNamingStrategy;
 public class BinlogTopicNamingStrategyTest {
 
     @Test
-    public void testSanitizedTopicName() {
+    void testSanitizedTopicName() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.delimiter", ".");
@@ -49,7 +49,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testDataChangeTopic() {
+    void testDataChangeTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180");
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
@@ -73,7 +73,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testSchemaChangeTopic() {
+    void testSchemaChangeTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -88,7 +88,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testTransactionTopic() {
+    void testTransactionTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -99,7 +99,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testHeartbeatTopic() {
+    void testHeartbeatTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -110,7 +110,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testLogicTableTopic() {
+    void testLogicTableTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180_01");
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
@@ -126,7 +126,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testValidateRelativeTopicNames() {
+    void testValidateRelativeTopicNames() {
         String errorMessageSuffix = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
         Configuration config = Configuration.create().with(TOPIC_DELIMITER, "&").build();
         List<String> errorList = config.validate(Field.setOf(TOPIC_DELIMITER)).get(TOPIC_DELIMITER.name()).errorMessages();
@@ -146,7 +146,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testDefaultUnicodeTopicNamingStrategy() {
+    void testDefaultUnicodeTopicNamingStrategy() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -174,7 +174,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testSchemaUnicodeTopicNamingStrategy() {
+    void testSchemaUnicodeTopicNamingStrategy() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);

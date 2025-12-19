@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -17,12 +18,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Schema;
 import org.hibernate.PessimisticLockException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.MySQLDialect;
+import org.hibernate.engine.jdbc.Size;
 import org.hibernate.exception.LockAcquisitionException;
+import org.hibernate.exception.LockTimeoutException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkRecord;
@@ -31,6 +35,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
@@ -123,6 +128,19 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getJdbcTypeName(int jdbcType, Size size) {
+        // Hibernate 7.1 began to map CHAR(n) to VARCHAR(n) instead - this restores the logic
+        switch (jdbcType) {
+            case Types.CHAR:
+            case Types.NCHAR:
+                if (size.getLength() != null && size.getLength() > 0) {
+                    return "char(" + size.getLength() + ")";
+                }
+        }
+        return super.getJdbcTypeName(jdbcType, size);
+    }
+
+    @Override
     public int getMaxVarcharLengthInKey() {
         return 255;
     }
@@ -169,14 +187,14 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
-        final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
+        final Set<String> updateColumnNames = record.nonKeyFieldNames().isEmpty()
                 ? record.keyFieldNames()
-                : record.getNonKeyFieldNames();
+                : record.nonKeyFieldNames();
 
         if (getDatabaseVersion().isSameOrAfter(8, 0, 20)) {
             // MySQL 8.0.20 deprecated the use of "VALUES()" in exchange for table aliases
@@ -201,14 +219,16 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     public Set<Class<? extends Exception>> getCommunicationExceptions() {
         Set<Class<? extends Exception>> exceptions = super.getCommunicationExceptions();
         exceptions.addAll(
-                Set.of(LockAcquisitionException.class,
+                Set.of(LockTimeoutException.class,
+                        LockAcquisitionException.class,
                         PessimisticLockException.class));
         return Collections.unmodifiableSet(exceptions);
     }
 
     @Override
-    protected void addColumnDefaultValue(JdbcSinkRecord.FieldDescriptor field, StringBuilder columnSpec) {
-        final String fieldType = field.getTypeName();
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+        Schema fieldSchema = field.getSchema();
+        final String fieldType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
         if (!Strings.isNullOrBlank(fieldType)) {
             if (NO_DEFAULT_VALUE_TYPES.contains(fieldType.toLowerCase())) {
                 return;

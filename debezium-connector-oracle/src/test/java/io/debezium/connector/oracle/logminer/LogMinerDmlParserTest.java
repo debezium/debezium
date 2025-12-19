@@ -9,15 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Properties;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
@@ -36,14 +33,11 @@ import oracle.jdbc.OracleTypes;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerDmlParserTest {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     private LogMinerDmlParser fastDmlParser;
     private LogMinerColumnResolverDmlParser columnResolverDmlParser;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
         columnResolverDmlParser = new LogMinerColumnResolverDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
@@ -455,7 +449,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    public void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
+    void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST"))
                 .addColumn(Column.editor().name("ID").create())
@@ -703,5 +697,60 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[1])
                 .isEqualTo("Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi");
         assertThat(entry.getNewValues()[2]).isEqualTo("1");
+    }
+
+    @Test
+    @FixFor("DBZ-9191")
+    public void shouldNotTruncateInsertColumnValuesWithRelaxedQuoteDetectionLogMinerApostropheBug() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('12345','M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.');";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("12345");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.");
+    }
+
+    @Test
+    @FixFor("DBZ-9366")
+    public void shouldEmitInsertUpdateRelaxedQuoteDetectionValuesUsingSameLengths() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('Test','Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d''une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial');";
+
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
+
+        sql = "update \"SCHEMA\".\"TAB\" set \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial' where \"NAME\" = 'Test' and \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse';";
+
+        entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Test");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Hypersignal du LCA probablement séquellaire d'une ancienne entorse");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
     }
 }

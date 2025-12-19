@@ -10,15 +10,14 @@ import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -38,7 +37,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -54,8 +53,8 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
     @BeforeEach
     void setUp() {
         dialect = mock(DatabaseDialect.class);
-        Type type = mock(Type.class);
-        when(type.getTypeName(eq(dialect), any(), anyBoolean())).thenReturn("");
+        JdbcType type = mock(JdbcType.class);
+        when(type.getTypeName(any(), anyBoolean())).thenReturn("");
         when(dialect.getSchemaType(any())).thenReturn(type);
     }
 
@@ -96,7 +95,41 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
                 .toList();
 
         assertThat(batches.size()).isEqualTo(2);
+    }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @DisplayName("When 4 sink records {0,1,2,3} arrives then 2 of them {0,2}" +
+            " removed final flush will have {1,3,4,5,6} since buffer size is 5")
+    void correctlyBufferOnRemoving(SinkRecordFactory factory) {
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
+
+        ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
+
+        List<JdbcKafkaSinkRecord> records = IntStream.range(0, 7)
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
+                .toList();
+
+        IntStream.range(0, 4)
+                .forEach(i -> reducedRecordBuffer.add(records.get(i)));
+
+        reducedRecordBuffer.remove(records.get(0));
+        reducedRecordBuffer.remove(records.get(2));
+
+        List<List<JdbcSinkRecord>> batches = IntStream.range(4, records.size())
+                .mapToObj(i -> reducedRecordBuffer.add(records.get(i)))
+                .filter(not(List::isEmpty))
+                .toList();
+        assertThat(batches.size()).isEqualTo(1);
+        List<JdbcSinkRecord> batch = batches.get(0);
+        batch.sort(Comparator.comparing(
+                record -> (byte) ((Struct) record.key()).get("id")));
+        assertThat(batch.size()).isEqualTo(5);
+        assertThat(batch.get(0)).isEqualTo(records.get(1));
+        assertThat(batch.get(1)).isEqualTo(records.get(3));
+        assertThat(batch.get(2)).isEqualTo(records.get(4));
+        assertThat(batch.get(3)).isEqualTo(records.get(5));
+        assertThat(batch.get(4)).isEqualTo(records.get(6));
     }
 
     @ParameterizedTest
@@ -193,7 +226,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When primary key mode is none then reduced buffer should raise exception")
-    void raiseExceptionWithoutPrimaryKey(SinkRecordFactory factory) {
+    void raiseExceptionWithoutPrimaryKeyOnAdding(SinkRecordFactory factory) {
         JdbcSinkConnectorConfig config = getJdbcConnectorConfig(PrimaryKeyMode.NONE, null);
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
@@ -232,6 +265,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
                             config.getPrimaryKeyMode(),
                             config.getPrimaryKeyFields(),
                             config.getFieldFilter(),
+                            config.cloudEventsSchemaNamePattern(),
                             dialect);
                 })
                 .collect(Collectors.toList());
@@ -244,7 +278,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
         assertThat(batches.get(0).size()).isEqualTo(5);
 
         batches.get(0).forEach(record -> {
-            Struct keyStruct = record.getKeyStruct(PrimaryKeyMode.RECORD_VALUE, Set.of("value_id"));
+            Struct keyStruct = record.filteredKey();
             assertThat(keyStruct).isNotNull();
             assertThat(keyStruct.schema().fields()).hasSize(1);
             assertThat(keyStruct.schema().field("value_id")).isNotNull();

@@ -13,17 +13,14 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -40,11 +37,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     private OracleConnection connection;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -56,8 +50,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         TestHelper.streamTable(connection, "dbz3752");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "dbz3752");

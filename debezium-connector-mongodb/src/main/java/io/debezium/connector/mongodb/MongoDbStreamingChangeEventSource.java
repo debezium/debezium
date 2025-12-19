@@ -19,6 +19,7 @@ import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
@@ -80,7 +81,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return;
         }
 
-        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
             });
@@ -210,6 +211,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         else if (offsetContext.lastTimestamp() != null) {
             LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
             stream.startAtOperationTime(offsetContext.lastTimestamp());
+        }
+        else if (connectorConfig.startAtOperationTime().isPresent()) {
+            LOGGER.info("Resuming streaming from explicit operation time '{}'", offsetContext.lastTimestamp());
+            stream.startAtOperationTime(connectorConfig.startAtOperationTime().get());
         }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {

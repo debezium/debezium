@@ -76,6 +76,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         registerType(BytesType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override
@@ -89,6 +90,18 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public int getMaxTimePrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
+    }
+
+    @Override
     public boolean isNegativeScaleAllowed() {
         return true;
     }
@@ -99,19 +112,19 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         builder.append("MERGE INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" USING (SELECT ");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(),
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(),
                 (name) -> columnQueryBindingFromField(name, table, record) + " " + columnNameFromField(name, record));
         builder.append(" FROM dual) ").append("INCOMING ON (");
         builder.appendList(" AND ", record.keyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
         builder.append(")");
-        if (!record.getNonKeyFieldNames().isEmpty()) {
+        if (!record.nonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
-            builder.appendList(",", record.getNonKeyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
+            builder.appendList(",", record.nonKeyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
         }
         builder.append(" WHEN NOT MATCHED THEN INSERT (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
         builder.append(")");
         return builder.build();
     }

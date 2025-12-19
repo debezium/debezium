@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.schema.DataCollectionSchema;
@@ -21,7 +21,7 @@ public class MongoDbSchemaIT {
     private MongoDbTaskContext taskContext;
 
     @Test
-    public void shouldAlwaysProduceCollectionSchema() {
+    void shouldAlwaysProduceCollectionSchema() {
         config = TestHelper.getConfiguration();
         taskContext = new MongoDbTaskContext(config);
 
@@ -36,7 +36,7 @@ public class MongoDbSchemaIT {
 
     private static MongoDbSchema getSchema(Configuration config, MongoDbTaskContext taskContext) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        return new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(),
+        return new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
                 connectorConfig.getSourceInfoStructMaker().schema(),
                 connectorConfig.schemaNameAdjuster());
     }

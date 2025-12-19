@@ -6,12 +6,13 @@
 package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 
@@ -23,7 +24,7 @@ public class TableEditorTest {
     private ColumnEditor columnEditor;
     private AttributeEditor attributeEditor;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         editor = Table.editor();
         table = null;
@@ -44,9 +45,11 @@ public class TableEditorTest {
         assertThat(editor.attributes()).isEmpty();
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void shouldFailToCreateTableWhenEditorIsMissingTableId() {
-        editor.create();
+    @Test
+    void shouldFailToCreateTableWhenEditorIsMissingTableId() {
+        assertThrows(IllegalStateException.class, () -> {
+            editor.create();
+        });
     }
 
     @Test
@@ -57,16 +60,18 @@ public class TableEditorTest {
         assertThat(table.primaryKeyColumnNames()).isEmpty();
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     @FixFor("DBZ-2580")
-    public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
-        editor.tableId(id);
-        editor.setPrimaryKeyNames("C1", "WOOPS");
-        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
-        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
-        editor.addColumns(c1, c2, c3);
-        editor.create();
+    void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            editor.tableId(id);
+            editor.setPrimaryKeyNames("C1", "WOOPS");
+            Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+            Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
+            Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
+            editor.addColumns(c1, c2, c3);
+            editor.create();
+        });
     }
 
     @Test
@@ -172,15 +177,17 @@ public class TableEditorTest {
         assertValidPositions(editor);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldNotReorderColumnIfNameDoesNotMatch() {
-        editor.tableId(id);
-        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
-        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
-        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
-        editor.addColumns(c1, c2, c3);
-        editor.reorderColumn("WOOPS", "C2");
-        assertValidPositions(editor);
+    @Test
+    void shouldNotReorderColumnIfNameDoesNotMatch() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            editor.tableId(id);
+            Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+            Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+            Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+            editor.addColumns(c1, c2, c3);
+            editor.reorderColumn("WOOPS", "C2");
+            assertValidPositions(editor);
+        });
     }
 
     @Test

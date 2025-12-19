@@ -22,4 +22,8 @@ public class RecoverySnapshotter extends NoDataSnapshotter {
         return true;
     }
 
+    @Override
+    public boolean shouldStreamEventsStartingFromSnapshot() {
+        return false;
+    }
 }

@@ -26,12 +26,12 @@ import io.debezium.relational.TableId;
  * The underlying protocol buffer record consists of the following structure:
  * <pre>
  *     message LogMinerEvent {
- *         required int32 eventType = 1;
- *         required string scn = 2;
- *         required string tableId = 3;
- *         required string rowId = 4;
- *         required object rsId = 5;
- *         required string changeTime = 6;
+ *         int32 eventType = 1;
+ *         string scn = 2;
+ *         string tableId = 3;
+ *         string rowId = 4;
+ *         object rsId = 5;
+ *         string changeTime = 6;
  *     }
  * </pre>
  *
@@ -62,7 +62,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the event type's numerical representation
      */
-    @ProtoField(number = 1, required = true)
+    @ProtoField(number = 1, defaultValue = "0")
     public int getEventType(LogMinerEvent event) {
         // Serialized to its numerical value since int32 data types are native to protocol buffers
         return event.getEventType().getValue();
@@ -74,7 +74,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the event's system change number represented as a string
      */
-    @ProtoField(number = 2, required = true)
+    @ProtoField(number = 2)
     public String getScn(LogMinerEvent event) {
         // We intentionally serialize the Scn as a string since string values are natively supported by
         // protocol buffers and we don't need to write a special marshaller for the Scn class.
@@ -87,7 +87,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the event's table identifier represented as a string
      */
-    @ProtoField(number = 3, required = true)
+    @ProtoField(number = 3)
     public String getTableId(LogMinerEvent event) {
         return event.getTableId().toDoubleQuotedString();
     }
@@ -98,7 +98,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the event's row identifier, never {@code null}
      */
-    @ProtoField(number = 4, required = true)
+    @ProtoField(number = 4)
     public String getRowId(LogMinerEvent event) {
         return event.getRowId();
     }
@@ -109,7 +109,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the rollback segment identifier, never {@code null}
      */
-    @ProtoField(number = 5, required = true)
+    @ProtoField(number = 5)
     public String getRsId(LogMinerEvent event) {
         return event.getRsId();
     }
@@ -120,7 +120,7 @@ public class LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the time when the event occurred as a string, never {@code null}
      */
-    @ProtoField(number = 6, required = true)
+    @ProtoField(number = 6)
     public String getChangeTime(LogMinerEvent event) {
         return event.getChangeTime().toString();
     }

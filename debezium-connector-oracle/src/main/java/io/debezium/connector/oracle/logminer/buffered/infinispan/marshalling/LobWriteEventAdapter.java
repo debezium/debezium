@@ -72,7 +72,7 @@ public class LobWriteEventAdapter extends LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the offset of the data to be written for a LOB field
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8, defaultValue = "0")
     public int getOffset(LobWriteEvent event) {
         return event.getOffset();
     }
@@ -83,7 +83,7 @@ public class LobWriteEventAdapter extends LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the length of the data to be written for a LOB field
      */
-    @ProtoField(number = 9, required = true)
+    @ProtoField(number = 9, defaultValue = "0")
     public int getLength(LobWriteEvent event) {
         return event.getLength();
     }

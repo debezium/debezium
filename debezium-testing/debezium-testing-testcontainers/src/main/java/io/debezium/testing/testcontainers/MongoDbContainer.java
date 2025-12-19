@@ -200,7 +200,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                 + " " + (replicaSet == null ? "" : "--replSet " + replicaSet)
                 + " " + (configAddress == null ? "" : "--configdb " + configAddress)
                 + " --port " + port
-                + " --bind_ip localhost," + name;
+                + " --bind_ip_all";
 
         if (authEnabled) {
             var keyFileCommand = "echo 'secret' > " + CONTAINER_KEYFILE_PATH

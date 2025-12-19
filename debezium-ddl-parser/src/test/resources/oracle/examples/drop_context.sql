@@ -1,0 +1,1 @@
+DROP CONTEXT hr_context;

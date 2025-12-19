@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -32,17 +32,20 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
-    private final CdcSourceTaskContext taskContext;
+    private final CapturedTablesSupplier capturedTablesSupplier;
     private final EventMetadataProvider metadataProvider;
 
-    public StreamingMeter(CdcSourceTaskContext taskContext, EventMetadataProvider metadataProvider) {
-        this.taskContext = taskContext;
+    public StreamingMeter(CapturedTablesSupplier capturedTablesSupplier, EventMetadataProvider metadataProvider) {
+        this.capturedTablesSupplier = capturedTablesSupplier != null ? capturedTablesSupplier : Collections::emptyList;
         this.metadataProvider = metadataProvider;
     }
 
     @Override
     public String[] getCapturedTables() {
-        return taskContext.capturedDataCollections();
+        return capturedTablesSupplier.getCapturedTables()
+                .stream()
+                .map(DataCollectionId::toString)
+                .toArray(String[]::new);
     }
 
     @Override

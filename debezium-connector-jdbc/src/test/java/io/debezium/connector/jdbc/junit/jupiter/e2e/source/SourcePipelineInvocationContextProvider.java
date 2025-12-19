@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
@@ -59,7 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.debezium.testing.testcontainers.DebeziumKafkaContainer;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
  * The JDBC sink end to end pipeline context provider.
@@ -89,25 +88,26 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
 
-    private static final Network network = Network.newNetwork();
+    private static final Network network = Network.SHARED;
 
     private final RandomTableNameGenerator tableNameGenerator;
-    private final KafkaContainer kafkaContainer;
+    private final StrimziKafkaCluster kafkaCluster;
     private final DebeziumContainer connectContainer;
     private final Map<SourceType, JdbcDatabaseContainer<?>> sourceContainers;
 
     public SourcePipelineInvocationContextProvider() {
         this.tableNameGenerator = new RandomTableNameGenerator();
-        this.kafkaContainer = getKafkaContainer();
-        this.connectContainer = getKafkaConnectContainer(this.kafkaContainer);
+        this.kafkaCluster = getKafkaCluster();
+        this.connectContainer = getKafkaConnectContainer(this.kafkaCluster);
         this.sourceContainers = getSourceContainers();
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
+    public void beforeAll(ExtensionContext context) {
+        this.kafkaCluster.start();
+
         // Create a stream of all containers to be started
         final Stream.Builder<Startable> startables = Stream.builder();
-        startables.add(this.kafkaContainer);
         startables.add(this.connectContainer);
         sourceContainers.values().forEach(startables::add);
 
@@ -116,11 +116,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     }
 
     @Override
-    public void afterAll(ExtensionContext context) throws Exception {
+    public void afterAll(ExtensionContext context) {
         // Stop containers
         this.sourceContainers.values().forEach(GenericContainer::stop);
         this.connectContainer.stop();
-        this.kafkaContainer.stop();
+        this.kafkaCluster.stop();
     }
 
     @Override
@@ -231,14 +231,14 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             }
             final List<TemporalPrecisionMode> result = new ArrayList<>();
             for (TemporalPrecisionMode temporalPrecisionMode : TemporalPrecisionMode.values()) {
+                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
+                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
+                    continue;
+                }
                 if (includeList.length > 0 && Arrays.stream(includeList).noneMatch(p -> p == temporalPrecisionMode)) {
                     continue;
                 }
                 else if (excludeList.length > 0 && Arrays.stream(excludeList).anyMatch(p -> p == temporalPrecisionMode)) {
-                    continue;
-                }
-                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
-                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
                     continue;
                 }
                 result.add(temporalPrecisionMode);
@@ -289,7 +289,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
 
         final JdbcDatabaseContainer<?> sourceContainer = sourceContainers.get(sourceType);
-        final Source source = new Source(sourceType, sourceContainer, kafkaContainer, connectContainer, sourceOptions, tableNameGenerator);
+        final Source source = new Source(sourceType, sourceContainer, kafkaCluster, connectContainer, sourceOptions, tableNameGenerator);
 
         return new TestTemplateInvocationContext() {
             @Override
@@ -347,18 +347,27 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
     }
 
-    @SuppressWarnings("resource")
-    private KafkaContainer getKafkaContainer() {
-        return DebeziumKafkaContainer.defaultKRaftContainer(network).withNetworkAliases("kafka");
+    private StrimziKafkaCluster getKafkaCluster() {
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .build();
+
+        // update all nodes in kafkaCluster with proper setting
+        for (GenericContainer<?> kafkaNode : kafkaCluster.getNodes()) {
+            kafkaNode.withNetwork(network)
+                    .withNetworkAliases("kafka");
+        }
+
+        return kafkaCluster;
     }
 
     @SuppressWarnings("resource")
-    private DebeziumContainer getKafkaConnectContainer(KafkaContainer kafkaContainer) {
+    private DebeziumContainer getKafkaConnectContainer(StrimziKafkaCluster kafkaCluster) {
         return DebeziumContainer.nightly()
-                .withKafka(kafkaContainer)
+                .withKafka(kafkaCluster)
                 .withNetwork(network)
                 .withNetworkAliases("connect")
-                .dependsOn(kafkaContainer);
+                .dependsOn(kafkaCluster);
     }
 
     @SuppressWarnings("resource")
@@ -442,6 +451,9 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             return List.of(SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER);
         }
         else {
+            if (sourceConnectors.equalsIgnoreCase("all")) {
+                return Arrays.stream(SourceType.values()).collect(Collectors.toList());
+            }
             return Arrays.stream(sourceConnectors.split(",")).map(SourceType::parse).collect(Collectors.toList());
         }
     }

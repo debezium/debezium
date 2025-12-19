@@ -2,6 +2,752 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.0.Final
+December 18th 2025 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.Final)
+
+### New features since 3.4.0.CR1
+
+* Debezium Platform: Make connection as mandatory field for source and destination connector setup in UI [debezium/dbz#26](https://github.com/debezium/dbz/issues/26)
+* Add SnapshotLockingMode=NONE to Informix [debezium/dbz#31](https://github.com/debezium/dbz/issues/31)
+* Introduce flexible recovery from LSN desynchronisation [DBZ-9688] [debezium/dbz#1146](https://github.com/debezium/dbz/issues/1146)
+* fix README and CI for Quarkus Extensions repository [debezium/dbz#1449](https://github.com/debezium/dbz/issues/1449)
+
+
+### Breaking changes since 3.4.0.CR1
+
+None
+
+
+### Fixes since 3.4.0.CR1
+
+* Debezium Pipeline: Edit Flow is breaking for the source Connector [debezium/dbz#15](https://github.com/debezium/dbz/issues/15)
+* IndexOutOfBoundsException for a history table (temporal table) in SQL Server [debezium/dbz#28](https://github.com/debezium/dbz/issues/28)
+* [Debezium Server] HTTP sink, headers duplicate infinitely per message, since 3.2 [debezium/dbz#37](https://github.com/debezium/dbz/issues/37)
+* createConnector error [DBZ-8405] [debezium/dbz#1315](https://github.com/debezium/dbz/issues/1315)
+* ConnectorContext toString() - should sensitive configuration be masked? [DBZ-9666] [debezium/dbz#1432](https://github.com/debezium/dbz/issues/1432)
+* Debezium Oracle restarting mining session too frequently [DBZ-9680] [debezium/dbz#1435](https://github.com/debezium/dbz/issues/1435)
+* IndexOutOfBoundsException for PostgreSQL tables with case-sensitive duplicate column [DBZ-9693] [debezium/dbz#1147](https://github.com/debezium/dbz/issues/1147)
+* LcrPosition log line has two placeholders and three arguments [debezium/dbz#1448](https://github.com/debezium/dbz/issues/1448)
+* Incorrect time unit in retry log message [debezium/dbz#1459](https://github.com/debezium/dbz/issues/1459)
+
+
+### Other changes since 3.4.0.CR1
+
+* Migrate Debezium project management from Jira to GitHub [debezium/dbz#1](https://github.com/debezium/dbz/issues/1)
+* Migrate from JUnit 5 to JUnit 6 [debezium/dbz#18](https://github.com/debezium/dbz/issues/18)
+* Update to latest LTS of Quarkus 3.27.x [debezium/dbz#29](https://github.com/debezium/dbz/issues/29)
+* Improvements and Fixes on the current UI feedback [DBZ-9102] [debezium/dbz#1228](https://github.com/debezium/dbz/issues/1228)
+* Remove the use of Confluent Kafka from testing suite [DBZ-9214] [debezium/dbz#1371](https://github.com/debezium/dbz/issues/1371)
+* Remove callouts from code blocks [DBZ-9674] [debezium/dbz#1140](https://github.com/debezium/dbz/issues/1140)
+* Debezium Platform Stage: Update Node to LTS version 24 [debezium/dbz#1450](https://github.com/debezium/dbz/issues/1450)
+* Add `NOT? IN` support to `relational_expression` in Oracle grammar [debezium/dbz#1471](https://github.com/debezium/dbz/issues/1471)
+* Add optional keyword `FIELDS` for insert statements in Oracle grammar [debezium/dbz#1472](https://github.com/debezium/dbz/issues/1472)
+
+
+
+## 3.4.0.CR1
+December 10th 2025 Detailed release notes [Jira](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12472381) [GitHub Issues](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.CR1)
+
+### New features since 3.4.0.Beta1
+
+* Support signalling in multi-task setup of SQL Server connector [DBZ-7243](https://issues.redhat.com/browse/DBZ-7243)
+* Add guardrails to prevent OOM due to too many tables configured [DBZ-9427](https://issues.redhat.com/browse/DBZ-9427)
+* Improve context sharing between openlineage core module and OpenLineage STM [DBZ-9541](https://issues.redhat.com/browse/DBZ-9541)
+* Secure Kafka Signaling - SASL Plain and SSL [DBZ-9705](https://issues.redhat.com/browse/DBZ-9705)
+* Log in-flight transactions when checking for stale offsets [debezium/dbz#20](https://github.com/debezium/dbz/issues/20)
+
+
+### Breaking changes since 3.4.0.Beta1
+
+None
+
+
+### Fixes since 3.4.0.Beta1
+
+* Debezium db2i CDC source connector randomly loses Events [DBZ-8538](https://issues.redhat.com/browse/DBZ-8538)
+* Minimum Cache SCN is not recalculated after transaction retention is applied [DBZ-9659](https://issues.redhat.com/browse/DBZ-9659)
+* Signal Processing With Idle Database [DBZ-9707](https://issues.redhat.com/browse/DBZ-9707)
+* Task getErrorHandler throws NullPointerException [DBZ-9708](https://issues.redhat.com/browse/DBZ-9708)
+* Debezium Cassandra Connector Silently Stops Processing After CommitLog Move Failure [DBZ-9710](https://issues.redhat.com/browse/DBZ-9710)
+* MongoDb connector throws null ref exception [DBZ-9719](https://issues.redhat.com/browse/DBZ-9719)
+* "io.debezium.connector.jdbc.transforms.FieldNameTransformation", "transforms.topic-lowercase.column.naming.style": "lower_case" is not work [DBZ-9747](https://issues.redhat.com/browse/DBZ-9747)
+* JDBC offset store requires PK when connecting with a MySQL cluster [debezium/dbz#5](https://github.com/debezium/dbz/issues/5)
+* Oracle connector can incorrectly build on-demand table schema with optional key fields. [debezium/dbz#7](https://github.com/debezium/dbz/issues/7)
+* Oracle numeric default values wrapped in `(` and `)` are mistakenly treated as expressions [debezium/dbz#16](https://github.com/debezium/dbz/issues/16)
+* PostgreSQL Connector: Keep-alive thread logs ERROR on normal shutdown due to InterruptedException [debezium/dbz#14](https://github.com/debezium/dbz/issues/14)
+* Migration to JUnit 5 missed new test classes [debezium/dbz#25](https://github.com/debezium/dbz/issues/25)
+
+
+### Other changes since 3.4.0.Beta1
+
+* Create a DDD for Debezium Engine Quarkus Extension [DBZ-8903](https://issues.redhat.com/browse/DBZ-8903)
+* Migrate from JUnit4 to JUnit 5 [debezium/dbz#11](https://github.com/debezium/dbz/issues/11)
+* Bump Pulsar Java client version in Debezium Server Pulsar connector [debezium/dbz#12](https://github.com/debezium/dbz/issues/12)
+
+
+
+## 3.4.0.Beta1
+November 26th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471552)
+
+### New features since 3.4.0.Alpha2
+
+* Implement AWS IAM Authent in debezium-connector-postgres [DBZ-7297](https://issues.redhat.com/browse/DBZ-7297)
+* Oracle minimal supplemental logging 'SUBSET DATABASE REPLICATION' option [DBZ-7341](https://issues.redhat.com/browse/DBZ-7341)
+* ConvertTimezone SMT should support source info block fields [DBZ-9372](https://issues.redhat.com/browse/DBZ-9372)
+* Allow Oracle transactions to be abandoned using signal [DBZ-9552](https://issues.redhat.com/browse/DBZ-9552)
+* `slot.stream.options` documentation misleading [DBZ-9566](https://issues.redhat.com/browse/DBZ-9566)
+* Empty configuration properties behavior should be consistent [DBZ-9647](https://issues.redhat.com/browse/DBZ-9647)
+* Allow LogMiner hash/sort area session parameters to be configurable [DBZ-9660](https://issues.redhat.com/browse/DBZ-9660)
+* Always exclude materialized view log tables from LogMiner capture [DBZ-9661](https://issues.redhat.com/browse/DBZ-9661)
+* The LogMiner minable logs query can be optimized to remove the left join [DBZ-9662](https://issues.redhat.com/browse/DBZ-9662)
+* Remove the SCN gap detection logic [DBZ-9672](https://issues.redhat.com/browse/DBZ-9672)
+* Introduce a pass-through collection naming strategy [DBZ-9679](https://issues.redhat.com/browse/DBZ-9679)
+* MongoDB connector: Use wallTime for source.ts_ms accuracy [DBZ-9683](https://issues.redhat.com/browse/DBZ-9683)
+* Support tables to copy flag [DBZ-9696](https://issues.redhat.com/browse/DBZ-9696)
+
+
+### Breaking changes since 3.4.0.Alpha2
+
+* Postgres: Make the pgjdbc keepalive LSN flush configurable to prevent WAL growth [DBZ-9641](https://issues.redhat.com/browse/DBZ-9641)
+
+
+### Fixes since 3.4.0.Alpha2
+
+* Heartbeat stops when using CTE query in Oracle connector [DBZ-9443](https://issues.redhat.com/browse/DBZ-9443)
+* Debezium Informix connector 3.2.3.Final throws IllegalStateException: DebeziumOpenLineageEmitter not initialized during stop/restart, even when openlineage.integration.enabled. Connector should not call emitter if disabled. [DBZ-9504](https://issues.redhat.com/browse/DBZ-9504)
+* SQL Server connector is unable to resume incremental snapshot after restart [DBZ-9533](https://issues.redhat.com/browse/DBZ-9533)
+* Skipped events counter not handled correctly for compressed transactions [DBZ-9564](https://issues.redhat.com/browse/DBZ-9564)
+* Validation for a Kafka target fails [DBZ-9645](https://issues.redhat.com/browse/DBZ-9645)
+* Oracle does not support renaming partitions using alter table [DBZ-9651](https://issues.redhat.com/browse/DBZ-9651)
+* Debezium Server configuration import creates invalid pipelines [DBZ-9652](https://issues.redhat.com/browse/DBZ-9652)
+* MongoDB connector: Whitespace in collection.include.list causes incorrect regex pattern in change streams [DBZ-9657](https://issues.redhat.com/browse/DBZ-9657)
+* Oracle low watermark read calculation is too conservative when LOB is disabled [DBZ-9664](https://issues.redhat.com/browse/DBZ-9664)
+* Debezium Oracle restarting mining session too frequently [DBZ-9680](https://issues.redhat.com/browse/DBZ-9680)
+* Debezium Oracle connector fails to parse Oracle database version [DBZ-9681](https://issues.redhat.com/browse/DBZ-9681)
+* MySQLGTIDSet Subtractions Fail on UUIDSet that exist only in the Left Operand [DBZ-9682](https://issues.redhat.com/browse/DBZ-9682)
+* Connection list shows connection of all source/destination [DBZ-9685](https://issues.redhat.com/browse/DBZ-9685)
+* Incorrect documentation about storing state in JDBC [DBZ-9692](https://issues.redhat.com/browse/DBZ-9692)
+* Snapshot SQL Override Spaces [DBZ-9695](https://issues.redhat.com/browse/DBZ-9695)
+* NPE during sending to HTTP sink [DBZ-9698](https://issues.redhat.com/browse/DBZ-9698)
+
+
+### Other changes since 3.4.0.Alpha2
+
+* Provide the table explorer table component [DBZ-9318](https://issues.redhat.com/browse/DBZ-9318)
+* Refactor metrics logic in tests [DBZ-9579](https://issues.redhat.com/browse/DBZ-9579)
+* Oracle SignalsIT shouldDropTransactionViaSignal fails in unbuffered mode [DBZ-9665](https://issues.redhat.com/browse/DBZ-9665)
+* Update testcontainers to 2.0.2 [DBZ-9699](https://issues.redhat.com/browse/DBZ-9699)
+* The debezium-connector-oracle README is outdated [DBZ-9700](https://issues.redhat.com/browse/DBZ-9700)
+* IntelliJ IDEA doesn't recognize generated sources [DBZ-9701](https://issues.redhat.com/browse/DBZ-9701)
+
+
+
+## 3.4.0.Alpha2
+November 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12471251)
+
+### New features since 3.4.0.Alpha1
+
+* Support for incremental snapshots in IBMi connector [DBZ-7958](https://issues.redhat.com/browse/DBZ-7958)
+* Add metadata to IBMi connector to handle multi-journal [DBZ-9291](https://issues.redhat.com/browse/DBZ-9291)
+* Add support for exclude keyspace from table name flag [DBZ-9522](https://issues.redhat.com/browse/DBZ-9522)
+* Support configuring how to apply dynamic partition routing in Azure Event Hubs sink [DBZ-9572](https://issues.redhat.com/browse/DBZ-9572)
+* Introduce transform to convert between EWKB and WKB formats [DBZ-9575](https://issues.redhat.com/browse/DBZ-9575)
+* Fix failed to initialize open lineage for vitess connector [DBZ-9613](https://issues.redhat.com/browse/DBZ-9613)
+* Expose total time emitting events during commits [DBZ-9637](https://issues.redhat.com/browse/DBZ-9637)
+* The LogMiner commit throughput metric is meaningless [DBZ-9639](https://issues.redhat.com/browse/DBZ-9639)
+* Standardize source catalog descriptions [DBZ-9642](https://issues.redhat.com/browse/DBZ-9642)
+* Debezium Extensions for Quarkus: support for MySQL [DBZ-9380](https://issues.redhat.com/browse/DBZ-9380)
+* Debezium Extensions for Quarkus: support for MariaDB [DBZ-9381](https://issues.redhat.com/browse/DBZ-9381)
+* Debezium Extensions for Quarkus: support for sqlserver [DBZ-9384](https://issues.redhat.com/browse/DBZ-9384)
+
+
+### Breaking changes since 3.4.0.Alpha1
+
+* Use direct query mode as the SQL Server default [DBZ-9394](https://issues.redhat.com/browse/DBZ-9394)
+* Include xdb and xmlparserv2 dependencies [DBZ-9587](https://issues.redhat.com/browse/DBZ-9587)
+
+
+### Fixes since 3.4.0.Alpha1
+
+* Pipeline page Issues [DBZ-9543](https://issues.redhat.com/browse/DBZ-9543)
+* DdlChanges not reset in schema history recovery [DBZ-9549](https://issues.redhat.com/browse/DBZ-9549)
+* Handle exceptions thrown from perfromCommit method to gracefully cleanup the coordinator during the stop call [DBZ-9617](https://issues.redhat.com/browse/DBZ-9617)
+* Table column metadata is not fetched when table name has a '/' character [DBZ-9620](https://issues.redhat.com/browse/DBZ-9620)
+* MySQL connector does not parse CREATE TABLE [DBZ-9623](https://issues.redhat.com/browse/DBZ-9623)
+* Debezium Server run.bat fails to execute on Windows [DBZ-9625](https://issues.redhat.com/browse/DBZ-9625)
+* Begin marker but no end marker for rollbacked transactions [DBZ-9628](https://issues.redhat.com/browse/DBZ-9628)
+* MariaDB fails to parse "CONVERT TO CHARSET <character-set>" [DBZ-9634](https://issues.redhat.com/browse/DBZ-9634)
+* Buffered event count set unnecessarily [DBZ-9638](https://issues.redhat.com/browse/DBZ-9638)
+
+
+### Other changes since 3.4.0.Alpha1
+
+* Enable Dependabot on debezium platform repo [DBZ-8994](https://issues.redhat.com/browse/DBZ-8994)
+* Update Oracle connector doc to specify unsupported Oracle 23ai features [DBZ-9402](https://issues.redhat.com/browse/DBZ-9402)
+* Migrate Surge.sh Preview Teardown from ubuntu-20.04 to ubuntu-latest [DBZ-9518](https://issues.redhat.com/browse/DBZ-9518)
+* Handle the form properties with dot present in their name [DBZ-9560](https://issues.redhat.com/browse/DBZ-9560)
+* Clarify case sensitive nature of signal.data.collection and table names in signals [DBZ-9621](https://issues.redhat.com/browse/DBZ-9621)
+* Remove Technology Preview label on MariaDB list entries in signaling doc [DBZ-9624](https://issues.redhat.com/browse/DBZ-9624)
+* Fix minor issues in the Platform UI dark mode [DBZ-9633](https://issues.redhat.com/browse/DBZ-9633)
+* Update to use only StrimziKafkaCluster [DBZ-9640](https://issues.redhat.com/browse/DBZ-9640)
+
+
+
+## 3.4.0.Alpha1
+October 23rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466509)
+
+### New features since 3.3.0.Final
+
+* Support Redis Cluster mode in the Debezium Redis sink module [DBZ-9226](https://issues.redhat.com/browse/DBZ-9226)
+* Apply query.fetch.size universally to all Oracle non-snapshot queries [DBZ-9448](https://issues.redhat.com/browse/DBZ-9448)
+* Update documentation to Readonly mode [DBZ-9466](https://issues.redhat.com/browse/DBZ-9466)
+* Apply mining upper boundary to avoid PGA_AGGREGATE_LIMIT [DBZ-9476](https://issues.redhat.com/browse/DBZ-9476)
+* Upgrade Apicurio to version 2.6.13.Final [DBZ-9491](https://issues.redhat.com/browse/DBZ-9491)
+* Add support for SDO_GEOMETRY columns in jdbc-connector [DBZ-9508](https://issues.redhat.com/browse/DBZ-9508)
+* MongoDB docker image with replica set enabled [DBZ-9516](https://issues.redhat.com/browse/DBZ-9516)
+* Use Jakarta variant of ehcache [DBZ-9517](https://issues.redhat.com/browse/DBZ-9517)
+* Add support for PostgreSQL 18 [DBZ-9523](https://issues.redhat.com/browse/DBZ-9523)
+* Support TOKENLIST datatype in Spanner connector [DBZ-9526](https://issues.redhat.com/browse/DBZ-9526)
+* Introduce a Swap Geometry Coordinate System Transform [DBZ-9556](https://issues.redhat.com/browse/DBZ-9556)
+
+
+### Breaking changes since 3.3.0.Final
+
+* IBMI Connector | Add Trim Config (trailing trim only) [DBZ-8835](https://issues.redhat.com/browse/DBZ-8835)
+* Drop support for PostgreSQL 13 [DBZ-9376](https://issues.redhat.com/browse/DBZ-9376)
+* Add LogMiner metrics for mining range [DBZ-9545](https://issues.redhat.com/browse/DBZ-9545)
+
+
+### Fixes since 3.3.0.Final
+
+* Can bind a LONG value only for insert into a LONG column [DBZ-8276](https://issues.redhat.com/browse/DBZ-8276)
+* Oracle Connector stops mining on REVOKE FLASHBACK on ... [DBZ-9112](https://issues.redhat.com/browse/DBZ-9112)
+* MariaDB Connector Fails to Parse DDL for System-Versioned Table with Custom ROW START/ROW END Columns [DBZ-9411](https://issues.redhat.com/browse/DBZ-9411)
+* MySQL example container images are not properly configured [DBZ-9485](https://issues.redhat.com/browse/DBZ-9485)
+* Debezium platform conductor service fails on /q/openapi [DBZ-9496](https://issues.redhat.com/browse/DBZ-9496)
+* Oracle pom does not trigger annotation processors across profiles for Java 25 [DBZ-9513](https://issues.redhat.com/browse/DBZ-9513)
+* Only log an error when the dump folder is provided but doesn't exist [DBZ-9519](https://issues.redhat.com/browse/DBZ-9519)
+* Events are mistakenly skipped during commit dispatch when LOB is enabled  [DBZ-9521](https://issues.redhat.com/browse/DBZ-9521)
+* Missing OpenLineage Complete event during gracefully shutdown [DBZ-9524](https://issues.redhat.com/browse/DBZ-9524)
+* Correct type is not used for the PORT field in the connection payload [DBZ-9530](https://issues.redhat.com/browse/DBZ-9530)
+* Oracle alter DDL to move partition/subpartition fails to be parsed [DBZ-9534](https://issues.redhat.com/browse/DBZ-9534)
+* SchemaUtil creates invalid JSON [DBZ-9540](https://issues.redhat.com/browse/DBZ-9540)
+* Test shouldNotFailToStartWhenSignalDataCollectionNotDefinedWithinTableIncludeList does not work with non-CDB images [DBZ-9544](https://issues.redhat.com/browse/DBZ-9544)
+* Deadlock due to lost interrupt with blc keep alive thread [DBZ-9548](https://issues.redhat.com/browse/DBZ-9548)
+* Timestamp values cause NPE in Postgres on JDK23+ [DBZ-9558](https://issues.redhat.com/browse/DBZ-9558)
+
+
+### Other changes since 3.3.0.Final
+
+* Enable OpenLineage output dataset events on Debezium Server [DBZ-9059](https://issues.redhat.com/browse/DBZ-9059)
+* Multi-engine Support [DBZ-9160](https://issues.redhat.com/browse/DBZ-9160)
+* Align Debezium Oracle DDL grammar with upstream [DBZ-9302](https://issues.redhat.com/browse/DBZ-9302)
+* Update docs about new chart versioning [DBZ-9365](https://issues.redhat.com/browse/DBZ-9365)
+* Clarify the use of $$ for escaping $-based variable substitutions in Debezium Server [DBZ-9385](https://issues.redhat.com/browse/DBZ-9385)
+* Update Quarkus platform on Debezium Platform  [DBZ-9418](https://issues.redhat.com/browse/DBZ-9418)
+* Blog post on how add a new table to capture list [DBZ-9507](https://issues.redhat.com/browse/DBZ-9507)
+* Doc: Document metric `NumberOfErroneousEvents` [DBZ-9510](https://issues.redhat.com/browse/DBZ-9510)
+* Replace Kafka cluster test infra with test containers based [DBZ-9512](https://issues.redhat.com/browse/DBZ-9512)
+* Update service-provider-enforcer-rule [DBZ-9525](https://issues.redhat.com/browse/DBZ-9525)
+* Oracle test shouldHandleParentChildIndexOrganizedTables randomly fails  [DBZ-9528](https://issues.redhat.com/browse/DBZ-9528)
+* Oracle TestHelper#dropTable should retry on resource locks [DBZ-9529](https://issues.redhat.com/browse/DBZ-9529)
+* Add support to show the Active count in the Connection page [DBZ-9531](https://issues.redhat.com/browse/DBZ-9531)
+* Refactor CdcSourceTaskContext [DBZ-9542](https://issues.redhat.com/browse/DBZ-9542)
+* Add basic UI validation in the Pipeline package specific log configuration options [DBZ-9561](https://issues.redhat.com/browse/DBZ-9561)
+* Send the signal.data.collection property in the source payload only when its added [DBZ-9562](https://issues.redhat.com/browse/DBZ-9562)
+* Use StrimziKafkaCluster instead of custom made KafkaCluster class [DBZ-9565](https://issues.redhat.com/browse/DBZ-9565)
+* Update Debezium Quarkus and Outbox Extensions to Quarkus 3.28.4 [DBZ-9568](https://issues.redhat.com/browse/DBZ-9568)
+* Update Debezium Server/Operator to Quarkus 3.20.3 [DBZ-9569](https://issues.redhat.com/browse/DBZ-9569)
+* Improve Informix pom to be similar to the debezium/debezium ones.  [DBZ-9576](https://issues.redhat.com/browse/DBZ-9576)
+* Update MongoDB driver to 5.5.1 [DBZ-9585](https://issues.redhat.com/browse/DBZ-9585)
+
+
+
+## 3.3.0.Final
+October 1st 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469379)
+
+### New features since 3.3.0.CR1
+
+* Support OpenLineage on Debezium sinks [DBZ-9469](https://issues.redhat.com/browse/DBZ-9469)
+* Debezium Server NATS JetStream Sink: Add Asynchronous Message Publishing [DBZ-9474](https://issues.redhat.com/browse/DBZ-9474)
+* Add commit_scn to Oracle XStream events [DBZ-9497](https://issues.redhat.com/browse/DBZ-9497)
+* Postgres connector Fix excessive thread creation in LSN flush operations. [DBZ-9501](https://issues.redhat.com/browse/DBZ-9501)
+
+
+### Breaking changes since 3.3.0.CR1
+
+None
+
+
+### Fixes since 3.3.0.CR1
+
+* XStream may fail with invalid processed low-watermark [DBZ-8923](https://issues.redhat.com/browse/DBZ-8923)
+* Adhoc blocking snapshot can leave streaming paused forever if additional-conditions is bad [DBZ-9494](https://issues.redhat.com/browse/DBZ-9494)
+* Getting "table is null" when table has no column during snapshot [DBZ-9500](https://issues.redhat.com/browse/DBZ-9500)
+* Dropping primary key does not change Oracle relational metadata [DBZ-9505](https://issues.redhat.com/browse/DBZ-9505)
+
+
+### Other changes since 3.3.0.CR1
+
+* Implement the user interface for managing the Connection [DBZ-9314](https://issues.redhat.com/browse/DBZ-9314)
+* Force jackson version to the test suite [DBZ-9495](https://issues.redhat.com/browse/DBZ-9495)
+* Fail debezium build if SPI interfaces are not correctly registered [DBZ-9503](https://issues.redhat.com/browse/DBZ-9503)
+* fix integration-tests module name in quarkus extension for postgres [DBZ-9514](https://issues.redhat.com/browse/DBZ-9514)
+
+
+
+## 3.3.0.CR1
+September 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12467279)
+
+### New features since 3.3.0.Beta1
+
+* Make database exceptions retriable in JDBC sink connector [DBZ-7772](https://issues.redhat.com/browse/DBZ-7772)
+* Add Support for Multiple Oracle Log Miner Destinations by Precedence [DBZ-9041](https://issues.redhat.com/browse/DBZ-9041)
+* Upgrade to Kafka 4.1.0 [DBZ-9460](https://issues.redhat.com/browse/DBZ-9460)
+
+
+### Breaking changes since 3.3.0.Beta1
+
+* Offset position validation for Db2 is not reliable [DBZ-9470](https://issues.redhat.com/browse/DBZ-9470)
+* Update JDBC sink Hibernate dependency to 7.1.0.Final [DBZ-9481](https://issues.redhat.com/browse/DBZ-9481)
+
+
+### Fixes since 3.3.0.Beta1
+
+* Dropping in process batch transactions when shutting down [DBZ-8060](https://issues.redhat.com/browse/DBZ-8060)
+* A transaction mined across two queries can randomly cause unsupported operations [DBZ-8747](https://issues.redhat.com/browse/DBZ-8747)
+* Non-standard number format causing NumberFormatException [DBZ-9181](https://issues.redhat.com/browse/DBZ-9181)
+* Oracle connector reselect  exception handling (ORA-01555 + ORA-22924) [DBZ-9446](https://issues.redhat.com/browse/DBZ-9446)
+* In case of readonly usage the DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG should not be used [DBZ-9452](https://issues.redhat.com/browse/DBZ-9452)
+* Debezium server fails with CNFE [DBZ-9468](https://issues.redhat.com/browse/DBZ-9468)
+* OutOfMemory exception when recreating list of tables for snapshot callables [DBZ-9472](https://issues.redhat.com/browse/DBZ-9472)
+* Debezium Server  raise  "AttributeNotFoundException QueueTotalCapacity" with SqlServer source [DBZ-9477](https://issues.redhat.com/browse/DBZ-9477)
+* Getting "Unknown column in 'field list'" when column name contains backtick [DBZ-9479](https://issues.redhat.com/browse/DBZ-9479)
+* MySQL Event get header throws NullPointerException [DBZ-9483](https://issues.redhat.com/browse/DBZ-9483)
+
+
+### Other changes since 3.3.0.Beta1
+
+* Add unit tests to WalPositionLocator [DBZ-5978](https://issues.redhat.com/browse/DBZ-5978)
+* Add REST API to get retrieve the list of tables [DBZ-9317](https://issues.redhat.com/browse/DBZ-9317)
+* Source and Destination entities must be linked to the Connection entity [DBZ-9333](https://issues.redhat.com/browse/DBZ-9333)
+* Implement Kafka connection validator [DBZ-9334](https://issues.redhat.com/browse/DBZ-9334)
+* Unpin netty image pin [DBZ-9390](https://issues.redhat.com/browse/DBZ-9390)
+* Update JDBC sink connector doc to identify the data types that Debezium does not support [DBZ-9403](https://issues.redhat.com/browse/DBZ-9403)
+* Expose endpoint for get json schemas about connection [DBZ-9420](https://issues.redhat.com/browse/DBZ-9420)
+* Add missing destinations to Debezium Platform  [DBZ-9442](https://issues.redhat.com/browse/DBZ-9442)
+* Improve maven compiler config for Debezium Platform [DBZ-9453](https://issues.redhat.com/browse/DBZ-9453)
+* Zookeeperless kafka for DockerRhel executions [DBZ-9462](https://issues.redhat.com/browse/DBZ-9462)
+* Publish in Quarkus the extension for Postgres [DBZ-9478](https://issues.redhat.com/browse/DBZ-9478)
+* Update Mockito to 5.19.0 [DBZ-9480](https://issues.redhat.com/browse/DBZ-9480)
+* Update to AssertJ 3.27.5 [DBZ-9482](https://issues.redhat.com/browse/DBZ-9482)
+* Declate source/transforms in ServiceLoader manifests so it can be compatible with new plugin discovery mode  [DBZ-9493](https://issues.redhat.com/browse/DBZ-9493)
+
+
+
+## 3.3.0.Beta1
+September 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466490)
+
+### New features since 3.3.0.Alpha2
+
+* Inform the user about any potential impact on the existing pipelines on updating one of the dependant resource [DBZ-9104](https://issues.redhat.com/browse/DBZ-9104)
+* Add support for tracing.* config options in MongoEventRouter [DBZ-9328](https://issues.redhat.com/browse/DBZ-9328)
+* Migrate External Connectors to ScheduledHeartbeat [DBZ-9377](https://issues.redhat.com/browse/DBZ-9377)
+* Prevent ALTER PUBLICATION queries for filtered publications when not required [DBZ-9395](https://issues.redhat.com/browse/DBZ-9395)
+* Oracle LastBatchProcessingThroughput should use JdbcRows rather than CountedChanges [DBZ-9399](https://issues.redhat.com/browse/DBZ-9399)
+
+
+### Breaking changes since 3.3.0.Alpha2
+
+* Standardize Cassandra connector JMX metrics naming convention to match other Debezium connectors [DBZ-9281](https://issues.redhat.com/browse/DBZ-9281)
+* Embedded Engine: ClassLoader management for frameworks like SpringBoot [DBZ-9375](https://issues.redhat.com/browse/DBZ-9375)
+
+
+### Fixes since 3.3.0.Alpha2
+
+* Debezium not recovering from connection errors [DBZ-7872](https://issues.redhat.com/browse/DBZ-7872)
+* JdbcSchemaHistory Fails to Handle Data Sharding When Recovering Records [DBZ-8979](https://issues.redhat.com/browse/DBZ-8979)
+*  Quarkus-Debezium-Extension does not work with Hibernate ORM 7  [DBZ-9193](https://issues.redhat.com/browse/DBZ-9193)
+* Data loss occurs when connector restarts after failed ad-hoc blocking snapshot [DBZ-9337](https://issues.redhat.com/browse/DBZ-9337)
+* Oracle connector does not support large CLOB and BLOB values [DBZ-9392](https://issues.redhat.com/browse/DBZ-9392)
+* Oracle DDL parser exception - DROP MATERIALIZED [DBZ-9397](https://issues.redhat.com/browse/DBZ-9397)
+* Debezium Platform OpenAPI spec miss returns schemas [DBZ-9405](https://issues.redhat.com/browse/DBZ-9405)
+* Oracle connector does not parse syntax : PARALLEL in DDL  [DBZ-9406](https://issues.redhat.com/browse/DBZ-9406)
+* Increase max allowed json string length [DBZ-9407](https://issues.redhat.com/browse/DBZ-9407)
+* Wrong default value of task.management.timeout.ms [DBZ-9408](https://issues.redhat.com/browse/DBZ-9408)
+* LCR flushing can cause low watermark to be invalidated [DBZ-9413](https://issues.redhat.com/browse/DBZ-9413)
+* Oracle connector will fail with cryptic error when offset position is no longer valid [DBZ-9416](https://issues.redhat.com/browse/DBZ-9416)
+* Context headers are added two times during an incremental snapshot [DBZ-9422](https://issues.redhat.com/browse/DBZ-9422)
+* Operator CI fails on main trying to checkout core repo [DBZ-9429](https://issues.redhat.com/browse/DBZ-9429)
+
+
+### Other changes since 3.3.0.Alpha2
+
+* Stop building zookeeper images [DBZ-9189](https://issues.redhat.com/browse/DBZ-9189)
+* Debezium Engine Quarkus Extension: create documentation section [DBZ-9294](https://issues.redhat.com/browse/DBZ-9294)
+* Debezium Engine Quarkus Extension: add a quick start in the example repository [DBZ-9301](https://issues.redhat.com/browse/DBZ-9301)
+* Debezium Engine Quarkus Extension: blog post [DBZ-9311](https://issues.redhat.com/browse/DBZ-9311)
+* Add a rest API to validate a connection [DBZ-9315](https://issues.redhat.com/browse/DBZ-9315)
+* MariaDB connector documentation should make clear compressed logs are not supported [DBZ-9367](https://issues.redhat.com/browse/DBZ-9367)
+* EmbeddedEngineTest#shouldHandleNoDefaultOffsetFlushInterval fail randomly [DBZ-9398](https://issues.redhat.com/browse/DBZ-9398)
+* Improve blocking snapshot test resilience [DBZ-9410](https://issues.redhat.com/browse/DBZ-9410)
+* Infinispan Protostream compatibility for Java compiler > 22 [DBZ-9417](https://issues.redhat.com/browse/DBZ-9417)
+
+
+
+## 3.3.0.Alpha2
+August 26th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12465252)
+
+### New features since 3.3.0.Alpha1
+
+* Support for TSVECTOR data types for postgres Sink connector [DBZ-8471](https://issues.redhat.com/browse/DBZ-8471)
+* Improve error management and messages on Debezium Platform backend [DBZ-8836](https://issues.redhat.com/browse/DBZ-8836)
+* Add UI support for Fine-grained logging configuration [DBZ-8890](https://issues.redhat.com/browse/DBZ-8890)
+* Update tutorial to use KRaft mode [DBZ-9184](https://issues.redhat.com/browse/DBZ-9184)
+* Add support for MongoDB Source Connector to start CDC from a specified point [DBZ-9240](https://issues.redhat.com/browse/DBZ-9240)
+* Introduce timeout for ALTER/CREATE Publication statment [DBZ-9310](https://issues.redhat.com/browse/DBZ-9310)
+* Allow redo thread flush scn adjustment to be configurable [DBZ-9344](https://issues.redhat.com/browse/DBZ-9344)
+* Improve performance validation on whether a supplied value is a toast column [DBZ-9345](https://issues.redhat.com/browse/DBZ-9345)
+* SQL Server emits heartbeats while catching up [DBZ-9364](https://issues.redhat.com/browse/DBZ-9364)
+* Add detail pages to source and destination [DBZ-9373](https://issues.redhat.com/browse/DBZ-9373)
+
+
+### Breaking changes since 3.3.0.Alpha1
+
+None
+
+
+### Fixes since 3.3.0.Alpha1
+
+* Incremental snapshot offset failing to load on task restart [DBZ-9209](https://issues.redhat.com/browse/DBZ-9209)
+* Update kafka.version  to 4.0.0 in parent pom [DBZ-9300](https://issues.redhat.com/browse/DBZ-9300)
+* Debezium Server Azure Event Hubs sink duplicates all previous events [DBZ-9304](https://issues.redhat.com/browse/DBZ-9304)
+* Archive log only mode does not pause mining when no more data available [DBZ-9306](https://issues.redhat.com/browse/DBZ-9306)
+* Mockit error in EventDispatcherTest [DBZ-9332](https://issues.redhat.com/browse/DBZ-9332)
+* Events may be mistakenly processed multiple times using multiple tasks [DBZ-9338](https://issues.redhat.com/browse/DBZ-9338)
+* Debezium constatly performs heartbeat.action.query instead of honoring heartbeat.interval.ms [DBZ-9340](https://issues.redhat.com/browse/DBZ-9340)
+* OCP tests fails to start [DBZ-9342](https://issues.redhat.com/browse/DBZ-9342)
+* Fetching transaction event count can result in NullPointerException [DBZ-9349](https://issues.redhat.com/browse/DBZ-9349)
+* Ensure JAVA_OPTS env var is correct on dbz server startup [DBZ-9352](https://issues.redhat.com/browse/DBZ-9352)
+* Issue in ReselectColumnsPostProcessor when field's schema type is BYTES [DBZ-9356](https://issues.redhat.com/browse/DBZ-9356)
+* MariaDB fails to parse ALTER TABLE using RENAME COLUMN IF EXISTS syntax [DBZ-9358](https://issues.redhat.com/browse/DBZ-9358)
+* Oracle fails to reselect columns when table structure changes and throws ORA-01466 [DBZ-9359](https://issues.redhat.com/browse/DBZ-9359)
+* Single quotes getting double quotes in a create operation [DBZ-9366](https://issues.redhat.com/browse/DBZ-9366)
+* Mining upper boundary is miscalculated when using archive log only mode [DBZ-9370](https://issues.redhat.com/browse/DBZ-9370)
+* Proper Kafka producer exception not logged due to record.key serialisation error [DBZ-9378](https://issues.redhat.com/browse/DBZ-9378)
+
+
+### Other changes since 3.3.0.Alpha1
+
+* Include XStream classes in downstream builds [DBZ-8828](https://issues.redhat.com/browse/DBZ-8828)
+* Remove any dummy value that are are using from showing them in UI [DBZ-9106](https://issues.redhat.com/browse/DBZ-9106)
+* Clarify IBM DB2 IIDR licensing requirement in Db2 connector documentation [DBZ-9121](https://issues.redhat.com/browse/DBZ-9121)
+* Document more restrictive configuration for creating Oracle LogMiner user  [DBZ-9129](https://issues.redhat.com/browse/DBZ-9129)
+* Create rest resource for the connection [DBZ-9313](https://issues.redhat.com/browse/DBZ-9313)
+* Improve the Github Action that checks the commit messages [DBZ-9327](https://issues.redhat.com/browse/DBZ-9327)
+* Update assertj to 3.27.4 [DBZ-9343](https://issues.redhat.com/browse/DBZ-9343)
+* Add, remove, or convert Dev Preview and Tech Preview notes [DBZ-9347](https://issues.redhat.com/browse/DBZ-9347)
+* Add documentation for the LogMiner unbuffered mode [DBZ-9351](https://issues.redhat.com/browse/DBZ-9351)
+
+
+
+## 3.3.0.Alpha1
+August 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12464154)
+
+### New features since 3.2.0.Final
+
+* Execute Debezium in oracle readonly replica [DBZ-8319](https://issues.redhat.com/browse/DBZ-8319)
+* Support for TSVECTOR data types for postgres source connector [DBZ-8470](https://issues.redhat.com/browse/DBZ-8470)
+* Support MariaDB 11.7+ vector data type [DBZ-8582](https://issues.redhat.com/browse/DBZ-8582)
+* Fine-grained logging configuration [DBZ-8638](https://issues.redhat.com/browse/DBZ-8638)
+* During a mining session treat ORA-00310 redo logs being inconsistent [DBZ-8870](https://issues.redhat.com/browse/DBZ-8870)
+* Smart editor: Add the ability to create a complete pipeline directly using the debezium server configuration [DBZ-8873](https://issues.redhat.com/browse/DBZ-8873)
+* Smart editor:  Provide support for an auto conversion between formats [DBZ-8888](https://issues.redhat.com/browse/DBZ-8888)
+* Add JMX metrics/statistics for cached events [DBZ-8991](https://issues.redhat.com/browse/DBZ-8991)
+* Introduce a way to restore the legacy numeric behavior with decimal.handling.mode [DBZ-9166](https://issues.redhat.com/browse/DBZ-9166)
+* Remove heartbeat creation from configuration in favor of HeartbeatFactory [DBZ-9176](https://issues.redhat.com/browse/DBZ-9176)
+* Simplify dockerfile for debezium-connector-vitess itests [DBZ-9216](https://issues.redhat.com/browse/DBZ-9216)
+* Update Outbox Extension to Quarkus 3.23.4 & Align to Hibernate 7.x [DBZ-9219](https://issues.redhat.com/browse/DBZ-9219)
+* Add Lightbox on website for images [DBZ-9227](https://issues.redhat.com/browse/DBZ-9227)
+* Azure Event Hub sink - built-in support for hashing partition keys [DBZ-9245](https://issues.redhat.com/browse/DBZ-9245)
+* Throw an exception on missing heartbeat table on Debezium-connector-postgres [DBZ-9247](https://issues.redhat.com/browse/DBZ-9247)
+* Add configuration to disable Context headers added with OpenLineage [DBZ-9248](https://issues.redhat.com/browse/DBZ-9248)
+* Add ability to specify whether to use a CTE-based query for LogMiner [DBZ-9272](https://issues.redhat.com/browse/DBZ-9272)
+* Allow Oracle heartbeat action query error handler to be resilient to ORA-02396 [DBZ-9280](https://issues.redhat.com/browse/DBZ-9280)
+* Uppdate Informix JDBC Driver to 4.50.12 [DBZ-9288](https://issues.redhat.com/browse/DBZ-9288)
+* Release CockroachDB connector [DBZ-9289](https://issues.redhat.com/browse/DBZ-9289)
+* Chart versioning must be SemVer compliant [DBZ-8913](https://issues.redhat.com/browse/DBZ-8913)
+* Add additional tag to images compliant with SemVer [DBZ-8914](https://issues.redhat.com/browse/DBZ-8914)
+* Debezium Engine Quarkus Extension: Support Heartbeat Event Listener [DBZ-8960](https://issues.redhat.com/browse/DBZ-8960)
+* Debezium Engine Quarkus Extension: custom deserializer [DBZ-8962](https://issues.redhat.com/browse/DBZ-8962)
+* Debezium Engine Quarkus Extension: introduce PostProcessor handler [DBZ-8965](https://issues.redhat.com/browse/DBZ-8965)
+* Debezium Engine Quarkus Extension: Add Support to Custom Converter  [DBZ-8966](https://issues.redhat.com/browse/DBZ-8966)
+* Add EOS support into main Debezium connectors [DBZ-9177](https://issues.redhat.com/browse/DBZ-9177)
+* Avoid storing irrelevant DDL statements in history topic [DBZ-9186](https://issues.redhat.com/browse/DBZ-9186)
+
+
+### Breaking changes since 3.2.0.Final
+
+* Remove deprecated snapshot mode [DBZ-8171](https://issues.redhat.com/browse/DBZ-8171)
+
+
+### Fixes since 3.2.0.Final
+
+* User selection is not persistence in pipeline designer [DBZ-8761](https://issues.redhat.com/browse/DBZ-8761)
+* MongoDB example image not working [DBZ-9061](https://issues.redhat.com/browse/DBZ-9061)
+* '||' in ORACLE NVARCHAR data will cause exception [DBZ-9132](https://issues.redhat.com/browse/DBZ-9132)
+* [ORACLE] DDL parsing failed [DBZ-9172](https://issues.redhat.com/browse/DBZ-9172)
+* When using non-recovery snapshot modes, offsets are not reset [DBZ-9208](https://issues.redhat.com/browse/DBZ-9208)
+* Validation for Log Position for SqlServer can fail [DBZ-9212](https://issues.redhat.com/browse/DBZ-9212)
+* Possible regression with throwing DebeziumException rather than warning [DBZ-9217](https://issues.redhat.com/browse/DBZ-9217)
+* Double event publishing via NATS Jetstream sink [DBZ-9221](https://issues.redhat.com/browse/DBZ-9221)
+* Debezium examples github actions fails due to outdated action version [DBZ-9222](https://issues.redhat.com/browse/DBZ-9222)
+* NullPointerException is thrown because DebeziumHeaderProducer is not registered [DBZ-9225](https://issues.redhat.com/browse/DBZ-9225)
+* MongoDB ExtractNewDocumentState SMT crash with nested struct in array in 3.2 [DBZ-9231](https://issues.redhat.com/browse/DBZ-9231)
+* Mongodb incremental snapshot is not honoring additional conditions [DBZ-9232](https://issues.redhat.com/browse/DBZ-9232)
+* WithClause inside an INSERT statement throws DDL parser exception [DBZ-9233](https://issues.redhat.com/browse/DBZ-9233)
+* Oracle snapshot boundary mode does not have a field display name [DBZ-9236](https://issues.redhat.com/browse/DBZ-9236)
+* Request fix for muti-task CREATE TABLE collisions for jdbc postgres target causing task to crash [DBZ-9237](https://issues.redhat.com/browse/DBZ-9237)
+* Oracle split table partition does not support online mode [DBZ-9238](https://issues.redhat.com/browse/DBZ-9238)
+* Exceptionally large mining windows can lead unintended metrics/performance issues [DBZ-9241](https://issues.redhat.com/browse/DBZ-9241)
+* zstd-jni should not be included in connector package [DBZ-9273](https://issues.redhat.com/browse/DBZ-9273)
+* OpenLineage output dataset uses the wrong datatype [DBZ-9285](https://issues.redhat.com/browse/DBZ-9285)
+* Debezium platform verify signal data collection fails [DBZ-9290](https://issues.redhat.com/browse/DBZ-9290)
+* Unchecked exception from OffsetStorageWriter.doFlush() in AsyncEmbeddedEngine leaves semaphore in OffsetStorageWriter unreleased and probably causes engine to fail [DBZ-9292](https://issues.redhat.com/browse/DBZ-9292)
+* Reselect post processor does not work with VariableScaleDecimal primary keys [DBZ-9293](https://issues.redhat.com/browse/DBZ-9293)
+* Duplicate key exception when using postgres connector based on pgoutput plugin [DBZ-9305](https://issues.redhat.com/browse/DBZ-9305)
+
+
+### Other changes since 3.2.0.Final
+
+* Document Debezium operator installation and usage [DBZ-8440](https://issues.redhat.com/browse/DBZ-8440)
+* Create a showcase example for Openlineage [DBZ-9058](https://issues.redhat.com/browse/DBZ-9058)
+* Update the tutorial [DBZ-9187](https://issues.redhat.com/browse/DBZ-9187)
+* Update debezium examples [DBZ-9188](https://issues.redhat.com/browse/DBZ-9188)
+* Document exactly once delivery [DBZ-9230](https://issues.redhat.com/browse/DBZ-9230)
+* Include the raw SinkRecord in the logged output of a JDBC sink record [DBZ-9239](https://issues.redhat.com/browse/DBZ-9239)
+* Switch to smallrye jandex maven plugin [DBZ-9246](https://issues.redhat.com/browse/DBZ-9246)
+* Document JMX setup for Debezium Server [DBZ-9282](https://issues.redhat.com/browse/DBZ-9282)
+* Remove hard line breaks from MariaDB and MySQL properties lists [DBZ-9286](https://issues.redhat.com/browse/DBZ-9286)
+* Support configuring Mockito java agent in java 21+ [DBZ-9296](https://issues.redhat.com/browse/DBZ-9296)
+* Log all rows from LogMiner session logs during LogMiner failures  [DBZ-9322](https://issues.redhat.com/browse/DBZ-9322)
+
+
+
+## 3.2.0.Final
+July 9th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12463706)
+
+### New features since 3.2.0.CR1
+
+* Add SnapshotSkipped status to metrics [DBZ-8610](https://issues.redhat.com/browse/DBZ-8610)
+* Introduce publish.via.partition.root flag in PostgresCDC Connector [DBZ-9158](https://issues.redhat.com/browse/DBZ-9158)
+* Support dynamic message key in Event Hub Sink [DBZ-9195](https://issues.redhat.com/browse/DBZ-9195)
+* Debezium Engine Quarkus Extension: expose Debezium Notification Events [DBZ-8964](https://issues.redhat.com/browse/DBZ-8964)
+* Provide a dedicate module for OpenLineage integration [DBZ-9110](https://issues.redhat.com/browse/DBZ-9110)
+* Add support for headers in NATS Jetstream sink [DBZ-9171](https://issues.redhat.com/browse/DBZ-9171)
+
+
+### Breaking changes since 3.2.0.CR1
+
+* Ibmi connector default to avro for SchemaNameAdjuster [DBZ-9183](https://issues.redhat.com/browse/DBZ-9183)
+
+
+### Fixes since 3.2.0.CR1
+
+* Events inserted during snapshot are being duplicated [DBZ-9006](https://issues.redhat.com/browse/DBZ-9006)
+* DmlParserException: DML statement couldn't be parsed [DBZ-9191](https://issues.redhat.com/browse/DBZ-9191)
+* OpenLineage - Postgres connector emits Lineage Event with incorrect dataset name [DBZ-9192](https://issues.redhat.com/browse/DBZ-9192)
+* Data structures for communicating to DB2 are static [DBZ-9196](https://issues.redhat.com/browse/DBZ-9196)
+* Add filtering for journal types and codes [DBZ-9197](https://issues.redhat.com/browse/DBZ-9197)
+* Oracle connector crashes on redo entry without SQL_REDO for temporary tables [DBZ-9199](https://issues.redhat.com/browse/DBZ-9199)
+* Fix test and noise in Vitess Connector [DBZ-9207](https://issues.redhat.com/browse/DBZ-9207)
+
+
+### Other changes since 3.2.0.CR1
+
+* Debezium Engine Quarkus Extension: Use Quarkus-style Configuration Properties [DBZ-8957](https://issues.redhat.com/browse/DBZ-8957)
+* ORA-00600: possible solutions to be added to the documentation FAQ [DBZ-9155](https://issues.redhat.com/browse/DBZ-9155)
+* Debezium uses deprecated JdbcConnection#quotedColumnIdString() [DBZ-9169](https://issues.redhat.com/browse/DBZ-9169)
+* Add documentation on running integration tests on Apple Silicon [DBZ-9173](https://issues.redhat.com/browse/DBZ-9173)
+* Upgrade PostgreSQL JDBC driver to 42.7.7 [DBZ-9200](https://issues.redhat.com/browse/DBZ-9200)
+* Fix OpenLineage tests [DBZ-9201](https://issues.redhat.com/browse/DBZ-9201)
+* Misleading wording in the WalPositionLocator JavaDoc [DBZ-9203](https://issues.redhat.com/browse/DBZ-9203)
+
+
+
+## 3.2.0.CR1
+June 25th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12462697)
+
+### New features since 3.2.0.Beta2
+
+* PubSub Sink default maxBufferBytes allows the request to exceed the limit [DBZ-9144](https://issues.redhat.com/browse/DBZ-9144)
+* Remove nominalTime facet from OpenLineage events [DBZ-9146](https://issues.redhat.com/browse/DBZ-9146)
+* Debezium Engine Quarkus Extension: Introduce Lifecycle Annotations for Debezium Engine [DBZ-8959](https://issues.redhat.com/browse/DBZ-8959)
+
+
+### Breaking changes since 3.2.0.Beta2
+
+* Fix warn log if snapshot mode when needed is required but is not set [DBZ-9118](https://issues.redhat.com/browse/DBZ-9118)
+
+
+### Fixes since 3.2.0.Beta2
+
+* Full screen button on the pipeline log page is not working [DBZ-9105](https://issues.redhat.com/browse/DBZ-9105)
+* SQL Server connector doesn't properly handle special characters in schema names [DBZ-9117](https://issues.redhat.com/browse/DBZ-9117)
+* The presence of "_" in the ORACLE table name caused the cdc to fail [DBZ-9131](https://issues.redhat.com/browse/DBZ-9131)
+* JDBC Connector is lost when filter.include.list is used [DBZ-9141](https://issues.redhat.com/browse/DBZ-9141)
+* Typo in the example of the Custom Converter [DBZ-9153](https://issues.redhat.com/browse/DBZ-9153)
+* Postgres: log errors from keepalive thread for replication [DBZ-9161](https://issues.redhat.com/browse/DBZ-9161)
+* Fix truncate present in history topic if it is a skipped operation [DBZ-9162](https://issues.redhat.com/browse/DBZ-9162)
+* Cannot use idenitifier named LOCKED [DBZ-9163](https://issues.redhat.com/browse/DBZ-9163)
+* MySQL connector doesn't properly handle special characters in database object names [DBZ-9168](https://issues.redhat.com/browse/DBZ-9168)
+* Align configuration for post processors to transforms, predicates [DBZ-9170](https://issues.redhat.com/browse/DBZ-9170)
+
+
+### Other changes since 3.2.0.Beta2
+
+* Upgrade postgresql driver from 42.6.0 to 42.7.2 [DBZ-7533](https://issues.redhat.com/browse/DBZ-7533)
+* Fix some problems experienced when running with Postgres JDBC driver 42.7.5. [DBZ-9018](https://issues.redhat.com/browse/DBZ-9018)
+* Fix test shouldRegularlyFlushLsnWithTxMonitoring [DBZ-9125](https://issues.redhat.com/browse/DBZ-9125)
+* Implement caching in table inclusion filter [DBZ-9128](https://issues.redhat.com/browse/DBZ-9128)
+* Prevent multiple initializations of DataTypeResolver [DBZ-9143](https://issues.redhat.com/browse/DBZ-9143)
+
+
+
+## 3.2.0.Beta2
+June 9th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12462099)
+
+### New features since 3.2.0.Beta1
+
+* Move schema history recovery out of task start method [DBZ-8562](https://issues.redhat.com/browse/DBZ-8562)
+* OpenLineage integration [DBZ-9020](https://issues.redhat.com/browse/DBZ-9020)
+* Reduce calls to getEndOffset during kafka schema history recovery [DBZ-9098](https://issues.redhat.com/browse/DBZ-9098)
+
+
+### Breaking changes since 3.2.0.Beta1
+
+None
+
+
+### Fixes since 3.2.0.Beta1
+
+* Error validating connector with special character $ [DBZ-8660](https://issues.redhat.com/browse/DBZ-8660)
+* Error when converting table and column names to uppercase [DBZ-9017](https://issues.redhat.com/browse/DBZ-9017)
+* Oracle LogMiner mistakenly emits rollback transactions in commit data only mode [DBZ-9074](https://issues.redhat.com/browse/DBZ-9074)
+* UI is breaking on the pipeline details page. [DBZ-9084](https://issues.redhat.com/browse/DBZ-9084)
+* SQL Server connector doesn't properly handle special characters in database object names [DBZ-9091](https://issues.redhat.com/browse/DBZ-9091)
+* Column name encrypted is not supported by MySqlParser [DBZ-9092](https://issues.redhat.com/browse/DBZ-9092)
+* Typo in the registry link for amq streams kafka container  [DBZ-9094](https://issues.redhat.com/browse/DBZ-9094)
+* Removal of REST extension left service loader definition in Oracle connector [DBZ-9101](https://issues.redhat.com/browse/DBZ-9101)
+
+
+### Other changes since 3.2.0.Beta1
+
+* Support signals in UI frontend [DBZ-8422](https://issues.redhat.com/browse/DBZ-8422)
+* Replace Postgres txid_current() by pg_current_xact_id() [DBZ-9011](https://issues.redhat.com/browse/DBZ-9011)
+* Create documentation for embeddings SMT [DBZ-9053](https://issues.redhat.com/browse/DBZ-9053)
+* Update Docker Build and CI issues [DBZ-9076](https://issues.redhat.com/browse/DBZ-9076)
+* Lots of time spent in parsing column type modifiers [DBZ-9093](https://issues.redhat.com/browse/DBZ-9093)
+* Bump Chicory to 1.4.0 [DBZ-9100](https://issues.redhat.com/browse/DBZ-9100)
+* Improve the messaging in the "Table is not a relational table" logged exception [DBZ-9111](https://issues.redhat.com/browse/DBZ-9111)
+
+
+
+## 3.2.0.Beta1
+May 29th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12455584)
+
+### New features since 3.2.0.Alpha1
+
+* Qdrant sink in Debezium Server [DBZ-8635](https://issues.redhat.com/browse/DBZ-8635)
+* Oracle username returns unknown when transaction mined in two steps [DBZ-8884](https://issues.redhat.com/browse/DBZ-8884)
+* Include JSON source when throwing deserialization error with incremental snapshots [DBZ-8974](https://issues.redhat.com/browse/DBZ-8974)
+* Stop forced flushing with reduction buffer in JDBC Sink Connector [DBZ-8982](https://issues.redhat.com/browse/DBZ-8982)
+* Add validation for signal.data.collection [DBZ-9001](https://issues.redhat.com/browse/DBZ-9001)
+* Introduce connection validation timeout [DBZ-9004](https://issues.redhat.com/browse/DBZ-9004)
+* Improve failed connection logging [DBZ-9008](https://issues.redhat.com/browse/DBZ-9008)
+* Allow custom load balancing policy [DBZ-9014](https://issues.redhat.com/browse/DBZ-9014)
+* Add logic to `ExtractNewRecordState` to convert all deletes to tombstone records [DBZ-9022](https://issues.redhat.com/browse/DBZ-9022)
+* Add option to enable hostname verification for Redis sink [DBZ-9042](https://issues.redhat.com/browse/DBZ-9042)
+* Add basic notification support [DBZ-9046](https://issues.redhat.com/browse/DBZ-9046)
+* Support for Informix 15 [DBZ-9049](https://issues.redhat.com/browse/DBZ-9049)
+* Implement support for stopLoggingOnClose [DBZ-9050](https://issues.redhat.com/browse/DBZ-9050)
+* Uppdate Informix JDBC Driver to 4.50.11.2 [DBZ-9072](https://issues.redhat.com/browse/DBZ-9072)
+* Implement heartbeat.action.query [DBZ-9081](https://issues.redhat.com/browse/DBZ-9081)
+* Add option to specify custom keystore and truststore for Redis sink [DBZ-9082](https://issues.redhat.com/browse/DBZ-9082)
+
+
+### Breaking changes since 3.2.0.Alpha1
+
+* Optimize ExtractNewRecordState "delete.handling.mode" and "drop.tombstones" configuration [DBZ-6068](https://issues.redhat.com/browse/DBZ-6068)
+* Migrate to new Maven Central [DBZ-9025](https://issues.redhat.com/browse/DBZ-9025)
+* Remove embeddings prefix from embeddgins SMT configuration [DBZ-9056](https://issues.redhat.com/browse/DBZ-9056)
+* Exclude TRUNCATE and REPLACE statements from schema history [DBZ-9085](https://issues.redhat.com/browse/DBZ-9085)
+
+
+### Fixes since 3.2.0.Alpha1
+
+* Ingestion issues with Mongodb when empty [] or empty {} appear in the Json feed [DBZ-5920](https://issues.redhat.com/browse/DBZ-5920)
+* Incremental snapshot in-progress notification doesn't contain full composite PK [DBZ-8207](https://issues.redhat.com/browse/DBZ-8207)
+* Connector errors.max.retries is ignored [DBZ-8711](https://issues.redhat.com/browse/DBZ-8711)
+* Oracle log consistency check always fails after database refresh with residual archive logs [DBZ-8744](https://issues.redhat.com/browse/DBZ-8744)
+* Debezium*ConnectorResourceIT are skipped [DBZ-8777](https://issues.redhat.com/browse/DBZ-8777)
+* DDL statement couldn't be parsed. PAGE_COMPRESSED [DBZ-8916](https://issues.redhat.com/browse/DBZ-8916)
+* Charts release pipeline must correctly honor the dry-run option [DBZ-8955](https://issues.redhat.com/browse/DBZ-8955)
+* debezium/server mongodb org.apache.kafka.connect.errors.DataException: is not a valid field name [DBZ-8972](https://issues.redhat.com/browse/DBZ-8972)
+* NatsJetStreamIT fails [DBZ-8985](https://issues.redhat.com/browse/DBZ-8985)
+* Make StreamingChangeEventSource closeable [DBZ-8995](https://issues.redhat.com/browse/DBZ-8995)
+* DDL is logged with sensitive information in AbstractSchemaHistory [DBZ-8999](https://issues.redhat.com/browse/DBZ-8999)
+* The in-progress notification is sent before the snapshot job starts [DBZ-9002](https://issues.redhat.com/browse/DBZ-9002)
+* Connection left in "idle in transaction" state when setting snapshot mode to initial only [DBZ-9003](https://issues.redhat.com/browse/DBZ-9003)
+* DB2 for Z/OS Fixes [DBZ-9007](https://issues.redhat.com/browse/DBZ-9007)
+* While the low watermark scn updates across iterations, it is never flushed to the offsets. [DBZ-9013](https://issues.redhat.com/browse/DBZ-9013)
+* IBMi connector is not included in Debezium Server [DBZ-9015](https://issues.redhat.com/browse/DBZ-9015)
+* PostgresSQL Read-only incremental snapshot continue to read chunks even with completed snapshot [DBZ-9016](https://issues.redhat.com/browse/DBZ-9016)
+* Oracle database PDB name in lowercase is not connecting to the connector. [DBZ-9019](https://issues.redhat.com/browse/DBZ-9019)
+* Error parsing MariaDB DDL [DBZ-9027](https://issues.redhat.com/browse/DBZ-9027)
+* LogMiner performance regression with buffered implementation [DBZ-9030](https://issues.redhat.com/browse/DBZ-9030)
+* Column named SEQUENCE, a MySQL keyword fails to be parsed [DBZ-9031](https://issues.redhat.com/browse/DBZ-9031)
+* MySQL parser fails when using a JSON_TABLE in a join clause [DBZ-9034](https://issues.redhat.com/browse/DBZ-9034)
+* Default values may be misinterpreted as bind parameters due to nested quotes [DBZ-9040](https://issues.redhat.com/browse/DBZ-9040)
+* Missing configuration properties for signal channel readers can lead to NullPointerException [DBZ-9052](https://issues.redhat.com/browse/DBZ-9052)
+* Blocking snapshot does not always resume streaming thread when task is in shutdown [DBZ-9055](https://issues.redhat.com/browse/DBZ-9055)
+* Field deprecatedAliases are nullified by other options [DBZ-9060](https://issues.redhat.com/browse/DBZ-9060)
+* Oracle-specific lag metric is being updated based on empty transaction commits [DBZ-9062](https://issues.redhat.com/browse/DBZ-9062)
+* EmbeddingsOllamaIT fails in CI [DBZ-9063](https://issues.redhat.com/browse/DBZ-9063)
+* Field.withDeprecatedAliases() skips deprecatedFieldWarning validator [DBZ-9064](https://issues.redhat.com/browse/DBZ-9064)
+* Error while parsing a MariaDB DDL [DBZ-9065](https://issues.redhat.com/browse/DBZ-9065)
+* Field::deprecatedFieldWarning results into validation failure [DBZ-9066](https://issues.redhat.com/browse/DBZ-9066)
+* Postgres Reselector fails on serial primary keys [DBZ-9086](https://issues.redhat.com/browse/DBZ-9086)
+
+
+### Other changes since 3.2.0.Alpha1
+
+* Remove skipping (de)serialization tests from the testsuite [DBZ-7356](https://issues.redhat.com/browse/DBZ-7356)
+* Remove EmebeddedEngine [DBZ-8029](https://issues.redhat.com/browse/DBZ-8029)
+* Document Oracle mTLS connection configuration [DBZ-8159](https://issues.redhat.com/browse/DBZ-8159)
+*  Add an examples in debezium-example repository with easy local deployment for Debezium-platfrom [DBZ-8664](https://issues.redhat.com/browse/DBZ-8664)
+* [Conductor] Add endpoint to send signals  [DBZ-8942](https://issues.redhat.com/browse/DBZ-8942)
+* Create Maven Modules for Debezium Engine Quarkus Extension [DBZ-8956](https://issues.redhat.com/browse/DBZ-8956)
+* Debezium Engine Quarkus Extension: Introduce Debezium Capturing Listener [DBZ-8961](https://issues.redhat.com/browse/DBZ-8961)
+* Add MariaDB example in tutorial [DBZ-8983](https://issues.redhat.com/browse/DBZ-8983)
+* Unify behavior across LogMiner buffered/unbuffered implementations [DBZ-8986](https://issues.redhat.com/browse/DBZ-8986)
+* Create emdeddings SMT extension for Hugging face [DBZ-8992](https://issues.redhat.com/browse/DBZ-8992)
+* Create emdeddings SMT extension for Voyage AI models [DBZ-8993](https://issues.redhat.com/browse/DBZ-8993)
+* Enable Dependabot on debezium operator repo [DBZ-9010](https://issues.redhat.com/browse/DBZ-9010)
+* Prevent shared resource race condition in tests [DBZ-9029](https://issues.redhat.com/browse/DBZ-9029)
+* Upgrade Outbox Extension to Quarkus 3.22.2 [DBZ-9033](https://issues.redhat.com/browse/DBZ-9033)
+* Update Debezium base images to Fedora 41 [DBZ-9035](https://issues.redhat.com/browse/DBZ-9035)
+* Upgrade Antora to 3.1.10 [DBZ-9036](https://issues.redhat.com/browse/DBZ-9036)
+* Update to the latest version of Mockito 5.17.0 [DBZ-9037](https://issues.redhat.com/browse/DBZ-9037)
+* Update to Infinispan 15.2.1.Final [DBZ-9038](https://issues.redhat.com/browse/DBZ-9038)
+* Create a GitHub action/workflow to run some connectors with apicurio profile [DBZ-9043](https://issues.redhat.com/browse/DBZ-9043)
+* Add SQLException to retriable exceptions [DBZ-9051](https://issues.redhat.com/browse/DBZ-9051)
+* Remove duplicate version configuration for rest-assured in bom [DBZ-9069](https://issues.redhat.com/browse/DBZ-9069)
+* move package from `io.quarkus.*` to `io.debezium.*` [DBZ-9075](https://issues.redhat.com/browse/DBZ-9075)
+* Enforce CI to build all dependent modules [DBZ-9077](https://issues.redhat.com/browse/DBZ-9077)
+
+
+
 ## 3.2.0.Alpha1
 April 29th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12449948)
 

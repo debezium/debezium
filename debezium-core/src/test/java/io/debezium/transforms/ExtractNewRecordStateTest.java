@@ -18,7 +18,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -986,6 +986,24 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             final SourceRecord unwrapped = transform.apply(createRecord);
 
             assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo("default_str");
+        }
+    }
+
+    @Test
+    public void testDeleteRewriteToTombstoneAndDropActualTombstone() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_TOMBSTONE_DELETES, "delete-to-tombstone");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord tombstoneRecord = createTombstoneRecord();
+
+            final SourceRecord unwrappedDeleteRecord = transform.apply(deleteRecord);
+            final SourceRecord unwrappedTombstoneRecord = transform.apply(tombstoneRecord);
+
+            assertThat(unwrappedDeleteRecord.value()).isNull();
+            assertThat(unwrappedTombstoneRecord).isNull();
         }
     }
 }

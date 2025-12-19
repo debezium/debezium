@@ -8,6 +8,7 @@ package io.debezium.config;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Field.ValidationOutput;
@@ -44,18 +46,16 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
-import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.spi.converter.ConvertedField;
-import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
@@ -66,13 +66,13 @@ import io.debezium.util.Strings;
  * @author Gunnar Morling
  */
 public abstract class CommonConnectorConfig {
-    public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
     public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
     public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
+    public static final String CONNECTOR_CLASS = "connector.class";
     protected SnapshotQueryMode snapshotQueryMode;
     protected String snapshotQueryModeCustomName;
     protected String snapshotLockingModeCustomName;
@@ -83,6 +83,9 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
     protected final boolean isAdvancedMetricsEnabled;
+    private final boolean isExtendedHeadersEnabled;
+    protected final int guardrailCollectionsMax;
+    protected final GuardrailCollectionsLimitAction guardrailCollectionsLimitAction;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -456,6 +459,66 @@ public abstract class CommonConnectorConfig {
 
     }
 
+    /**
+     * The set of predefined GuardrailCollectionsLimitAction options
+     */
+    public enum GuardrailCollectionsLimitAction implements EnumeratedValue {
+        /**
+         * Log a warning when the guardrail limit is exceeded but continue processing
+         */
+        WARN("warn"),
+
+        /**
+         * Fail the connector when the guardrail limit is exceeded
+         */
+        FAIL("fail");
+
+        private final String value;
+
+        GuardrailCollectionsLimitAction(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static GuardrailCollectionsLimitAction parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (GuardrailCollectionsLimitAction option : GuardrailCollectionsLimitAction.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static GuardrailCollectionsLimitAction parse(String value, String defaultValue) {
+            GuardrailCollectionsLimitAction action = parse(value);
+            if (action == null && defaultValue != null) {
+                action = parse(defaultValue);
+            }
+            return action;
+        }
+    }
+
     public enum EventConvertingFailureHandlingMode implements EnumeratedValue {
         /**
          * Problematic events will be skipped.
@@ -565,23 +628,25 @@ public abstract class CommonConnectorConfig {
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
-    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 90;
+    // This should be less than the value of worker config task.shutdown.graceful.timeout.ms. It
+    // defaults to 5 seconds, hence setting it to 4 seconds.
+    public static final Duration DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT = Duration.ofSeconds(4);
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
-    public static final String DATABASE_CONFIG_PREFIX = "database.";
+    public static final String DATABASE_CONFIG_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
-    private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
+    public static final long DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS = 60000L; // 60 seconds default timeout
 
     public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     private final int maxRetriesOnError;
 
-    public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
+    public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
@@ -841,10 +906,13 @@ public abstract class CommonConnectorConfig {
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 20))
-            .withType(Type.STRING)
+            .withType(Type.LIST)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
+            .withValidation(CommonConnectorConfig::validateSignalDataCollection)
+            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. " +
+                    "For multi-partition mode connectors, multiple signal data collections can be specified as a comma-separated list. " +
+                    "Signaling is disabled when not set.");
 
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")
@@ -1086,6 +1154,287 @@ public abstract class CommonConnectorConfig {
             .optional()
             .withDescription("When enabled the connector will emit advanced streaming metrics");
 
+    public static final Field CONNECTION_VALIDATION_TIMEOUT_MS = Field.create("connection.validation.timeout.ms")
+            .withDisplayName("Connection validation timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
+            .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
+            .withValidation(Field::isPositiveLong);
+
+    public static final Field EXECUTOR_SHUTDOWN_TIMEOUT_MS = Field.create("executor.shutdown.timeout.ms")
+            .withDisplayName("Executor shutdown timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 19))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis())
+            .withDescription("The maximum time in milliseconds to wait for task executor to shut down.")
+            .withValidation(Field::isPositiveLong);
+
+    /**
+     * Configuration field to enable or disable OpenLineage integration.
+     *
+     * <p>When enabled, Debezium will emit data lineage metadata through the OpenLineage API,
+     * providing visibility into data flows and transformations performed by the connector.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.enabled}<br>
+     * <strong>Type:</strong> Boolean<br>
+     * <strong>Default:</strong> {@code false}<br>
+     * <strong>Importance:</strong> Low</p>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_ENABLED = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED)
+            .withDisplayName("Enables OpenLineage integration")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 40))
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Enable Debezium to emit data lineage metadata through OpenLineage API")
+            .withDefault(false);
+
+    /**
+     * Configuration field specifying the path to the OpenLineage configuration file.
+     *
+     * <p>This file contains OpenLineage client configuration settings such as transport
+     * configuration, backend settings, and other OpenLineage-specific options.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.config.file.path}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Default:</strong> {@code ./openlineage.yml}<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * @see <a href="https://openlineage.io/docs/client/java/configuration">OpenLineage Configuration Documentation</a>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)
+            .withDisplayName("Path to OpenLineage file configuration")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 41))
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("./openlineage.yml")
+            .withDescription("Path to OpenLineage file configuration. See https://openlineage.io/docs/client/java/configuration");
+
+    /**
+     * Configuration field defining the namespace for the Debezium job in OpenLineage.
+     *
+     * <p>The namespace is used to organize and categorize jobs within the OpenLineage
+     * metadata system. It helps in identifying and grouping related data pipeline jobs.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.job.namespace}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE)
+            .withDisplayName("Namespace used for Debezium job")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 42))
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The job's namespace emitted by Debezium");
+
+    /**
+     * Configuration field providing a human-readable description for the Debezium job.
+     *
+     * <p>This description appears in OpenLineage metadata and helps users understand
+     * the purpose and function of the specific Debezium connector job.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.job.description}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Default:</strong> {@code "Debezium change data capture job"}<br>
+     * <strong>Importance:</strong> Low</p>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION)
+            .withDisplayName("Description used for Debezium job")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 43))
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The job's description emitted by Debezium")
+            .withDefault("Debezium change data capture job");
+
+    /**
+     * Configuration field for specifying tags associated with the Debezium job.
+     *
+     * <p>Tags provide additional metadata and categorization for the job in OpenLineage.
+     * They are specified as a comma-separated list of key-value pairs.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.job.tags}<br>
+     * <strong>Type:</strong> List<br>
+     * <strong>Format:</strong> Comma-separated key-value pairs (e.g., {@code k1=v1,k2=v2})<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * openlineage.integration.job.tags=environment=production,team=data-engineering
+     * }</pre>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_JOB_TAGS = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS)
+            .withDisplayName("Debezium job tags")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 44))
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfMap)
+            .withDescription("The job's tags emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
+
+    /**
+     * Configuration field for specifying the owners of the Debezium job.
+     *
+     * <p>Owners identify who is responsible for the job and can be used for contact
+     * information, governance, and accountability within the OpenLineage metadata system.
+     * They are specified as a comma-separated list of key-value pairs.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.job.owners}<br>
+     * <strong>Type:</strong> List<br>
+     * <strong>Format:</strong> Comma-separated key-value pairs (e.g., {@code k1=v1,k2=v2})<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * openlineage.integration.job.owners=email=team@company.com,slack=data-team
+     * }</pre>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_JOB_OWNERS = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
+            .withDisplayName("Debezium job owners")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 45))
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfMap)
+            .withDescription("The job's owners emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
+
+    /**
+     * Configuration field for specifying the Kafka bootstrap server used in Kafka Connect deployment.
+     *
+     * <p>This field defines the Kafka bootstrap server address that will be used as the
+     * input/output namespace for dataset lineage tracking in OpenLineage. The bootstrap
+     * server is essential for identifying the data source/destination in the lineage metadata.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.dataset.kafka.bootstrap.server}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Format:</strong> Host and port (e.g., {@code host:port})<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * openlineage.integration.dataset.kafka.bootstrap.server=localhost:9092
+     * }</pre>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER)
+            .withDisplayName("Kafka bootstrap server used in Kafka Connect deployment")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 47))
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The Kafka bootstrap server address used as input/output namespace/");
+
+    /**
+     * Configuration field for overriding the default pattern used to mask sensitive
+     * configuration values.
+     *
+     * <p>By default, Debezium masks values whose keys match the built-in password pattern
+     * ({@link Configuration#PASSWORD_PATTERN}). This setting allows users to provide a
+     * custom regular expression that replaces the default pattern. When set, only keys
+     * matching the custom pattern will be masked.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@link Configuration#CUSTOM_SANITIZE_PATTERN_KEY}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Format:</strong> Regular expression<br>
+     * <strong>Default:</strong> {@link Configuration#PASSWORD_PATTERN}<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * custom.sanitize.pattern=.*\.token$|.*\.credential$
+     * }</pre>
+     */
+    public static Field CUSTOM_SANITIZE_PATTERN = Field.create(Configuration.CUSTOM_SANITIZE_PATTERN_KEY)
+            .withDisplayName("Custom pattern for masking sensitive configuration")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 48))
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(Configuration.PASSWORD_PATTERN.pattern())
+            .withDescription(
+                    "Regular expression identifying configuration keys whose values should be masked. "
+                            + "When set, this custom pattern replaces Debezium’s default password masking pattern.");
+
+    /**
+     * Configuration field for enabling or disabling extended Debezium context headers.
+     *
+     * <p>This field controls whether Debezium includes additional context headers in CDC events
+     * that provide essential metadata for tracking and identifying the source of change data
+     * capture events in downstream processing systems.</p>
+     *
+     * <p><strong>Configuration Details:</strong></p>
+     * <ul>
+     *   <li><strong>Type:</strong> Boolean</li>
+     *   <li><strong>Default:</strong> Not specified (implementation dependent)</li>
+     *   <li><strong>Importance:</strong> Low</li>
+     *   <li><strong>Group:</strong> Advanced (position 46)</li>
+     *   <li><strong>Width:</strong> Short</li>
+     * </ul>
+     *
+     * <p>When enabled, this configuration adds metadata headers that can be used by downstream
+     * systems for:</p>
+     * <ul>
+     *   <li>Event source tracking and lineage</li>
+     *   <li>Identifying the origin of CDC events</li>
+     *   <li>Enhanced monitoring and debugging capabilities</li>
+     * </ul>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Enable extended headers
+     * config.put("extended.headers.enabled", true);
+     *
+     * // Disable extended headers (default behavior may vary)
+     * config.put("extended.headers.enabled", false);
+     * }</pre>
+     *
+     * @see ConfigurationNames#EXTENDED_HEADERS_ENABLED
+     * @see Field.Group#ADVANCED
+     * @since [3.2.1.Final, 3.3.0.Alpha1]
+     */
+    public static Field EXTENDED_HEADERS_ENABLED = Field.create(ConfigurationNames.EXTENDED_HEADERS_ENABLED)
+            .withDisplayName("Enable/Disable extended headers")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 46))
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withDefault(true)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "Enable/Disable Debezium context headers that provides essential metadata for tracking and identifying the source of CDC events in downstream processing systems.");
+
+    public static final Field GUARDRAIL_COLLECTIONS_MAX = Field.create("guardrail.collections.max")
+            .withDisplayName("Maximum number of collections or tables")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 33))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of collections or tables that can be captured by the connector. " +
+                    "When this limit is exceeded, the action specified by 'guardrail.collections.limit.action' will be taken. " +
+                    "Set to 0 to disable this guardrail.")
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeInteger);
+
+    public static final Field GUARDRAIL_COLLECTIONS_LIMIT_ACTION = Field.create("guardrail.collections.limit.action")
+            .withDisplayName("Guardrail collections limit action")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 34))
+            .withEnum(GuardrailCollectionsLimitAction.class, GuardrailCollectionsLimitAction.WARN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify the action to take when a guardrail collections limit is exceeded: " +
+                    "'warn' (the default) logs a warning message and continues processing; " +
+                    "'fail' stops the connector with an error.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1111,7 +1460,20 @@ public abstract class CommonConnectorConfig {
                     MAX_RETRIES_ON_ERROR,
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     LOG_POSITION_CHECK_ENABLED,
-                    ADVANCED_METRICS_ENABLE)
+                    ADVANCED_METRICS_ENABLE,
+                    CONNECTION_VALIDATION_TIMEOUT_MS,
+                    EXECUTOR_SHUTDOWN_TIMEOUT_MS,
+                    OPEN_LINEAGE_INTEGRATION_ENABLED,
+                    OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
+                    OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
+                    OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
+                    OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
+                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
+                    OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER,
+                    EXTENDED_HEADERS_ENABLED,
+                    GUARDRAIL_COLLECTIONS_MAX,
+                    GUARDRAIL_COLLECTIONS_LIMIT_ACTION,
+                    CUSTOM_SANITIZE_PATTERN)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1151,13 +1513,12 @@ public abstract class CommonConnectorConfig {
     private final TransactionMetadataFactory transactionMetadataFactory;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
-    private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
-    private final String signalingDataCollection;
-    private final TableId signalingDataCollectionId;
+    private final List<String> signalingDataCollections;
+    private final List<TableId> signalingDataCollectionIds;
 
     private final Duration signalPollInterval;
 
@@ -1203,13 +1564,12 @@ public abstract class CommonConnectorConfig {
         this.transactionMetadataFactory = getTransactionMetadataFactory();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
-        this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
-        this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        this.signalingDataCollections = getSignalingDataCollections(config);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
-        this.taskId = config.getString(TASK_ID);
+        this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
@@ -1226,10 +1586,13 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+        this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
+        this.guardrailCollectionsMax = config.getInteger(GUARDRAIL_COLLECTIONS_MAX);
+        this.guardrailCollectionsLimitAction = GuardrailCollectionsLimitAction.parse(config.getString(GUARDRAIL_COLLECTIONS_LIMIT_ACTION));
 
-        this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
-                ? TableId.parse(this.signalingDataCollection)
-                : null;
+        this.signalingDataCollectionIds = this.signalingDataCollections.stream()
+                .map(TableId::parse)
+                .collect(Collectors.toList());
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1239,6 +1602,22 @@ public abstract class CommonConnectorConfig {
         }
         return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
                 .map(String::trim)
+                .collect(Collectors.toList());
+    }
+
+    private static List<String> getSignalingDataCollections(Configuration config) {
+        if (!config.hasKey(SIGNAL_DATA_COLLECTION)) {
+            return Collections.emptyList();
+        }
+
+        List<String> collections = config.getList(SIGNAL_DATA_COLLECTION);
+        if (collections == null || collections.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return collections.stream()
+                .map(String::trim)
+                .filter(s -> !Strings.isNullOrBlank(s))
                 .collect(Collectors.toList());
     }
 
@@ -1361,12 +1740,78 @@ public abstract class CommonConnectorConfig {
         return skipMessagesWithoutChange;
     }
 
-    public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {
-        return eventProcessingFailureHandlingMode;
+    public int getGuardrailCollectionsMax() {
+        return guardrailCollectionsMax;
     }
 
-    public CustomConverterRegistry customConverterRegistry() {
-        return customConverterRegistry;
+    public GuardrailCollectionsLimitAction getGuardrailCollectionsLimitAction() {
+        return guardrailCollectionsLimitAction;
+    }
+
+    /**
+     * Validates that the number of captured tables/collections does not exceed the configured guardrail limit.
+     * Takes the appropriate action (warn or fail) based on the guardrail configuration.
+     *
+     * @param tableNames the names of tables/collections for logging
+     * @throws DebeziumException if the guardrail limit is exceeded and the action is set to FAIL
+     */
+    public void validateGuardrailLimits(Collection<String> tableNames) {
+        validateGuardrailLimits(tableNames, false);
+    }
+
+    /**
+     * Validates that the number of captured tables/collections does not exceed the configured guardrail limit.
+     * Takes the appropriate action (warn or fail) based on the guardrail configuration.
+     * This overload is for schema-history based connectors to provide enhanced error messages.
+     *
+     * @param tableNames the names of tables/collections for logging
+     * @param isHistorizedSchemaValidatingAllTables true if this is a historized schema connector validating all tables
+     *        (not just captured tables) due to store.only.captured.tables.ddl=false
+     * @throws DebeziumException if the guardrail limit is exceeded and the action is set to FAIL
+     */
+    public void validateGuardrailLimits(Collection<String> tableNames, boolean isHistorizedSchemaValidatingAllTables) {
+        int maxTables = getGuardrailCollectionsMax();
+        int tableCount = tableNames.size();
+
+        if (tableCount > maxTables) {
+            String message = String.format(
+                    "Guardrail limit exceeded: %d tables/collections configured for capture, but maximum allowed is %d.",
+                    tableCount, maxTables);
+
+            if (isHistorizedSchemaValidatingAllTables) {
+                message += " Since 'schema.history.internal.store.only.captured.tables.ddl' is set to 'false', schemas " +
+                        "of all the tables in the database are being captured. Increase the guardrail limit to allow " +
+                        "the validation to pass. To reduce memory usage and validate only captured tables, consider " +
+                        "setting 'schema.history.internal.store.only.captured.tables.ddl=true' or " +
+                        "'schema.history.internal.store.only.captured.databases.ddl=true'. WARNING: Changing these " +
+                        "settings means the connector will NOT be able to automatically start capturing changes from " +
+                        "tables that were not originally added to the include list. You would need to do schema " +
+                        "history recovery to add those tables later.";
+            }
+
+            // Log table list at trace level for troubleshooting
+            if (tableNames != null && LOGGER.isTraceEnabled()) {
+                String tableList = tableNames.stream()
+                        .sorted()
+                        .collect(Collectors.joining(", "));
+                LOGGER.trace("Tables/Collections configured for capture: {}", tableList);
+            }
+
+            if (getGuardrailCollectionsLimitAction() == GuardrailCollectionsLimitAction.FAIL) {
+                throw new DebeziumException(message);
+            }
+            else {
+                LOGGER.warn(message);
+            }
+        }
+        else {
+            LOGGER.info("Guardrail validation passed: {} tables/collections configured for capture (limit: {})",
+                    tableCount, maxTables);
+        }
+    }
+
+    public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {
+        return eventProcessingFailureHandlingMode;
     }
 
     /**
@@ -1400,20 +1845,6 @@ public abstract class CommonConnectorConfig {
         }
         LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
         return topicNamingStrategy;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<CustomConverter<SchemaBuilder, ConvertedField>> getCustomConverters() {
-        final String converterNameList = config.getString(CUSTOM_CONVERTERS);
-        final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
-
-        return converterNames.stream()
-                .map(name -> {
-                    CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
-                    converter.configure(config.subset(name, true).asProperties());
-                    return converter;
-                })
-                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
@@ -1557,6 +1988,38 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
+    private static int validateSignalDataCollection(Configuration configuration, Field field, ValidationOutput problems) {
+
+        List<String> signalDataCollection = configuration.getList(field);
+        String connectorClassName = configuration.getString(CONNECTOR_CLASS);
+        Class<?> connectorClass;
+
+        if (connectorClassName == null) {
+            return 0;
+        }
+
+        try {
+            connectorClass = Class.forName(connectorClassName);
+
+            boolean isMultiTask = connectorClass.isAnnotationPresent(SupportsMultiTask.class);
+
+            if (!isMultiTask && signalDataCollection.size() > 1) {
+                problems.accept(field, signalDataCollection, "For single task connector only one signal data collection is permitted.");
+                return 1;
+            }
+
+            if (isMultiTask && signalDataCollection.size() == 1) {
+                LOGGER.info(
+                        "You set a single data collection for a multi task connector. If you want to send signals for each database you need to provide a signal data collection per database.");
+            }
+        }
+        catch (ClassNotFoundException e) {
+            LOGGER.warn("Unable to load connector class to validate signal data collection. It will be considered valid.", e);
+        }
+
+        return 0;
+    }
+
     private static boolean isUsingAvroConverter(Configuration config) {
         final String keyConverter = config.getString("key.converter");
         final String valueConverter = config.getString("value.converter");
@@ -1597,6 +2060,18 @@ public abstract class CommonConnectorConfig {
         return isAdvancedMetricsEnabled;
     }
 
+    public boolean isExtendedHeadersEnabled() {
+        return isExtendedHeadersEnabled;
+    }
+
+    public Duration getConnectionValidationTimeout() {
+        return Duration.ofMillis(config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS));
+    }
+
+    public Duration getExecutorShutdownTimeout() {
+        return Duration.ofMillis(config.getLong(EXECUTOR_SHUTDOWN_TIMEOUT_MS));
+    }
+
     public EnumeratedValue snapshotQueryMode() {
         return this.snapshotQueryMode;
     }
@@ -1625,8 +2100,12 @@ public abstract class CommonConnectorConfig {
         return fieldNameAdjustmentMode.createAdjuster();
     }
 
-    public String getSignalingDataCollectionId() {
-        return signalingDataCollection;
+    public List<String> getSignalingDataCollectionIds() {
+        return signalingDataCollections;
+    }
+
+    public List<TableId> getSignalingDataCollectionTableIds() {
+        return signalingDataCollectionIds;
     }
 
     public Duration getSignalPollInterval() {
@@ -1656,7 +2135,8 @@ public abstract class CommonConnectorConfig {
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollectionId != null && signalingDataCollectionId.equals(dataCollectionId);
+        return signalingDataCollectionIds.stream()
+                .anyMatch(id -> id.equals(dataCollectionId));
     }
 
     public Optional<String> customRetriableException() {
@@ -1671,12 +2151,17 @@ public abstract class CommonConnectorConfig {
         return taskId;
     }
 
+    /**
+     * @deprecated Use {@link io.debezium.heartbeat.HeartbeatFactory} instead.
+     */
+    @Deprecated
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+
     }
 
     public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {

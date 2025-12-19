@@ -30,7 +30,7 @@ public class ReducedRecordBuffer implements Buffer {
     private Schema keySchema;
     private Schema valueSchema;
 
-    private final Map<Struct, JdbcSinkRecord> records = new HashMap<>();
+    private final Map<Object, JdbcSinkRecord> records = new HashMap<>();
     private final TableDescriptor tableDescriptor;
 
     @VisibleForTesting
@@ -61,7 +61,7 @@ public class ReducedRecordBuffer implements Buffer {
             isSchemaChanged = true;
         }
 
-        Struct keyStruct = record.getKeyStruct(connectorConfig.getPrimaryKeyMode(), connectorConfig.getPrimaryKeyFields());
+        Struct keyStruct = record.filteredKey();
         if (keyStruct != null) {
             records.put(keyStruct, record);
         }
@@ -97,5 +97,20 @@ public class ReducedRecordBuffer implements Buffer {
     @Override
     public TableDescriptor getTableDescriptor() {
         return tableDescriptor;
+    }
+
+    @Override
+    public void remove(JdbcSinkRecord record) {
+        if (records.isEmpty()) {
+            return;
+        }
+
+        Struct keyStruct = record.filteredKey();
+        if (keyStruct != null) {
+            records.remove(keyStruct);
+        }
+        else {
+            throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
+        }
     }
 }

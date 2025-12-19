@@ -156,7 +156,7 @@ The following `.properties` example sets several event flattening SMT options:
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
-transforms.unwrap.delete.tombtone.handling.mode=rewrite
+transforms.unwrap.delete.tombstone.handling.mode=rewrite
 transforms.unwrap.add.fields=table,lsn
 ----
 
@@ -271,6 +271,8 @@ The `TOMBSTONE` record contains only the following value: `"value": "null"`.
 This setting provides another way to indicate that the record has been deleted.
 
 `rewrite-with-tombstone`:: The SMT behaves as it does when you select the `rewrite` option, except that it also retains `TOMBSTONE` records.
+
+`delete-to-tombstone`:: The SMT removes the `TOMBSTONE` records from the stream and converts `DELETE` records into `TOMBSTONE` records.
 
 |[[extract-new-record-state-route-by-field]]xref:extract-new-record-state-route-by-field[`route.by.field`]
 |

@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -33,8 +33,8 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE = TestHelper.getUniqueDatabase("multitable", "multitable_dbz_871")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -44,8 +44,8 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -55,7 +55,7 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
                 .build();

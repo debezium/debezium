@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.assertj.core.data.Index;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
-import org.fest.assertions.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -242,7 +242,8 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
                 createRecord.offset());
         kafkaSinkRecord.headers().addInt("id1", 1);
         kafkaSinkRecord.headers().addInt("id2", 10);
-        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
+        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord,
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
         consume(kafkaSinkRecordWithHeader);
 
         final String destinationTableName = destinationTableName(kafkaSinkRecordWithHeader);

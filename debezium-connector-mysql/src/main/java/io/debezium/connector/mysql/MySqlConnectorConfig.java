@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_AT_LEAST_ONCE;
+
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -99,7 +102,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+            return value.equals(MINIMAL.value) ||
+                    value.equals(MINIMAL_PERCONA.value) ||
+                    value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value) ||
+                    value.equals(MINIMAL_AT_LEAST_ONCE.getValue());
         }
 
         public boolean usesLocking() {
@@ -112,6 +118,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
         public boolean preventsTableLocks() {
             return value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+        }
+
+        public boolean useConsistentSnapshotTransaction() {
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
         }
 
         /**
@@ -227,7 +237,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
      */
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
 
-    public static final Field JDBC_DRIVER = Field.create(DATABASE_CONFIG_PREFIX + "jdbc.driver")
+    public static final Field JDBC_DRIVER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "jdbc.driver")
             .withDisplayName("JDBC Driver Class Name")
             .withType(Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
@@ -237,7 +247,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .withValidation(Field::isClassName)
             .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
 
-    public static final Field JDBC_PROTOCOL = Field.create(DATABASE_CONFIG_PREFIX + "protocol")
+    public static final Field JDBC_PROTOCOL = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "protocol")
             .withDisplayName("JDBC Protocol")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 42))
@@ -428,6 +438,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean preventsTableLocks() {
             return snapshotLockingMode.preventsTableLocks();
+        }
+
+        @Override
+        public boolean useConsistentSnapshotTransaction() {
+            return snapshotLockingMode.useConsistentSnapshotTransaction();
         }
     }
 

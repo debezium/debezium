@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
+
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -13,6 +16,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
@@ -29,19 +37,22 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId> {
     private final static Logger LOG = LoggerFactory.getLogger(RelationalDatabaseSchema.class);
 
+    private final RelationalDatabaseConnectorConfig config;
     private final TopicNamingStrategy<TableId> topicNamingStrategy;
     private final TableSchemaBuilder schemaBuilder;
     private final TableFilter tableFilter;
     private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
     private final KeyMapper customKeysMapper;
+    private final CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext;
 
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
 
     protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-                                       boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+                                       boolean tableIdCaseInsensitive, KeyMapper customKeysMapper, CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
+        this.config = config;
 
         this.topicNamingStrategy = topicNamingStrategy;
         this.schemaBuilder = schemaBuilder;
@@ -52,6 +63,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
         this.tables = new Tables(tableIdCaseInsensitive);
+        this.taskContext = taskContext;
     }
 
     @Override
@@ -64,6 +76,11 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     public Set<TableId> tableIds() {
         // TODO that filtering should really be done once upon insertion
         return tables.subset(tableFilter).tableIds();
+    }
+
+    @Override
+    public java.util.Collection<TableId> dataCollectionIds() {
+        return tableIds();
     }
 
     @Override
@@ -121,7 +138,30 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
+            DebeziumOpenLineageEmitter.emit(
+                    DebeziumOpenLineageEmitter.connectorContext(taskContext.getRawConfig().asMap(), config.getConnectorName(), taskContext.getRunId()),
+                    DebeziumTaskState.RUNNING,
+                    List.of(extractDatasetMetadata(table)));
         }
+    }
+
+    private DatasetMetadata extractDatasetMetadata(Table table) {
+
+        List<DatasetMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
+                .map(c -> new DatasetMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
+                .toList();
+        return new DatasetMetadata(getIdentifier(table), INPUT, DatasetMetadata.TABLE_DATASET_TYPE, DatasetMetadata.DataStore.DATABASE, fieldDefinitions);
+    }
+
+    private String getIdentifier(Table table) {
+
+        String dbName = config.getJdbcConfig().getDatabase() == null ? "" : config.getJdbcConfig().getDatabase();
+
+        if (table.id().catalog() == null) {
+            return dbName + "." + table.id().identifier();
+        }
+
+        return table.id().identifier();
     }
 
     protected void removeSchema(TableId id) {

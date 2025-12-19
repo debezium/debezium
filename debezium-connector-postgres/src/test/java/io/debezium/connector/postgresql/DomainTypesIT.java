@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
@@ -32,8 +32,8 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, minor = 0, reason = "Domain type array columns not supported")
 public class DomainTypesIT extends AbstractRecordsProducerTest {
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
         TestHelper.execute("CREATE SCHEMA domaintypes");
         TestHelper.execute("CREATE DOMAIN nmtoken AS text CHECK (VALUE ~* '^[A-Z0-9\\.\\_\\-\\:]+$');");

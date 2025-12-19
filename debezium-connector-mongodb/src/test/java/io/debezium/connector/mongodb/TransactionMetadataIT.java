@@ -11,7 +11,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
@@ -26,7 +26,7 @@ import io.debezium.util.Collect;
 public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
     @Test
-    public void transactionMetadata() throws Exception {
+    void transactionMetadata() throws Exception {
         // Testing.Print.enable();
         config = TestHelper.getConfiguration(mongo)
                 .edit()

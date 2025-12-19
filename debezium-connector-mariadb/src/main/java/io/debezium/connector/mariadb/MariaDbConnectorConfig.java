@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mariadb;
 
+import static io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_AT_LEAST_ONCE;
+
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -89,11 +91,15 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value);
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_AT_LEAST_ONCE.getValue());
         }
 
         public boolean usesLocking() {
             return !value.equals(NONE.value);
+        }
+
+        public boolean useConsistentSnapshotTransaction() {
+            return value.equals(MINIMAL.value);
         }
 
         public boolean flushResetsIsolationLevel() {
@@ -368,6 +374,11 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean isIsolationLevelResetOnFlush() {
             return snapshotLockingMode.flushResetsIsolationLevel();
+        }
+
+        @Override
+        public boolean useConsistentSnapshotTransaction() {
+            return snapshotLockingMode.useConsistentSnapshotTransaction();
         }
     }
 

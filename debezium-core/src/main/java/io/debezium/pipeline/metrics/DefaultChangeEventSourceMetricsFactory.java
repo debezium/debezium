@@ -25,7 +25,8 @@ public class DefaultChangeEventSourceMetricsFactory<P extends Partition> impleme
     @Override
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext,
                                                                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                     EventMetadataProvider eventMetadataProvider) {
-        return new DefaultStreamingChangeEventSourceMetrics<>(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+                                                                                                     EventMetadataProvider eventMetadataProvider,
+                                                                                                     CapturedTablesSupplier capturedTablesSupplier) {
+        return new DefaultStreamingChangeEventSourceMetrics<>(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
     }
 }

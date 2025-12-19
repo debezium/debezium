@@ -14,9 +14,9 @@ import java.util.concurrent.Executors;
 
 import org.apache.kafka.connect.errors.RetriableException;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.junit.logging.LogInterceptor;
@@ -32,39 +32,39 @@ public class RetryingCallableTest {
 
     private ExecutorService execService;
 
-    @Before
-    public void CreateExecutorService() {
+    @BeforeEach
+    void CreateExecutorService() {
         execService = Executors.newSingleThreadExecutor();
     }
 
-    @After
-    public void shutDownExecutorService() {
+    @AfterEach
+    void shutDownExecutorService() {
         execService.shutdownNow();
     }
 
     @Test
-    public void shouldExecuteNeverFailing() throws InterruptedException, ExecutionException {
+    void shouldExecuteNeverFailing() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(0)).get()).isEqualTo(1);
         assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
     }
 
     @Test
-    public void shouldNotRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
+    void shouldNotRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(10)).get()).isEqualTo(1);
         assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
     }
 
     @Test
-    public void shouldIgnoreInfiniteRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
+    void shouldIgnoreInfiniteRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES)).get()).isEqualTo(1);
         assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
     }
 
     @Test
-    public void shouldRetryAsManyTimesAsRequested() throws InterruptedException {
+    void shouldRetryAsManyTimesAsRequested() throws InterruptedException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
 
@@ -82,7 +82,7 @@ public class RetryingCallableTest {
     }
 
     @Test
-    public void shouldRetryAsManyTimesAsRequestedWhenAlwaysFails() throws InterruptedException {
+    void shouldRetryAsManyTimesAsRequestedWhenAlwaysFails() throws InterruptedException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
 
@@ -102,7 +102,7 @@ public class RetryingCallableTest {
     }
 
     @Test
-    public void shouldNotRetryWhenRetriesAreDisabled() throws InterruptedException {
+    void shouldNotRetryWhenRetriesAreDisabled() throws InterruptedException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
 
@@ -122,7 +122,7 @@ public class RetryingCallableTest {
     }
 
     @Test
-    public void shouldKeepRetryingWhenRetryIsInfinite() throws InterruptedException {
+    void shouldKeepRetryingWhenRetryIsInfinite() throws InterruptedException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
 

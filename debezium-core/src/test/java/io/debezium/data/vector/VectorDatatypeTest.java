@@ -6,12 +6,14 @@
 
 package io.debezium.data.vector;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.List;
 
 import org.assertj.core.api.Assertions;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class VectorDatatypeTest {
+class VectorDatatypeTest {
 
     @Test
     public void shouldParseDoubleVector() {
@@ -31,9 +33,11 @@ public class VectorDatatypeTest {
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "{10,20,30}")).isNull();
     }
 
-    @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInDoubleVectorFormat() {
-        DoubleVector.fromLogical(DoubleVector.schema(), "[a10,20,30]");
+    @Test
+    void shouldFailOnNumberInDoubleVectorFormat() {
+        assertThrows(NumberFormatException.class, () -> {
+            DoubleVector.fromLogical(DoubleVector.schema(), "[a10,20,30]");
+        });
     }
 
     @Test
@@ -54,8 +58,10 @@ public class VectorDatatypeTest {
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "{10,20,30}")).isNull();
     }
 
-    @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInFloatVectorFormat() {
-        FloatVector.fromLogical(FloatVector.schema(), "[a10,20,30]");
+    @Test
+    void shouldFailOnNumberInFloatVectorFormat() {
+        assertThrows(NumberFormatException.class, () -> {
+            FloatVector.fromLogical(FloatVector.schema(), "[a10,20,30]");
+        });
     }
 }

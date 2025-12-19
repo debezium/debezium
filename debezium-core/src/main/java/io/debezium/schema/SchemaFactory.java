@@ -127,6 +127,20 @@ public class SchemaFactory {
         return false;
     }
 
+    public boolean isHeartBeatSchema(Schema schema) {
+        if (schema != null && schema.name() != null) {
+            return schema.name().endsWith(HEARTBEAT_VALUE_SCHEMA_NAME);
+        }
+        return false;
+    }
+
+    public boolean isNotificationSchema(Schema schema) {
+        if (schema != null && schema.name() != null) {
+            return schema.name().endsWith(NOTIFICATION_VALUE_SCHEMA_NAME);
+        }
+        return false;
+    }
+
     public Schema snapshotRecordSchema() {
         return Enum.builder(
                 Arrays.stream(SnapshotRecord.values()).map(java.lang.Enum::name).map(String::toLowerCase).toList())

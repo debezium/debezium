@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.5.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -47,6 +47,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
             <scope>test</scope>
@@ -61,16 +66,6 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.platform</groupId>
-                    <artifactId>junit-platform-launcher</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -78,15 +73,20 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+        </dependency>
+        <dependency>
             <groupId>mil.nga</groupId>
             <artifactId>wkb</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -125,7 +125,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mariadb</artifactId>
+            <artifactId>testcontainers-mariadb</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -137,6 +137,16 @@
             <groupId>io.opentelemetry.javaagent</groupId>
             <artifactId>opentelemetry-testing-common</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.spockframework</groupId>
+                    <artifactId>spock-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.spockframework</groupId>
+                    <artifactId>spock-junit4</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry.javaagent</groupId>
@@ -180,6 +190,8 @@
         <docker.filter>${docker.dbs}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</docker.initimage>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
         <plugins>
@@ -637,6 +649,7 @@
                                 <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -880,6 +893,7 @@
                                 <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -957,6 +971,7 @@
                                 <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1032,6 +1047,7 @@
                                 <database.ssl.mode>verify-ca</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                                 <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
                                 <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
                                 <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>

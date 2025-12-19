@@ -18,7 +18,7 @@ import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;

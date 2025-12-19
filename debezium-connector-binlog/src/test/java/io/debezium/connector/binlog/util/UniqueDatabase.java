@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.binlog.util;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import java.net.URI;
@@ -158,7 +158,7 @@ public abstract class UniqueDatabase {
     public void createAndInitialize(Map<String, Object> urlProperties) {
         final String ddlFile = String.format("ddl/%s.sql", templateName);
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
-        assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
+        assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
         try {
             try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
                 final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(

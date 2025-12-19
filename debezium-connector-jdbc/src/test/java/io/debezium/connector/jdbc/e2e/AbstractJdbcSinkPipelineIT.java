@@ -6,7 +6,7 @@
 package io.debezium.connector.jdbc.e2e;
 
 import static io.debezium.connector.jdbc.util.assertions.ThrowableMessageAssert.assertThatThrowable;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigInteger;
@@ -71,8 +71,10 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
+import io.debezium.spatial.GeometryBytes;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.time.MicroDuration;
+import io.debezium.transforms.SwapGeometryCoordinates;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
@@ -1592,8 +1594,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     // TIMESTAMP where-as other databases return the sql type code as Types.DATE and the
                     // values are serialized as such.
                     if (SourceType.ORACLE.is(source.getType())) {
-                        assertColumn(sink, record, "id", getTimestampType(source, true, 6));
-                        assertColumn(sink, record, "data", getTimestampType(source, false, 6));
+                        assertColumn(sink, record, "id", getTimestampType(source, true, getMaxTimestampPrecision()));
+                        assertColumn(sink, record, "data", getTimestampType(source, false, getMaxTimestampPrecision()));
                     }
                     else {
                         assertColumn(sink, record, "id", getDateType());
@@ -1656,8 +1658,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(OffsetTime.of(1, 2, 3, nanoSeconds, getCurrentSinkTimeOffset()),
                         OffsetTime.of(14, 15, 16, nanoSeconds, getCurrentSinkTimeOffset())),
                 (record) -> {
-                    assertColumn(sink, record, "id", getTimeType(source, true, 6));
-                    assertColumn(sink, record, "data", getTimeType(source, false, 6));
+                    final int precision = getDefaultTimePrecision(source);
+                    assertColumn(sink, record, "id", getTimeType(source, true, precision));
+                    assertColumn(sink, record, "data", getTimeType(source, false, precision));
                 },
                 this::getTimeAsOffsetTime);
     }
@@ -1775,7 +1778,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 sink,
                 "time(7)",
                 List.of("'14:15:16.456789012'"),
-                List.of(sink.getType().is(SinkType.DB2) ? "14:15:16Z" : "14:15:16.456789Z"),
+                List.of("14:15:16.456789Z"),
                 (record) -> assertColumn(sink, record, "data", getTextType()),
                 ResultSet::getString);
     }
@@ -1934,8 +1937,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 values,
                 expectedValues,
                 (record) -> {
-                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
-                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
+                    final int precision = getDefaultTimestampPrecision(source);
+                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, precision));
+                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, precision));
                 },
                 (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
@@ -2046,7 +2050,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "time(6) with time zone",
                 List.of(value),
                 List.of(OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC)),
-                (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType()),
+                (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType(source, false, 6)),
                 (rs, index) -> getTimestampWithTimeZoneAsZonedDateTime(rs, index).withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime().toOffsetTime());
     }
 
@@ -2060,7 +2064,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         final int precision;
         if (SourceType.MYSQL.is(source.getType()) && source.getOptions().isColumnTypePropagated()) {
-            precision = 6;
+            precision = getDefaultTimestampPrecision(source);
         }
         else {
             precision = 3;
@@ -2181,7 +2185,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "datetime2",
                 List.of(value),
                 List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, nanosOfSeconds)),
-                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, getDefaultTimestampPrecision(source))),
                 this::getTimestampAsZonedDateTime);
     }
 
@@ -2213,8 +2217,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of(value, value, value, value, value, value, value);
 
         int dateTime7NanoSeconds = 456789000;
-        if (source.getOptions().isColumnTypePropagated() && SinkType.SQLSERVER.is(sink.getType())) {
-            if (source.getOptions().getTemporalPrecisionMode() != TemporalPrecisionMode.MICROSECONDS) {
+
+        final SourceConnectorOptions options = source.getOptions();
+        if (options.getTemporalPrecisionMode() != TemporalPrecisionMode.MICROSECONDS) {
+            if (sink.getType().is(SinkType.SQLSERVER, SinkType.ORACLE)) {
                 dateTime7NanoSeconds = 456789100;
             }
         }
@@ -2240,7 +2246,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
                     assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
-                    assertColumn(sink, record, "data6", getTimestampType(source, false, 6));
+                    assertColumn(sink, record, "data6", getTimestampType(source, false, getDefaultTimestampPrecision(source)));
                 },
                 this::getTimestampAsZonedDateTime);
     }
@@ -2282,7 +2288,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "datetimeoffset",
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456789000, ZoneOffset.UTC)),
-                (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, getDefaultTimestampPrecision(source))),
                 (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
@@ -2300,7 +2306,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of(value, value, value, value, value, value, value);
 
         int precisionNanos7 = 456789000;
-        if (sink.getType().is(SinkType.SQLSERVER) && source.getOptions().isColumnTypePropagated()) {
+        if (sink.getType().is(SinkType.ORACLE, SinkType.SQLSERVER)) {
             precisionNanos7 = 456789100;
         }
 
@@ -2325,7 +2331,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
                     assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
-                    assertColumn(sink, record, "data6", getTimestampWithTimezoneType(source, false, 6));
+                    assertColumn(sink, record, "data6", getTimestampWithTimezoneType(source, false, getDefaultTimestampPrecision(source)));
                 },
                 (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
@@ -2341,7 +2347,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "smalldatetime", // minute precision
                 List.of(value),
                 List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 0, 0)),
-                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, getMaxTimestampPrecision())),
                 this::getTimestampAsZonedDateTime);
     }
 
@@ -2918,6 +2924,192 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 });
     }
 
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataType(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
+                List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "tsvector");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getTextType(false));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithStaticValue(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
+                List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "tsvector");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getTextType(false));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The GEOGRAPHY data type only applies to PostgreSQL")
+    @SkipWhenSink(value = { SinkType.DB2 }, reason = "No support for GEOGRAPHY data type")
+    @WithPostgresExtension("postgis")
+    public void testGeometryDataTypeFromPostgres(Source source, Sink sink) throws Exception {
+        String postgisSchema = "postgis";
+        String geographyType = String.format("%s.geography", postgisSchema);
+
+        // Purposely skipped GEOMETRYCOLLECTION because Oracle is buggy when decoding the value.
+        final List<String> values = List.of(
+                "'SRID=4326;POINT (8 19)'::" + geographyType,
+                "'SRID=4326;LINESTRING (30 10, 10 30, 40 40)'::" + geographyType,
+                "'SRID=4326;POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'::" + geographyType,
+                "'SRID=4326;POLYGON ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))'::" + geographyType,
+                "'SRID=4326;MULTIPOINT ((10 40), (40 30), (20 20), (30 10))'::" + geographyType,
+                "'SRID=4326;MULTILINESTRING ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))'::" + geographyType,
+                "'SRID=4326;MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))'::" + geographyType);
+
+        // Expected values are in EPSG format
+        List<Object> expectedValues = Arrays.asList(
+                List.of(4326, "010100000000000000000020400000000000003340"),
+                List.of(4326, "0102000000030000000000000000003e40000000000000244000000000000024400000000000003e" +
+                        "4000000000000044400000000000004440"),
+                List.of(4326, "010300000001000000050000000000000000003e4000000000000024400000000000004440000000" +
+                        "00000044400000000000003440000000000000444000000000000024400000000000003440000000" +
+                        "0000003e400000000000002440"),
+                List.of(4326, "01030000000200000005000000000000000080414000000000000024400000000000804640000000" +
+                        "00008046400000000000002e40000000000000444000000000000024400000000000003440000000" +
+                        "000080414000000000000024400400000000000000000034400000000000003e4000000000008041" +
+                        "4000000000008041400000000000003e40000000000000344000000000000034400000000000003e" +
+                        "40"),
+                List.of(4326, "01040000000400000001010000000000000000002440000000000000444001010000000000000000" +
+                        "0044400000000000003e400101000000000000000000344000000000000034400101000000000000" +
+                        "0000003e400000000000002440"),
+                List.of(4326, "01050000000200000001020000000300000000000000000024400000000000002440000000000000" +
+                        "34400000000000003440000000000000244000000000000044400102000000040000000000000000" +
+                        "00444000000000000044400000000000003e400000000000003e4000000000000044400000000000" +
+                        "0034400000000000003e400000000000002440"),
+                List.of(4326, "01060000000200000001030000000100000004000000000000000000444000000000000044400000" +
+                        "000000003440000000000080464000000000008046400000000000003e4000000000000044400000" +
+                        "00000000444001030000000200000006000000000000000000344000000000008041400000000000" +
+                        "0024400000000000003e40000000000000244000000000000024400000000000003e400000000000" +
+                        "00144000000000008046400000000000003440000000000000344000000000008041400400000000" +
+                        "00000000003e40000000000000344000000000000034400000000000002e40000000000000344000" +
+                        "000000000039400000000000003e400000000000003440"));
+
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                Collections.nCopies(7, geographyType),
+                values,
+                expectedValues,
+                (config) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, postgisSchema);
+                    }
+                    if (!sink.getType().is(SinkType.POSTGRES, SinkType.SQLSERVER)) {
+                        // For non-PG and non-MSSQL, flip EPSG format to traditional GIS format
+                        config.with("transforms", "swap");
+                        config.with("transforms.swap.type", SwapGeometryCoordinates.class.getName());
+                    }
+                },
+                (record) -> {
+                    assertColumn(sink, record, "data0", getGeographyType());
+                    assertColumn(sink, record, "data1", getGeographyType());
+                    assertColumn(sink, record, "data2", getGeographyType());
+                    assertColumn(sink, record, "data3", getGeographyType());
+                    assertColumn(sink, record, "data4", getGeographyType());
+                    assertColumn(sink, record, "data5", getGeographyType());
+                    assertColumn(sink, record, "data6", getGeographyType());
+                },
+                (rs, index) -> {
+                    final GeometryBytes value = getGeometryValues(rs, index);
+                    return List.of(value.getSrid(), HexConverter.convertToHexString(value.getBytes()));
+                });
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.MYSQL }, reason = "Testing MySQL's Geometry data type")
+    @SkipWhenSink(value = { SinkType.DB2 }, reason = "No support for GEOGRAPHY data type")
+    @WithPostgresExtension("postgis")
+    public void testGeometryDataTypeFromMySQL(Source source, Sink sink) throws Exception {
+        // Purposely skipped GEOMETRYCOLLECTION because Oracle is buggy when decoding the value.
+        final List<String> values = List.of(
+                "ST_GeomFromText('POINT (8 19)', 4326)",
+                "ST_GeomFromText('LINESTRING (30 10, 10 30, 40 40)', 4326)",
+                "ST_GeomFromText('POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))', 4326)",
+                "ST_GeomFromText('POLYGON ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))', 4326)",
+                "ST_GeomFromText('MULTIPOINT ((10 40), (40 30), (20 20), (30 10))', 4326)",
+                "ST_GeomFromText('MULTILINESTRING ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))', 4326)",
+                "ST_GeomFromText('MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))', 4326)");
+
+        // Expected values are in EPSG format
+        List<Object> expectedValues = Arrays.asList(
+                List.of(4326, "010100000000000000000020400000000000003340"),
+                List.of(4326, "0102000000030000000000000000003e40000000000000244000000000000024400000000000003e" +
+                        "4000000000000044400000000000004440"),
+                List.of(4326, "010300000001000000050000000000000000003e4000000000000024400000000000004440000000" +
+                        "00000044400000000000003440000000000000444000000000000024400000000000003440000000" +
+                        "0000003e400000000000002440"),
+                List.of(4326, "01030000000200000005000000000000000080414000000000000024400000000000804640000000" +
+                        "00008046400000000000002e40000000000000444000000000000024400000000000003440000000" +
+                        "000080414000000000000024400400000000000000000034400000000000003e4000000000008041" +
+                        "4000000000008041400000000000003e40000000000000344000000000000034400000000000003e" +
+                        "40"),
+                List.of(4326, "01040000000400000001010000000000000000002440000000000000444001010000000000000000" +
+                        "0044400000000000003e400101000000000000000000344000000000000034400101000000000000" +
+                        "0000003e400000000000002440"),
+                List.of(4326, "01050000000200000001020000000300000000000000000024400000000000002440000000000000" +
+                        "34400000000000003440000000000000244000000000000044400102000000040000000000000000" +
+                        "00444000000000000044400000000000003e400000000000003e4000000000000044400000000000" +
+                        "0034400000000000003e400000000000002440"),
+                List.of(4326, "01060000000200000001030000000100000004000000000000000000444000000000000044400000" +
+                        "000000003440000000000080464000000000008046400000000000003e4000000000000044400000" +
+                        "00000000444001030000000200000006000000000000000000344000000000008041400000000000" +
+                        "0024400000000000003e40000000000000244000000000000024400000000000003e400000000000" +
+                        "00144000000000008046400000000000003440000000000000344000000000008041400400000000" +
+                        "00000000003e40000000000000344000000000000034400000000000002e40000000000000344000" +
+                        "000000000039400000000000003e400000000000003440"));
+
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                Collections.nCopies(7, "geometry"),
+                values,
+                expectedValues,
+                (config) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+                    }
+
+                    // MySQL emits in GIS format, but PG and MSSQL expect EPSG.
+                    config.with("transforms", "swap");
+                    config.with("transforms.swap.type", SwapGeometryCoordinates.class.getName());
+                },
+                (record) -> {
+                    assertColumn(sink, record, "data0", getGeometryType());
+                    assertColumn(sink, record, "data1", getGeometryType());
+                    assertColumn(sink, record, "data2", getGeometryType());
+                    assertColumn(sink, record, "data3", getGeometryType());
+                    assertColumn(sink, record, "data4", getGeometryType());
+                    assertColumn(sink, record, "data5", getGeometryType());
+                    assertColumn(sink, record, "data6", getGeometryType());
+                },
+                (rs, index) -> {
+                    final GeometryBytes value = getGeometryValues(rs, index);
+                    return List.of(value.getSrid(), HexConverter.convertToHexString(value.getBytes()));
+                });
+    }
+
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
@@ -2942,15 +3134,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         return expectedValues;
     }
 
-    // todo: remaining data types need tests and/or type system mapping support
-    // GEOMETRY (MySql/PostgreSQL)
-    // LINESTRING (MySQL)
-    // POLYGON (MySQL)
-    // MULTIPOINT (MySQL)
-    // MULTILINESTRING (MySQL)
-    // MULTIPOLYGON (MySQL)
-    // GEOMETRYCOLLECTION (MySQL)
-    // POINT (PostgreSQL)
     // ROWID (Oracle)
 
     protected int getMaxDecimalPrecision() {
@@ -3011,15 +3194,45 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     protected abstract String getDateType();
 
+    protected int getDefaultTimePrecision(Source source) {
+        return switch (source.getType()) {
+            case MYSQL, ORACLE -> 9;
+            case SQLSERVER -> 7;
+            default -> 6;
+        };
+    }
+
+    protected int getDefaultTimestampPrecision(Source source) {
+        return switch (source.getType()) {
+            case MYSQL, ORACLE -> 9;
+            case SQLSERVER -> 7;
+            default -> 6;
+        };
+    }
+
+    protected int getDefaultSinkTimePrecision() {
+        return 6;
+    }
+
+    protected int getMaxTimestampPrecision() {
+        return 6;
+    }
+
     protected abstract String getTimeType(Source source, boolean key, int precision);
 
-    protected abstract String getTimeWithTimezoneType();
+    protected abstract String getTimeWithTimezoneType(Source source, boolean key, int precision);
 
     protected abstract String getTimestampType(Source source, boolean key, int precision);
 
     protected abstract String getTimestampWithTimezoneType(Source source, boolean key, int precision);
 
     protected abstract String getIntervalType(Source source, boolean numeric);
+
+    protected abstract String getGeographyType();
+
+    protected abstract String getGeometryType();
+
+    protected abstract GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException;
 
     protected boolean isBitCoercedToBoolean() {
         return false;
@@ -3184,7 +3397,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     private String getSinkTable(SinkRecord record, Sink sink) {
-        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(new KafkaDebeziumSinkRecord(record),
+        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(
+                new KafkaDebeziumSinkRecord(record, getCurrentSinkConfig().cloudEventsSchemaNamePattern()),
                 getCurrentSinkConfig().getCollectionNameFormat());
         // When quoted identifiers is not enabled, PostgreSQL saves table names as lower-case
         return sink.getType().is(SinkType.POSTGRES) ? sinkTableName.toLowerCase() : sinkTableName;
@@ -3196,6 +3410,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_USER, sink.getUsername());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, sink.getPassword());
         sinkProperties.put(JdbcSinkConnectorConfig.USE_TIME_ZONE, TestHelper.getSinkTimeZone());
+        sinkProperties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
         return sinkProperties;
     }
 
@@ -3212,6 +3427,11 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @FunctionalInterface
     protected interface ConfigurationAdjuster {
         void adjust(ConnectorConfiguration configuration);
+    }
+
+    @FunctionalInterface
+    protected interface SinkPropertiesAdjuster {
+        void adjust(Properties properties);
     }
 
     protected void assertColumn(Sink sink, SinkRecord record, String columnName, String columnType) {
@@ -3359,6 +3579,23 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                                                    List<U> expectedValues, ConfigurationAdjuster configAdjuster,
                                                    DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
             throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                typeName,
+                valueBinder,
+                expectedValues,
+                configAdjuster,
+                null,
+                columnAssert,
+                columnReader);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    protected <T, U> void assertDataTypeNonKeyOnly(Source source, Sink sink, String typeName, ValueBinder valueBinder,
+                                                   List<U> expectedValues, ConfigurationAdjuster configAdjuster,
+                                                   SinkPropertiesAdjuster sinkConfigAdjuster,
+                                                   DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
+            throws Exception {
         final String tableName = source.randomTableName();
 
         final String createSql = String.format("CREATE TABLE %s (data %s NOT NULL, id integer, primary key(id))", tableName, typeName);
@@ -3381,6 +3618,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.NONE.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        if (sinkConfigAdjuster != null) {
+            sinkConfigAdjuster.adjust(sinkProperties);
+        }
         startSink(source, sinkProperties, tableName);
 
         consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
@@ -3513,9 +3753,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             registerSourceConnector(source, typeNames, tableName, configAdjuster);
         }
         else {
-            registerSourceConnector(source, typeNames, tableName, configAdjuster);
             source.execute(createSql);
             source.streamTable(tableName);
+            registerSourceConnector(source, typeNames, tableName, configAdjuster);
             source.execute(insertSql);
         }
 

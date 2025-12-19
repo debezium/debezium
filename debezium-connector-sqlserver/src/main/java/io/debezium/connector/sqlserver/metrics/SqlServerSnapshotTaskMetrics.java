@@ -26,7 +26,7 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
         super(taskContext, "snapshot", changeEventQueueMetrics, partitions,
                 (SqlServerPartition partition) -> new SqlServerSnapshotPartitionMetrics(taskContext,
                         Collect.linkMapOf(
-                                "server", taskContext.getConnectorName(),
+                                "server", taskContext.getConnectorLogicalName(),
                                 "task", taskContext.getTaskId(),
                                 "context", "snapshot",
                                 "database", partition.getDatabaseName()),
@@ -61,6 +61,11 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
     @Override
     public void snapshotAborted(SqlServerPartition partition) {
         onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotAborted);
+    }
+
+    @Override
+    public void snapshotSkipped(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotSkipped);
     }
 
     @Override

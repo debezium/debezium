@@ -15,13 +15,14 @@ import java.util.Map;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.pipeline.AbstractMetricsTest;
 import io.debezium.util.Testing;
 
@@ -86,8 +87,8 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // Testing.Print.enable();
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
@@ -101,8 +102,8 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         TestHelper.waitForMaxLsnAvailable(connection, TEST_DATABASE_1);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -110,27 +111,25 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     @Override
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1);
+        return MetricsHelper.getSnapshotMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1);
     }
 
     @Override
     protected ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task());
     }
 
     @Override
     protected ObjectName getMultiplePartitionStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), TEST_DATABASE_1);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), TEST_DATABASE_1);
     }
 
     @Override
     protected ObjectName getMultiplePartitionStreamingMetricsObjectNameCustomTags(Map<String, String> customTags) throws MalformedObjectNameException {
-
-        return getStreamingMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1, customTags);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1, customTags);
     }
 
     @Test
-    @Override
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         executeInsertStatements();
@@ -151,7 +150,6 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
     }
 
     @Test
-    @Override
     public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
         // Setup
         executeInsertStatements();

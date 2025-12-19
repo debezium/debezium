@@ -10,7 +10,6 @@ import static java.util.stream.Collectors.toMap;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,6 +29,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -304,7 +304,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
         final TableId tableId = new TableId(null, schemaName, tableName);
 
-        final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
+        final List<io.debezium.relational.Column> readColumns = connection.getTableColumnsForDecoder(
+                tableId, decoderContext.getConfig().getColumnFilter());
         columnDefaults = readColumns.stream()
                 .filter(io.debezium.relational.Column::hasDefaultValue)
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
@@ -318,11 +319,22 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         List<ColumnMetaData> columns = new ArrayList<>();
         Set<String> columnNames = new HashSet<>();
+        Set<String> seenLowercaseColumnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
+
+            if (!seenLowercaseColumnNames.add(columnName.toLowerCase())) {
+                throw new DebeziumException(
+                        String.format(
+                                "Table '%s' has columns that differ only by case. " +
+                                        "Column name: '%s'. " +
+                                        "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
+                                        "Please rename one of the duplicate columns before running Debezium.",
+                                tableId, columnName));
+            }
 
             final PostgresType postgresType = typeRegistry.get(columnType);
             boolean key = isColumnInPrimaryKey(schemaName, tableName, columnName, primaryKeyColumns);
@@ -361,25 +373,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
-    }
-
-    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId)
-            throws SQLException {
-        List<io.debezium.relational.Column> readColumns = new ArrayList<>();
-        try {
-            try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
-                while (columnMetadata.next()) {
-                    connection.readColumnForDecoder(columnMetadata, tableId, decoderContext.getConfig().getColumnFilter())
-                            .ifPresent(readColumns::add);
-                }
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
-            throw e;
-        }
-
-        return readColumns;
     }
 
     private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {

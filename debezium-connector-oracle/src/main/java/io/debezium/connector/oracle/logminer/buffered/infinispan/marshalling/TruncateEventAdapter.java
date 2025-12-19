@@ -43,7 +43,7 @@ public class TruncateEventAdapter extends LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the LogMinerDmlEntryImpl instance
      */
-    @ProtoField(number = 7, required = true)
+    @ProtoField(number = 7)
     public LogMinerDmlEntryImpl getEntry(TruncateEvent event) {
         return (LogMinerDmlEntryImpl) event.getDmlEntry();
     }

@@ -1,0 +1,1 @@
+DROP MATERIALIZED ZONEMAP sales_zmap;

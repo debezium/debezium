@@ -8,6 +8,7 @@ package io.debezium.storage.jdbc.history;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.relational.ddl.DdlChanges;
 
 /**
  * @author Ismail simsek
@@ -23,7 +24,7 @@ public class TestingAntlrDdlParser extends AbstractDdlParser {
     }
 
     @Override
-    public void parse(String ddlContent, Tables databaseTables) {
-
+    public DdlChanges parse(String ddlContent, Tables databaseTables) {
+        return new DdlChanges();
     }
 }

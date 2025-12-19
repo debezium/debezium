@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.GtidSet;
 import com.github.shyiko.mysql.binlog.event.AnnotateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
@@ -48,9 +49,11 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
                                            ErrorHandler errorHandler,
                                            Clock clock,
                                            MySqlTaskContext taskContext,
+                                           MySqlDatabaseSchema schema,
                                            MySqlStreamingChangeEventSourceMetrics metrics,
-                                           SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, taskContext.getSchema(), metrics, snapshotterService);
+                                           SnapshotterService snapshotterService,
+                                           BinaryLogClient binaryLogClient) {
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
         this.connectorConfig = connectorConfig;
     }
 

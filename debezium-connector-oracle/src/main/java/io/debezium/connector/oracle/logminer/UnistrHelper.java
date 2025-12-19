@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A utility/helper class to support decoding Oracle Unicode String function values, {@code UNISTR}.
@@ -16,7 +17,6 @@ public class UnistrHelper {
 
     private static final String UNITSTR_FUNCTION_START = "UNISTR('";
     private static final String UNISTR_FUNCTION_END = "')";
-    private static final Pattern CONCATENATION_PATTERN = Pattern.compile("\\|\\|");
 
     public static boolean isUnistrFunction(String data) {
         return data != null && data.startsWith(UNITSTR_FUNCTION_START) && data.endsWith(UNISTR_FUNCTION_END);
@@ -34,7 +34,7 @@ public class UnistrHelper {
 
         // Multiple UNISTR function calls maybe concatenated together using "||".
         // We split the values into their respective parts before parsing each one separately.
-        final String[] parts = CONCATENATION_PATTERN.split(data);
+        final List<String> parts = tokenize(data);
 
         // Iterate each part and if the part is a UNISTR function call, decode it
         // Append each part's value to the final result
@@ -67,4 +67,43 @@ public class UnistrHelper {
         }
         return result.toString();
     }
+
+    private static List<String> tokenize(String data) {
+        final List<String> parts = new ArrayList<>();
+        final int length = data.length();
+
+        boolean inQuotedData = false;
+        int startIndex = 0;
+
+        for (int i = 0; i < length; i++) {
+            if (stringMatches(data, i, UNITSTR_FUNCTION_START)) {
+                inQuotedData = true;
+                if (startIndex == -1) {
+                    startIndex = i;
+                }
+            }
+            else if (inQuotedData && stringMatches(data, i, UNISTR_FUNCTION_END)) {
+                inQuotedData = false;
+            }
+            else if (!inQuotedData && stringMatches(data, i, "||")) {
+                // Extract substring from startIndex up to current position
+                parts.add(data.substring(startIndex, i).trim());
+
+                i += 1; // skip over second '|'
+                startIndex = i + 1; // next token starts after ||
+            }
+        }
+
+        // Add remaining part if not already handled
+        if (startIndex < data.length()) {
+            parts.add(data.substring(startIndex).trim());
+        }
+
+        return parts;
+    }
+
+    private static boolean stringMatches(String str, int index, String token) {
+        return str.regionMatches(index, token, 0, token.length());
+    }
+
 }

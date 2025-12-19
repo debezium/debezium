@@ -12,6 +12,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.spi.schema.DataCollectionId;
 
 /**
@@ -36,11 +37,11 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
 
-    default void recover(Partition partition, OffsetContext offset) {
+    default void recover(Partition partition, OffsetContext offset) throws InterruptedException {
         recover(Offsets.of(partition, offset));
     }
 
-    void recover(Offsets<?, ?> offsets);
+    void recover(Offsets<?, ?> offsets) throws InterruptedException;
 
     void initializeStorage();
 
@@ -52,5 +53,5 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     boolean storeOnlyCapturedDatabases();
 
-    boolean historyExists();
+    SchemaHistory getSchemaHistory();
 }

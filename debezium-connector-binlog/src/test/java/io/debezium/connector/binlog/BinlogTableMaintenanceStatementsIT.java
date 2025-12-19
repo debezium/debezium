@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -32,16 +32,16 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -67,7 +67,7 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
-        int numTableMaintenanceStatements = 3;
+        int numTableMaintenanceStatements = 0; // Not storing table maintenance statements in the schema history table
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
         System.out.println(records.allRecordsInOrder());
         stopConnector();

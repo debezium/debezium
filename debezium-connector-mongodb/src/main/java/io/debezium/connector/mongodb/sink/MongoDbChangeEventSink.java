@@ -6,6 +6,9 @@
 package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask.LOGGER;
+import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
 import java.util.Collection;
 import java.util.List;
@@ -26,8 +29,14 @@ import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.connector.mongodb.sink.converters.SinkDocument;
+import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.metadata.CollectionId;
+import io.debezium.openlineage.ConnectorContext;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
 
@@ -36,14 +45,16 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
     private final ErrorReporter errorReporter;
+    private final ConnectorContext connectorContext;
 
     MongoDbChangeEventSink(
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
-                           final ErrorReporter errorReporter) {
+                           final ErrorReporter errorReporter, ConnectorContext connectorContext) {
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
+        this.connectorContext = connectorContext;
     }
 
     @SuppressWarnings("try")
@@ -74,6 +85,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
             }
         }
         catch (Exception e) {
+
             throw new DebeziumException(e);
         }
     }
@@ -91,6 +103,9 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
 
         MongoNamespace namespace = batch.get(0).getNamespace();
+
+        DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                List.of(extractDatasetMetadata(batch.get(0).getSinkDocument(), namespace.getFullName())));
 
         List<WriteModel<BsonDocument>> writeModels = batch.stream()
                 .map(MongoProcessedSinkRecordData::getWriteModel)
@@ -145,5 +160,16 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private static void log(final Collection<DebeziumSinkRecord> records, final RuntimeException e) {
         LOGGER.error("Failed to put into the sink the following records: {}", records, e);
+    }
+
+    private DatasetMetadata extractDatasetMetadata(SinkDocument sinkDocument, String collectionId) {
+
+        BsonDocument changeEvent = RelationalEventHandler.generateUpsertOrReplaceDoc(sinkDocument.getKeyDoc().get(), sinkDocument.getValueDoc().get(),
+                new BsonDocument(), sinkConfig.getColumnNamingStrategy());
+
+        List<DatasetMetadata.FieldDefinition> fieldDefinitions = changeEvent.entrySet().stream()
+                .map((entry) -> new DatasetMetadata.FieldDefinition(entry.getKey(), entry.getValue().getBsonType().toString(), ""))
+                .toList();
+        return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
     }
 }

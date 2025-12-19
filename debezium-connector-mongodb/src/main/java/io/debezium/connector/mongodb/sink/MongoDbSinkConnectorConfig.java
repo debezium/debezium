@@ -47,18 +47,19 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .required();
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
-            .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
+            .withDisplayName("ColumnNamingStrategy class")
             .withType(ConfigDef.Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultColumnNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
+            .withDescription("The fully qualified name of the class that provide the column naming strategy. It must implement the ColumnNamingStrategy interface.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
+                    COLLECTION_NAMING_STRATEGY_FIELD,
                     COLLECTION_NAME_FORMAT_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
                     BATCH_SIZE_FIELD)
@@ -89,6 +90,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     private final int batchSize;
     private final boolean truncateEnabled;
     private final boolean deleteEnabled;
+    private final String cloudEventsSchemaNamePattern;
 
     public MongoDbSinkConnectorConfig(Configuration config) {
         this.config = config;
@@ -105,6 +107,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         this.truncateEnabled = config.getBoolean(SinkConnectorConfig.TRUNCATE_ENABLED_FIELD);
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
+        this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
     }
 
     public void validate() {
@@ -135,6 +138,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return CONFIG_DEFINITION.configDef();
     }
 
+    @Override
     public int getBatchSize() {
         return batchSize;
     }
@@ -169,6 +173,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return sinkDatabaseName;
     }
 
+    @Override
     public String getCollectionNameFormat() {
         return collectionNameFormat;
     }
@@ -178,10 +183,12 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return null;
     }
 
+    @Override
     public boolean isTruncateEnabled() {
         return truncateEnabled;
     }
 
+    @Override
     public boolean isDeleteEnabled() {
         return deleteEnabled;
     }
@@ -189,6 +196,11 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     @Override
     public String useTimeZone() {
         return "UTC";
+    }
+
+    @Override
+    public String cloudEventsSchemaNamePattern() {
+        return cloudEventsSchemaNamePattern;
     }
 
 }

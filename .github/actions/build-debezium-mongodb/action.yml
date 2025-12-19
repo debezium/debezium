@@ -9,6 +9,10 @@ inputs:
     description: "The MongoDB server version to use"
     required: false
     default: "7.0"
+  profile:
+    description: "The MongoDB build profile to use"
+    required: false
+    default: "assembly"
   shell:
     description: "The shell to use"
     required: false
@@ -27,7 +31,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install -B -pl debezium-connector-mongodb -am
-        -Passembly
+        -P${{ inputs.profile }}
         -Dcheckstyle.skip=true
         -Dformat.skip=true
         -Dversion.mongo.server=${{ inputs.version-mongo-server }}

@@ -39,7 +39,8 @@ import io.debezium.DebeziumException;
 import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.FieldName;
+import io.debezium.time.Conversions;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
@@ -94,11 +95,11 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private String convertedTimezone;
     private List<String> includeList;
     private List<String> excludeList;
-    private static final String SOURCE = Envelope.FieldName.SOURCE;
+    private static final String SOURCE = FieldName.SOURCE;
     private static final String TOPIC = "topic";
-    private static final String FIELD_SOURCE_PREFIX = Envelope.FieldName.SOURCE + ".";
-    private static final String FIELD_BEFORE_PREFIX = Envelope.FieldName.BEFORE + ".";
-    private static final String FIELD_AFTER_PREFIX = Envelope.FieldName.AFTER + ".";
+    private static final String FIELD_SOURCE_PREFIX = FieldName.SOURCE + ".";
+    private static final String FIELD_BEFORE_PREFIX = FieldName.BEFORE + ".";
+    private static final String FIELD_AFTER_PREFIX = FieldName.AFTER + ".";
     private static final Pattern TIMEZONE_OFFSET_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}(:\\d{2})?$");
     private static final Pattern LIST_PATTERN = Pattern.compile("^\\[(source|topic|[\".\\w\\s_]+):([\".\\w\\s_]+(?::[\".\\w\\s_]+)?(?:,|]$))+$");
     private final Map<String, Set<String>> topicFieldsMap = new HashMap<>();
@@ -118,6 +119,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             io.debezium.time.Time.SCHEMA_NAME,
             org.apache.kafka.connect.data.Date.LOGICAL_NAME,
             org.apache.kafka.connect.data.Time.LOGICAL_NAME);
+    private static final List<String> SUPPORTED_EPOCH_FIELDS = List.of("ts_ms", "ts_us", "ts_ns");
 
     @Override
     public ConfigDef config() {
@@ -319,9 +321,9 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             return;
         }
 
-        Struct before = getStruct(value, Envelope.FieldName.BEFORE);
-        Struct after = getStruct(value, Envelope.FieldName.AFTER);
-        Struct source = getStruct(value, Envelope.FieldName.SOURCE);
+        Struct before = getStruct(value, FieldName.BEFORE);
+        Struct after = getStruct(value, FieldName.AFTER);
+        Struct source = getStruct(value, FieldName.SOURCE);
 
         Set<String> beforeFields = new HashSet<>();
         Set<String> afterFields = new HashSet<>();
@@ -346,27 +348,28 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         }
 
         if (before != null) {
-            handleValueForFields(before, type, beforeFields);
+            handleValueForFields(FieldName.BEFORE, before, type, beforeFields);
         }
         if (after != null) {
-            handleValueForFields(after, type, afterFields);
+            handleValueForFields(FieldName.AFTER, after, type, afterFields);
         }
         if (source != null && !sourceFields.isEmpty()) {
-            handleValueForFields(source, type, sourceFields);
+            handleValueForFields(FieldName.SOURCE, source, type, sourceFields);
         }
     }
 
-    private void handleValueForFields(Struct value, Type type, Set<String> fields) {
+    private void handleValueForFields(String valueFieldName, Struct value, Type type, Set<String> fields) {
         Schema schema = value.schema();
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             String schemaName = field.schema().name();
 
-            if (schemaName == null) {
+            boolean isEpochType = isEpochType(valueFieldName, field);
+            if (schemaName == null && !isEpochType) {
                 continue;
             }
 
-            boolean isUnsupportedLogicalType = UNSUPPORTED_LOGICAL_NAMES.contains(schemaName);
-            boolean supportedLogicalType = SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
+            boolean isUnsupportedLogicalType = schemaName != null && UNSUPPORTED_LOGICAL_NAMES.contains(schemaName);
+            boolean supportedLogicalType = schemaName != null && SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
             boolean shouldIncludeField = type == Type.ALL
                     || (type == Type.INCLUDE && fields.contains(field.name()))
                     || (type == Type.EXCLUDE && !fields.contains(field.name()));
@@ -376,19 +379,50 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 continue;
             }
 
-            if (shouldIncludeField && supportedLogicalType) {
+            if (shouldIncludeField && (supportedLogicalType || isEpochType)) {
                 if (value.get(field) != null) {
-                    handleValueForField(value, field);
+                    handleValueForField(valueFieldName, value, field);
                 }
             }
         }
     }
 
-    private void handleValueForField(Struct struct, org.apache.kafka.connect.data.Field field) {
+    private boolean isEpochType(String structFieldName, org.apache.kafka.connect.data.Field field) {
+        return FieldName.SOURCE.equals(structFieldName) && SUPPORTED_EPOCH_FIELDS.contains(field.name());
+    }
+
+    private void handleValueForField(String valueFieldName, Struct value, org.apache.kafka.connect.data.Field field) {
         String fieldName = field.name();
         Schema schema = field.schema();
-        Object newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
-        struct.put(fieldName, newValue);
+        Object fieldValue = value.get(fieldName);
+        Object newValue = fieldValue;
+        if (fieldValue != null) {
+            if (schema.name() != null) {
+                newValue = getTimestampWithTimezone(schema.name(), value.get(fieldName));
+            }
+            else if (schema.name() == null && isEpochType(valueFieldName, field)) {
+                newValue = getEpochWithTimezone(fieldName, fieldValue);
+            }
+        }
+        value.put(fieldName, newValue);
+    }
+
+    private Long getEpochWithTimezone(String fieldName, Object fieldValue) {
+        if (!(fieldValue instanceof Long epochValue)) {
+            throw new DebeziumException("Epoch field value should be a %s".formatted(Long.class.getName()));
+        }
+
+        return switch (fieldName) {
+            case "ts_ms" -> getConvertedInstant(Instant.ofEpochMilli(epochValue)).toEpochMilli();
+            case "ts_us" -> Conversions.toEpochMicros(getConvertedInstant(Conversions.toInstantFromMicros(epochValue)));
+            case "ts_ns" -> Conversions.toEpochNanos(getConvertedInstant(Conversions.toInstantFromNanos(epochValue)));
+            default -> throw new DebeziumException("An unsupported epoch field detected: " + fieldName);
+        };
+    }
+
+    private Instant getConvertedInstant(Instant value) {
+        final ZoneId zoneId = ZoneId.of(convertedTimezone);
+        return value.plusSeconds(zoneId.getRules().getOffset(value).getTotalSeconds());
     }
 
     private Struct getStruct(Struct struct, String structName) {
@@ -402,7 +436,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
 
     private String getTableFromSource(Struct value) {
         try {
-            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct source = value.getStruct(FieldName.SOURCE);
             return source.getString("table");
         }
         catch (DataException ignored) {

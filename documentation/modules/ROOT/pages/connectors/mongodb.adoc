@@ -197,14 +197,11 @@ Grant the user permission to read the collection specified by the connector's xr
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 
@@ -1243,7 +1240,7 @@ ifdef::community[]
 To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * MongoDB is installed and is xref:setting-up-mongodb[set up to work with the {prodname} connector].
 
 .Procedure
@@ -1258,7 +1255,7 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the MongoDB connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -1763,6 +1760,10 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
+|[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
+|
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. The value ought to be a long representation of Bson timestamp.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -1789,14 +1790,11 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 +
@@ -2166,8 +2164,11 @@ A value of `0` indicates using the server/driver default wait timeout.
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
-`_<databaseName>_._<collectionName>_` +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
+`_<databaseName>_._<collectionName>_`
 
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
@@ -2265,6 +2266,34 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[mongodb-property-guardrail-collections-max]]<<mongodb-property-guardrail-collections-max, `+guardrail.collections.max+`>>
+|`0`
+|Specifies the maximum number of collections that the connector can capture.
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
+
+|[[mongodb-property-guardrail-collections-limit-action]]<<mongodb-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
+|`warn`
+|Specifies the action to trigger if the number of collections that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails and reports an exception.
+
+`warn`::
+The connector logs a warning.
+
+|[[mongodb-property-extended-headers-enabled]]<<mongodb-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 
@@ -2285,7 +2314,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 [[mongodb-monitoring]]
 == Monitoring
 
-The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Kafka and Kafka Connect have.
 
 * xref:mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

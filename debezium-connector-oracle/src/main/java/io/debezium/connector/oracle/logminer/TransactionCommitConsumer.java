@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -91,7 +91,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final ConstructionDetails currentExtendedStringDetails = new ConstructionDetails();
     private final ConstructionDetails currentXmlDetails = new ConstructionDetails();
 
-    private int transactionIndex = 0;
+    private long dispatchEventIndex = 0;
+    private long enqueueEventIndex = 0;
     private int totalEvents = 0;
 
     public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
@@ -102,9 +103,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @Override
     public void close() throws InterruptedException {
-        // dispatch the remaining events in the order we received them from LogMiner
+        // Dispatch any of the existing events in the order they were received
         List<RowState> pending = new ArrayList<>(rows.values());
-        Collections.sort(pending, (a, b) -> a.transactionIndex - b.transactionIndex);
+        pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
+
         for (final RowState rowState : pending) {
             prepareAndDispatch(rowState.event);
         }
@@ -114,6 +116,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         currentLobDetails.reset();
         currentExtendedStringDetails.reset();
         currentXmlDetails.reset();
+
+        totalEvents = 0;
+        enqueueEventIndex = 0;
+        dispatchEventIndex = 0;
     }
 
     @Override
@@ -140,7 +146,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private void acceptDmlEvent(DmlEvent event) throws InterruptedException {
-        transactionIndex++;
+        enqueueEventIndex++;
 
         final Table table = schema.tableFor(event.getTableId());
         if (table == null) {
@@ -178,7 +184,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             else if (rowId.equals(currentXmlDetails.rowId)) {
                 currentXmlDetails.reset();
             }
-            rows.put(rowId, new RowState(event, transactionIndex));
+            rows.put(rowId, new RowState(event, enqueueEventIndex));
             accumulatorEvent = event;
         }
 
@@ -500,8 +506,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {
-        LOGGER.trace("\tEmitting event {} {}", event.getEventType(), event);
-        delegate.accept(event, totalEvents);
+        // Must be one based so that START_SCN/START_SCN_TS assignment works in delegate
+        final long eventIndex = ++dispatchEventIndex;
+        LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
+        delegate.accept(event, eventIndex, totalEvents);
     }
 
     private String rowIdFromEvent(Table table, DmlEvent event) {
@@ -989,9 +997,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private static class RowState {
         final DmlEvent event;
-        final int transactionIndex;
+        final long transactionIndex;
 
-        RowState(final DmlEvent event, final int transactionIndex) {
+        RowState(final DmlEvent event, final long transactionIndex) {
             this.event = event;
             this.transactionIndex = transactionIndex;
         }
@@ -999,6 +1007,6 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @FunctionalInterface
     public interface Handler<T> {
-        void accept(T event, long eventsProcessed) throws InterruptedException;
+        void accept(T event, long eventIndex, long eventsProcessed) throws InterruptedException;
     }
 }

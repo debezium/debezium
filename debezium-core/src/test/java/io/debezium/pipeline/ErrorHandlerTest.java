@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -14,14 +15,14 @@ import java.util.Optional;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.util.LoggingContext;
 
 public class ErrorHandlerTest {
@@ -169,7 +170,7 @@ public class ErrorHandlerTest {
     private void pollAndAssertRetriable(ChangeEventQueue<DataChangeEvent> queue) throws Exception {
         try {
             poll(queue);
-            Assert.fail("Exception must be thrown");
+            fail("Exception must be thrown");
         }
         catch (ConnectException e) {
             assertThat(e).isInstanceOf(RetriableException.class);
@@ -179,7 +180,7 @@ public class ErrorHandlerTest {
     private void pollAndAssertNonRetriable(ChangeEventQueue<DataChangeEvent> queue) throws Exception {
         try {
             poll(queue);
-            Assert.fail("Exception must be thrown");
+            fail("Exception must be thrown");
         }
         catch (ConnectException e) {
             assertThat(e).isNotInstanceOf(RetriableException.class);
@@ -211,12 +212,12 @@ public class ErrorHandlerTest {
     }
 
     private ChangeEventQueue<DataChangeEvent> queue() {
-        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(1))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
+                .queueProvider(new DefaultQueueProvider<>(1000))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("test", "test", "test"))
                 .build();
-        return queue;
     }
 }

@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
+
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -15,10 +19,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Json;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
@@ -41,19 +48,23 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
     public static final Schema UPDATED_DESCRIPTION_SCHEMA = MongoDbSchemaFactory.get().updatedDescriptionSchema();
 
+    private final MongoDbConnectorConfig config;
     private final Filters filters;
     private final TopicNamingStrategy<CollectionId> topicNamingStrategy;
     private final Schema sourceSchema;
     private final SchemaNameAdjuster adjuster;
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final JsonSerialization serialization = new JsonSerialization();
+    private final MongoDbTaskContext taskContext;
 
-    public MongoDbSchema(Filters filters, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
+    public MongoDbSchema(MongoDbConnectorConfig config, MongoDbTaskContext taskContext, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
                          SchemaNameAdjuster schemaNameAdjuster) {
-        this.filters = filters;
+        this.config = config;
+        this.filters = taskContext.getFilters();
         this.topicNamingStrategy = topicNamingStrategy;
         this.sourceSchema = sourceSchema;
         this.adjuster = schemaNameAdjuster;
+        this.taskContext = taskContext;
     }
 
     @Override
@@ -84,6 +95,12 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .build();
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
+
+            DebeziumOpenLineageEmitter.emit(
+                    DebeziumOpenLineageEmitter.connectorContext(taskContext.getRawConfig().withMaskedPasswords().asMap(), config.getConnectorName(),
+                            taskContext.getRunId()),
+                    DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(collectionId.identifier(), INPUT, DatasetMetadata.TABLE_DATASET_TYPE, DATABASE, List.of())));
 
             return new MongoDbCollectionSchema(
                     id,

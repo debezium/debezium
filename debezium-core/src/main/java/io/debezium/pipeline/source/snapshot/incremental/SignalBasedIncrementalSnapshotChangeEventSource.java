@@ -10,6 +10,7 @@ import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -29,13 +30,13 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.LoggingContext;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
         extends AbstractIncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
-    private final String signalWindowStatement;
     private SignalMetadata signalMetadata;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -46,8 +47,50 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            DataChangeEventListener<P> dataChangeEventListener,
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
-                + " VALUES (?, ?, ?)";
+    }
+
+    /**
+     * Get the appropriate signal table name for the given partition.
+     * For multi-database connectors with multiple signal tables, this method matches the signal table
+     * to the database of the partition.
+     *
+     * @param partition the partition for which to get the signal table
+     * @return the signal table name, or null if not configured
+     */
+    protected String getSignalTableNameForPartition(Partition partition) {
+
+        if (connectorConfig.getSignalingDataCollectionIds().size() == 1) {
+            return getSignalTableName(connectorConfig.getSignalingDataCollectionIds().get(0));
+        }
+
+        String partitionDatabase = getDatabaseNameFromPartition(partition);
+        if (partitionDatabase == null) {
+            return null;
+        }
+
+        return connectorConfig.getSignalingDataCollectionIds().stream()
+                .filter(signalCollection -> partitionDatabase.equals(getDatabaseName(signalCollection).get()))
+                .map(this::getSignalTableName)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Extract the database name from a partition.
+     * Default implementation tries to use AbstractPartition's databaseName field via reflection.
+     * Subclasses should override this for connector-specific partition types.
+     *
+     * @param partition the partition
+     * @return the database name, or null if it cannot be determined
+     */
+    protected String getDatabaseNameFromPartition(Partition partition) {
+        // Default implementation: try to extract from relational AbstractPartition
+        if (partition instanceof io.debezium.relational.AbstractPartition) {
+            // Access the protected field via the source partition
+            Map<String, String> loggingContext = partition.getLoggingContext();
+            return loggingContext.get(LoggingContext.DATABASE_NAME);
+        }
+        return null;
     }
 
     @Override
@@ -65,10 +108,17 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowOpen() throws SQLException {
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) throws SQLException {
+        String signalTableName = getSignalTableNameForPartition(partition);
+        if (signalTableName == null) {
+            LOGGER.warn("Not able to determine signal table, cannot emit window open signal");
+            return;
+        }
+
+        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
         signalMetadata = new SignalMetadata(Instant.now(), null);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
+            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
             x.setString(3, signalMetadata.metadataString());
@@ -77,10 +127,14 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
+    protected void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception {
+        String signalTableName = getSignalTableNameForPartition(partition);
+        if (signalTableName == null) {
+            LOGGER.warn("Not able to detect signal table, cannot emit window close signal");
+            return;
+        }
 
-        String signalTableName = getSignalTableName(connectorConfig.getSignalingDataCollectionId());
-
+        LOGGER.trace("Emitting close window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
 
         watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());

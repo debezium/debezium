@@ -10,14 +10,14 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class JsonSerializationTest {
 
     private JsonSerialization serialization = new JsonSerialization();
 
     @Test
-    public void shouldGeOnlyIdFromCompositeKey() {
+    void shouldGeOnlyIdFromCompositeKey() {
         var id = new BsonInt32(42);
         var composite = new BsonDocument("email", new BsonString("foo@bar.com"))
                 .append("_id", id);
@@ -28,7 +28,7 @@ public class JsonSerializationTest {
     }
 
     @Test
-    public void shouldGetEqualDocumentIdFromSimpleAndComposite() {
+    void shouldGetEqualDocumentIdFromSimpleAndComposite() {
         var id = new BsonObjectId();
         var simple = new BsonDocument("_id", id);
         var composite = new BsonDocument("email", new BsonString("foo@bar.com"))

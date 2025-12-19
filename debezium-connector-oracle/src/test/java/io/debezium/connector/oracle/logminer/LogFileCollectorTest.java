@@ -22,9 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -33,7 +31,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -47,13 +44,10 @@ import io.debezium.jdbc.JdbcConnection;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogFileCollectorTest {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     private int currentQueryRow;
 
     @Test
-    public void testStandaloneLogStateWithOneThreadArchiveLogGap() throws Exception {
+    void testStandaloneLogStateWithOneThreadArchiveLogGap() throws Exception {
         // The test scenario is (gap, arc process 2 fell behind)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -68,7 +62,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithNoGaps() throws Exception {
+    void testStandaloneLogStateWithNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs with high volatility)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -84,7 +78,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithJustOnlineLogs() throws Exception {
+    void testStandaloneLogStateWithJustOnlineLogs() throws Exception {
         // The test scenario is (no gaps, just online redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // Expectation: Return true, no wait needed.
@@ -96,7 +90,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
+    void testStandaloneLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -110,7 +104,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithOneThreadArchiveLogGap() throws Exception {
+    void testRacLogStateWithOneThreadArchiveLogGap() throws Exception {
         // The test scenario is (gap, arc process 2 fell behind)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 080 to NOW - SEQ1
@@ -127,7 +121,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithNoGaps() throws Exception {
+    void testRacLogStateWithNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs with one node volatile)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 080 to NOW - SEQ1
@@ -145,7 +139,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithJustOnlineLogs() throws Exception {
+    void testRacLogStateWithJustOnlineLogs() throws Exception {
         // The test scenario is (no gaps, just online redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
@@ -159,7 +153,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
+    void testRacLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
@@ -177,7 +171,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithMixOfArchiveAndRedoForBothThreadsNoGap() throws Exception {
+    void testRacLogStateWithMixOfArchiveAndRedoForBothThreadsNoGap() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs on both threads, both equally active)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3

@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -27,7 +27,7 @@ public class SchemaNameAdjusterTest {
     private ReplacementFunction underscoreReplacement;
     private ReplacementFunction unicodeReplacement;
 
-    @Before
+    @BeforeEach
     public void before() {
         underscoreReplacement = ReplacementFunction.UNDERSCORE_REPLACEMENT;
         unicodeReplacement = new UnicodeReplacementFunction();

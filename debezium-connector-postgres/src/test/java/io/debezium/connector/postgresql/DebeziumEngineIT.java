@@ -26,10 +26,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,6 @@ import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.SimpleString;
 import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.LoggingContext;
@@ -63,11 +61,8 @@ public class DebeziumEngineIT {
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("connector-offsets.txt").toAbsolutePath();
 
-    @Rule
-    public SkipTestRule skipTest = new SkipTestRule();
-
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
         OFFSET_STORE_PATH.toFile().delete();
         TestHelper.dropDefaultReplicationSlot();
@@ -143,7 +138,7 @@ public class DebeziumEngineIT {
         final ExecutorService executor = Executors.newFixedThreadPool(1);
         DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
-                    Assert.fail("Should not be invoked due to serialization error");
+                    Assertions.fail("Should not be invoked due to serialization error");
                 })
                 .using(new CompletionCallback() {
 
@@ -212,7 +207,7 @@ public class DebeziumEngineIT {
     }
 
     @Test
-    public void shouldSerializeArbitraryPayloadFromOutbox() throws Exception {
+    void shouldSerializeArbitraryPayloadFromOutbox() throws Exception {
         TestHelper.execute(
                 "CREATE TABLE engine.outbox (id INT PRIMARY KEY, aggregateid TEXT, aggregatetype TEXT, payload BYTEA);",
                 "INSERT INTO engine.outbox VALUES(1, 'key1', 'event', 'value1'::BYTEA);");

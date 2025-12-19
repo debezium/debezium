@@ -14,58 +14,81 @@ When a row in the database changes,
 
 [NOTE]
 ====
-In a production environment, you would typically either use the Kafka tools to manually create the necessary topics,
-including specifying the number of replicas,
+In a production environment, you would typically either use the Kafka tools to manually create the necessary topics, including specifying the number of replicas,
 or you'd use the Kafka Connect mechanism for customizing the settings of xref:{link-topic-auto-creation}[auto-created] topics.
 However, for this tutorial, Kafka is configured to automatically create the topics with just one replica.
 ====
+
+.Prerequisites
+
+* You are familiar with the configuration options that are available for the connector.
 
 .Procedure
 
 . Review the configuration of the {prodname} MySQL connector that you will register.
 +
 --
-Before registering the connector,
-you should be familiar with its configuration.
-In the next step,
-you will register the following connector:
+In the next step, you will register the connector that is defined by the following configuration:
 
 [source,json,options="nowrap"]
 ----
 {
-  "name": "inventory-connector",  // <1>
-  "config": {  // <2>
+  "name": "inventory-connector",
+  "config": {
     "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-    "tasks.max": "1",  // <3>
-    "database.hostname": "mysql",  // <4>
+    "tasks.max": "1",
+    "database.hostname": "mysql",
     "database.port": "3306",
     "database.user": "debezium",
     "database.password": "dbz",
-    "database.server.id": "184054",  // <5>
-    "topic.prefix": "dbserver1",  // <5>
-    "database.include.list": "inventory",  // <6>
-    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",  // <7>
-    "schema.history.internal.kafka.topic": "schema-changes.inventory"  // <7>
+    "database.server.id": "184054",
+    "topic.prefix": "dbserver1",
+    "database.include.list": "inventory",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+    "schema.history.internal.kafka.topic": "schema-changes.inventory"
   }
 }
 ----
-<1> The name of the connector.
-<2> The connector's configuration.
-<3> Only one task should operate at any one time.
-Because the MySQL connector reads the MySQL server's `binlog`,
-using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks that do the work,
+
+The following list describes select fields in the preceding example of a connector configuration:
+
+`name`::
+Specifies the name of the connector.
+
+`config`::
+The connector's configuration.
+
+`tasks.max`::
+Specifies the number of tasks that the connector can operate at one time.
+Only one task should operate at any one time.
+Because the MySQL connector reads the MySQL server's `binlog`, using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks to perform work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash, those tasks will be redistributed to running services.
-<4> The database host,
-which is the name of the Docker container running the MySQL server (`mysql`).
+If any of the services stop or crash, tasks are redistributed to running services.
+
+`database.hostname`::
+Specifies the database host, which is the name of the container that runs the MySQL server (`mysql`).
 Docker manipulates the network stack within the containers so that each linked container can be resolved with `/etc/hosts` using the container name for the host name.
 If MySQL were running on a normal network, you would specify the IP address or resolvable host name for this value.
-<5> A unique topic prefix.
-This name will be used as the prefix for all Kafka topics.
-<6> Only changes in the `inventory` database will be detected.
-<7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
-Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
+
+`database.server.id`::
+A unique topic prefix.
+
+`topic.prefix`::
+Specifies the unique topic prefix for the database server or cluser.
+This name is as the prefix for all Kafka topics that receive change event records from the connector.
+
+`database.include.list`::
+Specifies the names of the databases from which the connector captures changes.
+This connector captures changes from the `inventory` database only.
+
+`schema.history.internal.kafka.bootstrap.servers`::
+Specifies that the connector uses `kafka:9092` as its Kafka broker to connect to the database schema history topic to write or read DDL statements.
+After a connector restarts, it recovers the database schemas that existed in the binlog at the point in time when the connector stopped.
+
+`schema.history.internal.kafka.topic`::
+Specifies the name of the topic in which the connector stores its database schema history.
+This topic is for internal use only and is not for direct use by consumers.
 
 For more information, see xref:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 --
@@ -74,7 +97,7 @@ ifdef::community[]
 [NOTE]
 ====
 For security reasons, you shouldn't put passwords or other secrets in plain text into connector configurations.
-Instead, any secrets should be externalized via the mechanism defined in https://cwiki.apache.org/confluence/display/KAFKA/KIP-297%3A+Externalizing+Secrets+for+Connect+Configurations[KIP-297]("Externalizing Secrets for Connect Configurations"). 
+Instead, any secrets should be externalized via the mechanism defined in https://cwiki.apache.org/confluence/display/KAFKA/KIP-297%3A+Externalizing+Secrets+for+Connect+Configurations[KIP-297]("Externalizing Secrets for Connect Configurations").
 ====
 endif::community[]
 
@@ -157,14 +180,14 @@ Server: Jetty(9.4.20.v20190813)
   ...
   "tasks": [
     {
-      "connector": "inventory-connector",  // <1>
+      "connector": "inventory-connector",
       "task": 0
     }
   ]
 }
 ----
-<1> The connector is running a single task (task `0`) to do its work.
-The connector only supports a single task,
-because MySQL records all of its activities in one sequential `binlog`.
-This means the connector only needs one reader to get a consistent, ordered view of all of the events.
+
+The connector is running a single task (task `0`) to do its work.
+The connector only supports a single task, because MySQL records all of its activities in one sequential `binlog`.
+As a result, the connector requires only a single reader to obtain a consistent, ordered view of all of the events.
 --

@@ -18,10 +18,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
@@ -48,8 +48,8 @@ public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -59,8 +59,8 @@ public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.dropAllTables();
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         if (connection != null) {
             TestHelper.dropAllTables();
             connection.close();
@@ -1047,7 +1047,7 @@ public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-2916")
-    @Ignore("Test can be flaky and cannot reproduce locally, ignoring to stablize test suite")
+    @Disabled("Test can be flaky and cannot reproduce locally, ignoring to stablize test suite")
     public void shouldNotEmitDdlEventsForNonTableObjects() throws Exception {
         try {
             final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();

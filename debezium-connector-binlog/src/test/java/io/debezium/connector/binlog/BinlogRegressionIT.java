@@ -7,9 +7,9 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -30,16 +30,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -66,19 +63,16 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     private Configuration config;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
-
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -107,7 +101,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After DBZ-9186 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -461,7 +455,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After DBZ-9186 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -668,7 +662,6 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numTables = 12;
         int numDataRecords = 22;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
-        int numCreateDefiner = 1;
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
@@ -986,7 +979,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
         TimeZone originalTimeZone = TimeZone.getDefault();
         try {
             // Set the timezone of the JVM to an offset that is earlier than the

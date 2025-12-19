@@ -7,8 +7,8 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.jdbc.TemporalPrecisionMode;
 
@@ -20,8 +20,8 @@ import io.debezium.jdbc.TemporalPrecisionMode;
  */
 public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         AbstractSqlServerDatatypesTest.beforeClass();
 
         createTables();
@@ -33,8 +33,8 @@ public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
         insertXmlTypes();
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         init(TemporalPrecisionMode.ADAPTIVE, true);
     }
 }

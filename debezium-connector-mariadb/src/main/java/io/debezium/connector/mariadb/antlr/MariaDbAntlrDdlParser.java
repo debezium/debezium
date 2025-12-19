@@ -48,6 +48,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
+    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
 
     @VisibleForTesting
     public MariaDbAntlrDdlParser() {
@@ -98,7 +99,11 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     }
 
     @Override
-    protected DataTypeResolver initializeDataTypeResolver() {
+    public DataTypeResolver dataTypeResolver() {
+        return dataTypeResolver;
+    }
+
+    private DataTypeResolver initializeDataTypeResolver() {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR),
@@ -182,6 +187,8 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeResolver.DataTypeEntry(Types.BIT, MariaDBParser.BIT)
                         .setDefaultLengthDimension(1),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.VECTOR)
+                        .setDefaultLengthDimension(2048),
                 new DataTypeResolver.DataTypeEntry(Types.TIME, MariaDBParser.TIME),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MariaDBParser.TIMESTAMP),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP, MariaDBParser.DATETIME),
@@ -222,6 +229,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONG)
                         .setSuffixTokens(MariaDBParser.VARCHAR)));
+
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.UuidDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.UUID)));
 
         return dataTypeResolverBuilder.build();
     }
@@ -318,10 +328,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                     // MariaDB does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();
@@ -374,10 +384,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 .map(indexColumnNameContext -> {
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();

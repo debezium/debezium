@@ -31,6 +31,9 @@ public class SelectAllSnapshotQuery implements SnapshotQuery {
     @Override
     public Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns) {
 
+        if (snapshotSelectColumns.isEmpty()) {
+            return Optional.empty();
+        }
         return Optional.of(snapshotSelectColumns.stream()
                 .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId)));
     }

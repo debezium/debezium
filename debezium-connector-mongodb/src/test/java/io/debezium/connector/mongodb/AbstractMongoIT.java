@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,15 +29,15 @@ public abstract class AbstractMongoIT {
     protected Configuration config;
     protected MongoDbConnection connection;
 
-    @BeforeClass
-    public static void beforeAll() {
+    @BeforeAll
+    static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
         mongo.start();
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
@@ -48,7 +48,7 @@ public abstract class AbstractMongoIT {
         return TestHelper.connect(mongo);
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Testing.Print.disable();
         Testing.Debug.disable();

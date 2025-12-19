@@ -12,6 +12,8 @@ import java.time.ZonedDateTime;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.StandardBasicTypes;
 
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
+
 public class NativeQueryBinder implements QueryBinder {
 
     private final NativeQuery<?> binder;

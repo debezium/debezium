@@ -13,9 +13,9 @@ import java.util.Objects;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
-import com.dylibso.chicory.experimental.aot.AotMachine;
-import com.dylibso.chicory.experimental.hostmodule.annotations.HostModule;
-import com.dylibso.chicory.experimental.hostmodule.annotations.WasmExport;
+import com.dylibso.chicory.annotations.HostModule;
+import com.dylibso.chicory.annotations.WasmExport;
+import com.dylibso.chicory.compiler.MachineFactoryCompiler;
 import com.dylibso.chicory.runtime.ByteArrayMemory;
 import com.dylibso.chicory.runtime.ImportMemory;
 import com.dylibso.chicory.runtime.ImportValues;
@@ -35,7 +35,7 @@ public class ChicoryEngine {
     private final Instance instance;
     private final List<Object> objects = new ArrayList<>();
 
-    private ChicoryEngine(boolean aot, WasmModule module, int memoryMax) {
+    private ChicoryEngine(boolean useCompiler, WasmModule module, int memoryMax) {
         var imports = ImportValues.builder()
                 .addMemory(new ImportMemory("env", "memory",
                         new ByteArrayMemory(new MemoryLimits(2, memoryMax))))
@@ -45,10 +45,10 @@ public class ChicoryEngine {
         var instanceBuilder = Instance.builder(module)
                 .withImportValues(imports);
 
-        if (aot) {
+        if (useCompiler) {
             try {
                 instance = instanceBuilder
-                        .withMachineFactory(AotMachine::new)
+                        .withMachineFactory(MachineFactoryCompiler::compile)
                         .build();
             }
             catch (ChicoryException ex) {
@@ -65,7 +65,7 @@ public class ChicoryEngine {
     }
 
     public static class Builder {
-        private boolean aot = true;
+        private boolean useCompiler = true;
         private WasmModule module;
         private int memoryMaxLimit = -1;
 
@@ -82,8 +82,8 @@ public class ChicoryEngine {
             return this;
         }
 
-        public Builder withAot(boolean aot) {
-            this.aot = aot;
+        public Builder withCompiler(boolean enabled) {
+            this.useCompiler = enabled;
             return this;
         }
 
@@ -95,7 +95,7 @@ public class ChicoryEngine {
             else if (memoryMaxLimit == -1) {
                 memoryMaxLimit = MemoryLimits.MAX_PAGES;
             }
-            return new ChicoryEngine(aot, module, memoryMaxLimit);
+            return new ChicoryEngine(useCompiler, module, memoryMaxLimit);
         }
     }
 

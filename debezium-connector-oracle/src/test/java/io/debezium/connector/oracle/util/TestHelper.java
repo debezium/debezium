@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.util;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -41,13 +43,14 @@ import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 public class TestHelper {
 
     private static final String PDB_NAME = "pdb.name";
-    private static final String DATABASE_PREFIX = CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+    private static final String DATABASE_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
     public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
@@ -150,7 +153,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         if (isXStream()) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
@@ -291,7 +294,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -305,7 +308,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -449,11 +452,32 @@ public class TestHelper {
     }
 
     public static void dropTable(OracleConnection connection, String table) {
-        try {
-            connection.execute("DROP TABLE " + table);
-        }
-        catch (SQLException e) {
-            if (!e.getMessage().contains("ORA-00942") || 942 != e.getErrorCode()) {
+        final DelayStrategy strategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofSeconds(30));
+        final int maxAttempts = 10;
+
+        int attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                connection.execute("DROP TABLE " + table);
+                return;
+            }
+            catch (SQLException e) {
+                // ORA-00054 - Resource is busy
+                if (e.getErrorCode() == 54 || e.getMessage().startsWith("ORA-00054")) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                        LOGGER.warn("ORA-00054 table '{}' is busy, drop table will be retried ({} / {}).", table, attempt + 1, maxAttempts);
+                        strategy.sleepWhen(true);
+                        continue;
+                    }
+                    LOGGER.error("ORA-00054 table '{}' is busy, drop table failed.", table);
+                }
+                // ORA-00942 - table or view does not exist
+                else if (e.getErrorCode() == 942 || e.getMessage().startsWith("ORA-00942")) {
+                    LOGGER.warn("ORA-00942 table '{}' does not exist, drop table skipped.", table);
+                    return;
+                }
+
                 throw new RuntimeException(e);
             }
         }
@@ -772,7 +796,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig())) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();
@@ -784,7 +808,7 @@ public class TestHelper {
     // Below are test helper methods for integration tests using the Testcointainers based OracleContainer instance:
 
     private static Configuration getTestConnectionConfiguration(ConnectorConfiguration config) {
-        var connectionConfiguration = Configuration.from(config.asProperties()).subset(CommonConnectorConfig.DATABASE_CONFIG_PREFIX, true);
+        var connectionConfiguration = Configuration.from(config.asProperties()).subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true);
         var dbName = Strings.isNullOrEmpty(connectionConfiguration.getString(PDB_NAME))
                 ? connectionConfiguration.getString(JdbcConfiguration.DATABASE)
                 : connectionConfiguration.getString(PDB_NAME);

@@ -74,7 +74,12 @@ public interface SinkConnectorIT {
                 .with("connector.class", MongoDbSinkConnector.class)
                 .with(MongoDbSinkConnectorConfig.CONNECTION_STRING, getMongoDbDeployment().getConnectionString())
                 .with(SinkConnectorConfig.TOPICS_REGEX_CONFIG, "dbserver1\\.inventory\\..*")
-                .with(MongoDbSinkConnectorConfig.SINK_DATABASE, DATABASE_NAME);
+                .with(MongoDbSinkConnectorConfig.SINK_DATABASE, DATABASE_NAME)
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
     }
 
     default void startSink(Function<Configuration.Builder, Configuration.Builder> custConfig) {

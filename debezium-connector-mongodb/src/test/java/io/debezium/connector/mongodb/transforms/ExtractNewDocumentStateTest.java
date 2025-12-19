@@ -9,7 +9,7 @@ import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion.KAFKA_241;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 
@@ -17,15 +17,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.util.Collect;
 
@@ -38,19 +35,16 @@ public class ExtractNewDocumentStateTest {
 
     protected ExtractNewDocumentState<SourceRecord> transformation;
 
-    @Rule
-    public TestRule skipTestRule = new SkipTestRule();
-
-    @Before
-    public void setup() {
+    @BeforeEach
+    void setup() {
         transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collect.hashMapOf(
                 "array.encoding", "array",
                 "delete.tombstone.handling.mode", "tombstone"));
     }
 
-    @After
-    public void closeSmt() {
+    @AfterEach
+    void closeSmt() {
         transformation.close();
     }
 

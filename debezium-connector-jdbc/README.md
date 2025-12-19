@@ -45,7 +45,7 @@ It's generally a good idea to add a new dialect implementation if a new sink dat
 ### Types
 
 Every field in a Kafka message is associated with a schema type, but this type information can also carry other metadata such as a name or even parameters that have been provided by the source connector.
-The JDBC sink connector utilizes a type system, which is based on the `io.debezium.connector.jdbc.type.Type` contract, in order to handle value binding, default value resolution, and other characteristic that could be type-specific.
+The JDBC sink connector utilizes a type system, which is based on the `io.debezium.connector.jdbc.type.JdbcType` contract, in order to handle value binding, default value resolution, and other characteristic that could be type-specific.
 
 There are effectively three different types of `Type` implementations:
 
@@ -110,12 +110,13 @@ There are three types of types in the test suite:
 
 * Unit tests
 * Sink-based integration tests
-* End to end matrix-based Integration tests
+* End-to-end matrix-based integration tests
 
-By default all unit tests are executed as a part of the build.
+By default, all unit tests are executed as a part of the build.
 The sink-based integration tests are only executed for MySQL, PostgreSQL, and SQL Server by default, while none of the end-to-end matrix-based tests are executed.
 
 In order to execute the sink-based integration tests for Oracle and DB2, the `-Dtest.tags` argument must be provided to include these in the build.
+
 In order to do this, add all the integration tests to be executed, as shown below for all databases:
 
     $ ./mvnw clean install -Dtest.tags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2
@@ -124,7 +125,7 @@ In order to run all sink-based integration tests for all databases, a short-cut 
 
     $ ./mvnw clean install -Dtest.tags=it
 
-Similarly, in order to enable specific end to end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
+Similarly, in order to enable specific end-to-end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
 
     $ ./mvnw clean install -Dtest.tags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2
 
@@ -132,7 +133,16 @@ In order to run all end to end integration tests, a short-cut tag is provided as
 
     $ ./mvnw clean install -Dtest.tags=e2e
 
-In order to run all tests for all source/sink combinations:
+In order to run all tests for default source connectors (MySQL, PostgreSQL, SQL Server) with all sink connector combinations:
 
     $ ./mvnw clean install -Dtest.tags=all
 
+End-to-end tests are only run for MySQL, PostgreSQL, and SQL Server source connectors by default.
+
+In order to change this, the `-Dsource.connectors` argument can be supplied with the source connector types:
+
+    $ ./mvnw clean install -Dtest.tags=all -Dsource.connectors=mysql,postgresql,sqlserver,oracle
+
+In order to run all tests for all source connectors with all sink connector combinations there is a short-cut tag "all":
+
+    $ ./mvnw clean install -Dtest.tags=all -Dsource.connectors=all

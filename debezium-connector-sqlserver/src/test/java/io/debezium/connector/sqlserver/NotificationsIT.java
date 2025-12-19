@@ -7,6 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,9 +20,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Percentage;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -32,8 +33,8 @@ import io.debezium.util.Testing;
 
 public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector> {
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException, InterruptedException {
 
         TestHelper.createTestDatabase();
         SqlServerConnection sqlServerConnection = TestHelper.testConnection();
@@ -46,10 +47,14 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+
+        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
+        // the operations done above needed some time to be captured by the capture process.
+        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropTestDatabase();
     }
@@ -95,7 +100,7 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     }
 
     @Test
-    public void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
+    void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
         startConnector(config -> config
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.NO_DATA)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")

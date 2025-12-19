@@ -13,17 +13,19 @@ import static io.debezium.connector.postgresql.TestHelper.TYPE_SCALE_PARAMETER_K
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.fail;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -55,13 +57,11 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -73,9 +73,9 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMod
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.custom.heartbeat.TestHeartbeatFactory;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -90,10 +90,10 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
@@ -119,14 +119,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private TestConsumer consumer;
 
-    @Rule
-    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
-
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // ensure the slot is deleted for each test
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
@@ -182,7 +176,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
+    void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
         startConnector();
 
@@ -353,7 +347,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
+    void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
@@ -362,7 +356,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsCustomTypesWithIncludeUnknownFalse() throws Exception {
+    void shouldReceiveChangesForInsertsCustomTypesWithIncludeUnknownFalse() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false));
@@ -490,8 +484,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         return ((Struct) record.value()).getStruct("before");
     }
 
-    @Test(timeout = 30000)
-    public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
         startConnector();
@@ -517,8 +512,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_TYPES_STMT, 1, schemaAndValuesForPostgisTypes());
     }
 
-    @Test(timeout = 30000)
-    public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
 
         startConnector();
@@ -545,7 +541,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
+    void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector();
@@ -555,7 +551,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
+    void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector();
@@ -632,7 +628,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForNewTable() throws Exception {
+    void shouldReceiveChangesForNewTable() throws Exception {
         String statement = "CREATE SCHEMA s1;" +
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.a (aa) VALUES (11);";
@@ -644,7 +640,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForRenamedTable() throws Exception {
+    void shouldReceiveChangesForRenamedTable() throws Exception {
         String statement = "DROP TABLE IF EXISTS renamed_test_table;" +
                 "ALTER TABLE test_table RENAME TO renamed_test_table;" +
                 "INSERT INTO renamed_test_table (text) VALUES ('new');";
@@ -708,7 +704,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForUpdatesWithColumnChanges() throws Exception {
+    void shouldReceiveChangesForUpdatesWithColumnChanges() throws Exception {
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN uvc VARCHAR(2);" +
                 "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -798,7 +794,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
+    void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
         startConnector();
         consumer = testConsumer(3);
         executeAndWait("UPDATE test_table SET text = 'update', pk = 2");
@@ -857,7 +853,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForDefaultValues() throws Exception {
+    void shouldReceiveChangesForDefaultValues() throws Exception {
         String statements = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
                 "ALTER TABLE test_table ADD COLUMN default_column TEXT DEFAULT 'default';" +
                 "INSERT INTO test_table (text) VALUES ('update');";
@@ -875,7 +871,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForTypeConstraints() throws Exception {
+    void shouldReceiveChangesForTypeConstraints() throws Exception {
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN num_val NUMERIC(5,2);" +
                 "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -981,7 +977,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveChangesForDeletes() throws Exception {
+    void shouldReceiveChangesForDeletes() throws Exception {
         // add a new entry and remove both
         String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
                 "DELETE FROM test_table WHERE pk > 0;";
@@ -1158,7 +1154,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldReceiveNumericTypeAsDouble() throws Exception {
+    void shouldReceiveNumericTypeAsDouble() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE));
@@ -1521,7 +1517,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait(statement);
         assertWithTask(task -> {
-            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+            Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
             assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
         });
 
@@ -1557,7 +1553,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait(statement);
         assertWithTask(task -> {
-            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+            Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
             assertEquals(Arrays.asList("pk", "not_toast"), tbl.retrieveColumnNames());
         });
     }
@@ -1601,7 +1597,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
                 assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.retrieveColumnNames());
             });
         });
@@ -1672,7 +1668,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1714,7 +1710,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1756,7 +1752,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1800,7 +1796,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1844,7 +1840,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bytea_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1855,14 +1851,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Envelope.FieldName.AFTER);
         final var after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
         final var byteaArray = after.getArray("bytea_array");
-        Assertions.assertThat(byteaArray).hasSize(1);
-        Assertions.assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
-        Assertions.assertThat(after.schema().field("bytea_array").schema())
+        assertThat(byteaArray).hasSize(1);
+        assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
+        assertThat(after.schema().field("bytea_array").schema())
                 .isEqualTo(SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
     }
 
     @Test
-    public void shouldHandleToastedByteaColumnInHexMode() throws Exception {
+    void shouldHandleToastedByteaColumnInHexMode() throws Exception {
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_toast_table;",
                 "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
@@ -1917,7 +1913,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "int_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1958,7 +1954,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bigint_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2002,7 +1998,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "json_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2043,7 +2039,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "col"), tbl.retrieveColumnNames());
             });
         });
@@ -2091,7 +2087,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "uuid_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2138,7 +2134,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2188,7 +2184,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2241,7 +2237,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2297,7 +2293,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bytea_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2353,7 +2349,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "int_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2405,7 +2401,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bigint_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2460,7 +2456,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "uuid_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2643,7 +2639,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldProcessLargerTx() throws Exception {
+    void shouldProcessLargerTx() throws Exception {
         Testing.Print.disable();
         final int numberOfEvents = 1000;
 
@@ -3309,7 +3305,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamEnumArrayAsKnownType() throws Exception {
+    void shouldStreamEnumArrayAsKnownType() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
         TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");
@@ -3687,7 +3683,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String[] expectedFieldOrder = new String[]{ "b", "d", "c", "a" };
 
         for (int i = 0; i < fields.size(); i++) {
-            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+            assertEquals(expectedFieldOrder[i], fields.get(i).name(), "Key field names should in order");
         }
 
         // Alter the table to trigger a schema change event. Validate that the new schema maintains the primary key order.
@@ -3700,7 +3696,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         fields = record.keySchema().fields();
         for (int i = 0; i < fields.size(); i++) {
-            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+            assertEquals(expectedFieldOrder[i], fields.get(i).name(), "Key field names should in order");
         }
     }
 
@@ -3845,6 +3841,46 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidTombstone(record, PK_FIELD, 1);
     }
 
+    @Test
+    @FixFor("DBZ-9340")
+    public void shouldSendHeartbeatBasedOnDefinedInterval() throws InterruptedException {
+        LogInterceptor logInterceptor = new LogInterceptor(TestHeartbeatFactory.class);
+
+        Function<Configuration.Builder, Configuration.Builder> configMapper = config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
+
+        startConnector(configMapper);
+        waitForStreamingToStart();
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+
+        Awaitility
+                .await()
+                .with()
+                .pollDelay(Duration.ZERO)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .timeout(1000, TimeUnit.MILLISECONDS)
+                .atMost(1000, TimeUnit.MILLISECONDS)
+                .until(() -> {
+                    final SourceRecord record = consumeRecord();
+                    if (record != null) {
+                        if (record.topic().equalsIgnoreCase("__debezium-heartbeat.test_server")) {
+                            assertHeartBeatRecord(record);
+                            heartbeatCount.incrementAndGet();
+                        }
+                    }
+                    return heartbeatCount.get();
+                }, equalTo(1));
+
+        stopConnector();
+        consumeAvailableRecords(null);
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        assertThat(logInterceptor.countOccurrences("emitting heartbeat")).isLessThanOrEqualTo(4);
+    }
+
     @Test()
     @FixFor({ "DBZ-6635", "DBZ-7316" })
     public void testSendingHeartbeatsWithoutWalUpdates() throws Exception {
@@ -3887,12 +3923,145 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // test that the loop in searchWalPosition is emitting heartbeats (DBZ-7316) when there
         // is no WAL to consume (since we just cleared it out and asserted there was none).
         startConnector(configMapper);
+        waitForStreamingToStart();
         waitForSeveralHeartbeats();
 
         // Manual cleanup, since DROP_SLOT_ON_STOP is false
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
+    }
+
+    @Test
+    public void shouldFailDuringSnapshotForCaseSensitiveDuplicateColumns_snapshot_initial() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_snapshot_case_dup;" +
+                        "CREATE TABLE test_snapshot_case_dup (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Insert data that would be snapshotted
+        TestHelper.execute("INSERT INTO test_snapshot_case_dup (duration, \"Duration\") VALUES (100, 'test');");
+
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_snapshot_case_dup")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
+        waitForEngineShutdown();
+
+        // Verify no corrupted snapshot data was emitted
+        assertEquals(0, consumeAvailableRecords(record -> {
+        }));
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_snapshot_case_dup' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnTableWithCaseSensitiveDuplicateColumns_snapshot_nodata() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_case_columns;" +
+                        "CREATE TABLE test_case_columns (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Start connector with NO_DATA (streaming only)
+        // With Layer 1: This will ALSO fail during schema read now
+        // Manually start connector without using startConnector() helper
+        // because startConnector() always waits for streaming which will never start
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_case_columns")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail and shutdown
+        // With Layer 1: Fails during schema read, before any data is snapshotted
+        waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_case_columns' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnAlterTableAddingCaseSensitiveDuplicateColumn() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        // Step 1: Create table WITHOUT duplicate columns
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_alter_case;" +
+                        "CREATE TABLE test_alter_case (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER" +
+                        ");");
+
+        // Step 2: Insert initial data
+        TestHelper.execute("INSERT INTO test_alter_case (duration) VALUES (100);");
+
+        // Step 3: Start connector - should succeed (no duplicates yet)
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_alter_case")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                true); // Wait for snapshot to complete
+
+        // Step 4: Wait for streaming to start
+        waitForStreamingToStart();
+
+        // Step 5: NOW ALTER TABLE to add duplicate column during streaming
+        // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
+        TestHelper.execute("ALTER TABLE test_alter_case ADD COLUMN \"Duration\" TEXT;");
+
+        // Step 6: Insert a record to trigger RELATION message processing
+        // The INSERT causes pgoutput to send a RELATION message with the new schema
+        // handleRelationMessage() is called and Layer 2 validation runs
+        TestHelper.execute("INSERT INTO test_alter_case (duration, \"Duration\") VALUES (200, 'test');");
+
+        // Step 7: Wait for some time to allow RELATION message processing
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        // Step 8: Connector should fail due to Layer 2 validation in handleRelationMessage()
+        waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_alter_case' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailOnRenameColumnCreatingDuplicate() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_rename;" +
+                        "CREATE TABLE test_rename (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  status TEXT" +
+                        ");");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_rename")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                false);
+
+        // Rename status to "Duration" (now conflicts with "duration")
+        TestHelper.execute("ALTER TABLE test_rename RENAME COLUMN status TO \"Duration\";");
+        TestHelper.execute("INSERT INTO test_rename (duration, \"Duration\") VALUES (100, 'test');");
+
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForEngineShutdown();
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_rename' has columns that differ only by case.")).isTrue();
     }
 
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
@@ -3986,7 +4155,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private SourceRecord assertRecordDeleted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse("records not generated", consumer.isEmpty());
+        assertFalse(consumer.isEmpty(), "records not generated");
         SourceRecord deletedRecord = consumer.remove();
 
         return assertRecordDeleted(deletedRecord, expectedTopicName, pkColumn, pk);
@@ -4006,7 +4175,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse("records not generated", consumer.isEmpty());
+        assertFalse(consumer.isEmpty(), "records not generated");
         SourceRecord insertedRecord = consumer.remove();
 
         return assertRecordInserted(insertedRecord, expectedTopicName, pkColumn, pk);

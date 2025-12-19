@@ -19,8 +19,8 @@ import java.util.Properties;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -51,8 +51,8 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     private V converters;
     private TableSchemaBuilder tableSchemaBuilder;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         converters = getValueConverter(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
@@ -68,7 +68,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedTinyintDefaultValue() {
+    void parseUnsignedTinyintDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_TINYINT_TABLE (" +
                 "    A TINYINT UNSIGNED NULL DEFAULT 0," +
                 "    B TINYINT UNSIGNED NULL DEFAULT '10'," +
@@ -94,7 +94,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedSmallintDefaultValue() {
+    void parseUnsignedSmallintDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_SMALLINT_TABLE (\n" +
                 "  A SMALLINT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B SMALLINT UNSIGNED NULL DEFAULT '10',\n" +
@@ -119,7 +119,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedMediumintDefaultValue() {
+    void parseUnsignedMediumintDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_MEDIUMINT_TABLE (\n" +
                 "  A MEDIUMINT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B MEDIUMINT UNSIGNED NULL DEFAULT '10',\n" +
@@ -144,7 +144,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedIntDefaultValue() {
+    void parseUnsignedIntDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_INT_TABLE (\n" +
                 "  A INT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B INT UNSIGNED NULL DEFAULT '10',\n" +
@@ -169,7 +169,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedBigIntDefaultValueToLong() {
+    void parseUnsignedBigIntDefaultValueToLong() {
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B BIGINT UNSIGNED NULL DEFAULT '10',\n" +
@@ -192,7 +192,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseUnsignedBigIntDefaultValueToBigDecimal() {
+    void parseUnsignedBigIntDefaultValueToBigDecimal() {
         final V converters = getValueConverter(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
@@ -228,7 +228,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseStringDefaultValue() {
+    void parseStringDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_STRING_TABLE (\n" +
                 "  A CHAR NULL DEFAULT 'A',\n" +
                 "  B CHAR CHARACTER SET utf8 NULL DEFAULT 'b',\n" +
@@ -254,7 +254,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseBitDefaultValue() {
+    void parseBitDefaultValue() {
         String sql = "CREATE TABLE BIT_TABLE (\n" +
                 "  A BIT(1) NULL DEFAULT NULL,\n" +
                 "  B BIT(1) DEFAULT 0,\n" +
@@ -282,7 +282,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseBooleanDefaultValue() {
+    void parseBooleanDefaultValue() {
         String sql = "CREATE TABLE BOOLEAN_TABLE (\n" +
                 "  A BOOLEAN NULL DEFAULT 0,\n" +
                 "  B BOOLEAN NOT NULL DEFAULT '1',\n" +
@@ -300,7 +300,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseNumberDefaultValue() {
+    void parseNumberDefaultValue() {
         String sql = "CREATE TABLE NUMBER_TABLE (\n" +
                 "  A TINYINT NULL DEFAULT 10,\n" +
                 "  B SMALLINT NOT NULL DEFAULT '5',\n" +
@@ -322,7 +322,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseRealDefaultValue() {
+    void parseRealDefaultValue() {
         String sql = "CREATE TABLE REAL_TABLE (\n" +
                 "  A REAL NOT NULL DEFAULT 1,\n" +
                 "  B REAL NULL DEFAULT NULL \n" +
@@ -334,7 +334,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseNumericAndDecimalToDoubleDefaultValue() {
+    void parseNumericAndDecimalToDoubleDefaultValue() {
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
@@ -350,7 +350,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseNumericAndDecimalToDecimalDefaultValue() {
+    void parseNumericAndDecimalToDecimalDefaultValue() {
         final V converters = getValueConverter(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
@@ -374,7 +374,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseTimeDefaultValue() {
+    void parseTimeDefaultValue() {
         String sql = "CREATE TABLE TIME_TABLE (" +
                 "  A timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
                 "  B timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'," +
@@ -415,7 +415,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    public void parseDateDefaultValue() {
+    void parseDateDefaultValue() {
         String sql = "CREATE TABLE DATE_TABLE (" +
                 "  A date NOT NULL DEFAULT '0000-00-00'," +
                 "  B date NOT NULL DEFAULT '2018-00-01'," +

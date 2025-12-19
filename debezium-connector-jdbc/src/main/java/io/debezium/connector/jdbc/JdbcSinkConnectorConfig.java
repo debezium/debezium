@@ -14,6 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.c3p0.internal.C3P0ConnectionProvider;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.DialectSpecificSettings;
 import org.hibernate.tool.schema.Action;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
+    public static final String COLLECTION_TABLE_FORMAT = "collection.table.format";
 
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
@@ -248,7 +250,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
 
-    public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create("collection.table.format")
+    public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create(COLLECTION_TABLE_FORMAT)
             .withDisplayName("Format string using table name")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
@@ -285,7 +287,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     FIELD_EXCLUDE_LIST_FIELD,
                     FLUSH_MAX_RETRIES_FIELD,
                     FLUSH_RETRY_DELAY_MS_FIELD,
-                    CONNECTION_RESTART_ON_ERRORS_FIELD)
+                    CONNECTION_RESTART_ON_ERRORS_FIELD,
+                    CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
             .create();
 
     /**
@@ -399,6 +402,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final int batchSize;
     private final boolean useReductionBuffer;
     private final boolean connectionRestartOnErrors;
+    private final String cloudEventsSchemaNamePattern;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -421,6 +425,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
+        this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
 
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST_FIELD);
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST_FIELD);
@@ -473,18 +478,22 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return insertMode;
     }
 
+    @Override
     public boolean isDeleteEnabled() {
         return deleteEnabled;
     }
 
+    @Override
     public boolean isTruncateEnabled() {
         return truncateEnabled;
     }
 
+    @Override
     public String getCollectionNameFormat() {
         return collectionNameFormat;
     }
 
+    @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
         return primaryKeyMode;
     }
@@ -505,6 +514,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return sqlServerIdentityInsert;
     }
 
+    @Override
     public int getBatchSize() {
         return batchSize;
     }
@@ -513,6 +523,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return useReductionBuffer;
     }
 
+    @Override
     public CollectionNamingStrategy getCollectionNamingStrategy() {
         return collectionNamingStrategy;
     }
@@ -526,6 +537,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return columnNamingStrategy;
     }
 
+    @Override
     public String useTimeZone() {
         return databaseTimezone;
     }
@@ -546,6 +558,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return connectionRestartOnErrors;
     }
 
+    @Override
+    public String cloudEventsSchemaNamePattern() {
+        return cloudEventsSchemaNamePattern;
+    }
+
     /** makes {@link org.hibernate.cfg.Configuration} from connector config
      *
      * @return {@link org.hibernate.cfg.Configuration}
@@ -564,6 +581,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));
         hibernateConfig.setProperty(AvailableSettings.GLOBALLY_QUOTED_IDENTIFIERS, Boolean.toString(config.getBoolean(QUOTE_IDENTIFIERS_FIELD)));
         hibernateConfig.setProperty(AvailableSettings.JDBC_TIME_ZONE, useTimeZone());
+
+        // Hibernate 7 changes the behavior for double/float types for Oracle, expressly using the binary
+        // variants by default. To avoid this behavior change in Debezium, we expressly set this feature
+        // to false. If a user wants this behavior, they can re-enable this in the connector configuration.
+        hibernateConfig.setProperty(DialectSpecificSettings.ORACLE_USE_BINARY_FLOATS, false);
 
         if (LOGGER.isDebugEnabled()) {
             hibernateConfig.setProperty(AvailableSettings.SHOW_SQL, Boolean.toString(true));

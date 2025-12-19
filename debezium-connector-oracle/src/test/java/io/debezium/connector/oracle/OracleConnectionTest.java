@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -17,8 +17,8 @@ import java.sql.Statement;
 import java.time.Duration;
 
 import org.apache.kafka.connect.errors.RetriableException;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -29,8 +29,8 @@ public class OracleConnectionTest {
     private JdbcConfiguration jdbcConfiguration;
     private JdbcConnection.ConnectionFactory connectionFactory;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
 
         jdbcConfiguration = mock(JdbcConfiguration.class);
         when(jdbcConfiguration.getQueryTimeout()).thenReturn(Duration.ZERO);
@@ -43,11 +43,16 @@ public class OracleConnectionTest {
     }
 
     @Test
-    public void whenOracleConnectionGetSQLRecoverableExceptionThenARetriableExceptionWillBeThrown() throws SQLException {
+    void whenOracleConnectionGetSQLRecoverableExceptionThenARetriableExceptionWillBeThrown() throws SQLException {
 
         when(statement.executeQuery(any()))
                 .thenThrow(new SQLRecoverableException("IO Error: The Network Adapter could not establish the connection (CONNECTION_ID=u/VErjYySfO0HgLtwdCuTQ==)"));
 
-        assertThrows(RetriableException.class, () -> new OracleConnection(jdbcConfiguration, connectionFactory, true));
+        assertThrows(RetriableException.class, () -> {
+            try (OracleConnection connection = new OracleConnection(jdbcConfiguration, connectionFactory)) {
+                // Force a connection call to the database.
+                connection.getOracleVersion();
+            }
+        });
     }
 }

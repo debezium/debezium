@@ -280,6 +280,5 @@ Possible values are: +
  +
 This configuration is optional.
 If not specified or invalid value is used, the default value will be used.
-|
 
 |===

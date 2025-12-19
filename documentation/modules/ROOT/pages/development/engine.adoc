@@ -628,4 +628,3 @@ However, this dramatically increases the overhead and decreases the throughput o
 
 The bottom line is that when using embedded connectors, applications will receive each source record exactly once during normal operation (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events immediately following a restart after a crash or improper shutdown.
 If applications need more rigorous exactly-once behavior, then they should use the full {prodname} platform that can provide exactly-once guarantees (even after crashes and restarts).
------

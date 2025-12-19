@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLException;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.config.Configuration;
@@ -20,7 +20,7 @@ import io.debezium.util.Testing;
 public class ConnectionIT implements Testing {
 
     @Test
-    public void shouldDoStuffWithDatabase() throws SQLException {
+    void shouldDoStuffWithDatabase() throws SQLException {
 
         try (PostgresConnection conn = TestHelper.create()) {
             conn.connect();
@@ -38,7 +38,7 @@ public class ConnectionIT implements Testing {
     }
 
     @Test
-    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+    void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
 
         Configuration config = TestHelper.defaultJdbcConfig().edit()
                 .with("query.timeout.ms", "1000").build();

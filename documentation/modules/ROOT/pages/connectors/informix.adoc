@@ -1852,7 +1852,7 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -1869,7 +1869,7 @@ To enable the connector to access the database, you must add the driver and clie
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -2369,6 +2369,10 @@ In subsequent phases of the snapshot, the connector uses a flashback query, whic
 `share`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
 The connector holds a read table lock that ensures read table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
 In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+If you prefer snapshots to run without setting any locks, set the following option, `none`.
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:informix-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
@@ -2430,8 +2434,6 @@ Only `exclusive` mode guarantees full consistency; the initial snapshot and stre
 |Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
 Specify one of the following values:
 
- +
-
 `<0`:: Do not timeout.
 
 `0`:: Return immediately if no data is available.
@@ -2442,11 +2444,15 @@ Specify one of the following values:
 |`0x100000`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
+|[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
+|`true`
+|Boolean value that specifies whether Informix should stop Full Row Logging of watched tables when streaming is closed.
+
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events. +
 Specify one of the following values:
- +
+
 `fail`:: The connector logs the offset of the problematic event and stops processing.
 
 `warn`:: The connector logs the offset of the problematic event and continues processing with the next event.
@@ -2488,6 +2494,17 @@ To send heartbeat messages, set this property to a positive integer, which indic
 Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual, but rarely emits change records to Kafka.
 In such a situation, the connector has few opportunities to send the latest offset to Kafka.
 Enable the connector to send heartbeat messages to ensure that it sends the latest offset to Kafka even when few changes occur in monitored tables.
+
+|[[informix-property-heartbeat-action-query]]<<informix-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last commited/restart LSN before the physical log files rotate.
+To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotate.
 
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
@@ -2579,7 +2596,10 @@ You can specify the following values:
 |[[informix-property-signal-data-collection]]<<informix-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
 |[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>
@@ -2685,6 +2705,18 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
 
+|[[informix-property-extended-headers-enabled]]<<informix-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
+
 |===
 
 [id="debezium-informix-connector-database-history-configuration-properties"]
@@ -2735,7 +2767,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[informix-monitoring]]
 == Monitoring
 
-The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

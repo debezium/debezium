@@ -29,11 +29,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -43,8 +41,6 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -56,7 +52,6 @@ import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipLongRunning;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
@@ -78,21 +73,12 @@ import io.debezium.util.Testing;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
 public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
 
-    @Rule
-    public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
-
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-
-    @Rule
-    public final TestRule skipLongRunning = new SkipTestRule();
-
     private OracleConnection connection;
     private DecimalHandlingMode decimalHandlingMode;
     private TemporalPrecisionMode temporalPrecisionMode;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         decimalHandlingMode = DecimalHandlingMode.PRECISE; // default
         temporalPrecisionMode = TemporalPrecisionMode.ADAPTIVE; // default
@@ -104,8 +90,8 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.dropAllTables();
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         if (connection != null) {
             TestHelper.dropAllTables();
             connection.close();
@@ -1282,13 +1268,11 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
                 "snapshot_completed", true);
 
         OracleDdlParser parser = new OracleDdlParser();
-        DdlChanges ddlChanges = parser.getDdlChanges();
         Tables tables = new Tables();
 
-        ddlChanges.reset();
         parser.setCurrentDatabase(databaseName);
         parser.setCurrentSchema(schemaName);
-        parser.parse(ddlText, tables);
+        DdlChanges ddlChanges = parser.parse(ddlText, tables);
 
         ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
             events.forEach(event -> {

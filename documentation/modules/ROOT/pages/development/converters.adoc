@@ -169,7 +169,7 @@ The converter configuration is specific to each instance.
                 ConverterRegistration<SchemaBuilder> registration) {
 
             if ("isbn".equals(column.typeName())) {
-                registration.register(SchemaBuilder.string().name(isbnSchemaName)), x -> x.toString());
+                registration.register(SchemaBuilder.string().name(isbnSchemaName), x -> x.toString());
             }
         }
     }

@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -15,12 +16,10 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
 
@@ -55,24 +54,22 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, SnapshotType snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>());
+        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(),
+                new SqlServerIncrementalSnapshotContext<>());
     }
 
     @Override
     public Map<String, ?> getOffset() {
+        Map<String, Object> offset = new HashMap<>();
         if (getSnapshot().isPresent()) {
-            return Collect.hashMapOf(
-                    AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString(),
-                    SNAPSHOT_COMPLETED_KEY, snapshotCompleted,
-                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
+            offset.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
+            offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
         }
-        else {
-            return incrementalSnapshotContext.store(transactionContext.store(Collect.hashMapOf(
-                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
-                    SourceInfo.CHANGE_LSN_KEY,
-                    sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
-                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo)));
-        }
+        offset.put(SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
+        offset.put(SourceInfo.CHANGE_LSN_KEY,
+                sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString());
+        offset.put(SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo);
+        return sourceInfo.isSnapshot() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
     @Override
@@ -126,7 +123,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
             }
 
             return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
-                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
+                    TransactionContext.load(offset), SqlServerIncrementalSnapshotContext.load(offset));
         }
     }
 

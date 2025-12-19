@@ -273,6 +273,8 @@ ENGINE=TOKUDB DEFAULT CHARSET=CP1251;
 
 CREATE TABLE T1 (NAME VARCHAR(36), SEQUENCE_TABLE BIGINT NOT NULL);
 
+CREATE TABLE `test`.PUBLIC_EVENT_RECORD (SEQUENCE BIGINT AUTO_INCREMENT NOT NULL, ID char(36) NOT NULL, PAYLOAD LONGTEXT NOT NULL, METADATA LONGTEXT NULL, MESSAGE_KEY VARCHAR(255) NOT NULL, TOPIC VARCHAR(255) NOT NULL, CONSTRAINT PK_PUBLIC_EVENT_RECORD PRIMARY KEY (SEQUENCE), CONSTRAINT PUBLIC_EVENT_RECORD_ID_UQ UNIQUE (ID));
+
 #end
 #begin
 -- Rename table
@@ -971,3 +973,44 @@ BEGIN
   AND i.strategy_id IS NULL;
 END
 #end
+
+#begin
+CREATE DEFINER=`ProcRunner`@`localhost` PROCEDURE `CreateDropGroup_v2`(
+  IN inName VARCHAR(45),
+  IN inSeriesID INT,
+  IN inQuality VARCHAR(20),
+  IN inWeight FLOAT,
+  IN inPaintedRate FLOAT,
+  IN inCertifiedRate FLOAT,
+  IN inRollCount INT,
+  IN inVersion INT
+)
+BEGIN
+  INSERT INTO DropGroups (
+    `ID`,
+    `Name`,
+    `SeriesID`,
+    `Quality`,
+    `Weight`,
+    `PaintedRate`,
+    `CertifiedRate`,
+    `RollCount`,
+    `Version`)
+  WITH DropMax AS (SELECT COALESCE(MAX(`ID`), 0) MaxID FROM DropGroups)
+  SELECT
+    LAST_INSERT_ID(MaxID + 1),
+    inName,
+    inSeriesID,
+    inQuality,
+    inWeight,
+    inPaintedRate,
+    inCertifiedRate,
+    inRollCount,
+    inVersion
+  FROM DropMax;
+
+  SELECT LAST_INSERT_ID() AS DropGroupID;
+END
+#end
+
+CREATE TABLE IF NOT EXISTS table_with_encrypted_column_name(uuid VARCHAR(40) NOT NULL PRIMARY KEY, encrypted VARCHAR(40) DEFAULT NULL)

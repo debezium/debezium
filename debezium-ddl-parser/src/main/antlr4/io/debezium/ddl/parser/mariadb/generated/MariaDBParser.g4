@@ -476,6 +476,7 @@ createDefinition
     : uid columnDefinition  # columnDeclaration
     | tableConstraint       # constraintDeclaration
     | indexColumnDefinition # indexDeclaration
+    | periodDefinition      # periodDeclaration
     ;
 
 columnDefinition
@@ -495,7 +496,10 @@ columnConstraint
     | STORAGE storageval = (DISK | MEMORY | DEFAULT)                             # storageColumnConstraint
     | referenceDefinition                                                        # referenceColumnConstraint
     | COLLATE collationName                                                      # collateColumnConstraint
-    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED | PERSISTENT)? # generatedColumnConstraint
+    | (GENERATED ALWAYS)? AS (
+        '(' expression ')' (VIRTUAL | STORED | PERSISTENT)?
+        | ROW (START | END)
+        )                                                                        # generatedColumnConstraint
     | SERIAL DEFAULT VALUE                                                       # serialDefaultColumnConstraint
     | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                         # checkColumnConstraint
     ;
@@ -526,6 +530,10 @@ referenceControlType
 indexColumnDefinition
     : indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption*            # simpleIndexDeclaration
     | (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* # specialIndexDeclaration
+    ;
+
+periodDefinition
+    : PERIOD FOR (uid | SYSTEM_TIME) '(' uid ',' uid ')'
     ;
 
 tableOption
@@ -733,13 +741,14 @@ alterSpecification
     | ALTER COLUMN? uid (SET DEFAULT defaultValue | DROP DEFAULT)            # alterByChangeDefault
     | CHANGE COLUMN? ifExists? oldColumn = uid // here ifExists is MariaDB-specific only
     newColumn = uid columnDefinition (FIRST | AFTER afterColumn = uid)? # alterByChangeColumn
-    | RENAME COLUMN oldColumn = uid TO newColumn = uid                  # alterByRenameColumn
+    | RENAME COLUMN ifExists? oldColumn = uid TO newColumn = uid        # alterByRenameColumn
     | LOCK '='? lockType = (DEFAULT | NONE | SHARED | EXCLUSIVE)        # alterByLock
     | MODIFY COLUMN? ifExists? // here ifExists is MariaDB-specific only
     uid columnDefinition (FIRST | AFTER uid)?                             # alterByModifyColumn
     | DROP COLUMN? ifExists? uid RESTRICT?                                # alterByDropColumn          // here ifExists is MariaDB-specific only
     | DROP (CONSTRAINT | CHECK) ifExists? uid                             # alterByDropConstraintCheck // here ifExists is MariaDB-specific only
     | DROP PRIMARY KEY                                                    # alterByDropPrimaryKey
+    | ADD PRIMARY KEY ifNotExists? '(' uid ')'                            # alterByNotExistingPrimaryKey // MariaDB-specific only
     | DROP indexFormat = (INDEX | KEY) ifExists? uid                      # alterByDropIndex // here ifExists is MariaDB-specific only
     | RENAME indexFormat = (INDEX | KEY) uid TO uid                       # alterByRenameIndex
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                               # alterByAlterIndexVisibility
@@ -749,8 +758,8 @@ alterSpecification
     | ENABLE KEYS                                                         # alterByEnableKeys
     | RENAME renameFormat = (TO | AS)? (uid | fullId)                     # alterByRename
     | ORDER BY uidList                                                    # alterByOrder
-    | CONVERT TO CHARACTER SET charsetName (COLLATE collationName)?       # alterByConvertCharset
-    | DEFAULT? CHARACTER SET '=' charsetName (COLLATE '=' collationName)? # alterByDefaultCharset
+    | CONVERT TO charSet charsetName (COLLATE collationName)?             # alterByConvertCharacterset
+    | DEFAULT? charSet '=' charsetName (COLLATE '=' collationName)?       # alterByDefaultCharset
     | DISCARD TABLESPACE                                                  # alterByDiscardTablespace
     | IMPORT TABLESPACE                                                   # alterByImportTablespace
     | FORCE                                                               # alterByForce
@@ -847,7 +856,7 @@ dropSequence // sequence is MariaDB-specific only
 //    Other DDL statements
 
 renameTable
-    : RENAME TABLE ifExists? renameTableClause (',' renameTableClause)*
+    : RENAME (TABLE | TABLES) ifExists? renameTableClause (',' renameTableClause)*
     ;
 
 renameTableClause
@@ -2308,6 +2317,7 @@ dataType
     ) lengthOneDimension? (SIGNED | UNSIGNED | ZEROFILL)*                              # dimensionDataType
     | typeName = REAL lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)*              # dimensionDataType
     | typeName = DOUBLE PRECISION? lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)* # dimensionDataType
+    | typeName = VECTOR ( lengthOneDimension )                                         # dimensionDataType
     | typeName = (DECIMAL | DEC | FIXED | NUMERIC | FLOAT | FLOAT4 | FLOAT8) lengthTwoOptionalDimension? (
         SIGNED
         | UNSIGNED
@@ -3074,6 +3084,7 @@ keywordsCanBeId
     | PASSWORDLESS_USER_ADMIN
     | PASSWORD_LOCK_TIME
     | PATH
+    | PERIOD
     | PERSIST_RO_VARIABLES_ADMIN
     | PHASE
     | PLUGINS

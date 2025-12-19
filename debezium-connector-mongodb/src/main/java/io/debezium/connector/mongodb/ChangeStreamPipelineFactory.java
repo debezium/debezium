@@ -26,6 +26,7 @@ import com.mongodb.client.model.changestream.OperationType;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.data.Envelope;
+import io.debezium.util.Strings;
 
 /**
  * A factory to produce a MongoDB change stream pipeline expression.
@@ -150,16 +151,16 @@ class ChangeStreamPipelineFactory {
         // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
         var dbFilters = Optional.<Bson> empty()
                 .or(() -> filterConfig.getDbIncludeList()
-                        .map(value -> Filters.regex("event.ns.db", value.replaceAll(",", "|"), "i")))
+                        .map(value -> Filters.regex("event.ns.db", Strings.join("|", splitList(value)), "i")))
                 .or(() -> filterConfig.getDbExcludeList()
-                        .map(value -> Filters.regex("event.ns.db", "(?!" + value.replaceAll(",", "|") + ")", "i")));
+                        .map(value -> Filters.regex("event.ns.db", "(?!" + Strings.join("|", splitList(value)) + ")", "i")));
 
         // Collection filters
         var collectionsFilters = Optional.<Bson> empty()
                 .or(() -> filterConfig.getCollectionIncludeList()
-                        .map(value -> Filters.regex("namespace", value.replaceAll(",", "|"), "i")))
+                        .map(value -> Filters.regex("namespace", Strings.join("|", splitList(value)), "i")))
                 .or(() -> filterConfig.getCollectionExcludeList()
-                        .map(value -> Filters.regex("namespace", "(?!" + value.replaceAll(",", "|") + ")", "i")));
+                        .map(value -> Filters.regex("namespace", "(?!" + Strings.join("|", splitList(value)) + ")", "i")));
 
         return andFilters(
                 dbFilters,

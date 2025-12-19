@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -50,8 +50,8 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
     private PostgresConnection connection;
     private Configuration config;
 
-    @Before
-    public void prepareDatabase() throws Exception {
+    @BeforeEach
+    void prepareDatabase() throws Exception {
 
         Startables.deepStart(timescaleDbContainer).join();
         JdbcConfiguration.Builder jdbcConfig = TestHelper.defaultJdbcConfigBuilder();
@@ -84,8 +84,8 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
                 .build();
     }
 
-    @After
-    public void dropDatabase() {
+    @AfterEach
+    void dropDatabase() {
         timescaleDbContainer.stop();
     }
 
@@ -97,7 +97,7 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTransformChunks() throws Exception {
+    void shouldTransformChunks() throws Exception {
         // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
@@ -115,7 +115,7 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTransformAggregates() throws Exception {
+    void shouldTransformAggregates() throws Exception {
         // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
@@ -145,7 +145,7 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTransformCompressedChunks() throws Exception {
+    void shouldTransformCompressedChunks() throws Exception {
         Testing.Print.enable();
 
         start(PostgresConnector.class, config);

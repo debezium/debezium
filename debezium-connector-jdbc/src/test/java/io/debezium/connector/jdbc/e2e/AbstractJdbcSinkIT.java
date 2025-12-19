@@ -239,7 +239,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.server.id", 12345);
                 sourceConfig.with("database.include.list", "test");
                 sourceConfig.with("table.include.list", "test." + tableName);
-                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", "kafka:9092");
+                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-mysql");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 if (TestHelper.isConnectionTimeZoneUsed()) {
@@ -268,7 +268,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.user", source.getUsername());
                 sourceConfig.with("database.names", "testDB");
                 sourceConfig.with("database.encrypt", "false");
-                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", "kafka:9092");
+                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-sqlserver");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 sourceConfig.with("table.include.list", "dbo." + tableName);
@@ -285,7 +285,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.user", "c##dbzuser");
                 sourceConfig.with("table.include.list", "debezium." + tableName);
                 sourceConfig.with("log.mining.strategy", "online_catalog");
-                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", "kafka:9092");
+                sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-oracle");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 if (source.getOptions().isColumnTypePropagated()) {

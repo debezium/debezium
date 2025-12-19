@@ -3,24 +3,13 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.5.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-mysql</artifactId>
     <name>Debezium Connector for MySQL</name>
     <packaging>jar</packaging>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- Guava library with testscope forces Error Prone as compile and leaks into package -->
-            <dependency>
-                <groupId>com.google.errorprone</groupId>
-                <artifactId>error_prone_annotations</artifactId>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -63,6 +52,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <exclusions>
@@ -78,6 +72,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -103,10 +102,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -139,6 +139,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
@@ -160,7 +164,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mysql</artifactId>
+            <artifactId>testcontainers-mysql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -172,6 +176,16 @@
             <groupId>io.opentelemetry.javaagent</groupId>
             <artifactId>opentelemetry-testing-common</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.spockframework</groupId>
+                    <artifactId>spock-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.spockframework</groupId>
+                    <artifactId>spock-junit4</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry.javaagent</groupId>
@@ -217,6 +231,8 @@
         <docker.filter>${docker.dbs}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
         <plugins>
@@ -726,6 +742,7 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1015,6 +1032,7 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1094,6 +1112,7 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1171,6 +1190,7 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1248,6 +1268,7 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                                 <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
                                 <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
                                 <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>

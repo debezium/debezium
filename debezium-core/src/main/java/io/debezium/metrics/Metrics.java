@@ -32,7 +32,7 @@ public abstract class Metrics {
     private volatile boolean registered = false;
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
-        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName, taskContext.getCustomMetricTags());
+        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorLogicalName(), contextName, taskContext.getCustomMetricTags());
     }
 
     protected Metrics(CdcSourceTaskContext taskContext, Map<String, String> tags) {

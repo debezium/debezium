@@ -8,11 +8,11 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.SQLException;
 import java.util.Base64;
@@ -20,15 +20,12 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -48,21 +45,18 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT;
 
-    @Rule
-    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

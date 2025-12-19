@@ -10,8 +10,8 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.io.File;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,12 +19,12 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -36,12 +36,11 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.kafka.KafkaCluster;
+import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
-import io.debezium.util.Testing;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
@@ -58,40 +57,40 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             + "CREATE TYPE enum_type AS ENUM ('UP', 'DOWN', 'LEFT', 'RIGHT', 'STORY');"
             + "CREATE TABLE s1.enumpk (pk enum_type, aa integer, PRIMARY KEY(pk));";
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
-        initializeConnectorTestFramework();
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
+        initializeConnectorTestFramework();
     }
 
-    @BeforeClass
-    public static void startKafka() throws Exception {
-        File dataDir = Testing.Files.createTestingDirectory("signal_cluster");
-        Testing.Files.delete(dataDir);
-        kafka = new KafkaCluster().usingDirectory(dataDir)
-                .deleteDataPriorToStartup(true)
-                .deleteDataUponShutdown(true)
-                .addBrokers(1)
-                .withKafkaConfiguration(Collect.propertiesOf(
-                        "auto.create.topics.enable", "false",
-                        "zookeeper.session.timeout.ms", "20000"))
-                .startup();
+    @BeforeAll
+    static void startKafka() throws Exception {
+        Map<String, String> props = new HashMap<>();
+        props.put("auto.create.topics.enable", "false");
 
-        kafka.createTopic("signals_topic", 1, 1);
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withAdditionalKafkaConfiguration(props)
+                .withSharedNetwork()
+                .build();
+
+        kafkaCluster.start();
+
+        KafkaClusterUtils.createTopic("signals_topic", 1, (short) 1, kafkaCluster.getBootstrapServers());
     }
 
-    @AfterClass
-    public static void stopKafka() {
-        if (kafka != null) {
-            kafka.shutdown();
+    @AfterAll
+    static void stopKafka() {
+        if (kafkaCluster != null) {
+            kafkaCluster.stop();
         }
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -205,7 +204,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             connection.setAutoCommit(false);
             for (int i = 0; i < enumValues.size(); i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        "s1.enumpk", connection.quotedColumnIdString(pkFieldName()), "'" + enumValues.get(i) + "'", i));
+                        "s1.enumpk", connection.quoteIdentifier(pkFieldName()), "'" + enumValues.get(i) + "'", i));
             }
             connection.commit();
         }
@@ -227,7 +226,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void inserts4Pks() throws Exception {
+    void inserts4Pks() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -300,13 +299,13 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void inserts4PksWithKafkaSignal() throws Exception {
+    void inserts4PksWithKafkaSignal() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
 
         sendExecuteSnapshotKafkaSignal("s1.a4");
 
@@ -344,7 +343,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
-    public void insertsNumericPk() throws Exception {
+    void insertsNumericPk() throws Exception {
         // Testing.Print.enable();
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -442,14 +441,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
         assertThat(ROW_COUNT == entries.size());
         for (Map.Entry<Integer, Struct> e : entries) {
-            Assert.assertTrue(e.getValue().getInt64("xmin") == null);
-            Assert.assertTrue(e.getValue().getInt64("lsn") == null);
-            Assert.assertTrue(e.getValue().getInt64("txId") == null);
+            Assertions.assertTrue(e.getValue().getInt64("xmin") == null);
+            Assertions.assertTrue(e.getValue().getInt64("lsn") == null);
+            Assertions.assertTrue(e.getValue().getInt64("txId") == null);
         }
     }
 
     @Test
-    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+    void shouldOutputRecordsInCloudEventsFormat() throws Exception {
         // Testing.Print.enable();
 
         try (JdbcConnection connection = databaseConnection()) {

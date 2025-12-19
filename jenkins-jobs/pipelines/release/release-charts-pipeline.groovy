@@ -26,8 +26,8 @@ HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
 GITHUB_CLI_VERSION= '2.67.0'
 
-// Helm uses the semantic version format 3.1.0-final instead of the one used by Debezium 3.1.0.Final
-RELEASE_SEM_VERSION=RELEASE_VERSION.replaceAll(/\.(?=[^.]*$)/, '-').toLowerCase()
+// Helm uses the semantic version format 3.1.0-cr1/3.1.0 instead of the one used by Debezium 3.1.0.CR1/3.1.0.Final
+RELEASE_SEM_VERSION= common.convertToSemver(RELEASE_VERSION)
 
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 
@@ -112,23 +112,37 @@ node('Slave') {
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
 
             dir(TMP_WORKDIR) {
-                if (!DRY_RUN) {
-                    sh(
-                            label: 'Download and verify helm chart',
-                            script: """
-                                echo "Input url: $INPUT_URL"
-                                curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
-                            """
-                    )
 
-                    sh(label: 'Unzip and repackage',
-                            script: """
-                                tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
-                                helm package debezium-operator-${RELEASE_SEM_VERSION}
-                                cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
+                sh(
+                        label: 'Download and verify helm chart',
+                        script: """
+                            echo "Input url: $INPUT_URL"
+                            curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
+                        """
+                )
+
+                sh(label: 'Unzip',
+                        script: """
+                            tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
                             """
-                    )
+                )
+
+                dir("debezium-operator-${RELEASE_SEM_VERSION}") {
+                    fileUtils.modifyFile("values.yaml", { content ->
+                        return content.replaceAll(
+                                /(image:\s*"[^:]+:)[^"]+(")/,
+                                "\$1${RELEASE_SEM_VERSION}\$2"
+                        )
+                    })
+
                 }
+
+                sh(label: 'Repackage',
+                        script: """
+                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} debezium-operator-${RELEASE_SEM_VERSION}
+                            cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
+                        """
+                )
             }
 
             stage('Create a GH release') {
@@ -192,7 +206,7 @@ node('Slave') {
 
                         return content.replaceAll(
                                 /nightly/,
-                                "${RELEASE_VERSION}"
+                                "${RELEASE_SEM_VERSION}"
                         )
 
                     }

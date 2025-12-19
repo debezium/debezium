@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -39,8 +40,12 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.converters.custom.CustomConverterServiceProvider;
+import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
@@ -73,10 +78,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
+    private CdcSourceTaskContext<? extends CommonConnectorConfig> cdcSourceTaskContext;
 
-    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
-                                                DatabaseSchema schema,
-                                                Snapshotter snapshotter) {
+    protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
+                                         DatabaseSchema schema,
+                                         Snapshotter snapshotter) {
 
         for (Map.Entry<P, O> previousOffset : previousOffsets) {
 
@@ -89,9 +95,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
                     throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
                 }
-                LOGGER.info("Connector started for the first time.");
+                LOGGER.info("Connector started with no previous offset for partition '{}'", partition);
                 if (schema.isHistorized()) {
-                    ((HistorizedDatabaseSchema) schema).initializeStorage();
+                    if (((HistorizedDatabaseSchema) schema).getSchemaHistory().storageExists()) {
+                        LOGGER.info("Database schema history storage was found. Connector will use the pre-existing storage. Checking settings for the same.");
+                        ((HistorizedDatabaseSchema) schema).getSchemaHistory().checkStorageSettings();
+                    }
+                    else {
+                        ((HistorizedDatabaseSchema) schema).initializeStorage();
+                    }
                 }
                 return;
             }
@@ -107,7 +119,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
 
-                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
+                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).getSchemaHistory().exists()) {
 
                     LOGGER.warn("Database schema history was not found but was expected");
 
@@ -130,7 +142,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
                     boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, partition, offset, config);
 
-                    if (!logPositionAvailable) {
+                    if (!logPositionAvailable && snapshotter.shouldStream()) {
                         LOGGER.warn("Last recorded offset is no longer available on the server.");
 
                         if (snapshotter.shouldSnapshotOnDataError()) {
@@ -144,14 +156,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                             return;
                         }
 
-                        LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
-                                + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                                "If not the connector will streaming from the last available position in the log");
+                        throw new DebeziumException("The connector is trying to read change stream starting at " + offset + ", but this is no longer "
+                                + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
                     }
-                }
-
-                if (schema.isHistorized()) {
-                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
                 }
             }
         }
@@ -166,14 +173,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return logPositionValidator.validate(partition, offsetContext, config);
     }
 
-    public enum State {
-        RESTARTING,
-        RUNNING,
-        INITIAL,
-        STOPPED
-    }
-
-    private final AtomicReference<State> state = new AtomicReference<>(State.INITIAL);
+    private final AtomicReference<DebeziumTaskState> state = new AtomicReference<>(DebeziumTaskState.INITIAL);
 
     /**
      * Used to ensure that start(), stop() and commitRecord() calls are serialized.
@@ -206,6 +206,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @SingleThreadAccess("polling thread")
     private int previousOutputBatchSize;
 
+    protected final AtomicBoolean shouldPerformCommit = new AtomicBoolean(false);
+
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     private final List<NotificationChannel> notificationChannels;
@@ -226,6 +228,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 .collect(Collectors.toList());
     }
 
+    public abstract CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config);
+
     @Override
     public final void start(Map<String, String> props) {
         if (context == null) {
@@ -235,8 +239,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            setTaskState(State.INITIAL);
+            setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
+
+            cdcSourceTaskContext = preStart(config);
+
+            DebeziumOpenLineageEmitter.emit(
+                    DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
+                    DebeziumTaskState.INITIAL);
+
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -254,12 +265,17 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             try {
                 this.coordinator = start(config);
-                setTaskState(State.RUNNING);
+                setTaskState(DebeziumTaskState.RUNNING);
+
+                DebeziumOpenLineageEmitter.emit(
+                        DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
+                        DebeziumTaskState.RUNNING);
+
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
-                setTaskState(State.RESTARTING);
+                setTaskState(DebeziumTaskState.RESTARTING);
             }
         }
         finally {
@@ -298,6 +314,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return config.withMaskedPasswords();
     }
 
+    protected Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
+        return Configuration.from(props).withMaskedPasswords().asMap();
+    }
+
     /**
      * Called when starting this source task.  This method can throw a {@link RetriableException} to indicate
      * that the task should attempt to retry the start later.
@@ -308,6 +328,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
 
+    protected abstract String connectorName();
+
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
 
@@ -315,6 +337,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             // in we fail to start, return empty list and try to start next poll() method call
             if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
+            }
+            // it's safe to flush offsets here as we are in the running state
+            if (shouldPerformCommit.getAndSet(false)) {
+                performCommit();
             }
 
             final List<SourceRecord> records = doPoll();
@@ -376,15 +402,31 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         // error handler is passed into the new error handler, propagating the retry count. This method
         // allows resetting that counter when a successful poll iteration step contains new records so that when a
         // future failure is thrown, the maximum retry count can be utilized.
-        if (!records.isEmpty() && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
+        if (containsChangeDataMessages(records) && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
             coordinator.getErrorHandler().resetRetries();
         }
+    }
+
+    protected boolean containsChangeDataMessages(List<SourceRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return false;
+        }
+
+        for (SourceRecord record : records) {
+            if (record.valueSchema() != null && Envelope.isEnvelopeSchema(record.valueSchema())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * Returns the next batch of source records, if any are available.
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
+
+    protected abstract Optional<ErrorHandler> getErrorHandler();
 
     /**
      * Starts this connector in case it has been stopped after a retriable error,
@@ -395,18 +437,29 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
         boolean result = false;
         try {
-            State currentState = getTaskState();
-            if (currentState == State.RUNNING) {
+            DebeziumTaskState currentState = getTaskState();
+            if (currentState == DebeziumTaskState.RUNNING) {
                 result = true;
             }
-            else if (currentState == State.RESTARTING) {
+            else if (currentState == DebeziumTaskState.RESTARTING) {
+
+                getErrorHandler().ifPresentOrElse(
+                        handler -> DebeziumOpenLineageEmitter.emit(
+                                DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()),
+                                DebeziumTaskState.RESTARTING,
+                                handler.getProducerThrowable()),
+                        () -> DebeziumOpenLineageEmitter.emit(
+                                DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()),
+                                DebeziumTaskState.RESTARTING));
+
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");
+                    preStart(config);
                     this.coordinator = start(config);
                     LOGGER.info("Successfully restarted task");
                     restartDelay = null;
-                    setTaskState(State.RUNNING);
+                    setTaskState(DebeziumTaskState.RUNNING);
                     result = true;
                 }
                 else {
@@ -423,7 +476,17 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public final void stop() {
-        stop(false);
+        try {
+            performCommit();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Error while performing commit.", e);
+        }
+        finally {
+            stop(false);
+            DebeziumOpenLineageEmitter
+                    .cleanup(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()));
+        }
     }
 
     private void stop(boolean restart) {
@@ -452,13 +515,16 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             doStop();
 
             if (restart) {
-                setTaskState(State.RESTARTING);
+                setTaskState(DebeziumTaskState.RESTARTING);
                 if (restartDelay == null) {
                     restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
                 }
             }
             else {
-                setTaskState(State.STOPPED);
+                setTaskState(DebeziumTaskState.STOPPED);
+                DebeziumOpenLineageEmitter.emit(
+                        DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()),
+                        DebeziumTaskState.STOPPED);
             }
         }
         finally {
@@ -480,6 +546,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commit() throws InterruptedException {
+        shouldPerformCommit.set(true);
+    }
+
+    public void performCommit() {
         boolean locked = stateLock.tryLock();
 
         if (locked) {
@@ -547,13 +617,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      *
      * @param newState
      */
-    private void setTaskState(State newState) {
-        State oldState = state.getAndSet(newState);
+    private void setTaskState(DebeziumTaskState newState) {
+        DebeziumTaskState oldState = state.getAndSet(newState);
         LOGGER.debug("Setting task state to '{}', previous state was '{}'", newState, oldState);
     }
 
     @VisibleForTesting
-    public State getTaskState() {
+    public DebeziumTaskState getTaskState() {
         stateLock.lock();
         try {
             return state.get();
@@ -572,5 +642,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
         serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
         serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
+        serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
+        serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
     }
 }

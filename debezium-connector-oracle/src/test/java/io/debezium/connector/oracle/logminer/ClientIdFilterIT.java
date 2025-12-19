@@ -11,31 +11,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-
-import ch.qos.logback.classic.Level;
 
 /**
  * Integration tests for the LogMiner {@code CLIENT_ID} filter configuration options.
@@ -45,26 +40,28 @@ import ch.qos.logback.classic.Level;
 @SkipWhenAdapterNameIsNot(value = ANY_LOGMINER)
 public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
-    @Test
+    static Stream<String> lobEnabled() {
+        return Stream.of("false", "true");
+    }
+
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithAnExcludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithAnExcludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -73,6 +70,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8904")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, "abc,xyz")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
@@ -80,7 +78,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            final LogInterceptor logInterceptor = TestHelper.getEventProcessorLogInterceptor();
+            final LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
@@ -111,9 +109,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithoutLoggingWithAnExcludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithoutLoggingWithAnExcludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -123,6 +122,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8904")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, "abc,xyz")
                     .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "in")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
@@ -130,8 +130,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
-            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+            LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
@@ -160,9 +159,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithAnIncludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithAnIncludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -171,6 +171,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8904")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, "abc")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
@@ -178,17 +179,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            final LogInterceptor logInterceptor;
-            switch (TestHelper.adapter()) {
-                case LOG_MINER_UNBUFFERED -> {
-                    logInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
-                    logInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
-                }
-                default -> {
-                    logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
-                    logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
-                }
-            }
+            final LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
@@ -218,9 +209,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldExcludeTransactionWithoutLoggingWithAnIncludedClientId() throws Exception {
+    public void shouldExcludeTransactionWithoutLoggingWithAnIncludedClientId(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -229,6 +221,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8904")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, "abc")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
@@ -236,8 +229,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
-            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+            final LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
@@ -265,9 +257,10 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8904")
-    public void shouldThrowConfigurationExceptionWhenClientIdIncludeExcludeBothSpecified() throws Exception {
+    public void shouldThrowConfigurationExceptionWhenClientIdIncludeExcludeBothSpecified(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8904");
         try {
             connection.execute("CREATE TABLE dbz8904 (id numeric(9,0) primary key, data varchar2(50))");
@@ -279,6 +272,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8904")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, "abc")
                     .with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, "xyz")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);

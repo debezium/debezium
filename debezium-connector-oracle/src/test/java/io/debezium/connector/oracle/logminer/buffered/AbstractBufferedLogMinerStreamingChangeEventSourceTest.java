@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,17 +21,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -42,9 +42,9 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -54,6 +54,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -76,9 +77,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
     protected OracleDatabaseSchema schema;
@@ -87,7 +85,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     protected OracleOffsetContext offsetContext;
     protected OracleConnection connection;
 
-    @Before
+    @BeforeEach
     @SuppressWarnings({ "unchecked" })
     public void before() throws Exception {
         this.context = Mockito.mock(ChangeEventSourceContext.class);
@@ -104,8 +102,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         this.metrics = createMetrics(schema);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         if (schema != null) {
             try {
                 schema.close();
@@ -123,14 +121,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCacheIsEmpty() throws Exception {
+    void testCacheIsEmpty() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
     @Test
-    public void testCacheIsNotEmptyWhenTransactionIsAdded() throws Exception {
+    void testCacheIsNotEmptyWhenTransactionIsAdded() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(1, TRANSACTION_ID_1));
@@ -150,7 +148,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCacheIsEmptyWhenTransactionIsCommitted() throws Exception {
+    void testCacheIsEmptyWhenTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -172,7 +170,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCacheIsEmptyWhenTransactionIsRolledBack() throws Exception {
+    void testCacheIsEmptyWhenTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -194,7 +192,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCacheIsNotEmptyWhenFirstTransactionIsRolledBack() throws Exception {
+    void testCacheIsNotEmptyWhenFirstTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -221,7 +219,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCacheIsNotEmptyWhenSecondTransactionIsRolledBack() throws Exception {
+    void testCacheIsNotEmptyWhenSecondTransactionIsRolledBack() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -248,7 +246,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCalculateScnWhenTransactionIsCommitted() throws Exception {
+    void testCalculateScnWhenTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -272,7 +270,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
+    void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -305,7 +303,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
+    void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -348,8 +346,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
-            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(nextStartScn).isEqualTo(Scn.valueOf(100));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
         }
     }
 
@@ -389,13 +387,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .when(mock)
                     .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
 
-            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
         }
     }
 
     @Test
-    public void testAbandonOneTransaction() throws Exception {
+    void testAbandonOneTransaction() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
@@ -434,7 +433,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    public void testAbandonTransactionHavingAnotherOne() throws Exception {
+    void testAbandonTransactionHavingAnotherOne() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
@@ -548,7 +547,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
+        Configuration configuration = getConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
@@ -561,7 +561,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false);
+                false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
@@ -599,16 +599,18 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerStreamingChangeEventSourceMetrics createMetrics(OracleDatabaseSchema schema) throws Exception {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
-        final OracleTaskContext taskContext = new OracleTaskContext(connectorConfig, schema);
+        final Configuration config = getConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        final OracleTaskContext taskContext = new OracleTaskContext(config, connectorConfig);
 
         final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                 .build();
 
-        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig, java.util.Collections::emptyList);
     }
 
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId) {

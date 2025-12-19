@@ -7,7 +7,7 @@ package io.debezium.connector.postgresql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.ConfigDefinitionMetadataTest;
 import io.debezium.config.Configuration;
@@ -19,7 +19,7 @@ public class PostgresConnectorConfigDefTest extends ConfigDefinitionMetadataTest
     }
 
     @Test
-    public void shouldSetReplicaAutoSetValidValue() {
+    void shouldSetReplicaAutoSetValidValue() {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "testSchema_1.testTable_1:FULL,testSchema_2.testTable_2:DEFAULT");
@@ -31,7 +31,7 @@ public class PostgresConnectorConfigDefTest extends ConfigDefinitionMetadataTest
     }
 
     @Test
-    public void shouldSetReplicaAutoSetInvalidValue() {
+    void shouldSetReplicaAutoSetInvalidValue() {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "testSchema_1.testTable_1;FULL,testSchema_2.testTable_2;;DEFAULT");
@@ -43,7 +43,7 @@ public class PostgresConnectorConfigDefTest extends ConfigDefinitionMetadataTest
     }
 
     @Test
-    public void shouldSetReplicaAutoSetRegExValue() {
+    void shouldSetReplicaAutoSetRegExValue() {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, ".*.test.*:FULL,testSchema_2.*:DEFAULT");

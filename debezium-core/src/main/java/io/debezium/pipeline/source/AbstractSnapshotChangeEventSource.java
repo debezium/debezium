@@ -72,6 +72,11 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         final SnapshotContext<P, O> ctx;
         try {
             ctx = prepare(partition, snapshottingTask.isOnDemand());
+            // In case of a bocking snapshot the offsets of snapshot context must be the set to avoid reinitialization
+            // to an empty one during the determineSnapshotOffset function
+            if (previousOffset != null && snapshottingTask.isOnDemand()) {
+                ctx.offset = previousOffset;
+            }
             connectorConfig.getBeanRegistry().add(StandardBeanNames.SNAPSHOT_CONTEXT, ctx);
         }
         catch (Exception e) {
@@ -82,6 +87,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         Offsets<P, OffsetContext> offsets = getOffsets(ctx, previousOffset, snapshottingTask);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
+            snapshotProgressListener.snapshotSkipped(partition);
             notificationService.initialSnapshotNotificationService().notifySkipped(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             return SnapshotResult.skipped(previousOffset);
         }

@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -171,6 +172,10 @@ public class PostgresConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
+        String factory = config().getString(JdbcConfiguration.CONNECTION_FACTORY_CLASS);
+        if (factory != null) {
+            return "{" + factory + "}" + connectionString(URL_PATTERN);
+        }
         return connectionString(URL_PATTERN);
     }
 
@@ -283,6 +288,19 @@ public class PostgresConnection extends JdbcConnection {
             Thread.currentThread().interrupt();
             throw new ConnectException("Interrupted while waiting for valid replication slot info", e);
         }
+    }
+
+    /**
+     * Retrieves the catalog xmin value from the replication slot.
+     *
+     * @param slotName the name of the slot
+     * @param pluginName the name of the plugin used for the desired slot
+     * @return the catalog xmin value or null if the slot state is not found
+     * @throws SQLException if a database access error occurs
+     */
+    public Long getSlotXmin(String slotName, String pluginName) throws SQLException {
+        SlotState slotState = getReplicationSlotState(slotName, pluginName);
+        return slotState != null ? slotState.slotCatalogXmin() : null;
     }
 
     /**
@@ -528,7 +546,10 @@ public class PostgresConnection extends JdbcConnection {
      */
     public Long currentTransactionId() throws SQLException {
         AtomicLong txId = new AtomicLong(0);
-        query("select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid", rs -> {
+        int majorVersion = connection().getMetaData().getDatabaseMajorVersion();
+        String txIdQuery = majorVersion >= 13 ? "select (case pg_is_in_recovery() when 't' then '0'::xid8 else pg_current_xact_id() end) AS pg_current_txid"
+                : "select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid";
+        query(txIdQuery, rs -> {
             if (rs.next()) {
                 txId.compareAndSet(0, rs.getLong(1));
             }
@@ -603,7 +624,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public TimestampUtils getTimestampUtils() {
         try {
-            return this.connection().unwrap(PgConnection.class).getTimestampUtils();
+            return connection().unwrap(PgConnection.class).getTimestampUtils();
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
@@ -620,15 +641,6 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    public String quotedColumnIdString(String columnName) {
-        if (columnName.contains("\"")) {
-            columnName = columnName.replace("\"", "\"\"");
-        }
-
-        return super.quotedColumnIdString(columnName);
-    }
-
-    @Override
     protected int resolveNativeType(String typeName) {
         return getTypeRegistry().get(typeName).getRootType().getOid();
     }
@@ -639,6 +651,15 @@ public class PostgresConnection extends JdbcConnection {
         // where resolution of the column's JDBC type needs to be that of the root type instead of
         // the actual column to properly influence schema building and value conversion.
         return getTypeRegistry().get(nativeType).getRootType().getJdbcId();
+    }
+
+    @Override
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, Tables.TableFilter tableFilter, Tables.ColumnNameFilter columnFilter,
+                                                           DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, true);
     }
 
     @Override
@@ -820,13 +841,20 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
-                keyColumns.stream().map(key -> key + "=?::" + table.columnWithName(key).typeName()).collect(Collectors.joining(" AND ")));
-        return reselectColumns(query, table.id(), columns, keyValues);
+                keyColumns.stream()
+                        .map(key -> {
+                            Column column = table.columnWithName(key);
+                            String castableType = typeRegistry.get(column.nativeType()).getName();
+                            return key + "=?::" + castableType;
+                        })
+                        .collect(Collectors.joining(" AND ")));
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
     @Override
@@ -849,8 +877,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+        if (((PostgresConnectorConfig) config).offsetSeekToSlotOnStart()) {
+            return true; // skip validation if configured to seek to slot LSN on start
+        }
 
-        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
+        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCompletelyProcessedLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();
         final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
 
@@ -859,10 +890,33 @@ public class PostgresConnection extends JdbcConnection {
             if (slotState == null) {
                 return false;
             }
-            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) < 0;
+            LOGGER.info("Slot '{}' has restart LSN '{}'", slotName, slotState.slotRestartLsn());
+            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public List<Column> getTableColumnsForDecoder(TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        try {
+            final List<Column> readColumns = new ArrayList<>();
+
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+
+            try (ResultSet columnMetadata = databaseMetaData.getColumns(null, schemaNamePattern, tableNamePattern, null)) {
+                while (columnMetadata.next()) {
+                    readColumnForDecoder(columnMetadata, tableId, columnFilter).ifPresent(readColumns::add);
+                }
+            }
+
+            return readColumns;
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
         }
     }
 

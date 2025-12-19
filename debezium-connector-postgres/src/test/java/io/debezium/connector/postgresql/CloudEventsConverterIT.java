@@ -17,8 +17,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -60,8 +60,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
 
-    @Before
-    @Override
+    @BeforeEach
     public void beforeEach() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

@@ -8,6 +8,8 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -20,17 +22,24 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -56,10 +65,20 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     private volatile SqlServerConnection metadataConnection;
     private volatile SqlServerErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
+    private SqlServerConnectorConfig connectorConfig;
 
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new SqlServerConnectorConfig(config);
+        taskContext = new SqlServerTaskContext(config, connectorConfig);
+
+        return taskContext;
     }
 
     @Override
@@ -72,7 +91,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "fetchSize", 10_000)
                 .build();
 
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
@@ -85,8 +103,12 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         metadataConnection = new SqlServerConnection(connectorConfig, valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
-                schemaNameAdjuster);
+                schemaNameAdjuster, customConverterRegistry, taskContext);
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
@@ -100,16 +122,20 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        validateAndLoadSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
-                snapshotterService.getSnapshotter());
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, dataConnection);
+        }
 
-        taskContext = new SqlServerTaskContext(connectorConfig, schema);
+        validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
+                snapshotterService.getSnapshotter());
 
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
@@ -117,6 +143,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
@@ -138,16 +165,17 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(
+                        connectorConfig,
                         connectionFactory::newConnection,
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }),
+                        },
+                        queue),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor,
+                connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
@@ -173,12 +201,22 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     }
 
     @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
         return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.ofNullable(errorHandler);
     }
 
     @Override
@@ -217,6 +255,17 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    private void validateGuardrailLimits(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) {
+        try {
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getDatabaseNames());
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
 }

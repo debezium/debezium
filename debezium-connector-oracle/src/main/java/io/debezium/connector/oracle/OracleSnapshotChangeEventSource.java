@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Collection;
@@ -25,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
@@ -38,6 +38,7 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -53,7 +54,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener,
                                            NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService) {
@@ -126,9 +127,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected void determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                            OracleOffsetContext previousOffset)
             throws Exception {
-        // Support the existence of the case when the previous offset.
-        // e.g., schema_only_recovery snapshot mode
-        if (connectorConfig.getSnapshotMode() != OracleConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
+
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
@@ -290,6 +290,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             OracleOffsetContext offset = offsets.poll();
             try {
                 final int maxRetries = getTableSnapshotMaxRetries();
+                final Metronome retrySleeper = Metronome.sleeper(Duration.ofSeconds(5), clock);
+
                 for (int i = 0; i <= maxRetries; i++) {
                     try {
                         doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable,
@@ -305,6 +307,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                             if ((i + 1) <= maxRetries) {
                                 LOGGER.warn("Table {} snapshot failed: {}, attempting to retry ({} of {})",
                                         table.id(), e.getMessage(), i, getTableSnapshotMaxRetries());
+                                retrySleeper.pause();
                                 continue;
                             }
                         }

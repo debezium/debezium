@@ -6,7 +6,7 @@
 [id="starting-mysql-database"]
 = Starting a MySQL database
 
-At this point, you have started ZooKeeper and Kafka,
+At this point, you have started Kafka,
 but you still need a database server from which {prodname} can capture changes.
 In this procedure, you will start a MySQL server with an example database.
 

@@ -26,7 +26,7 @@ import io.debezium.transforms.scripting.wasm.ChicoryEngine;
  * An implementation of the expression language evaluator based on Chicory.
  */
 public class WasmEngine implements Engine {
-    private boolean aot;
+    private boolean compiler;
     private String expression;
     private ChicoryEngine engine;
 
@@ -37,10 +37,10 @@ public class WasmEngine implements Engine {
         this.expression = expression;
         switch (language) {
             case CHICORY_ENGINE:
-                aot = true;
+                compiler = true;
                 break;
             case CHICORY_INTERPRETER_ENGINE:
-                aot = false;
+                compiler = false;
                 break;
             default:
                 throw new DebeziumException("Attempted to use unsupported Wasm Engine: '" + language + "', currently we support 'chicory'");
@@ -48,7 +48,7 @@ public class WasmEngine implements Engine {
 
         // reusing the "expression" configuration to load from the disk the .wasm file
         engine = ChicoryEngine.builder()
-                .withAot(aot)
+                .withCompiler(compiler)
                 .withWasmModule(Parser.parse(Path.of(URI.create(expression))))
                 .build();
     }

@@ -56,7 +56,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
-    private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>();
+    private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>(this);
 
     /**
      * {@code true} if window is opened and deduplication should be executed
@@ -134,6 +134,18 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public boolean isSnapshotPaused() {
         return paused.get();
+    }
+
+    public boolean shouldUseCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
+    }
+
+    public TableId getPredicateBasedTableIdForId(TableId id) {
+        return id;
+    }
+
+    public TableId getPredicateBasedTableIdForString(String id) {
+        return TableId.parse(id, useCatalogBeforeSchema);
     }
 
     /**
@@ -278,7 +290,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         final String dataCollectionsStr = (String) offsets.get(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.snapshotDataCollection.clear();
         if (dataCollectionsStr != null) {
-            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context.useCatalogBeforeSchema));
+            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
@@ -387,9 +399,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
         };
         private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
+        private final AbstractIncrementalSnapshotContext<T> context;
         private String dataCollectionsToSnapshotJson;
 
-        SnapshotDataCollection() {
+        SnapshotDataCollection(AbstractIncrementalSnapshotContext<T> context) {
+            this.context = context;
         }
 
         void add(List<DataCollection<T>> dataCollectionIds) {
@@ -448,7 +462,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
                         .map(x -> {
                             LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, context.getPredicateBasedTableIdForId((TableId) x.getId()).toString());
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
                             return map;
@@ -462,11 +476,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             }
         }
 
-        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr, boolean useCatalogBeforeSchema) {
+        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr) {
             try {
                 List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
                 return dataCollections.stream()
-                        .map(x -> new DataCollection<>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
+                        .map(x -> new DataCollection<>((T) context.getPredicateBasedTableIdForString(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)),
                                 Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
                                 Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
                         .collect(Collectors.toList());

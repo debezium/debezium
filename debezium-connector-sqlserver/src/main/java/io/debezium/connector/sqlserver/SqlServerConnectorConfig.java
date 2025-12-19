@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
@@ -71,12 +72,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
          * Perform a snapshot of data and schema upon initial startup of a connector but does not transition to streaming.
          */
         INITIAL_ONLY("initial_only"),
-
-        /**
-         * Perform a snapshot of the schema but no data upon initial startup of a connector.
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
@@ -374,7 +369,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
-    public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
+    public static final Field INSTANCE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 8))
@@ -382,7 +377,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
 
-    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + "names")
+    public static final Field DATABASE_NAMES = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "names")
             .withDisplayName("Databases")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
@@ -469,14 +464,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final Field DATA_QUERY_MODE = Field.create("data.query.mode")
             .withDisplayName("Data query mode")
-            .withEnum(DataQueryMode.class, DataQueryMode.FUNCTION)
+            .withEnum(DataQueryMode.class, DataQueryMode.DIRECT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how the connector queries CDC data. "
-                    + "The default is '" + DataQueryMode.FUNCTION.getValue()
-                    + "', which means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function. "
-                    + "The value of '" + DataQueryMode.DIRECT.getValue()
-                    + "' makes the connector to query the change tables directly.");
+                    + "The default is '" + DataQueryMode.DIRECT.getValue()
+                    + "', which makes the connector to query the change tables directly. "
+                    + "The value of '" + DataQueryMode.FUNCTION.getValue()
+                    + "' means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function.");
 
     public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
             .withDisplayName("Streaming fetch size")

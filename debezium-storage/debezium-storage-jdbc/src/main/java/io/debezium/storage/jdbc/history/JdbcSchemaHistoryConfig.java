@@ -41,7 +41,8 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             "history_data VARCHAR(65000)," +
             "history_data_seq INTEGER," +
             "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
+            "record_insert_seq INTEGER NOT NULL," +
+            "PRIMARY KEY (id, history_data_seq)" +
             ")";
 
     /**
@@ -52,7 +53,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_DDL)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.ddl");
 
-    private static final String DEFAULT_TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM %s"
+    private static final String DEFAULT_TABLE_SELECT = "SELECT id, history_data FROM %s"
             + " ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq";
 
     /**

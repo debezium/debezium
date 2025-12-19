@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -28,8 +28,8 @@ public class SourceInfoTest {
 
     private SourceInfo source;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
@@ -39,12 +39,12 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void versionIsPresent() {
+    void versionIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
-    public void connectorIsPresent() {
+    void connectorIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
@@ -55,12 +55,12 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void shouldHaveTimestamp() {
+    void shouldHaveTimestamp() {
         assertThat(source.struct().getInt64("ts_ms")).isEqualTo(123_456L);
     }
 
     @Test
-    public void schemaIsCorrect() {
+    void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.postgresql.Source")
                 .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)

@@ -13,16 +13,13 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.util.Testing;
 
 /**
  * Integration test to verify PgVector types.
@@ -32,11 +29,8 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 15, reason = "PgVector is tested only with PostgreSQL 15+")
 public class VectorDatabaseIT extends AbstractRecordsProducerTest {
 
-    @Rule
-    public final SkipTestRule skipTest = new SkipTestRule();
-
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // ensure the slot is deleted for each test
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
@@ -46,12 +40,14 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
         TestHelper.execute(
                 "CREATE TABLE pgvector.table_vector (pk SERIAL, f_vector pgvector.vector(3), f_halfvec pgvector.halfvec(3), f_sparsevec pgvector.sparsevec(3000), PRIMARY KEY(pk));",
                 "INSERT INTO pgvector.table_vector (f_vector, f_halfvec, f_sparsevec) VALUES ('[1,2,3]', '[101,102,103]', '{1: 201, 9: 209}/3000');");
+
+        // Re-initialize the connector framework AFTER database cleanup to ensure clean state
         initializeConnectorTestFramework();
     }
 
     @Test
-    public void shouldSnapshotAndStreamData() throws Exception {
-        Testing.Print.enable();
+    void shouldSnapshotAndStreamData() throws Exception {
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -86,8 +82,8 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void shouldStreamData() throws Exception {
-        Testing.Print.enable();
+    void shouldStreamData() throws Exception {
+        // Testing.Print.enable();
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());

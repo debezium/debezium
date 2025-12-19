@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -91,7 +92,6 @@ import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -107,6 +107,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
     private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
+    private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
@@ -146,7 +147,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                                             BinlogTaskContext<?> taskContext,
                                             BinlogDatabaseSchema schema,
                                             BinlogStreamingChangeEventSourceMetrics<?, P> metrics,
-                                            SnapshotterService snapshotterService) {
+                                            SnapshotterService snapshotterService,
+                                            BinaryLogClient client) {
         this.taskContext = taskContext;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
@@ -158,7 +160,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         this.inconsistentSchemaHandlingMode = connectorConfig.getInconsistentSchemaFailureHandlingMode();
         this.snapshotterService = snapshotterService;
-        this.client = createBinaryLogClient(taskContext, connectorConfig, binaryLogClientThreads, connection);
+        this.client = client;
+        configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
     }
@@ -166,7 +169,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     @Override
     public void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
-            taskContext.getSchema().assureNonEmptySchema();
+            schema.assureNonEmptySchema();
         }
         final Set<Envelope.Operation> skippedOperations = connectorConfig.getSkippedOperations();
 
@@ -177,7 +180,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.QUERY, (event) -> handleQueryEvent(partition, effectiveOffsetContext, event));
-        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> handleTransactionPayload(partition, effectiveOffsetContext, event));
+        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> handleTransactionPayload(partition, effectiveOffsetContext, context, event));
 
         if (!skippedOperations.contains(Envelope.Operation.CREATE)) {
             eventHandlers.put(EventType.WRITE_ROWS, (event) -> handleInsert(partition, effectiveOffsetContext, event));
@@ -371,12 +374,20 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         return isGtidModeEnabled;
     }
 
+    /**
+     * Get the binary log client instance.
+     *
+     * @return the binary log client; never null
+     */
+    public BinaryLogClient getBinaryLogClient() {
+        return client;
+    }
+
     // todo: perhaps refactor back out to a binary log configurator instance?
-    protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
-                                                    BinlogConnectorConfig connectorConfig,
-                                                    Map<String, Thread> clientThreads,
-                                                    BinlogConnectorConnection connection) {
-        final BinaryLogClient client = taskContext.getBinaryLogClient();
+    protected void configureBinaryLogClient(BinaryLogClient client,
+                                            BinlogConnectorConfig connectorConfig,
+                                            Map<String, Thread> clientThreads,
+                                            BinlogConnectorConnection connection) {
         client.setThreadFactory(
                 Threads.threadFactory(
                         getConnectorClass(),
@@ -410,7 +421,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // to process the packet received from the database server.
         client.setHeartbeatInterval((long) (keepAliveInterval * heartbeatIntervalFactor));
         client.setEventDeserializer(createEventDeserializer());
-        return client;
     }
 
     protected void configureReplicaCompatibility(BinaryLogClient client) {
@@ -424,6 +434,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 try {
                     // Delegate to the superclass ...
                     Event event = super.nextEvent(inputStream);
+                    if (event == null) {
+                        return null;
+                    }
 
                     // We have to record the most recent TableMapEventData for each table number for our custom deserializers ...
                     if (event.getHeader().getEventType() == EventType.TABLE_MAP) {
@@ -560,7 +573,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         else if (eventHeader instanceof EventHeaderV4) {
             EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
-            offsetContext.setEventPosition(trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+            if (trackableEventHeader.getPosition() > 0) {
+                offsetContext.setEventPosition(
+                        trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+            }
         }
 
         // If there is a handler for this event, forward the event to it ...
@@ -715,17 +731,19 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
 
-        String upperCasedStatementBegin = Strings.getBegin(removeSetStatement(sql), 7).toUpperCase();
+        String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
-        if (schema.ddlFilter().test(sql)) {
+        if (!TRUNCATE_STATEMENT_PATTERN.matcher(sql).matches() && schema.ddlFilter().test(sql)) {
             LOGGER.debug("DDL '{}' was filtered out of processing", sql);
             return;
         }
-        if (upperCasedStatementBegin.equals("INSERT ") || upperCasedStatementBegin.equals("UPDATE ") || upperCasedStatementBegin.equals("DELETE ")) {
+        // Check and exclude DML statements from DDL statements handling logic.
+        Set<String> DML_STATEMENTS = Set.of("INSERT ", "UPDATE ", "DELETE ", "REPLACE ");
+        if (DML_STATEMENTS.contains(upperCasedStatementBegin)) {
             LOGGER.warn("Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
             return;
         }
@@ -744,19 +762,22 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
-                if (tableId != null && !connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)
-                        && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
-                    eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                            new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                if (tableId != null && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
+                    if (!connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)) {
+                        eventDispatcher.dispatchDataChangeEvent(partition, tableId,
+                                new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                    }
                 }
-                eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(schemaChangeEvent);
-                    }
-                    catch (Exception e) {
-                        throw new DebeziumException(e);
-                    }
-                });
+                else {
+                    eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
+                        try {
+                            receiver.schemaChangeEvent(schemaChangeEvent);
+                        }
+                        catch (Exception e) {
+                            throw new DebeziumException(e);
+                        }
+                    });
+                }
             }
         }
         catch (InterruptedException e) {
@@ -800,24 +821,22 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     /**
      * Handle an event of type TRANSACTION_PAYLOAD_EVENT<p></p>
-     *
+     * <p>
      * This method should be called whenever a transaction payload event is encountered by the mysql binlog connector.
      * A Transaction payload event is propagated from the binlog connector when compression is turned on over binlog.
-     * This method loops over the individual events in the compressed binlog and calls the respective atomic event
-     * handlers.
+     * This method loops over the individual events in the compressed binlog and calls handleEvent for each of them.
      *
-     * @param partition the partition; never null
+     * @param partition     the partition; never null
      * @param offsetContext the offset context; never null
-     * @param event the transaction payload event; never null
+     * @param context
+     * @param event         the transaction payload event; never null
      */
-    protected void handleTransactionPayload(P partition, O offsetContext, Event event) throws InterruptedException {
+    protected void handleTransactionPayload(P partition, O offsetContext, ChangeEventSourceContext context, Event event) {
         TransactionPayloadEventData transactionPayloadEventData = event.getData();
         // Loop over the uncompressed events in the transaction payload event and add the table map
         // event in the map of table events
         for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
-            eventHandlers.getOrDefault(
-                    uncompressedEvent.getHeader().getEventType(),
-                    (e) -> ignoreEvent(offsetContext, uncompressedEvent)).accept(uncompressedEvent);
+            handleEvent(partition, effectiveOffsetContext, context, uncompressedEvent);
         }
     }
 
@@ -834,7 +853,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.CREATE, null, row, connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), null, row));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), null, row));
     }
 
     /**
@@ -851,7 +870,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row.getKey(), row.getValue()));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row.getKey(), row.getValue()));
     }
 
     /**
@@ -867,7 +886,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.DELETE, row, null, connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row, null));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row, null));
     }
 
     /**
@@ -1092,7 +1111,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         final List<U> rows = rowsProvider.getRows(data);
         String changeType = operation.name();
 
-        if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
+        if (tableId != null && schema.schemaFor(tableId) != null) {
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {

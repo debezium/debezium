@@ -13,14 +13,15 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.pipeline.AbstractMetricsTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -89,8 +90,8 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
         return true;
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         // Testing.Print.enable();
         stopConnector();
         DATABASE.createAndInitialize();
@@ -98,8 +99,8 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         try {
             stopConnector();
         }
@@ -109,11 +110,11 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
     }
 
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(getConnectorName(), SERVER_NAME);
+        return MetricsHelper.getSnapshotMetricsObjectName(getConnectorName(), SERVER_NAME);
     }
 
     public ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(getConnectorName(), SERVER_NAME, getStreamingNamespace());
+        return MetricsHelper.getStreamingMetricsObjectName(getConnectorName(), SERVER_NAME, getStreamingNamespace());
     }
 
 }

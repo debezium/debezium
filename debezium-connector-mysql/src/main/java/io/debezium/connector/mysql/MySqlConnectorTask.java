@@ -8,34 +8,45 @@ package io.debezium.connector.mysql;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -62,6 +73,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     private volatile BinlogConnectorConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile MySqlDatabaseSchema schema;
+    private MySqlConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -69,9 +81,18 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new MySqlConnectorConfig(config);
+        taskContext = new MySqlTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration configuration) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(configuration);
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
@@ -96,7 +117,13 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+                taskContext);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -106,9 +133,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -118,6 +143,14 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         // If the binlog position is not available it is necessary to re-execute snapshot
         if (validateSnapshotFeasibility(snapshotter, previousOffsets.getTheOnlyOffset(), connection)) {
             previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+        }
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, connection);
         }
 
         LOGGER.info("Closing connection before starting schema recovery");
@@ -131,9 +164,9 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
+        validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
-        LOGGER.info("Reconnecting after finishing schema recovery");
+        LOGGER.info("Reconnecting after validating schema recovery");
 
         try {
             try {
@@ -164,14 +197,13 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
             LOGGER.info("Found previous offset {}", previousOffset);
         }
 
-        taskContext = new MySqlTaskContext(connectorConfig, schema);
-
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .buffering()
                 .build();
@@ -187,6 +219,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 previousOffsets);
 
         final Configuration heartbeatConfig = config;
+
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -196,17 +229,24 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(
+                        connectorConfig,
                         () -> new MySqlConnection(
                                 new MySqlConnectionConfiguration(heartbeatConfig),
                                 MySqlFieldReaderResolver.resolve(connectorConfig)),
-                        new BinlogHeartbeatErrorHandler()),
-                schemaNameAdjuster,
-                signalProcessor);
+                        new BinlogHeartbeatErrorHandler(),
+                        queue),
+                schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
-        final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
+        // Create the binary log client that will be used for streaming change events
+        final BinaryLogClient binaryLogClient = new BinaryLogClient(
+                connectorConfig.getHostName(),
+                connectorConfig.getPort(),
+                connectorConfig.getUserName(),
+                connectorConfig.getPassword());
+
+        final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
+                schema::dataCollectionIds, binaryLogClient);
 
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
@@ -226,7 +266,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         taskContext,
                         streamingMetrics,
                         queue,
-                        snapshotterService),
+                        snapshotterService,
+                        binaryLogClient),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
@@ -237,6 +278,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
+    }
+
+    @Override
+    protected String connectorName() {
+        return Module.name();
     }
 
     private MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
@@ -254,6 +300,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.ofNullable(errorHandler);
     }
 
     @Override
@@ -284,6 +335,17 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return MySqlConnectorConfig.ALL_FIELDS;
+    }
+
+    private void validateGuardrailLimits(MySqlConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
+        try {
+            Set<TableId> allTableIds = connection.getAllTableIds();
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
 }

@@ -16,8 +16,8 @@ import java.util.Optional;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import io.debezium.config.Configuration;
@@ -27,7 +27,7 @@ import io.debezium.data.Envelope;
 public class MongoDbConnectorConfigTest {
 
     @Test
-    public void parseSignallingMessage() {
+    void parseSignallingMessage() {
         Schema schema = new SchemaBuilder(Schema.Type.STRUCT).field("after", Schema.STRING_SCHEMA).build();
         Struct struct = new Struct(schema);
         struct.put("after", "{\"_id\":\"test-1\"," +
@@ -37,16 +37,16 @@ public class MongoDbConnectorConfigTest {
 
         Optional<String[]> resultOpt = mongoDbConnectorConfig.parseSignallingMessage(struct, Envelope.FieldName.AFTER);
 
-        Assert.assertTrue(resultOpt.isPresent());
+        Assertions.assertTrue(resultOpt.isPresent());
         String[] result = resultOpt.get();
-        Assert.assertEquals(3, result.length);
-        Assert.assertEquals("test-1", result[0]);
-        Assert.assertEquals("execute-snapshot", result[1]);
-        Assert.assertEquals("{\"data-collections\": [\"database.collection\"], \"type\": \"incremental\"}", result[2]);
+        Assertions.assertEquals(3, result.length);
+        Assertions.assertEquals("test-1", result[0]);
+        Assertions.assertEquals("execute-snapshot", result[1]);
+        Assertions.assertEquals("{\"data-collections\": [\"database.collection\"], \"type\": \"incremental\"}", result[2]);
     }
 
     @Test
-    public void parseCursorPipeline() {
+    void parseCursorPipeline() {
         verifyCursorPipelineValidateError("This is not valid JSON pipeline",
                 "Change stream pipeline JSON is invalid: JSON reader was expecting a value but found 'This'.");
         verifyCursorPipelineValidateError("{$match: {}}", "Change stream pipeline JSON is invalid: Cannot cast org.bson.Document to java.util.List");

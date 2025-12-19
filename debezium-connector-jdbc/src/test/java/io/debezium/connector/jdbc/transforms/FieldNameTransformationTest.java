@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.transforms;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -16,11 +16,12 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.fest.assertions.ListAssert;
+import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.SinkRecordBuilder;
@@ -43,7 +44,8 @@ public class FieldNameTransformationTest {
             final Map<String, String> properties = new HashMap<>();
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", "id", "name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", "id", "name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("id");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("id", "name", "nick_name_");
         }
@@ -59,7 +61,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.suffix", "bb");
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", "id", "name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", "id", "name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("aaidbb");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("aaidbb", "aanamebb", "aanick_name_bb");
         }
@@ -74,7 +77,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.style", NamingStyle.SNAKE_CASE.getValue());
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "docId", "docId", "documentName", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "docId", "docId", "documentName", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("doc_id");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("doc_id", "document_name", "nick_name_");
         }
@@ -91,7 +95,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.suffix", "bb");
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "docId", "docId", "documentName", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "docId", "docId", "documentName", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("aadoc_idbb");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("aadoc_idbb", "aadocument_namebb", "aanick_name_bb");
         }
@@ -106,7 +111,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.style", NamingStyle.CAMEL_CASE.getValue());
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("docId");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("docId", "documentName", "nickName");
         }
@@ -123,7 +129,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.suffix", "bb");
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("aadocIdbb");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("aadocIdbb", "aadocumentNamebb", "aanickNamebb");
         }
@@ -138,7 +145,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.style", NamingStyle.UPPER_CASE.getValue());
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("DOC_ID");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("DOC_ID", "DOCUMENT_NAME", "NICK_NAME_");
         }
@@ -155,7 +163,8 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.suffix", "bb");
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "doc_id", "doc_id", "document_name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("aaDOC_IDbb");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("aaDOC_IDbb", "aaDOCUMENT_NAMEbb", "aaNICK_NAME_bb");
         }
@@ -170,7 +179,24 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.style", NamingStyle.LOWER_CASE.getValue());
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+            assertSchemaFieldNames(record.keySchema()).containsOnly("doc_id");
+            assertSchemaFieldNames(record.getPayload().schema()).containsOnly("doc_id", "document_name", "nick_name_");
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-9747")
+    void testConvertFieldNameToLowerCaseDeleteRecord(SinkRecordFactory factory) {
+        try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
+            final Map<String, String> properties = new HashMap<>();
+            properties.put("column.naming.style", NamingStyle.LOWER_CASE.getValue());
+            transform.configure(properties);
+
+            var record = new KafkaDebeziumSinkRecord(transform.apply(deleteSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("doc_id");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("doc_id", "document_name", "nick_name_");
         }
@@ -187,9 +213,25 @@ public class FieldNameTransformationTest {
             properties.put("column.naming.suffix", "bb");
             transform.configure(properties);
 
-            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")));
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "Doc_Id", "Doc_Id", "Document_Name", "nick_Name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
             assertSchemaFieldNames(record.keySchema()).containsOnly("aadoc_idbb");
             assertSchemaFieldNames(record.getPayload().schema()).containsOnly("aadoc_idbb", "aadocument_namebb", "aanick_name_bb");
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-9017")
+    void testNonOptionalFieldValues(SinkRecordFactory factory) {
+        try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
+            final Map<String, String> properties = new HashMap<>();
+            transform.configure(properties);
+
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", false, "id", "name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+            assertSchemaFieldNames(record.keySchema()).containsOnly("id");
+            assertSchemaFieldNames(record.getPayload().schema()).containsOnly("id", "name", "nick_name_");
         }
     }
 
@@ -198,6 +240,10 @@ public class FieldNameTransformationTest {
     }
 
     private static SinkRecord createSinkRecord(SinkRecordFactory factory, String keyFieldName, String... payloadFieldNames) {
+        return createSinkRecord(factory, keyFieldName, true, payloadFieldNames);
+    }
+
+    private static SinkRecord createSinkRecord(SinkRecordFactory factory, String keyFieldName, boolean optionalFields, String... payloadFieldNames) {
         final Schema keySchema = SchemaBuilder.struct().field(keyFieldName, Schema.INT8_SCHEMA).build();
         final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
 
@@ -210,7 +256,37 @@ public class FieldNameTransformationTest {
 
         final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
         Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
-            recordSchemaBuilder.field(payloadFieldName, Schema.OPTIONAL_STRING_SCHEMA);
+            recordSchemaBuilder.field(payloadFieldName, optionalFields ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
+            builder.after(payloadFieldName, "randomValue");
+        });
+
+        return builder.keySchema(keySchema)
+                .recordSchema(recordSchemaBuilder.build())
+                .sourceSchema(sourceSchema)
+                .key(keyFieldName, (byte) 1)
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build()
+                .getOriginalKafkaRecord();
+    }
+
+    private static SinkRecord deleteSinkRecord(SinkRecordFactory factory, String keyFieldName, String... payloadFieldNames) {
+        return deleteSinkRecord(factory, keyFieldName, true, payloadFieldNames);
+    }
+
+    private static SinkRecord deleteSinkRecord(SinkRecordFactory factory, String keyFieldName, boolean optionalFields, String... payloadFieldNames) {
+        final Schema keySchema = SchemaBuilder.struct().field(keyFieldName, Schema.INT8_SCHEMA).build();
+        final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
+
+        final SinkRecordTypeBuilder builder = SinkRecordBuilder.delete()
+                .flat(factory.isFlattened())
+                .name("prefix")
+                .topic("topic")
+                .offset(1)
+                .partition(0);
+
+        final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
+        Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
+            recordSchemaBuilder.field(payloadFieldName, optionalFields ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
             builder.after(payloadFieldName, "randomValue");
         });
 

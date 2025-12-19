@@ -18,8 +18,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,7 +39,7 @@ public class JsonSchemaDataTest {
     private String record;
     private FieldNamer<String> avroFieldNamer;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         jsonSchemaData = new JsonSchemaData();
         mapper = new ObjectMapper();

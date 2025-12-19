@@ -14,7 +14,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,6 +32,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
@@ -100,19 +103,23 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
 
-            Scn startScn = getOffsetContext().getScn();
-            Scn endScn = Scn.NULL;
+            boolean sessionStartScnChanged = false;
+            Scn sessionStartScn = getOffsetContext().getScn();
+            Scn sessionEndScn = Scn.NULL;
+            Scn readScn = sessionStartScn;
 
             Stopwatch watch = Stopwatch.accumulating().start();
             int miningStartAttempts = 1;
 
-            prepareLogsForMining(false, startScn);
+            prepareLogsForMining(false, sessionStartScn);
 
             while (getContext().isRunning()) {
 
                 // Check if we should break when using archive log only mode
-                if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
-                    break;
+                if (getConfig().isArchiveLogOnlyMode()) {
+                    if (waitForRangeAvailabilityInArchiveLogs(sessionStartScn, sessionEndScn)) {
+                        break;
+                    }
                 }
 
                 final Instant batchStartTime = Instant.now();
@@ -122,39 +129,55 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 Scn currentScn = getCurrentScn();
                 getMetrics().setCurrentScn(currentScn);
 
-                endScn = calculateUpperBounds(startScn, endScn, currentScn);
-                if (endScn.isNull()) {
+                sessionEndScn = calculateUpperBounds(readScn, sessionEndScn, currentScn);
+                if (sessionEndScn.isNull()) {
                     LOGGER.debug("Requested delay of mining by one iteration");
-                    pauseBetweenMiningSessions();
-                    continue;
-                }
-
-                // This is a small window where when archive log only mode has completely caught up to the last
-                // record in the archive logs that both the lower and upper values are identical. In this use
-                // case we want to pause and restart the loop waiting for a new archive log before proceeding.
-                if (getConfig().isArchiveLogOnlyMode() && startScn.equals(endScn)) {
                     pauseBetweenMiningSessions();
                     continue;
                 }
 
                 flushStrategy.flush(getCurrentScn());
 
-                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
+                final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
+                final boolean logSwitchOccurred = checkLogSwitchOccurredAndUpdate();
+
+                if (miningSessionRestartRequired || logSwitchOccurred || sessionStartScnChanged) {
                     // Mining session is active, so end the current session and restart if necessary
                     endMiningSession();
-                    if (getConfig().isLogMiningRestartConnection()) {
+
+                    // Only restart the connection if mining session max time or log switch occurred
+                    final boolean restartRequired = miningSessionRestartRequired || logSwitchOccurred;
+                    if (restartRequired && getConfig().isLogMiningRestartConnection()) {
                         prepareJdbcConnection(true);
                     }
+                    else if (!restartRequired) {
+                        LOGGER.debug("SCN start position advanced to a new set of logs, restart required.");
+                    }
 
-                    prepareLogsForMining(true, startScn);
+                    prepareLogsForMining(true, sessionStartScn);
+                    sessionStartScnChanged = false;
 
                     // Recreate the stop watch
                     watch = Stopwatch.accumulating().start();
                 }
 
-                if (startMiningSession(startScn, endScn, miningStartAttempts)) {
+                if (startMiningSession(sessionStartScn, sessionEndScn, miningStartAttempts)) {
                     miningStartAttempts = 1;
-                    startScn = process(startScn, endScn);
+
+                    final ProcessResult result = process(readScn, sessionEndScn);
+                    LOGGER.debug("ProcessResult MineStartScn={} ReadStartScn={}", result.miningSessionStartScn(), result.readStartScn());
+
+                    if (!result.miningSessionStartScn.equals(sessionStartScn)) {
+                        if (hasLogMiningStartingLogChanged(sessionStartScn, result)) {
+                            // LogMiner reads a log in totality, regardless if the start position is near the
+                            // beginning, middle, or end of the log. So by updating this value if and only if
+                            // the log changes, allows for maximum session reuse.
+                            sessionStartScnChanged = true;
+                            sessionStartScn = result.miningSessionStartScn;
+                        }
+                    }
+
+                    readScn = result.readStartScn();
 
                     getMetrics().setLastBatchProcessingDuration(Duration.between(batchStartTime, Instant.now()));
                 }
@@ -181,6 +204,36 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         catch (Exception e) {
             LOGGER.warn("Failed to gracefully shutdown the cache provider", e);
         }
+    }
+
+    /**
+     * Check whether the log mining starting log position between the previous and last mining steps has
+     * put the connector reading from a new log across all redo threads.
+     *
+     * @param lastSessionStartScn the previous batch's mining session start position
+     * @param lastBatchResult the current batch's mining session start position
+     * @return {@code true} if the two SCNs refer to different sets of logs, or {@code false} if they're identical
+     */
+    private boolean hasLogMiningStartingLogChanged(Scn lastSessionStartScn, ProcessResult lastBatchResult) {
+        // DBZ-9680
+        //
+        // To avoid excessive session restarts when restart connection is enabled, we need to
+        // compare the last iteration and the next iteration logs and to indicate whether the
+        // Start SCN for these two iterations are in the same log or not. If the logs are not
+        // the same, we must enforce a restart.
+        //
+        // In addition, this also adds stability to when session restart is not enabled, as
+        // the connector will attempt to reuse the same session more often.
+        //
+        final List<LogFile> logsWithLastMiningStartPosition = getCurrentLogFiles().stream()
+                .filter(log -> log.isScnInLogFileRange(lastSessionStartScn))
+                .toList();
+
+        final List<LogFile> logsWithNextMiningStartPosition = getCurrentLogFiles().stream()
+                .filter(log -> log.isScnInLogFileRange(lastBatchResult.miningSessionStartScn))
+                .toList();
+
+        return !logsWithLastMiningStartPosition.equals(logsWithNextMiningStartPosition);
     }
 
     /**
@@ -218,7 +271,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+    protected ProcessResult process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -227,6 +280,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
+
+            if (getConfig().isLogMiningUseCteQuery()) {
+                statement.setString(3, startScn.toString());
+                statement.setString(4, endScn.toString());
+            }
+
+            getMetrics().setLastMiningFetchRange(startScn, endScn);
 
             executeAndProcessQuery(statement);
 
@@ -358,6 +418,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 }
                 cleanupAfterTransactionRemovedFromCache(transaction, false);
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             return;
         }
@@ -383,30 +444,39 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return;
         }
 
-        getBatchMetrics().commitObserved();
-
-        // When a COMMIT is received, regardless of the number of events it has, it still
-        // must be recorded in the commit scn for the node to guarantee updates to the
-        // offsets. This must be done prior to dispatching the transaction-commit or the
-        // heartbeat event that follows commit dispatch.
-        getOffsetContext().getCommitScn().recordCommit(row);
-
         Instant start = Instant.now();
         boolean dispatchTransactionCommittedEvent = false;
         if (numEvents > 0) {
             final boolean skipEvents = isTransactionSkippedAtCommit(transaction);
             dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = getMetrics().getDatabaseOffset();
-            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventsProcessed) -> {
+            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
-                    getOffsetContext().setScn(event.getScn());
                     getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
+                }
+
+                if (Objects.equals(getOffsetContext().getTransactionId(), transactionId)) {
+                    if (getOffsetContext().getTransactionSequence() != null) {
+                        if (getOffsetContext().getTransactionSequence() >= eventIndex) {
+                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, transactionId);
+
+                            Loggings.logDebugAndTraceRecord(
+                                    LOGGER,
+                                    event,
+                                    "Skipping event {} in transaction {} - has already been sent.",
+                                    eventIndex,
+                                    transactionId);
+
+                            return;
+                        }
+                    }
                 }
 
                 getOffsetContext().setEventScn(event.getScn());
                 getOffsetContext().setEventCommitScn(row.getScn());
                 getOffsetContext().setTransactionId(transactionId);
+                getOffsetContext().setTransactionSequence(eventIndex);
                 getOffsetContext().setUserName(transaction.getUserName());
                 getOffsetContext().setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 getOffsetContext().setTableId(event.getTableId());
@@ -415,7 +485,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setRowId(event.getRowId());
                 getOffsetContext().setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
 
-                if (eventsProcessed == 1) {
+                if (eventIndex == 1) {
                     getOffsetContext().setStartScn(event.getScn());
                     getOffsetContext().setStartTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 }
@@ -469,8 +539,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     return true;
                 });
             }
+
+            if (!getContext().isRunning()) {
+                return;
+            }
         }
 
+        getOffsetContext().getCommitScn().recordCommit(row);
         getOffsetContext().setEventScn(commitScn);
         getOffsetContext().setRsId(row.getRsId());
         getOffsetContext().setRowId("");
@@ -485,18 +560,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
         }
 
-        getMetrics().calculateLagFromSource(row.getChangeTime());
+        getBatchMetrics().commitObserved();
 
         if (transaction != null) {
             finalizeTransaction(transactionId, commitScn, false);
             cleanupAfterTransactionRemovedFromCache(transaction, false);
+            getMetrics().calculateLagFromSource(row.getChangeTime());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
-        getMetrics().incrementCommittedTransactionCount();
-        getMetrics().setCommitScn(commitScn);
-        getMetrics().setOffsetScn(getOffsetContext().getScn());
-        getMetrics().setLastCommitDuration(Duration.between(start, Instant.now()));
+        updateCommitMetrics(row, Duration.between(start, Instant.now()), numEvents);
     }
 
     @Override
@@ -506,6 +580,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
             finalizeTransaction(transactionId, event.getScn(), true);
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
@@ -598,6 +673,16 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getTransactionCache().removeAbandonedTransaction(transactionId);
     }
 
+    @Override
+    protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
+        return !getMetrics().getBatchMetrics().hasJdbcRows();
+    }
+
+    @Override
+    protected List<String> getActiveTransactionIds() {
+        return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getTransactionId).toList());
+    }
+
     /**
      * Calculates the new SCN that will be used as the resume position for the next iteration.
      *
@@ -607,12 +692,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @return the new resume position change number for the next iteration
      * @throws InterruptedException if the thread is interrupted
      */
-    private Scn calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCommittedScn) throws InterruptedException {
+    private ProcessResult calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCommittedScn) throws InterruptedException {
 
         if (!getBatchMetrics().hasJdbcRows()) {
             // When no rows are processed, don't advance the SCN
-            return startScn;
+            // But always emit a heartbeat event in case the CTE query returned no data.
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+
+            return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
         }
+
+        abandonTransactions(getConfig().getLogMiningTransactionRetention());
 
         // Cleanup caches based on current state of the transaction cache
         final Scn minCacheScn;
@@ -628,8 +718,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
 
         if (!minCacheScn.isNull()) {
-            abandonTransactions(getConfig().getLogMiningTransactionRetention());
-
             getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
             getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
@@ -637,36 +725,36 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getSchemaChangesCache().removeIf(e -> true);
         }
 
-        if (getConfig().isLobEnabled()) {
-            if (getTransactionCache().isEmpty() && !maxCommittedScn.isNull()) {
+        if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
+            // The last processed SCN is before the end SCN for this mining step, so the next read position
+            // should start at this SCN position.
+            endScn = lastProcessedScn;
+        }
+
+        getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
+
+        if (!minCacheScn.isNull()) {
+            // Cache have values
+            final Scn miningSessionStartScn = minCacheScn.subtract(Scn.ONE);
+
+            getOffsetContext().setScn(miningSessionStartScn);
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+
+            getMetrics().setOffsetScn(getOffsetContext().getScn());
+            return new ProcessResult(miningSessionStartScn, getConfig().isLobEnabled() ? miningSessionStartScn : endScn);
+        }
+        else {
+            // Cache has no values
+            final Scn miningSessionStartScn = endScn.subtract(Scn.ONE);
+
+            if (!maxCommittedScn.isNull()) {
+                // If transactions have been committed, advance to the max committed value
                 getOffsetContext().setScn(maxCommittedScn);
                 getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
-            else {
-                if (!minCacheScn.isNull()) {
-                    getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-                    getOffsetContext().setScn(minCacheScn.subtract(Scn.valueOf(1)));
-                    getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-                }
-            }
-            return getOffsetContext().getScn();
-        }
-        else {
 
-            if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
-                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
-                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
-                endScn = lastProcessedScn;
-            }
-
-            getOffsetContext().setScn(minCacheScn.isNull() ? endScn : minCacheScn.subtract(Scn.valueOf(1)));
-            getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
             getMetrics().setOffsetScn(getOffsetContext().getScn());
-
-            // optionally dispatch a heartbeat event
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-
-            return endScn;
+            return new ProcessResult(miningSessionStartScn, endScn);
         }
     }
 
@@ -794,34 +882,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * mode.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @return true if the transaction should be skipped and not disaptched, false otherwise
+     * @return true if the transaction should be skipped and not dispatched, false otherwise
      */
     private boolean isTransactionSkippedAtCommit(Transaction transaction) {
         // todo: can this be moved to earlier in the processing loop to avoid buffering?
-        if (transaction != null) {
-            // Check whether transaction should be skipped by LogMiner USERNAME field
-            if (!Strings.isNullOrBlank(transaction.getUserName())) {
-                if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-                    LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
-                    return true;
-                }
-            }
-
-            // Check whether transaction should be skipped by LogMiner CLIENT_ID field
-            if (!Strings.isNullOrBlank(transaction.getClientId())) {
-                if (getConfig().getLogMiningClientIdExcludes().contains(transaction.getClientId())) {
-                    LOGGER.debug("Skipped transaction with excluded client id {}", transaction.getClientId());
-                    return true;
-                }
-                else if (!getConfig().getLogMiningClientIdIncludes().isEmpty()) {
-                    if (!getConfig().getLogMiningClientIdIncludes().contains(transaction.getClientId())) {
-                        LOGGER.debug("Skipped transaction with client id {}", transaction.getClientId());
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        return transaction != null && (isUserNameSkipped(transaction.getUserName()) || isClientIdSkipped(transaction.getClientId()));
     }
 
     /**
@@ -876,6 +941,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
             transaction = transactionFactory.createTransaction(event);
             getTransactionCache().addTransaction(transaction);
+
+            getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
 
         final int eventId = transaction.getNextEventId();
@@ -884,11 +951,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
             getTransactionCache().addTransactionEvent(transaction, eventId, dispatchedEvent);
             getMetrics().calculateLagFromSource(event.getChangeTime());
+
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
         // When using Infinispan, this extra put is required so that the state is properly synchronized
         getTransactionCache().syncTransaction(transaction);
-        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
     }
 
     /**
@@ -927,12 +995,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @VisibleForTesting
     protected void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
+            final Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache()
+                    .map(LogMinerTransactionCache.ScnDetails::scn)
+                    .orElse(Scn.NULL);
+
+            // Only perform transaction abandonment if the cache has any entries
+            // If the cache is empty, this can be skipped.
+            if (smallestScn.isNull()) {
+                return;
+            }
+
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(getConnection(), retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache().map(LogMinerTransactionCache.ScnDetails::scn).orElse(Scn.NULL);
-                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
-
+                if (thresholdScn.compareTo(smallestScn) >= 0) {
                     Map<String, Transaction> abandoned = getTransactionCache().streamTransactionsAndReturn(stream -> stream
                             .filter(t -> t.getStartScn().compareTo(thresholdScn) <= 0)
                             .collect(Collectors.toMap(Transaction::getTransactionId, t -> t)));
@@ -956,7 +1032,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         getMetrics().addAbandonedTransactionId(key);
                     }
 
-                    getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                    if (!abandoned.isEmpty()) {
+                        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+                    }
 
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
@@ -1081,5 +1160,67 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 .collect(Collectors.joining(",")));
             });
         }
+    }
+
+    /**
+     * Abandons a single transaction identified by its transaction id.
+     * This method is public so it can be invoked by external signal actions.
+     *
+     * @param transactionId the transaction id to abandon, must be in lowercase hex format
+     * @return true if the transaction was found and abandoned, false otherwise
+     * @throws InterruptedException if interrupted while performing cleanup
+     */
+    public boolean abandonTransactionById(String transactionId) throws InterruptedException {
+        if (Strings.isNullOrEmpty(transactionId)) {
+            LOGGER.warn("Abandon transaction requested with null/empty transaction id");
+            return false;
+        }
+        if (!getTransactionCache().containsTransaction(transactionId)) {
+            LOGGER.warn("Transaction '{}' not found in cache, cannot abandon", transactionId);
+            return false;
+        }
+
+        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
+        if (transaction == null) {
+            LOGGER.warn("Transaction '{}' was not present when attempting to abandon", transactionId);
+            return false;
+        }
+
+        LOGGER.info("Manually abandoning transaction {} as requested", transactionId);
+        try {
+            cleanupAfterTransactionRemovedFromCache(transaction, true);
+        }
+        catch (Exception e) {
+            LOGGER.error("Failed to cleanup after abandoning transaction {}", transactionId, e);
+            getMetrics().incrementErrorCount();
+            throw e;
+        }
+
+        getMetrics().addAbandonedTransactionId(transactionId);
+        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+
+        // Update oldest scn metric after manual abandonment
+        getTransactionCache().getEldestTransactionScnDetailsInCache().ifPresentOrElse(
+                scnDetails -> getMetrics().setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
+                () -> getMetrics().setOldestScnDetails(Scn.NULL, null));
+
+        // notify dispatcher to keep offsets moving
+        if (getEventDispatcher().heartbeatsEnabled()) {
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+        }
+        else {
+            LOGGER.info("Heartbeats are not enabled, offsets will be updated on the next committed transaction");
+        }
+
+        LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", transactionId);
+        return true;
+    }
+
+    /**
+     * A helper records to return scn state after processing a batch.
+     */
+    @VisibleForTesting
+    public record ProcessResult(Scn miningSessionStartScn, Scn readStartScn) {
     }
 }

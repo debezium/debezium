@@ -28,7 +28,7 @@ import io.debezium.relational.TableId;
  * <pre>
  *     message RedoSqlDmlEvent {
  *         // structure of the super type, DmlEventAdapter
- *         required string entry = 8;
+ *         string entry = 8;
  *     }
  * </pre>
  * @author Chris Cranford
@@ -60,7 +60,7 @@ public class RedoSqlDmlEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the redo SQL statement
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8)
     public String getRedoSql(RedoSqlDmlEvent event) {
         return event.getRedoSql();
     }

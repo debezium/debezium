@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
@@ -19,16 +20,35 @@ import io.debezium.connector.mysql.util.MySqlValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.IoUtil;
 
 /**
  * @author Randall Hauch
  */
 public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConnectorConfig, MySqlDatabaseSchema, MySqlPartition, MySqlOffsetContext> {
+
+    private static final String ddlStatements = IoUtil.readClassPathResource("ddl/mysql-products.ddl");
+
+    public MySqlDatabaseSchemaTest() {
+        super(ddlStatements + """
+                CREATE TABLE connector_test.orders (
+                  order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  order_date DATE NOT NULL,
+                  purchaser INTEGER NOT NULL,
+                  quantity INTEGER NOT NULL,
+                  product_id INTEGER NOT NULL,
+                  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
+                  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
+                ) AUTO_INCREMENT = 10001;
+                """);
+    }
+
     @Override
     protected MySqlConnectorConfig getConnectorConfig(Configuration config) {
         config = config.edit().with(AbstractSchemaHistory.INTERNAL_PREFER_DDL, true).build();
@@ -49,7 +69,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false);
+                false, new CustomConverterRegistry(emptyList()), new MySqlTaskContext(config, connectorConfig));
     }
 
     @Override

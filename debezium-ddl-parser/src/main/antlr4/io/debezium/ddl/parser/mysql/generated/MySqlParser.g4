@@ -828,7 +828,7 @@ insertStatement
     : INSERT priority = (LOW_PRIORITY | DELAYED | HIGH_PRIORITY)? IGNORE? INTO? tableName (
         PARTITION '(' partitions = uidList? ')'
     )? (
-        ('(' columns = fullColumnNameList? ')')? insertStatementValue (AS? uid)?
+        ('(' columns = fullColumnNameList? ')')? withClause? insertStatementValue (AS? uid)?
         | SET setFirst = updatedElement (',' setElements += updatedElement)*
     ) (
         ON DUPLICATE KEY UPDATE duplicatedFirst = updatedElement (
@@ -983,6 +983,7 @@ tableSourceItem
     | sequenceFunctionName '(' expression ')' (AS? alias = uid)?                              # sequenceTableItem
     | (selectStatement | '(' parenthesisSubquery = selectStatement ')') AS? alias = uid       # subqueryTableItem
     | '(' tableSources ')'                                                                    # tableSourcesItem
+    | jsonTable                                                                               # atomJsonTable
     ;
 
 indexHint
@@ -1696,6 +1697,7 @@ privilege
     | TP_CONNECTION_ADMIN
     | VERSION_TOKEN_ADMIN
     | XA_RECOVER_ADMIN
+    | GROUP_REPLICATION_STREAM
     // MySQL on Amazon RDS
     | LOAD FROM S3
     | SELECT INTO S3
@@ -2805,6 +2807,7 @@ keywordsCanBeId
     | CURRENT
     | CURRENT_USER
     | CURSOR_NAME
+    | CYCLE
     | DATA
     | DATAFILE
     | DEALLOCATE
@@ -2915,6 +2918,7 @@ keywordsCanBeId
     | LEVEL
     | LIST
     | LOCAL
+    | LOCKED
     | LOGFILE
     | LOGS
     | MASTER
@@ -3063,6 +3067,7 @@ keywordsCanBeId
     | SECURITY
     | SECONDARY_ENGINE_ATTRIBUTE
     | SENSITIVE_VARIABLES_OBSERVER
+    | SEQUENCE
     | SEQUENCE_TABLE
     | SERIAL
     | SERVER
@@ -3159,6 +3164,7 @@ keywordsCanBeId
     | XA_RECOVER_ADMIN
     | XML
     | YES
+    | GROUP_REPLICATION_STREAM
     ;
 
 functionNameBase

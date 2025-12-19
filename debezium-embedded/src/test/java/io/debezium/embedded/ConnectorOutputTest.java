@@ -5,7 +5,7 @@
  */
 package io.debezium.embedded;
 
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,8 +42,8 @@ import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.json.JsonSerializer;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +130,7 @@ import io.debezium.util.Threads.TimeSince;
  *
  * <pre>
  * &#64;Test
- * public void shouldCaptureChangesFromMySqlWithNoGtids() {
+ * void shouldCaptureChangesFromMySqlWithNoGtids() {
  *     runConnector(usingSpec("test1", "src/test/resources/expected/test1"));
  * }
  * </pre>
@@ -698,16 +698,16 @@ public abstract class ConnectorOutputTest {
                 .withReadOrWriteTestData(expectedRecordsFile);
     }
 
-    @Before
-    public void cleanOffsetStorage() {
+    @BeforeEach
+    protected void cleanOffsetStorage() {
         Testing.Print.enable();
         Testing.Files.delete(CONNECTOR_OUTPUT_PATH);
         Testing.Files.delete(OFFSET_STORE_PATH);
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
     }
 
-    @After
-    public void afterEachTestMethod() {
+    @AfterEach
+    void afterEachTestMethod() {
         Testing.Print.disable();
     }
 

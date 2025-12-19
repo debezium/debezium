@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
 
@@ -31,19 +32,41 @@ public class LogMinerSessionContext implements AutoCloseable {
     private final OracleConnection connection;
     private final boolean useContinuousMining;
     private final LogMiningStrategy strategy;
+    private final String dictionaryFilePath;
 
     private boolean sessionStarted = false;
     private Duration lastSessionStartTime = Duration.ZERO;
+    private Scn currentSessionStartScn = Scn.NULL;
+    private Scn currentSessionEndScn = Scn.NULL;
 
-    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy) {
+    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
         this.useContinuousMining = useContinuousMining;
         this.strategy = strategy;
+        this.dictionaryFilePath = dictionaryFilePath;
     }
 
     @Override
     public void close() throws Exception {
         endMiningSession();
+    }
+
+    /**
+     * Get the current session starting system change number.
+     *
+     * @return the current starting system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionStartScn() {
+        return currentSessionStartScn;
+    }
+
+    /**
+     * Get the current session ending system change number.
+     *
+     * @return the current ending system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionEndScn() {
+        return currentSessionEndScn;
     }
 
     /**
@@ -122,15 +145,24 @@ public class LogMinerSessionContext implements AutoCloseable {
                 query.append("endScn => '").append(endScn).append("', ");
             }
             query.append("options => ").append(String.join(" + ", getMiningOptions(committedDataOnly)));
+            if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+                query.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
+            }
             query.append("); END;");
 
             Instant startTime = Instant.now();
             connection.executeWithoutCommitting(query.toString());
             lastSessionStartTime = Duration.between(startTime, Instant.now());
             sessionStarted = true;
+
+            currentSessionStartScn = startScn;
+            currentSessionEndScn = endScn;
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
+                throw new RetriableLogMinerException(e);
+            }
+            else if (e.getErrorCode() == 310 || e.getMessage().startsWith("ORA-00310")) {
                 throw new RetriableLogMinerException(e);
             }
             throw e;
@@ -145,6 +177,10 @@ public class LogMinerSessionContext implements AutoCloseable {
     public void endMiningSession() throws SQLException {
         try {
             LOGGER.trace("Ending log mining session");
+
+            currentSessionStartScn = Scn.NULL;
+            currentSessionEndScn = Scn.NULL;
+
             connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
             sessionStarted = false;
         }
@@ -170,12 +206,14 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private List<String> getMiningOptions(boolean committedDataOnly) {
         final List<String> miningOptions = new ArrayList<>();
-        if (strategy.equals(LogMiningStrategy.CATALOG_IN_REDO)) {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
-            miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
-        }
-        else {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
+        switch (strategy) {
+            case CATALOG_IN_REDO:
+                miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
+                miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
+            case DICTIONARY_FROM_FILE:
+                break;
+            default:
+                miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
         }
 
         if (useContinuousMining) {

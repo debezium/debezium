@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -25,7 +25,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPartition, MySqlOffsetContext> implements MySqlCommon {
 
     @Test
-    public void shouldNotStartWithUnknownJdbcDriver() {
+    void shouldNotStartWithUnknownJdbcDriver() {
         final Configuration config = getDatabase().defaultConfig()
                 .with(MySqlConnectorConfig.JDBC_DRIVER, "foo.bar")
                 .build();
@@ -43,7 +43,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
     }
 
     @Test
-    public void shouldNotStartWithWrongProtocol() {
+    void shouldNotStartWithWrongProtocol() {
         final Configuration config = getDatabase().defaultConfig()
                 .with(MySqlConnectorConfig.JDBC_PROTOCOL, "foo:bar")
                 .build();

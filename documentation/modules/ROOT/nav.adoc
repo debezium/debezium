@@ -10,6 +10,7 @@
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 ** xref:configuration/notification.adoc[Receive notifications from Debezium]
 ** xref:configuration/storage.adoc[Store Debezium state]
+** xref:configuration/eos.adoc[Exactly-once delivery]
 * Source Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
@@ -26,6 +27,7 @@
 * Sink Connectors
 ** xref:connectors/index-sink.adoc[Overview]
 ** xref:connectors/jdbc.adoc[JDBC]
+** xref:connectors/mongodb-sink.adoc[MongoDB Sink]
 * Transformations
 ** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]
@@ -41,10 +43,11 @@
 ** xref:transformations/partition-routing.adoc[Partition Routing]
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
+** xref:transformations/geometry-format-transformer.adoc[Geometry Format Conversion]
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 ** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
-** xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
 ** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
+** xref:transformations/swap-geometry-coordinates.adoc[Swap Geometry Coordinates]
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
 ** xref:post-processors/reselect-columns.adoc[Reselect Columns]
@@ -55,10 +58,15 @@
 ** xref:integrations/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 ** xref:integrations/cloudevents.adoc[CloudEvents]
+** xref:integrations/openlineage.adoc[OpenLineage]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
+** xref:integrations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
+* Debezium AI
+** xref:ai/embeddings.adoc[Embeddings Transformation]
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
+** xref:operations/debezium-operator.adoc[Debezium Operator]
 ** xref:operations/debezium-platform.adoc[Debezium Management Platform]
 * Operations
 ** xref:operations/logging.adoc[Logging]

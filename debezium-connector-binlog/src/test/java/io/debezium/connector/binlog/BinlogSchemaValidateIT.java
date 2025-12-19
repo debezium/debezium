@@ -7,7 +7,7 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
@@ -43,16 +43,16 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
 
     private static final int INITIAL_EVENT_COUNT = 6;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(DB_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }

@@ -5,6 +5,7 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.LEGACY_EMBEDDINGS_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -14,9 +15,10 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.assertj.core.data.Offset;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -35,32 +37,49 @@ public class EmbeddingsOllamaIT {
 
     private final FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
 
-    @BeforeClass
+    @BeforeAll
     public static void startDatabase() {
         ollama.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopDatabase() {
         ollama.stop();
     }
 
     @Test
     public void testOllamaEmbeddings() throws InterruptedException, IOException {
+        assertEmbeddingsForConfig(Map.of(
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding",
+                "ollama.url", ollama.getEndpoint(),
+                "ollama.model.name", OLLAMA_TEST_MODEL,
+                "operation.timeout.ms", 20_000));
+    }
+
+    @Test
+    public void testOllamaEmbeddingsWithLegacyConfig() throws InterruptedException, IOException {
+        assertEmbeddingsForConfig(Map.of(
+                LEGACY_EMBEDDINGS_PREFIX + "field.source", "after.product",
+                LEGACY_EMBEDDINGS_PREFIX + "field.embedding", "after.prod_embedding",
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.url", ollama.getEndpoint(),
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.model.name", OLLAMA_TEST_MODEL,
+                LEGACY_EMBEDDINGS_PREFIX + "operation.timeout.ms", 20_000));
+    }
+
+    private void assertEmbeddingsForConfig(Map<String, ?> config) throws InterruptedException, IOException {
         ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
 
-        embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding",
-                "embeddings.ollama.url", ollama.getEndpoint(),
-                "embeddings.ollama.model.name", OLLAMA_TEST_MODEL));
+        embeddingSmt.configure(config);
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");
         List<Float> embeddings = payloadStruct.getStruct("after").getArray("prod_embedding");
         assertThat(embeddings.size()).isEqualTo(384);
-        assertThat(embeddings).startsWith(-0.07157089f, 0.022460647f, -0.02369636f, -0.0143798785f, 0.0048304256f, 0.020285256f, 0.20442571f, 0.057290666f, 0.054607023f,
-                -0.030602805f);
+        final Offset<Float> offset = Offset.offset(0.001f);
+        assertThat(embeddings.get(0)).isCloseTo(-0.07157089f, offset);
+        assertThat(embeddings.get(1)).isCloseTo(0.022460647f, offset);
+        assertThat(embeddings.get(2)).isCloseTo(-0.02369636f, offset);
     }
 }

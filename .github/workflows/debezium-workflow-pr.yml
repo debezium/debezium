@@ -25,6 +25,8 @@ jobs:
     name: "Detect repository changes"
     runs-on: ubuntu-latest
     outputs:
+      ai-changed: ${{ steps.changed-files-ai.outputs.any_changed }}
+      openlineage-changed: ${{ steps.changed-files-openlineage.outputs.any_changed }}
       common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
       mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
       mariadb-changed: ${{ steps.changed-files-mariadb.outputs.any_changed }}
@@ -41,16 +43,17 @@ jobs:
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
-      storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
+      storage-changed: ${{ steps.changed-files-storage.outputs.any_changed }}
+      extensions-changed: ${{ steps.changed-files-extensions.outputs.any_changed }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Get modified files (Common)
         id: changed-files-common
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             support/checkstyle/**
@@ -63,8 +66,8 @@ jobs:
             debezium-ide-configs/**
             debezium-parent/pom.xml
             debezium-bom/pom.xml
-            debezium-storage/** 
-            debezium-scripting/**          
+            debezium-storage/**
+            debezium-scripting/**
             pom.xml
             .mvn/**
             .github/actions/**
@@ -72,7 +75,7 @@ jobs:
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-sink/**
@@ -80,7 +83,7 @@ jobs:
 
       - name: Get modified files (MySQL)
         id: changed-files-mysql
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-connector-mysql/**
@@ -88,7 +91,7 @@ jobs:
 
       - name: Get modified files (MariaDB)
         id: changed-files-mariadb
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-connector-mariadb/**
@@ -96,28 +99,28 @@ jobs:
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-connector-postgres/**
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-connector-oracle/**
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-connector-sqlserver/**
 
       - name: Get modified files (JDBC)
         id: changed-files-jdbc
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-sink/**
@@ -125,7 +128,7 @@ jobs:
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-quarkus-outbox/**
@@ -134,28 +137,28 @@ jobs:
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-schema-generator/**
 
       - name: Get modified files (Debezium Testing)
         id: changed-files-debezium-testing
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-testing/**
 
       - name: Get modified files (Debezium Testing MongoDB)
         id: changed-files-debezium-testing-mongodb
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-testing/**/MongoDb*.java
 
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mysql/**
@@ -164,7 +167,7 @@ jobs:
 
       - name: Get modified files (MariaDB DDL parser)
         id: changed-files-mariadb-ddl-parser
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mariadb/**
@@ -173,7 +176,7 @@ jobs:
 
       - name: Get modified files (Oracle DDL parser)
         id: changed-files-oracle-ddl-parser
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
@@ -183,17 +186,40 @@ jobs:
 
       - name: Get modified files (Documentation)
         id: changed-files-documentation
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             documentation/**
 
       - name: Get modified files (Storage)
         id: changed-files-storage
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.1
         with:
           files: |
             debezium-storage/**
+
+      - name: Get modified files (Quarkus Extensions)
+        id: changed-files-extensions
+        uses: tj-actions/changed-files@v47.0.1
+        with:
+          files: |
+            quarkus-debezium-parent/**
+
+      - name: Get modified files (AI)
+        id: changed-files-ai
+        uses: tj-actions/changed-files@v47.0.1
+        with:
+          files: |
+            debezium-ai/**
+
+      - name: Get modified files (OpenLineage)
+        id: changed-files-openlineage
+        uses: tj-actions/changed-files@v47.0.1
+        with:
+          files: |
+            debezium-openlineage/**
+    
+      
 
   # Approx 1m
   build_cache:
@@ -203,12 +229,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-server
           path: server
@@ -219,7 +245,7 @@ jobs:
       # GitHub actions seem to struggle returning actions/cache cache-hit
       # Directly use the cache action here to control whether to fetch dependencies
       - id: maven-cache-check
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -284,7 +310,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/checkstyle-format
         with:
@@ -302,11 +328,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (Cassandra)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -327,11 +353,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (Db2)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -352,11 +378,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (IBMi)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
@@ -435,7 +461,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -447,11 +473,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (Spanner)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -472,11 +498,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (Vitess)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -490,10 +516,78 @@ jobs:
           path-core: core
           path-vitess: vitess
 
+  build_cockroachdb:
+    name: CockroachDB
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (CockroachDB)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cockroachdb
+          path: cockroachdb
+          ref: ${{ github.event.pull_request.base.ref }}
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-cockroachdb
+        with:
+          path-core: core
+          path-cockroachdb: cockroachdb
   ########################################################################################
   ## NON-CONNECTORS
   ## Please define callable workflows here in alphabetical item name order.
   ########################################################################################
+
+  apicurio_checks:
+    name: "Apicurio checks"
+    needs: [ check_style, file_changes ]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
+    uses: ./.github/workflows/apicurio-check-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-build
+
+  build_ai:
+    name: "Debezium AI module"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.ai-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-ai
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+  build_openlineage:
+    name: "Debezium OpenLineage module"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.openlineage-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-openlineage
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+  build_extensions:
+    name: "Debezium Quarkus Extensions"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.extensions-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-quarkus-extensions
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
   build_server:
     name: "Debezium Server"
@@ -502,11 +596,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-server
           path: server
@@ -527,7 +621,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.outbox-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: ./.github/actions/build-debezium-outbox
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -539,7 +633,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: ./.github/actions/build-debezium-schema-generator
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -548,10 +642,10 @@ jobs:
     name: "Storage"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-only-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: ./.github/actions/build-debezium-storage
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -563,7 +657,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: ./.github/actions/build-debezium-testing
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}

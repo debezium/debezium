@@ -320,7 +320,8 @@ id VARCHAR(36)      NOT NULL,
 offset_key          VARCHAR(1255),
 offset_val          VARCHAR(1255),
 record_insert_ts    TIMESTAMP NOT NULL,
-record_insert_seq   INTEGER NOT NULL)
+record_insert_seq   INTEGER NOT NULL),
+PRIMARY KEY (id)
 ----
 
 [[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default,Select query>>
@@ -387,7 +388,7 @@ DELETE FROM %s
 |xref:jdbc-history-schema-history-table-select-default[Select query]
 |The `SELECT` statement to read schema changes from the internal schema history table.
 
-|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
+|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists`>>
 |xref:jdbc-history-schema-history-table-exists-select-default[Data Exist Query]
 |The `SELECT` statement that checks for the existence of an internal schema history storage table.
 
@@ -441,7 +442,7 @@ DELETE FROM %s
 |xref:jdbc-history-schema-history-table-select-default[Select query]
 |The `SELECT` statement to read schema changes from the internal schema history table.
 
-|[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
+|[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists`>>
 |xref:jdbc-history-schema-history-table-exists-select-default[Data Exist Query]
 |The `SELECT` statement that checks for the existence of an internal schema history storage table.
 
@@ -461,14 +462,15 @@ CREATE TABLE %s (
     history_data VARCHAR(65000),
     history_data_seq INTEGER,
     record_insert_ts TIMESTAMP NOT NULL,
-    record_insert_seq INTEGER NOT NULL
+    record_insert_seq INTEGER NOT NULL,
+    PRIMARY KEY (id, history_data_seq)
 )
 ----
 
 [[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,Select Query>>
 [SQL]
 ----
-SELECT id, history_data, history_data_seq FROM %s
+SELECT id, history_data FROM %s
     ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq
 ----
 
@@ -487,6 +489,13 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 == Redis
 
 {prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] to store data in a Redis cache.
+
+{prodname} can use either a single Redis instance or use https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/[Redis Cluster mode]:
+
+Single instance mode:: Connects to a single Redis server instance.
+Cluster mode:: Connects to a Redis Cluster for high availability and horizontal scaling.
+
+To enable Redis Cluster mode, set the `redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `redis.address` property.
 
 === Offset Store
 
@@ -519,11 +528,39 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 |[[offset-storage-redis-db-index]]<<offset-storage-redis-db-index, `offset.storage.redis.db.index`>>
 |0
-|The database index (0..15) that {prodname} uses to access Redis to store offset data..
+|The database index (0--15) that {prodname} uses to access Redis to store offset data.
 
 |[[offset-storage-redis-ssl-enabled]]<<offset-storage-redis-ssl-enabled,`offset.storage.redis.ssl.enabled`>>
 |false
 |Specifies whether {prodname} uses SSL when communicating with Redis to store offset data.
+
+|[[offset-storage-redis-hostname-verification-enabled]]<<offset-storage-redis-hostname-verification-enabled,`offset.storage.redis.ssl.hostname.verification.enabled`>>
+|false
+|Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store offset data.
+
+|[[offset-storage-redis-truststore-path]]<<offset-storage-redis-truststore-path, `offset.storage.redis.ssl.truststore.path`>>
+|No default
+|The path to the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-truststore-password]]<<offset-storage-redis-truststore-password, `offset.storage.redis.ssl.truststore.password`>>
+|No default
+|The password for the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-truststore-type]]<<offset-storage-redis-truststore-type, `offset.storage.redis.ssl.truststore.type`>>
+|JKS
+|The type of the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-path]]<<offset-storage-redis-keystore-path, `offset.storage.redis.ssl.keystore.path`>>
+|No default
+|The path to the key store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-password]]<<offset-storage-redis-keystore-password, `offset.storage.redis.ssl.keystore.password`>>
+|No default
+|The password for the key store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-type]]<<offset-storage-redis-keystore-type, `offset.storage.redis.ssl.keystore.type`>>
+|JKS
+|The type of the key store file used for SSL/TLS connections to Redis for offset storage.
 
 |[[offset-storage-redis-connection-timeout-ms]]<<offset-storage-redis-connection-timeout-ms, `offset.storage.redis.connection.timeout.ms`>>
 |2000
@@ -562,6 +599,10 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |1000
 |Specifies the time, in milliseconds, that {prodname} waits after a failure before it resubmits a request to Redis to confirm data is written to a replica shard.
 
+|[[offset-storage-redis-cluster-enabled]]<<offset-storage-redis-cluster-enabled, `offset.storage.redis.cluster.enabled`>>
+|false
+|If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
 
 |===
 
@@ -594,11 +635,39 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[schema-history-internal-redis-db-index]]<<schema-history-internal-redis-db-index, `schema.history.internal.redis.db.index`>>
 |0
-|The database index (0..15) that {prodname} uses to access Redis to store schema history data.
+|The database index (0--15) that {prodname} uses to access Redis to store schema history data.
 
 |[[schema-history-internal-redis-ssl-enabled]]<<schema-history-internal-redis-ssl-enabled,`schema.history.internal.storage.redis.ssl.enabled`>>
 |false
 |Specifies whether {prodname} uses SSL when communicating with Redis to store schema history data.
+
+|[[schema-history-internal-redis-hostname-verification-enabled]]<<schema-history-internal-redis-hostname-verification-enabled,`schema.history.internal.storage.redis.ssl.hostname.verification.enabled`>>
+|false
+|Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-path]]<<schema-history-internal-redis-truststore-path, `schema.history.internal.storage.redis.ssl.truststore.path`>>
+|No default
+|The path to the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-password]]<<schema-history-internal-redis-truststore-password, `schema.history.internal.storage.redis.ssl.truststore.password`>>
+|No default
+|The password for the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-type]]<<schema-history-internal-redis-truststore-type, `schema.history.internal.storage.redis.ssl.truststore.type`>>
+|JKS
+|The type of the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-path]]<<schema-history-internal-redis-keystore-path, `schema.history.internal.storage.redis.ssl.keystore.path`>>
+|No default
+|The path to the key store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-password]]<<schema-history-internal-redis-keystore-password, `schema.history.internal.storage.redis.ssl.keystore.password`>>
+|No default
+|The password for the key store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-type]]<<schema-history-internal-redis-keystore-type, `schema.history.internal.storage.redis.ssl.keystore.type`>>
+|JKS
+|The type of the key store file used for SSL/TLS connections to Redis to store schema history data.
 
 |[[schema-history-internal-redis-connection-timeout-ms]]<<schema-history-internal-redis-connection-timeout-ms, `schema.history.internal.storage.redis.connection.timeout.ms`>>
 |2000
@@ -619,7 +688,7 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[schema-history-internal-redis-retry-max-attempts]]<<schema-history-internal-redis-retry-max-attempts, `schema.history.internal.storage.redis.retry.max.attempts`>>
 |10
-Specifies the maximum number of times that {prodname} retries the connection to Redis after connection attempts fail.
+|Specifies the maximum number of times that {prodname} retries the connection to Redis after connection attempts fail.
 
 |[[schema-history-internal-redis-wait-enabled]]<<schema-history-internal-redis-wait-enabled,`schema.history.internal.storage.redis.wait.enabled`>>
 |false
@@ -637,8 +706,52 @@ Specifies the maximum number of times that {prodname} retries the connection to 
 |1000
 |Specifies the time, in milliseconds, that {prodname} waits after a failure before it resubmits a request to Redis to confirm data is written to a replica shard.
 
+|[[schema-history-internal-redis-cluster-enabled]]<<schema-history-internal-redis-cluster-enabled, `schema.history.internal.storage.redis.cluster.enabled`>>
+|false
+|If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
 
 |===
+
+=== Redis Configuration Examples
+
+==== Single Instance Mode
+
+[source,properties]
+----
+# Offset storage configuration
+offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+offset.storage.redis.address=localhost:6379
+offset.storage.redis.password=password
+offset.storage.redis.cluster.enabled=false
+
+# Schema history storage configuration
+schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+schema.history.internal.storage.redis.address=localhost:6379
+schema.history.internal.storage.redis.password=password
+schema.history.internal.storage.redis.cluster.enabled=false
+----
+
+==== Cluster Mode
+
+[source,properties]
+----
+# Offset storage configuration
+offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+offset.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+offset.storage.redis.password=password
+offset.storage.redis.cluster.enabled=true
+
+# Schema history storage configuration
+schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+schema.history.internal.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+schema.history.internal.storage.redis.password=password
+schema.history.internal.storage.redis.cluster.enabled=true
+----
+
+NOTE: If you configure {prodname} to use Redis Cluster mode,
+ensure that your Redis Cluster is properly configured and accessible.
+The {prodname} Server instance must be able to communicate with the cluster nodes.
 
 == Amazon S3
 

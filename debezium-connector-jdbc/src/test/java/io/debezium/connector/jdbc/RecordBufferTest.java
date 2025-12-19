@@ -10,7 +10,6 @@ import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,7 +32,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 
 @Tag("UnitTests")
@@ -42,8 +41,8 @@ class RecordBufferTest extends AbstractRecordBufferTest {
     @BeforeEach
     void setUp() {
         dialect = mock(DatabaseDialect.class);
-        Type type = mock(Type.class);
-        when(type.getTypeName(eq(dialect), any(), anyBoolean())).thenReturn("");
+        JdbcType type = mock(JdbcType.class);
+        when(type.getTypeName(any(), anyBoolean())).thenReturn("");
         when(dialect.getSchemaType(any())).thenReturn(type);
     }
 
@@ -55,11 +54,9 @@ class RecordBufferTest extends AbstractRecordBufferTest {
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When 10 sink records arrives and buffer size is 5 then the buffer will be flushed 2 times")
     void correctlyBuffer(SinkRecordFactory factory) {
-
         JdbcSinkConnectorConfig config = getJdbcSinkConnectorConfig();
 
         RecordBuffer recordBuffer = new RecordBuffer(config);
-
         List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 10)
                 .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
