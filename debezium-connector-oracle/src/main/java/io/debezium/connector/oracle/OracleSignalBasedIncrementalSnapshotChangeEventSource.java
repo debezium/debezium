@@ -44,7 +44,11 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     @Override
     protected String getSignalTableName(String dataCollectionId) {
         final TableId tableId = OracleTableIdParser.parse(dataCollectionId);
-        return OracleTableIdParser.quoteIfNeeded(tableId, false, true, ((OracleConnection) jdbcConnection).getSQLKeywords());
+        try {
+            return OracleTableIdParser.quoteIfNeeded(tableId, false, true, jdbcConnection.connection().unwrap(OracleConnection.class).getSQLKeywords());
+        } catch (SQLException e) {
+            throw new DebeziumException("Failed to get signal table name", e);
+        }
     }
 
     @Override

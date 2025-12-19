@@ -75,9 +75,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                   JdbcConnection connection) {
+                                                   JdbcConnection connection) throws SQLException {
         if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-            ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
+            connection.connection().unwrap(OracleConnection.class).setSessionToPdb(connectorConfig.getPdbName());
         }
     }
 
@@ -215,7 +215,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, OracleOffsetContext offset, TableId tableId) {
         try {
-            final OracleConnection oracleConnection = (OracleConnection) jdbcConnection;
+            final OracleConnection oracleConnection = jdbcConnection.connection().unwrap(OracleConnection.class);
             return oracleConnection.getScnToTimestamp(offset.getScn())
                     .orElseThrow(() -> new ConnectException("Failed reading SCN timestamp from database"))
                     // Database host timezone adjustment
