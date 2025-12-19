@@ -168,7 +168,7 @@ public class PostgresConnectionIT {
         Field connField = JdbcConnection.class.getDeclaredField("conn");
         connField.setAccessible(true);
 
-        return (PgConnection) connField.get(connection);
+        return ((Connection) connField.get(connection)).unwrap(PgConnection.class);
     }
 
     @Test
