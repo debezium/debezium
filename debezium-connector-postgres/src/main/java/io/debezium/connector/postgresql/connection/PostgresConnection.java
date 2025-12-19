@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.nio.charset.Charset;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -593,7 +594,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public Charset getDatabaseCharset() {
         try {
-            return Charset.forName(((BaseConnection) connection()).getEncoding().name());
+            return Charset.forName(connection().unwrap(BaseConnection.class).getEncoding().name());
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't obtain encoding for database " + database(), e);
@@ -602,7 +603,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public TimestampUtils getTimestampUtils() {
         try {
-            return ((PgConnection) this.connection()).getTimestampUtils();
+            return this.connection().unwrap(PgConnection.class).getTimestampUtils();
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
