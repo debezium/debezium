@@ -218,9 +218,6 @@
         <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
-        <module>debezium-quarkus-outbox-common</module>
-        <module>debezium-quarkus-outbox</module>
-        <module>debezium-quarkus-outbox-reactive</module>
         <module>debezium-scripting</module>
         <module>debezium-testing</module>
         <module>debezium-schema-generator</module>
@@ -228,7 +225,6 @@
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
         <module>debezium-ai</module>
-        <module>quarkus-debezium-parent</module>
         <module>debezium-openlineage</module>
         <module>debezium-common</module>
     </modules>
