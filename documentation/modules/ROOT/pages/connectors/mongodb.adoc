@@ -1996,7 +1996,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 | All collections specified in `collection.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
 The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
-This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.

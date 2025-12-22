@@ -2699,7 +2699,7 @@ If the publication is not available, connect to the database as a PostgreSQL adm
 
 19. Restore write access to the database and restart any applications that write to the database.
 
-20. In the connector configuration, set the xref:postgresql-property-snapshot-mode[`snapshot.mode`] property to `never`, and then restart the connector.
+20. In the connector configuration, set the xref:postgresql-property-snapshot-mode[`snapshot.mode`] property to `no_data`, and then restart the connector.
 +
 [NOTE]
 ====
@@ -3902,7 +3902,7 @@ endif::community[]
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's xref:postgresql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:postgresql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
