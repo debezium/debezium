@@ -318,13 +318,13 @@ Snapshots that capture the schema for all tables require more time to complete.
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
 `initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
 If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
-`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+`no_data`:: When you restart the connector, it takes a snapshot that captures only the table schema.
 Unlike a full data snapshot, this option does not capture any table data.
 Use this option if you want to restart the connector more quickly than with a full snapshot.
 
 5. Restart the connector.
 The connector completes the type of snapshot specified by the `snapshot.mode`.
-6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:sqlserver-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+6. (Optional) If the connector performed a `no_data` snapshot, after the snapshot completes, initiate an xref:sqlserver-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
 The connector runs the snapshot while it continues to stream real-time changes from the tables.
 Running an incremental snapshot captures the following data changes:
 +
@@ -370,7 +370,7 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Set values for properties in the connector configuration as described in the following steps:
-.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
 .. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
