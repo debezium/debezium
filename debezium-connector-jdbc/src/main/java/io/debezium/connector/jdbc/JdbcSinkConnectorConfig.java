@@ -634,7 +634,9 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private static int validateDeleteEnabled(Configuration config, Field field, ValidationOutput problems) {
         if (config.getBoolean(field)) {
             final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE));
-            if (!PrimaryKeyMode.RECORD_KEY.equals(primaryKeyMode)) {
+            if (PrimaryKeyMode.NONE.equals(primaryKeyMode)
+                || PrimaryKeyMode.KAFKA.equals(primaryKeyMode)
+                || PrimaryKeyMode.RECORD_HEADER.equals(primaryKeyMode)) {
                 LOGGER.error("When '{}' is set to 'true', the '{}' option must be set to '{}'.",
                         DELETE_ENABLED, PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
                 return 1;
