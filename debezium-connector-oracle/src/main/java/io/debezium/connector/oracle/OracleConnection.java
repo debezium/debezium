@@ -813,6 +813,12 @@ public class OracleConnection extends JdbcConnection {
                     // While this field should never be NULL, the database metadata allows it
                     final int threadId = rs.getInt("THREAD#");
                     if (!rs.wasNull()) {
+                        // Redo threads that are marked PRIVATE are used solely for instance recovery, and
+                        // therefore should be ignored by Debezium.
+                        if ("PRIVATE".equals(rs.getString("ENABLED"))) {
+                            LOGGER.trace("Redo thread {} is marked private, excluded.", threadId);
+                            continue;
+                        }
                         RedoThreadState.RedoThread.Builder threadBuilder = builder.thread()
                                 .threadId(threadId)
                                 .status(rs.getString("STATUS"))
