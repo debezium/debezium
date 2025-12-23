@@ -28,21 +28,16 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
 
     private final SnapshotMeter snapshotMeter;
 
-    public <T extends CdcSourceTaskContext> DefaultSnapshotChangeEventSourceMetrics(T taskContext,
-                                                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                    EventMetadataProvider metadataProvider,
-                                                                                    TaskStateMetrics taskStateMetrics) {
+    public <T extends CdcSourceTaskContext> DefaultSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                    EventMetadataProvider metadataProvider) {
         super(taskContext, "snapshot", changeEventQueueMetrics, metadataProvider);
-        snapshotMeter = new SnapshotMeter(taskContext.getClock(), taskStateMetrics);
+        snapshotMeter = new SnapshotMeter(taskContext.getClock());
     }
 
-    public <T extends CdcSourceTaskContext> DefaultSnapshotChangeEventSourceMetrics(T taskContext,
-                                                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                    EventMetadataProvider metadataProvider,
-                                                                                    Map<String, String> tags,
-                                                                                    TaskStateMetrics taskStateMetrics) {
+    public <T extends CdcSourceTaskContext> DefaultSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                    EventMetadataProvider metadataProvider, Map<String, String> tags) {
         super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
-        snapshotMeter = new SnapshotMeter(taskContext.getClock(), taskStateMetrics);
+        snapshotMeter = new SnapshotMeter(taskContext.getClock());
     }
 
     @Override

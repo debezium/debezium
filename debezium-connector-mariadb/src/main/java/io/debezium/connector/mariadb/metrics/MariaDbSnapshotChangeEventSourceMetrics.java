@@ -9,7 +9,6 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.metrics.BinlogSnapshotChangeEventSourceMetrics;
 import io.debezium.connector.mariadb.MariaDbPartition;
 import io.debezium.connector.mariadb.MariaDbTaskContext;
-import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
@@ -20,8 +19,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 public class MariaDbSnapshotChangeEventSourceMetrics extends BinlogSnapshotChangeEventSourceMetrics<MariaDbPartition> {
     public MariaDbSnapshotChangeEventSourceMetrics(MariaDbTaskContext taskContext,
                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                   EventMetadataProvider metadataProvider,
-                                                   TaskStateMetrics taskStateMetrics) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider, taskStateMetrics);
+                                                   EventMetadataProvider metadataProvider) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider);
     }
 }
