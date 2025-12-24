@@ -118,13 +118,11 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
                 LOGGER.info("Stopping connector to apply new binlog position. Restart the connector for changes to take effect.");
                 Thread stopThread = new Thread(() -> {
                     try {
-                        // Small delay to allow signal processing to complete
-                        Thread.sleep(100);
                         changeEventSourceCoordinator.stop();
                     }
                     catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
-                        LOGGER.warn("Interrupted while waiting to stop connector");
+                        LOGGER.warn("Interrupted while stopping connector");
                     }
                 }, "set-binlog-position-stop");
                 stopThread.setDaemon(true);
