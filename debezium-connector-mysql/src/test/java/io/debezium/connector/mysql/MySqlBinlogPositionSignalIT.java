@@ -144,8 +144,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Stop and restart the connector to apply the new binlog position
-        stopConnector();
+        // Wait for the connector to be shut down by the signal's async stop
+        // The signal automatically stops the connector after updating the offset
         waitForConnectorShutdown("mysql", SERVER_NAME);
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
@@ -247,8 +247,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Stop and restart the connector to apply the new GTID position
-        stopConnector();
+        // Wait for the connector to be shut down by the signal's async stop
+        // The signal automatically stops the connector after updating the offset
         waitForConnectorShutdown("mysql", SERVER_NAME);
 
         // Insert data we want to capture after the skip
