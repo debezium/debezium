@@ -324,12 +324,6 @@ public class OracleConnection extends JdbcConnection {
                         "which could mean its a grant/permission issue or it's not a relational table.");
             }
 
-            // Ensure auto-commit is disabled before calling executeWithoutCommitting().
-            // The prepareQueryAndMap above may have re-established the JDBC connection
-            // (e.g., due to timeout), and new connections default to autoCommit=true.
-            // See: https://issues.redhat.com/browse/DBZ-4701
-            setAutoCommit(false);
-
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
@@ -352,9 +346,6 @@ public class OracleConnection extends JdbcConnection {
                     });
         }
         finally {
-            // Connection may have been re-established during prepareQueryAndMap above,
-            // so ensure auto-commit is disabled again before cleanup.
-            setAutoCommit(false);
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
         }
     }
