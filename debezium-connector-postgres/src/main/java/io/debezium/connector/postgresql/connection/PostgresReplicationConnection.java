@@ -168,7 +168,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 stmt.execute(createPublicationStmt);
                                 break;
                             case FILTERED:
-                                createOrUpdatePublicationModeFilterted(stmt, false);
+                                createOrUpdatePublicationModeFiltered(stmt, false);
                                 break;
                         }
                     }
@@ -188,7 +188,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             publicationName, plugin, database()));
                                 }
                                 else {
-                                    createOrUpdatePublicationModeFilterted(stmt, true);
+                                    createOrUpdatePublicationModeFiltered(stmt, true);
                                 }
                                 break;
                             default:
@@ -209,7 +209,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private void createOrUpdatePublicationModeFilterted(Statement stmt, boolean isUpdate) {
+    private void createOrUpdatePublicationModeFiltered(Statement stmt, boolean isUpdate) {
         String tableFilterString = null;
         String createOrUpdatePublicationStmt;
         try {
