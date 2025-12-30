@@ -11,9 +11,11 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -144,8 +146,13 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the connector to be shut down by the signal's async stop
-        // The signal automatically stops the connector after updating the offset
+        // Wait for the signal's async stop to complete (streaming will no longer be running)
+        // Then stop the connector properly through the test framework to clean up state
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
+        stopConnector();
         waitForConnectorShutdown("mysql", SERVER_NAME);
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
@@ -247,8 +254,13 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the connector to be shut down by the signal's async stop
-        // The signal automatically stops the connector after updating the offset
+        // Wait for the signal's async stop to complete (streaming will no longer be running)
+        // Then stop the connector properly through the test framework to clean up state
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
+        stopConnector();
         waitForConnectorShutdown("mysql", SERVER_NAME);
 
         // Insert data we want to capture after the skip
