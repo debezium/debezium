@@ -157,6 +157,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
         stopConnector();
+
+        // Wait for complete engine shutdown including JMX cleanup
+        waitForEngineShutdown();
         waitForConnectorShutdown("mysql", SERVER_NAME);
 
         // Reinitialize test framework to ensure clean state before restart
@@ -274,6 +277,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
         stopConnector();
+
+        // Wait for complete engine shutdown including JMX cleanup
+        waitForEngineShutdown();
         waitForConnectorShutdown("mysql", SERVER_NAME);
 
         // Reinitialize test framework to ensure clean state before restart
