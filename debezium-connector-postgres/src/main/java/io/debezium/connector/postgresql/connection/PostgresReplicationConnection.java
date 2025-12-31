@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.ServerVersion;
+import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.postgresql.util.PSQLException;
@@ -991,10 +992,27 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             private void doFlushLsn(Lsn lsn) throws SQLException {
-                stream.setFlushedLSN(lsn.asLogSequenceNumber());
-                stream.setAppliedLSN(lsn.asLogSequenceNumber());
+                LogSequenceNumber newLsn = lsn.asLogSequenceNumber();
 
-                stream.forceUpdateStatus();
+                if (advanceFlushedLSNIfNewer(newLsn) | updateAppliedLSNIfNewer(newLsn)) {
+                    stream.forceUpdateStatus();
+                }
+            }
+
+            private boolean advanceFlushedLSNIfNewer(LogSequenceNumber lsn) {
+                if (stream.getLastFlushedLSN().compareTo(lsn) < 0) {
+                    stream.setFlushedLSN(lsn);
+                    return true;
+                }
+                return false;
+            }
+
+            private boolean updateAppliedLSNIfNewer(LogSequenceNumber lsn) {
+                if (stream.getLastAppliedLSN().compareTo(lsn) < 0) {
+                    stream.setAppliedLSN(lsn);
+                    return true;
+                }
+                return false;
             }
 
             @Override
