@@ -7,11 +7,15 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -150,17 +154,21 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete (streaming will no longer be running)
-        // Then stop the connector properly through the test framework to clean up state
-        Awaitility.await()
-                .atMost(30, TimeUnit.SECONDS)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
+        // Wait for the signal's async stop to complete (engine will no longer be running)
+        // The signal handler triggers an async stop via changeEventSourceCoordinator.stop()
+        // We wait for the engine to fully stop before proceeding
+        waitForEngineShutdown();
+
+        // Now stop the connector through the test framework to clean up test state
+        // The engine is already stopped by the signal, so this just cleans up framework state
         stopConnector();
 
-        // Wait for complete engine shutdown including JMX cleanup
-        waitForEngineShutdown();
+        // Wait for complete connector shutdown including JMX cleanup
         waitForConnectorShutdown("mysql", SERVER_NAME);
+
+        // Wait for JMX MBeans to be unregistered before restarting
+        // This prevents JMX registration conflicts when the second connector starts
+        waitForJmxCleanup();
 
         // Reinitialize test framework to ensure clean state before restart
         initializeConnectorTestFramework();
@@ -270,17 +278,21 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete (streaming will no longer be running)
-        // Then stop the connector properly through the test framework to clean up state
-        Awaitility.await()
-                .atMost(30, TimeUnit.SECONDS)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
+        // Wait for the signal's async stop to complete (engine will no longer be running)
+        // The signal handler triggers an async stop via changeEventSourceCoordinator.stop()
+        // We wait for the engine to fully stop before proceeding
+        waitForEngineShutdown();
+
+        // Now stop the connector through the test framework to clean up test state
+        // The engine is already stopped by the signal, so this just cleans up framework state
         stopConnector();
 
-        // Wait for complete engine shutdown including JMX cleanup
-        waitForEngineShutdown();
+        // Wait for complete connector shutdown including JMX cleanup
         waitForConnectorShutdown("mysql", SERVER_NAME);
+
+        // Wait for JMX MBeans to be unregistered before restarting
+        // This prevents JMX registration conflicts when the second connector starts
+        waitForJmxCleanup();
 
         // Reinitialize test framework to ensure clean state before restart
         initializeConnectorTestFramework();
@@ -348,5 +360,46 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         catch (SQLException e) {
             return false;
         }
+    }
+
+    /**
+     * Wait for all JMX MBeans related to this connector to be unregistered.
+     * This is necessary when restarting the connector in the same test to avoid
+     * JMX registration conflicts.
+     */
+    private void waitForJmxCleanup() {
+        MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        // Wait for the schema-history MBean to be unregistered
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    try {
+                        ObjectName schemaHistoryMBean = new ObjectName(
+                                "debezium.mysql:type=connector-metrics,context=schema-history,server=" + SERVER_NAME);
+                        return !mBeanServer.isRegistered(schemaHistoryMBean);
+                    }
+                    catch (Exception e) {
+                        // If we can't check, assume it's unregistered
+                        return true;
+                    }
+                });
+
+        // Also wait for streaming MBean to be unregistered
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    try {
+                        ObjectName streamingMBean = new ObjectName(
+                                "debezium.mysql:type=connector-metrics,context=streaming,server=" + SERVER_NAME);
+                        return !mBeanServer.isRegistered(streamingMBean);
+                    }
+                    catch (Exception e) {
+                        // If we can't check, assume it's unregistered
+                        return true;
+                    }
+                });
     }
 }
