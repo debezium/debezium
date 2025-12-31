@@ -154,6 +154,10 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
         stopConnector();
         waitForConnectorShutdown("mysql", SERVER_NAME);
+
+        // Reinitialize test framework to ensure clean state before restart
+        initializeConnectorTestFramework();
+
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
@@ -262,6 +266,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
                 .until(() -> !isStreamingRunning("mysql", SERVER_NAME));
         stopConnector();
         waitForConnectorShutdown("mysql", SERVER_NAME);
+
+        // Reinitialize test framework to ensure clean state before restart
+        initializeConnectorTestFramework();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
