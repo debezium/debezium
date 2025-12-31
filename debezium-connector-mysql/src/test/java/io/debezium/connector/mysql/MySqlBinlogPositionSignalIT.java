@@ -117,6 +117,12 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
         connection.commit();
 
+        // Wait for connector to process id=3,4 and consume them to ensure
+        // they are fully processed before we capture the binlog position
+        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        consumeAvailableRecords(record -> {
+        });
+
         // Get current binlog position AFTER the records we want to skip
         // This position will be after records 3 and 4, so when we restart the connector
         // it will skip those and start reading from record 5
@@ -124,11 +130,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         String binlogFile = (String) position.get("file");
         Long binlogPos = (Long) position.get("position");
 
-        // Insert data we want to capture after the skip
-        connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
-        connection.commit();
-
-        // Send signal to skip to the position before value3 and value4
+        // Send signal to skip to the binlog position after value3 and value4
+        // This position includes all events up to and including id=3,4
+        // When we restart, the connector will skip those and start from id=5
         // The signal will stop the connector after updating the offset
         String signalData = String.format(
                 "{\"binlog_filename\": \"%s\", \"binlog_position\": %d, \"action\": \"stop\"}",
@@ -157,6 +161,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Reinitialize test framework to ensure clean state before restart
         initializeConnectorTestFramework();
+
+        // Insert data we want to capture after the skip
+        // This is done AFTER stopping to ensure id=5 is not consumed before restart
+        connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        connection.commit();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
