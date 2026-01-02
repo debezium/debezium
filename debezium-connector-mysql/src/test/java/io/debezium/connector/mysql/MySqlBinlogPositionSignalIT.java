@@ -154,13 +154,10 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete (engine will no longer be running)
-        // The signal handler triggers an async stop via changeEventSourceCoordinator.stop()
-        // We wait for the engine to fully stop before proceeding
-        waitForEngineShutdown();
-
-        // Now stop the connector through the test framework to clean up test state
-        // The engine is already stopped by the signal, so this just cleans up framework state
+        // Stop the connector through the test framework
+        // The signal triggers changeEventSourceCoordinator.stop() on a daemon thread which
+        // stops streaming, but the AsyncEmbeddedEngine continues running.
+        // stopConnector() will properly shut down the entire engine and wait for cleanup.
         stopConnector();
 
         // Wait for complete connector shutdown including JMX cleanup
@@ -278,13 +275,10 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete (engine will no longer be running)
-        // The signal handler triggers an async stop via changeEventSourceCoordinator.stop()
-        // We wait for the engine to fully stop before proceeding
-        waitForEngineShutdown();
-
-        // Now stop the connector through the test framework to clean up test state
-        // The engine is already stopped by the signal, so this just cleans up framework state
+        // Stop the connector through the test framework
+        // The signal triggers changeEventSourceCoordinator.stop() on a daemon thread which
+        // stops streaming, but the AsyncEmbeddedEngine continues running.
+        // stopConnector() will properly shut down the entire engine and wait for cleanup.
         stopConnector();
 
         // Wait for complete connector shutdown including JMX cleanup
