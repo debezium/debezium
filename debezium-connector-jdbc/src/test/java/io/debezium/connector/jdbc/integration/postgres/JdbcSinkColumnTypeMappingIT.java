@@ -48,6 +48,43 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testShouldCoerceStringTypeToEnumColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        // Create a record first to get the destination table name
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                Schema.OPTIONAL_STRING_SCHEMA,
+                "value1");
+
+        // Create enum type and table with enum column using the correct destination table name
+        final String destinationTable = destinationTableName(createRecord);
+        final String enumTypeName = "test_enum_type_" + tableName;
+        getSink().execute(String.format("CREATE TYPE %s AS ENUM ('value1', 'value2', 'value3')", enumTypeName));
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))", destinationTable, enumTypeName));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2)).isEqualTo("value1");
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6589")
     public void testShouldCoerceStringTypeToUuidColumnType(SinkRecordFactory factory) throws Exception {
         shouldCoerceStringTypeToColumnType(factory, "uuid", "9bc6a215-84b5-4865-a058-9156427c887a", "f54c2926-076a-4db0-846f-14cad99a8307");
