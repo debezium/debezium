@@ -28,6 +28,7 @@
         <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <connector.assembly.ref>connector-distribution-with-jsr310</connector.assembly.ref> <!-- Use the assembly descriptor with JSR310 support when adding Azure Identity -->
     </properties>
 
     <dependencies>
@@ -105,7 +106,6 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
@@ -405,6 +405,28 @@
             <properties>
                 <docker.skip>true</docker.skip>
             </properties>
+        </profile>
+        <!--
+        This profile is used to add the azure-identity dependency to the project.
+        To use, specify "-Dmsal" on the Maven command line.
+        -->
+        <profile>
+            <id>msal</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>msal</name>
+                </property>
+            </activation>
+            <properties>
+                <assembly.descriptor>${connector.assembly.ref}</assembly.descriptor>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-identity</artifactId>
+                </dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>apicurio</id>
