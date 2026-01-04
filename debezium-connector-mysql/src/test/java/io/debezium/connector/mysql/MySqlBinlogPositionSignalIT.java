@@ -7,19 +7,13 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -160,16 +154,6 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // stopConnector() will properly shut down the entire engine and wait for cleanup.
         stopConnector();
 
-        // Wait for complete connector shutdown including JMX cleanup
-        waitForConnectorShutdown("mysql", SERVER_NAME);
-
-        // Wait for JMX MBeans to be unregistered before restarting
-        // This prevents JMX registration conflicts when the second connector starts
-        waitForJmxCleanup();
-
-        // Reinitialize test framework to ensure clean state before restart
-        initializeConnectorTestFramework();
-
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -281,16 +265,6 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // stopConnector() will properly shut down the entire engine and wait for cleanup.
         stopConnector();
 
-        // Wait for complete connector shutdown including JMX cleanup
-        waitForConnectorShutdown("mysql", SERVER_NAME);
-
-        // Wait for JMX MBeans to be unregistered before restarting
-        // This prevents JMX registration conflicts when the second connector starts
-        waitForJmxCleanup();
-
-        // Reinitialize test framework to ensure clean state before restart
-        initializeConnectorTestFramework();
-
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -356,44 +330,4 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         }
     }
 
-    /**
-     * Wait for all JMX MBeans related to this connector to be unregistered.
-     * This is necessary when restarting the connector in the same test to avoid
-     * JMX registration conflicts.
-     */
-    private void waitForJmxCleanup() {
-        MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        // Wait for the schema-history MBean to be unregistered
-        Awaitility.await()
-                .atMost(60, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
-                .until(() -> {
-                    try {
-                        ObjectName schemaHistoryMBean = new ObjectName(
-                                "debezium.mysql:type=connector-metrics,context=schema-history,server=" + SERVER_NAME);
-                        return !mBeanServer.isRegistered(schemaHistoryMBean);
-                    }
-                    catch (Exception e) {
-                        // If we can't check, assume it's unregistered
-                        return true;
-                    }
-                });
-
-        // Also wait for streaming MBean to be unregistered
-        Awaitility.await()
-                .atMost(60, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
-                .until(() -> {
-                    try {
-                        ObjectName streamingMBean = new ObjectName(
-                                "debezium.mysql:type=connector-metrics,context=streaming,server=" + SERVER_NAME);
-                        return !mBeanServer.isRegistered(streamingMBean);
-                    }
-                    catch (Exception e) {
-                        // If we can't check, assume it's unregistered
-                        return true;
-                    }
-                });
-    }
 }
