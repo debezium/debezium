@@ -148,9 +148,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Stop the connector through the test framework
-        // The signal triggers changeEventSourceCoordinator.stop() which stops binlog reading,
-        // but the engine is still running. stopConnector() properly shuts down the engine.
+        // Wait for the engine to shut down (triggered by the signal's async stop)
+        // This ensures JMX MBeans are properly unregistered before we restart
+        waitForEngineShutdown();
+
+        // Stop the connector through the test framework to clean up any remaining resources
         stopConnector();
 
         // Insert data we want to capture after the skip
@@ -261,9 +263,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Stop the connector through the test framework
-        // The signal triggers changeEventSourceCoordinator.stop() which stops binlog reading,
-        // but the engine is still running. stopConnector() properly shuts down the engine.
+        // Wait for the engine to shut down (triggered by the signal's async stop)
+        // This ensures JMX MBeans are properly unregistered before we restart
+        waitForEngineShutdown();
+
+        // Stop the connector through the test framework to clean up any remaining resources
         stopConnector();
 
         // Insert data we want to capture after the skip
