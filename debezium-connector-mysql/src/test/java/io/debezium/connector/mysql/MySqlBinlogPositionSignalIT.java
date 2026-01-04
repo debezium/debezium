@@ -148,16 +148,22 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
+        // Wait for the engine to fully shut down (triggered by signal's async stop)
+        // This ensures JMX MBeans are unregistered before we try to restart
+        waitForEngineShutdown();
+
         // Stop the connector through the test framework
-        // The signal triggers changeEventSourceCoordinator.stop() on a daemon thread which
-        // stops streaming, but the AsyncEmbeddedEngine continues running.
-        // stopConnector() will properly shut down the entire engine and wait for cleanup.
+        // This is mostly a no-op since the engine is already stopped by the signal,
+        // but ensures proper cleanup of any remaining resources
         stopConnector();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
+
+        // Reinitialize test framework before starting new connector
+        initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
@@ -259,16 +265,22 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
+        // Wait for the engine to fully shut down (triggered by signal's async stop)
+        // This ensures JMX MBeans are unregistered before we try to restart
+        waitForEngineShutdown();
+
         // Stop the connector through the test framework
-        // The signal triggers changeEventSourceCoordinator.stop() on a daemon thread which
-        // stops streaming, but the AsyncEmbeddedEngine continues running.
-        // stopConnector() will properly shut down the entire engine and wait for cleanup.
+        // This is mostly a no-op since the engine is already stopped by the signal,
+        // but ensures proper cleanup of any remaining resources
         stopConnector();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
+
+        // Reinitialize test framework before starting new connector
+        initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
