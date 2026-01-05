@@ -2571,14 +2571,12 @@ endif::community[]
 If both `database.port` and `database.instance` are specified, `database.instance` is ignored.
 See https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url[JDBC driver for SQL server documentation] for more details.
 
-|[[sqlserver-property-database-authentication]]<<sqlserver-property-database-authentication, `+database.authentication+`>>
+|[[sqlserver-property-driver-authentication]]<<sqlserver-property-driver-authentication, `+driver.authentication+`>>
 |n/a
 |Specifies the authentication mode used by the Microsoft JDBC Driver for SQL Server.
 This maps to the driver's `authentication` connection property and is primarily used for Microsoft Entra authentication when connecting to Azure SQL Database.
 Supported values include `ActiveDirectoryManagedIdentity`.
 The legacy value `ActiveDirectoryMSI` can be used to connect to an Azure SQL Database.
-Optionally, the Client ID of a Managed Identity can be set in the `database.user` property without database.password when using a managed identity mode.
-If not set, the driver default behavior applies.
 
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
 |No default
