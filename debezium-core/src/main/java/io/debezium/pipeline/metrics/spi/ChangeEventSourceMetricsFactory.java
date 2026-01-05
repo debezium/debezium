@@ -9,6 +9,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.TaskStateMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.Partition;
 
@@ -20,7 +21,7 @@ import io.debezium.pipeline.spi.Partition;
 public interface ChangeEventSourceMetricsFactory<P extends Partition> {
 
     /**
-     * Returns the snapshot change event source metrics.
+     * Returns the snapshot change event source metrics with shared task state metrics.
      *
      * @param taskContext
      *          The task context
@@ -28,11 +29,15 @@ public interface ChangeEventSourceMetricsFactory<P extends Partition> {
      *          The change event queue metrics
      * @param eventMetadataProvider
      *          The event metadata provider implementation
+     * @param taskStateMetrics
+     *          The shared task state metrics instance
      *
      * @return a snapshot change event source metrics
      */
-    <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<P> getSnapshotMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                            EventMetadataProvider eventMetadataProvider);
+    <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<P> getSnapshotMetrics(T taskContext,
+                                                                                            ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                            EventMetadataProvider eventMetadataProvider,
+                                                                                            TaskStateMetrics taskStateMetrics);
 
     /**
      * Returns the streaming change event source metrics.
@@ -46,7 +51,8 @@ public interface ChangeEventSourceMetricsFactory<P extends Partition> {
      *
      * @return a streaming change event source metrics
      */
-    <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+    <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext,
+                                                                                              ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                               EventMetadataProvider eventMetadataProvider);
 
     default boolean connectionMetricHandledByCoordinator() {

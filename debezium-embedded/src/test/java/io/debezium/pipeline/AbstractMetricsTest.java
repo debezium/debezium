@@ -317,6 +317,68 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
                 .isEqualTo(expectedEvents);
     }
 
+    @Test
+    public void testConnectTaskRebalanceExemptMetric() throws Exception {
+        executeInsertStatements();
+
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        final ObjectName taskMetricsObjectName = getTaskMetricsObjectName();
+        final ObjectName snapshotMetricsObjectName = getSnapshotMetricsObjectName();
+
+        // Explicitly remove any stale MBeans from previous test runs
+        try {
+            mBeanServer.unregisterMBean(taskMetricsObjectName);
+        }
+        catch (InstanceNotFoundException e) {
+            // MBean doesn't exist, which is fine
+        }
+
+        try {
+            mBeanServer.unregisterMBean(snapshotMetricsObjectName);
+        }
+        catch (InstanceNotFoundException e) {
+            // MBean doesn't exist, which is fine
+        }
+
+        // Start connector
+        start();
+        assertConnectorIsRunning();
+
+        // Wait for MBeans to be registered and snapshot to start
+        // Poll frequently (5ms) to catch snapshot while running since it completes quickly
+        Awaitility.await("Waiting for snapshot to start and rebalance exempt to be set")
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .pollInterval(5, TimeUnit.MILLISECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> {
+                    try {
+                        // Verify MBeans exist and check snapshot state
+                        mBeanServer.getMBeanInfo(snapshotMetricsObjectName);
+                        mBeanServer.getMBeanInfo(taskMetricsObjectName);
+
+                        Object snapshotRunning = mBeanServer.getAttribute(snapshotMetricsObjectName,
+                                "SnapshotRunning");
+                        Object rebalanceExempt = mBeanServer.getAttribute(taskMetricsObjectName,
+                                "ConnectTaskRebalanceExempt");
+
+                        // During snapshot, both should be 1
+                        return Long.valueOf(1).equals(snapshotRunning)
+                                && Long.valueOf(1).equals(rebalanceExempt);
+                    }
+                    catch (InstanceNotFoundException e) {
+                        return false;
+                    }
+                });
+
+        // Wait for snapshot to complete
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        // After snapshot: ConnectTaskRebalanceExempt should be 0
+        assertThat(mBeanServer.getAttribute(taskMetricsObjectName, "ConnectTaskRebalanceExempt"))
+                .as("ConnectTaskRebalanceExempt should be 0 after snapshot completes")
+                .isEqualTo(0L);
+    }
+
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
         return getSnapshotMetricsObjectName(connector(), server());
     }
@@ -333,5 +395,9 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     protected ObjectName getMultiplePartitionStreamingMetricsObjectNameCustomTags(Map<String, String> customTags) throws MalformedObjectNameException {
         // Only SQL Server manage partition scoped metrics
         return getStreamingMetricsObjectName(connector(), server(), customTags);
+    }
+
+    protected ObjectName getTaskMetricsObjectName() throws MalformedObjectNameException {
+        return getTaskMetricsObjectName(connector(), server(), task());
     }
 }
