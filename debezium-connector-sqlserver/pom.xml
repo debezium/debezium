@@ -28,7 +28,7 @@
         <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
-        <connector.assembly.ref>connector-distribution-with-jsr310</connector.assembly.ref> <!-- Use the assembly descriptor with JSR310 support when adding Azure Identity -->
+        <connector.assembly.msal>connector-distribution-with-jsr310</connector.assembly.msal> <!-- Use the assembly descriptor with JSR310 support when adding Azure Identity -->
     </properties>
 
     <dependencies>
@@ -419,7 +419,7 @@
                 </property>
             </activation>
             <properties>
-                <assembly.descriptor>${connector.assembly.ref}</assembly.descriptor>
+                <assembly.descriptor>${connector.assembly.msal}</assembly.descriptor>
             </properties>
             <dependencies>
                 <dependency>
