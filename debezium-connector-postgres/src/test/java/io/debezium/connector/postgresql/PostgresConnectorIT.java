@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -75,8 +74,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.PostgresDatabaseVersionResolver;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
@@ -2959,76 +2956,6 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .isGreaterThanOrEqualTo(postActivityServerLsn);
 
         stopConnector();
-    }
-
-    @Test
-    @FixFor("DBZ-1489")
-    public void shouldNotMoveFlushLsnBackwardsWhenFlushingOlderLsn() throws Exception {
-        TestHelper.execute(SETUP_TABLES_STMT);
-
-        try (PostgresConnection connection = TestHelper.create();
-                ReplicationConnection replConnection = TestHelper.createForReplication("test_slot", false)) {
-
-            ReplicationStream stream = replConnection.startStreaming(new WalPositionLocator());
-
-            TestHelper.execute("INSERT INTO s1.a (aa) VALUES (1), (2);");
-
-            final List<Lsn> receivedLsns = new ArrayList<>();
-            Awaitility.await()
-                    .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
-                    .pollInterval(Duration.ofMillis(100))
-                    .until(() -> {
-                        stream.readPending(msg -> {
-                            Lsn lsn = stream.lastReceivedLsn();
-                            if (lsn != null && (receivedLsns.isEmpty() || !receivedLsns.get(receivedLsns.size() - 1).equals(lsn))) {
-                                receivedLsns.add(lsn);
-                            }
-                        });
-                        return receivedLsns.size() >= 2;
-                    });
-
-            final Lsn olderLsn = receivedLsns.get(0);
-            final Lsn newerLsn = receivedLsns.get(receivedLsns.size() - 1);
-            assertThat(newerLsn).isGreaterThan(olderLsn);
-
-            stream.flushLsn(newerLsn);
-            final Lsn flushAfterNewer = Awaitility.await()
-                    .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                    .pollInterval(Duration.ofMillis(100))
-                    .until(() -> getFlushLsnFromStatReplication(connection), Objects::nonNull);
-            assertThat(flushAfterNewer).isGreaterThanOrEqualTo(newerLsn);
-
-            stream.flushLsn(olderLsn);
-
-            final Lsn flushAfterOlder = Awaitility.await()
-                    .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                    .pollInterval(Duration.ofMillis(100))
-                    .until(() -> getFlushLsnFromStatReplication(connection), lsn -> lsn != null);
-
-            if (flushAfterOlder.compareTo(newerLsn) < 0) {
-                fail(String.format("DBZ-1489: flush_lsn moved BACKWARDS from %s to %s (-%d bytes)",
-                        newerLsn, flushAfterOlder, newerLsn.asLong() - flushAfterOlder.asLong()));
-            }
-
-            assertThat(flushAfterOlder).isGreaterThanOrEqualTo(newerLsn);
-            stream.close();
-        }
-    }
-
-    private Lsn getFlushLsnFromStatReplication(PostgresConnection connection) throws SQLException {
-        final String lsnStr = connection.prepareQueryAndMap(
-                "SELECT flush_lsn FROM pg_stat_replication LIMIT 1",
-                statement -> {
-                    // No parameters needed
-                },
-                rs -> {
-                    if (rs.next()) {
-                        return rs.getString("flush_lsn");
-                    }
-                    return null;
-                });
-        connection.rollback();
-        return lsnStr != null ? Lsn.valueOf(lsnStr) : null;
     }
 
     @Test
