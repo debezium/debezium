@@ -993,21 +993,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             private void doFlushLsn(Lsn lsn) throws SQLException {
                 LogSequenceNumber newLsn = lsn.asLogSequenceNumber();
-                boolean flushedAdvanced = false;
-                boolean appliedAdvanced = false;
-
                 if (stream.getLastFlushedLSN().compareTo(newLsn) < 0) {
                     stream.setFlushedLSN(newLsn);
-                    flushedAdvanced = true;
                 }
-
                 if (stream.getLastAppliedLSN().compareTo(newLsn) < 0) {
                     stream.setAppliedLSN(newLsn);
-                    appliedAdvanced = true;
                 }
-                if (flushedAdvanced || appliedAdvanced) {
-                    stream.forceUpdateStatus();
-                }
+                stream.forceUpdateStatus(); // Force update regardless as this acts as a keep-alive mechanism
             }
 
             @Override
