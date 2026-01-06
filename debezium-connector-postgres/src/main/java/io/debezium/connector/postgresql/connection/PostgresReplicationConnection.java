@@ -569,7 +569,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         return capturedTables
                 .stream()
-                // Don't sort here - preserve the order from table.include.list patterns
+                .sorted()
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 

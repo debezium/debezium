@@ -321,7 +321,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .sorted();
     }
 
-    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+    protected Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
 
         String tableIncludeList = connectorConfig.tableIncludeList();
         List<String> signalingDataCollections = connectorConfig.getSignalingDataCollectionIds();
@@ -374,7 +374,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         ctx.capturedSchemaTables = snapshottingTask.isOnDemand() ? ctx.capturedTables
                 : capturedSchemaTables
                         .stream()
-                        // Don't re-sort here - preserve the order from table.include.list patterns
+                        .sorted()
                         .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
