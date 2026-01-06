@@ -24,11 +24,7 @@ jobs:
     name: Check signed commits
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Action
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/check-dco
+      - uses: debezium/dbz/.github/actions/check-dco@main
 
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
   # that subsequent jobs can use to determine whether a particular job should be skipped or included.
