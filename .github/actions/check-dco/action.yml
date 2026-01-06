@@ -1,0 +1,41 @@
+name: "Check DCO"
+description: "Check Developer Certificate of Origin sign-offs on commits"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check sign-off
+      uses: KineticCafe/actions-dco@v1
+
+    - name: Commit if DCO failed
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: ':x: Developer Certificate of Origin (DCO) check failed.\n\nHi @${{ github.event.pull_request.user.login }}, please sign off all commits with:\n```\ngit commit -s\n```\nIf pull request commits are not signed off, the pull request cannot be merged. For more information about why this is required, please see [our blog](https://debezium.io/blog/2025/12/12/contribution-requirements-changing/) about contribution requirement changes.'
+          })
+
+    # Remove all DCO comments once DCO check passes
+    - name: Cleanup DCO comments
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comments = await github.rest.issues.listComments({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+          for (const comment of comments.data) {
+            if (comment.body.includes ('(DCO) check failed.')) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+              });
+            }
+          }
