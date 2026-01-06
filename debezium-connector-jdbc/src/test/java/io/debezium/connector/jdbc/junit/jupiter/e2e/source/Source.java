@@ -132,7 +132,8 @@ public class Source extends JdbcConnectionProvider {
                     }
                 }
                 try {
-                    wait.waitUntil(f -> f.getUtf8String().contains(message), 20, TimeUnit.SECONDS);
+                    int timeoutSeconds = (type == SourceType.SQLSERVER) ? 60 : 20;
+                    wait.waitUntil(f -> f.getUtf8String().contains(message), timeoutSeconds, TimeUnit.SECONDS);
                 }
                 catch (TimeoutException e) {
                     throw new IllegalStateException("Failed to wait for '" + message + "'", e);
