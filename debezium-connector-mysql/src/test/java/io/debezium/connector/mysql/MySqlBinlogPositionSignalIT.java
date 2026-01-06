@@ -148,11 +148,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete engine shutdown
-        // The signal calls changeEventSourceCoordinator.stop() which triggers engine shutdown
-        waitForEngineShutdown();
-
-        // Stop the connector to ensure proper cleanup of remaining resources
+        // Stop the connector - this properly shuts down the engine and waits for completion
+        // Note: The signal's async stop via changeEventSourceCoordinator.stop() doesn't trigger
+        // the engine's connectorStopped callback, so we use stopConnector() directly
         stopConnector();
 
         // Insert data we want to capture after the skip
@@ -263,11 +261,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for the signal's async stop to complete engine shutdown
-        // The signal calls changeEventSourceCoordinator.stop() which triggers engine shutdown
-        waitForEngineShutdown();
-
-        // Stop the connector to ensure proper cleanup of remaining resources
+        // Stop the connector - this properly shuts down the engine and waits for completion
+        // Note: The signal's async stop via changeEventSourceCoordinator.stop() doesn't trigger
+        // the engine's connectorStopped callback, so we use stopConnector() directly
         stopConnector();
 
         // Insert data we want to capture after the skip
