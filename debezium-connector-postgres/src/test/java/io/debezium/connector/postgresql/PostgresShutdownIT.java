@@ -134,8 +134,12 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
                         postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info")));
 
         logger.info("Execute Postgres shutdown...");
+        // Query PostgreSQL for its data directory to avoid hardcoding version-specific paths
+        String dataDirectory = postgresConnection.queryAndMap(
+                "SHOW data_directory;",
+                postgresConnection.singleResultMapper(rs -> rs.getString(1), "Could not fetch data directory"));
         Container.ExecResult result = postgresContainer
-                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/*/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
+                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/*/bin/pg_ctl -m fast -D " + dataDirectory + " stop");
         logger.info(result.toString());
 
         logger.info("Waiting for Postgres to shut down...");
