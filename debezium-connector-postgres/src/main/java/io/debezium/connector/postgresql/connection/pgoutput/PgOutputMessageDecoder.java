@@ -65,6 +65,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(PgOutputMessageDecoder.class);
     private static final Instant PG_EPOCH = LocalDate.of(2000, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
     private static final byte SPACE = 32;
+    private static final byte KEY_FLAG = 0x01;
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
@@ -320,7 +321,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             int attypmod = buffer.getInt();
 
             final PostgresType postgresType = typeRegistry.get(columnType);
-            boolean key = flags == 1;
+            boolean key = (flags & KEY_FLAG) != 0;
 
             if (key) {
                 primaryKeyColumns.add(columnName);
@@ -353,31 +354,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
-    }
-
-    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {
-        // todo (DBZ-766) - Discuss this logic with team as there may be a better way to handle this
-        // Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
-        // and should any test fail due to this it should be rewritten or excluded from the pgoutput
-        // scope.
-        //
-        // In RecordsStreamProducerIT#shouldReceiveChangesForInsertsIndependentOfReplicaIdentity, we have
-        // a situation where the table is replica identity full, the primary key is dropped but the replica
-        // identity is kept and later the replica identity is changed to default. In order to support this
-        // use case, the following abides by these rules:
-        //
-        if (!primaryKeyColumns.isEmpty() && primaryKeyColumns.contains(columnName)) {
-            return true;
-        }
-        else if (primaryKeyColumns.isEmpty()) {
-            // The table's metadata was either not fetched or table no longer has a primary key
-            // Lets attempt to use the known schema primary key configuration as a fallback
-            Table existingTable = decoderContext.getSchema().tableFor(new TableId(null, schemaName, tableName));
-            if (existingTable != null && existingTable.primaryKeyColumnNames().contains(columnName)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
