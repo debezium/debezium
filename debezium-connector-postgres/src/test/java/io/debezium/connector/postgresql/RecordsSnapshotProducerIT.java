@@ -1346,4 +1346,124 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     protected void alterConfig(Builder config) {
 
     }
+
+    @Test
+    @FixFor("https://github.com/debezium/dbz/issues/1500")
+    void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() throws Exception {
+        // Create tables in a specific order (not alphabetical)
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.orders_2 (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.orders_1 (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.products_x (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.products_a (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.lookup_table (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));");
+
+        // Configure to capture tables with pattern order: orders_.*, products_.*, lookup_table
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.orders_.*,s1.products_.*,s1.lookup_table");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // Verify table order: orders_1, orders_2 (pattern 1, sorted), products_a, products_x (pattern 2, sorted), lookup_table (pattern 3)
+        List<String> capturedTableNames = new ArrayList<>();
+        SourceRecords records = consumeRecordsByTopic(5);
+        records.allRecordsInOrder().forEach(record -> {
+            Struct source = ((Struct) record.value()).getStruct("source");
+            String tableName = source.getString("table");
+            if (!capturedTableNames.contains(tableName)) {
+                capturedTableNames.add(tableName);
+            }
+        });
+
+        // Expected order: pattern 1 (orders_.*) sorted alphabetically, then pattern 2 (products_.*) sorted, then exact match
+        assertThat(capturedTableNames).containsExactly("orders_1", "orders_2", "products_a", "products_x", "lookup_table");
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("https://github.com/debezium/dbz/issues/1500")
+    void shouldSnapshotTablesInOrderWithExactNamesOnly() throws Exception {
+        // Create tables in a specific order (not alphabetical)
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.table_z (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.table_a (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.table_m (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));");
+
+        // Configure to capture tables with exact names in specific order
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.table_z,s1.table_a,s1.table_m");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // Verify table order matches the exact order specified
+        List<String> capturedTableNames = new ArrayList<>();
+        SourceRecords records = consumeRecordsByTopic(3);
+        records.allRecordsInOrder().forEach(record -> {
+            Struct source = ((Struct) record.value()).getStruct("source");
+            String tableName = source.getString("table");
+            if (!capturedTableNames.contains(tableName)) {
+                capturedTableNames.add(tableName);
+            }
+        });
+
+        // Expected order: exactly as specified in table.include.list
+        assertThat(capturedTableNames).containsExactly("table_z", "table_a", "table_m");
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("https://github.com/debezium/dbz/issues/1500")
+    void shouldSnapshotTablesInOrderWithMixedPatternsAndExactNames() throws Exception {
+        // Create tables in a specific order (not alphabetical)
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.first_table (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.orders_2 (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.orders_1 (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));",
+                "CREATE TABLE s1.last_table (pk SERIAL, aa INTEGER, PRIMARY KEY(pk));");
+
+        // Configure with mixed exact names and patterns
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.first_table,s1.orders_.*,s1.last_table");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // Verify table order: first_table, orders_1, orders_2 (pattern sorted), last_table
+        List<String> capturedTableNames = new ArrayList<>();
+        SourceRecords records = consumeRecordsByTopic(4);
+        records.allRecordsInOrder().forEach(record -> {
+            Struct source = ((Struct) record.value()).getStruct("source");
+            String tableName = source.getString("table");
+            if (!capturedTableNames.contains(tableName)) {
+                capturedTableNames.add(tableName);
+            }
+        });
+
+        // Expected order: exact match, pattern (sorted), exact match
+        assertThat(capturedTableNames).containsExactly("first_table", "orders_1", "orders_2", "last_table");
+
+        stopConnector();
+    }
 }

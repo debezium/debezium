@@ -374,7 +374,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         ctx.capturedSchemaTables = snapshottingTask.isOnDemand() ? ctx.capturedTables
                 : capturedSchemaTables
                         .stream()
-                        .sorted()
+                        // Don't re-sort here - preserve the order from table.include.list patterns
                         .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
