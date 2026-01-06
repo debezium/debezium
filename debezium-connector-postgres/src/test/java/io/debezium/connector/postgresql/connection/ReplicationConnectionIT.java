@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -308,6 +309,60 @@ public class ReplicationConnectionIT {
     }
 
     @Test
+    @FixFor("DBZ-1489")
+    void shouldNotMoveFlushLsnBackwardsWhenFlushingOlderLsn() throws Exception {
+        TestHelper.create().dropReplicationSlot("test");
+
+        try (PostgresConnection connection = TestHelper.create();
+                ReplicationConnection replConnection = TestHelper.createForReplication("test", true)) {
+
+            ReplicationStream stream = replConnection.startStreaming(new WalPositionLocator());
+
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('Test1', now()), ('Test2', now());");
+
+            final List<Lsn> receivedLsns = new ArrayList<>();
+            Awaitility.await()
+                    .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> {
+                        stream.readPending(msg -> {
+                            Lsn lsn = stream.lastReceivedLsn();
+                            if (lsn != null && (receivedLsns.isEmpty() || !receivedLsns.get(receivedLsns.size() - 1).equals(lsn))) {
+                                receivedLsns.add(lsn);
+                            }
+                        });
+                        return receivedLsns.size() >= 2;
+                    });
+
+            final Lsn olderLsn = receivedLsns.get(0);
+            final Lsn newerLsn = receivedLsns.get(receivedLsns.size() - 1);
+            assertThat(newerLsn).isGreaterThan(olderLsn);
+
+            stream.flushLsn(newerLsn);
+            final Lsn flushAfterNewer = Awaitility.await()
+                    .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> getFlushLsnFromStatReplication(connection), Objects::nonNull);
+            assertThat(flushAfterNewer).isGreaterThanOrEqualTo(newerLsn);
+
+            stream.flushLsn(olderLsn);
+
+            final Lsn flushAfterOlder = Awaitility.await()
+                    .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> getFlushLsnFromStatReplication(connection), lsn -> lsn != null);
+
+            if (flushAfterOlder.compareTo(newerLsn) < 0) {
+                fail(String.format("DBZ-1489: flush_lsn moved BACKWARDS from %s to %s (-%d bytes)",
+                        newerLsn, flushAfterOlder, newerLsn.asLong() - flushAfterOlder.asLong()));
+            }
+
+            assertThat(flushAfterOlder).isGreaterThanOrEqualTo(newerLsn);
+            stream.close();
+        }
+    }
+
+    @Test
     void shouldResumeFromLastReceivedLSN() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
         String slotName = "test";
@@ -558,5 +613,21 @@ public class ReplicationConnectionIT {
         // ...so we expect 8 messages for the above DML
         TestHelper.execute(statement);
         return 8;
+    }
+
+    private Lsn getFlushLsnFromStatReplication(PostgresConnection connection) throws SQLException {
+        final String lsnStr = connection.prepareQueryAndMap(
+                "SELECT flush_lsn FROM pg_stat_replication LIMIT 1",
+                statement -> {
+                    // No parameters needed
+                },
+                rs -> {
+                    if (rs.next()) {
+                        return rs.getString("flush_lsn");
+                    }
+                    return null;
+                });
+        connection.rollback();
+        return lsnStr != null ? Lsn.valueOf(lsnStr) : null;
     }
 }
