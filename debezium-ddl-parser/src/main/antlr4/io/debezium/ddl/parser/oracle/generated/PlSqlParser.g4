@@ -9189,6 +9189,7 @@ non_reserved_keywords_pre12c
     | OVERFLOW_NOMOVE
     | OVERLAPS
     | OVER
+    | OVERRIDE
     | OWNER
     | OWNERSHIP
     | OWN
