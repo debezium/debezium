@@ -65,7 +65,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(PgOutputMessageDecoder.class);
     private static final Instant PG_EPOCH = LocalDate.of(2000, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
     private static final byte SPACE = 32;
-    private static final byte KEY_FLAG = 0x01;
+    private static final byte PRIMARY_KEY_COLUMN_FLAG = 0x01;
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
@@ -321,7 +321,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             int attypmod = buffer.getInt();
 
             final PostgresType postgresType = typeRegistry.get(columnType);
-            boolean key = (flags & KEY_FLAG) != 0;
+            boolean key = (flags & PRIMARY_KEY_COLUMN_FLAG) != 0;
 
             if (key) {
                 primaryKeyColumns.add(columnName);
