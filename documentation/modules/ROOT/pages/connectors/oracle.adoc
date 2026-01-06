@@ -2784,6 +2784,10 @@ This will prioritize destination #2 and it will be used on the primary and desti
 
 If the destination for CDC is the same for both the primary and standby instances, using a single value is sufficient.
 In fact, the property is only required if either instance has more than one archive destination that is both `LOCAL` and `VALID`.
+
+In the event your primary and standby archive destination configurations are significantly different, you can use the hostname for the instance as an additional qualifier.
+To do so, use the format `+<hostname>:<destination_name>+` separated by commas.
+The hostname check is a case-insensitive match against the `HOST_NAME` column value in the `V$INSTANCE` performance view.
 ====
 
 // Type: concept

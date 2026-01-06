@@ -77,9 +77,16 @@ public class ArchiveDestinationNameResolver {
         try {
             if (!Collect.isNullOrEmpty(destinationNames)) {
                 for (String destinationName : destinationNames) {
-                    if (connection.isArchiveLogDestinationValid(destinationName)) {
-                        LOGGER.info("Using archive destination {}", destinationName);
-                        return ResolvedDestinationName.resolved(destinationName);
+                    final ParsedDestinationName parsedName = parseDestinationName(destinationName);
+                    if (!Strings.isNullOrBlank(parsedName.hostName)) {
+                        if (!connection.isConnectedToInstanceHostname(parsedName.hostName)) {
+                            LOGGER.info("Ignoring destination {}, instance hostname {} mismatch.", parsedName.destinationName, parsedName.hostName);
+                            continue;
+                        }
+                    }
+                    if (connection.isArchiveLogDestinationValid(parsedName.destinationName)) {
+                        LOGGER.info("Using archive destination {}", parsedName.destinationName);
+                        return ResolvedDestinationName.resolved(parsedName.destinationName);
                     }
                 }
 
@@ -95,6 +102,27 @@ public class ArchiveDestinationNameResolver {
         }
     }
 
+    /**
+     * Parses a given destination name value. The value should be given in one of two formats:
+     * <ul>
+     *     <li>LOG_ARCHIVE_DEST_n</li>
+     *     <li>hostname:LOG_ARCHIVE_DEST_n</li>
+     * </ul>
+     *
+     * @param destinationName the destination name to be parsed
+     * @return the parsed destination name
+     */
+    private ParsedDestinationName parseDestinationName(String destinationName) {
+        if (!Strings.isNullOrBlank(destinationName) && destinationName.contains(":")) {
+            final String[] parts = destinationName.split(":");
+            if (parts.length != 2) {
+                throw new DebeziumException("Invalid archive.destination.name format detected: " + destinationName);
+            }
+            return new ParsedDestinationName(parts[0], parts[1]);
+        }
+        return new ParsedDestinationName(null, destinationName);
+    }
+
     private record ResolvedDestinationName(boolean resolved, String value) {
         public static ResolvedDestinationName unresolved() {
             return new ResolvedDestinationName(false, null);
@@ -103,5 +131,8 @@ public class ArchiveDestinationNameResolver {
         public static ResolvedDestinationName resolved(String value) {
             return new ResolvedDestinationName(true, value);
         }
+    }
+
+    private record ParsedDestinationName(String hostName, String destinationName) {
     }
 }

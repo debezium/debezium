@@ -84,4 +84,23 @@ public class ArchiveDestinationResolverTest {
         final String name = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
         assertThat(name).isEqualTo("LOG_ARCHIVE_DEST_1");
     }
+
+    @FixFor({ "dbz#1246", "DBZ-9622" })
+    @Test
+    void shouldResolveDestinationNameFromHostnameDrivenOptions() throws Exception {
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+        Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
+        Mockito.when(connection.isConnectedToInstanceHostname(eq("H1"))).thenReturn(true);
+
+        final Configuration config = Configuration.create().with(ARCHIVE_DESTINATION_NAME, "H2:LOG_ARCHIVE_DEST_2,H1:LOG_ARCHIVE_DEST_1").build();
+        final LogInterceptor logInterceptor = new LogInterceptor(ArchiveDestinationNameResolver.class);
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        connectorConfig.getArchiveDestinationNameResolver().validate(connection);
+
+        assertThat(logInterceptor.containsMessage("Using archive destination LOG_ARCHIVE_DEST_1")).isTrue();
+
+        final String name = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
+        assertThat(name).isEqualTo("LOG_ARCHIVE_DEST_1");
+    }
 }
