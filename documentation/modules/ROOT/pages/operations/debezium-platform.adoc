@@ -398,6 +398,7 @@ image::edit-confirmation.png[Edit source confirmation modal]
 
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action. 
 In the {prodname} management platform, signaling actions are performed via the source connector's **SourceSignalChannel**.
+For more information on signaling see {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Enabling source signaling channel]
 
 To enable the signaling for a data pipeline, you must set up signaling in the source connector configuration.
 
