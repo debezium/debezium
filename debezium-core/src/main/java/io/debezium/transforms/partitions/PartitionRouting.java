@@ -8,6 +8,7 @@ package io.debezium.transforms.partitions;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.util.Arrays;
 import java.util.List;
@@ -171,7 +172,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
                     .collect(Collectors.toList());
 
             if (fieldsValue.isEmpty()) {
-                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", envelope);
+                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", maybeRedactSensitiveData(envelope));
                 return originalRecord;
             }
 
@@ -199,7 +200,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
-            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, envelope);
+            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(envelope));
             return Optional.empty();
         }
 
@@ -227,7 +228,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     }
 
     private R buildNewRecord(R originalRecord, Struct envelope, int partition) {
-        LOGGER.trace("Message {} will be sent to partition {}", envelope, partition);
+        LOGGER.trace("Message {} will be sent to partition {}", maybeRedactSensitiveData(envelope), partition);
 
         return originalRecord.newRecord(originalRecord.topic(), partition,
                 originalRecord.keySchema(),

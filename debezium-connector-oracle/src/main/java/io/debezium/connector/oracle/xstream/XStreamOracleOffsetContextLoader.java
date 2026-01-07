@@ -30,22 +30,27 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
-        boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
+        return OracleOffsetContext.create()
+                .logicalName(connectorConfig)
+                .scn(resolveScn(offset))
+                .lcrPosition(loadLcrPosition(offset))
+                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
+                .snapshotPendingTransactions(OracleOffsetContext.loadSnapshotPendingTransactions(offset))
+                .snapshot(loadSnapshot(offset).orElse(null))
+                .snapshotCompleted(loadSnapshotCompleted(offset))
+                .transactionContext(TransactionContext.load(offset))
+                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
+                .build();
+    }
 
-        String lcrPosition = (String) offset.get(SourceInfo.LCR_POSITION_KEY);
+    private Scn resolveScn(Map<String, ?> offset) {
+        final String lcrPosition = loadLcrPosition(offset);
+        return lcrPosition != null
+                ? LcrPosition.valueOf(lcrPosition).getScn()
+                : OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+    }
 
-        final Scn scn;
-        if (lcrPosition != null) {
-            scn = LcrPosition.valueOf(lcrPosition).getScn();
-        }
-        else {
-            scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
-        }
-
-        final Map<String, Scn> snapshotPendingTransactions = OracleOffsetContext.loadSnapshotPendingTransactions(offset);
-        final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(offset);
-        return new OracleOffsetContext(connectorConfig, scn, null, lcrPosition, snapshotScn, snapshotPendingTransactions,
-                snapshot, snapshotCompleted, TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
+    private String loadLcrPosition(Map<String, ?> offset) {
+        return (String) offset.get(SourceInfo.LCR_POSITION_KEY);
     }
 }

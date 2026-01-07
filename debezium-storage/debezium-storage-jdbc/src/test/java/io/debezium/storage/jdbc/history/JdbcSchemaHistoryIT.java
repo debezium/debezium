@@ -17,11 +17,11 @@ import java.time.Duration;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -30,14 +30,14 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
 
-public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
+public class JdbcSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("schema-history.db").toAbsolutePath();
 
@@ -47,7 +47,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
     private static final String PRIVILEGED_PASSWORD = "mysqlpassword";
     private static final String ROOT_PASSWORD = "debezium";
     private static final String DBNAME = "inventory";
-    private static final String IMAGE = "debezium/example-mysql";
+    private static final String IMAGE = "quay.io/debezium/example-mysql";
     private static final Integer PORT = 3306;
     private static final String TOPIC_PREFIX = "test";
     private static final String TABLE_NAME = "schematest";
@@ -60,17 +60,17 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
             .withExposedPorts(PORT)
             .withStartupTimeout(Duration.ofSeconds(180));
 
-    @BeforeClass
+    @BeforeAll
     public static void startDatabase() {
         container.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopDatabase() {
         container.stop();
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws SQLException {
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -85,7 +85,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         stopConnector();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws SQLException {
         try {
             stopConnector();

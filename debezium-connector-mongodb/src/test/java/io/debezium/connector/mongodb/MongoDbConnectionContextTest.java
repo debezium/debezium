@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -30,7 +30,7 @@ public class MongoDbConnectionContextTest {
     }
 
     @Test
-    public void shouldMaskCredentials() {
+    void shouldMaskCredentials() {
         var config = getConfig("mongodb://admin:password@localhost:27017/", false);
         var connectionContext = new MongoDbConnectionContext(config);
 

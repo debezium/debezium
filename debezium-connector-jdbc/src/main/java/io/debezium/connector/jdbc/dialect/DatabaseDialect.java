@@ -15,17 +15,16 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
-import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
+import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.relational.TableId;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.metadata.CollectionId;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * Represents a dialect of SQL implemented by a particular RDBMS.
- *
  * Subclasses of this contract implement database-specific behavior, should be immutable,
  * and is capable of registering overrides to default behavior where applicable.
  *
@@ -46,7 +45,7 @@ public interface DatabaseDialect {
      * @param tableName the table name.
      * @return the parsed table identifier, never {@code null}.
      */
-    TableId getTableId(String tableName);
+    CollectionId getCollectionId(String tableName);
 
     /**
      * Check whether the specified table exists.
@@ -56,17 +55,17 @@ public interface DatabaseDialect {
      * @return true if the table exists, false otherwise
      * @throws SQLException if a database exception occurs
      */
-    boolean tableExists(Connection connection, TableId tableId) throws SQLException;
+    boolean tableExists(Connection connection, CollectionId tableId) throws SQLException;
 
     /**
      * Read the table structure data from the database.
      *
      * @param connection the database connection to be used, should not be {@code null}.
-     * @param tableId the table identifier, should not be {@code null}.
+     * @param collectionId the table identifier, should not be {@code null}.
      * @return the table relational model if it exists
      * @throws SQLException if the table does not exist or a database exception occurs
      */
-    TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException;
+    TableDescriptor readTable(Connection connection, CollectionId collectionId) throws SQLException;
 
     /**
      * Resolves what fields are missing from the provided table compared against the incoming record.
@@ -75,16 +74,16 @@ public interface DatabaseDialect {
      * @param table the relational table model, should not be {@code null}
      * @return a collection of field names that are missing from the database table, can be {@code empty}.
      */
-    Set<String> resolveMissingFields(SinkRecordDescriptor record, TableDescriptor table);
+    Set<String> resolveMissingFields(JdbcSinkRecord record, TableDescriptor table);
 
     /**
      * Construct a {@code CREATE TABLE} statement specific for this dialect based on the provided record.
      *
      * @param record the current sink record being processed, should not be {@code null}
-     * @param tableId the tableidentifier to be used, should not be {@code null}
+     * @param collectionId the tableidentifier to be used, should not be {@code null}
      * @return the create table SQL statement to be executed, never {@code null}
      */
-    String getCreateTableStatement(SinkRecordDescriptor record, TableId tableId);
+    String getCreateTableStatement(JdbcSinkRecord record, CollectionId collectionId);
 
     /**
      * Gets the prefix used before adding column-clauses in {@code ALTER TABLE} statements.
@@ -130,7 +129,7 @@ public interface DatabaseDialect {
      * @return the alter table SQL statement to be executed, never {@code null}
      * @throws IllegalArgumentException if called with an empty set of missing fields
      */
-    String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields);
+    String getAlterTableStatement(TableDescriptor table, JdbcSinkRecord record, Set<String> missingFields);
 
     /**
      * Construct a {@code INSERT INTO} statement specific for this dialect.
@@ -139,7 +138,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the insert SQL statement to be executed, never {@code null}
      */
-    String getInsertStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getInsertStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code UPSERT} statement specific for this dialect.
@@ -148,7 +147,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the upsert SQL statement to be executed, never {@code null}
      */
-    String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code UPDATE} statement specific for this dialect.
@@ -157,7 +156,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the update SQL statement to be executed, never {@code null}
      */
-    String getUpdateStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getUpdateStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code DELETE} statement specific for this dialect.
@@ -166,7 +165,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the delete SQL statement to be executed, never {@code null}
      */
-    String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getDeleteStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code TRUNCATE} statement specific for this dialect.
@@ -184,7 +183,7 @@ public interface DatabaseDialect {
      * @param type the resolved field type, never {@code null}
      * @return the query binding SQL fragment
      */
-    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type);
+    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type);
 
     /**
      * Gets the maximum length of a VARCHAR field in a primary key column.
@@ -209,7 +208,7 @@ public interface DatabaseDialect {
 
     /**
      * Returns whether the user has specified a time zone JDBC property or whether the connector
-     * configuration property {@code database.time_zone} has been specified.
+     * configuration property {@code use.time.zone} has been specified.
      *
      * @return true if the properties have been specified; false otherwise.
      */
@@ -246,6 +245,13 @@ public interface DatabaseDialect {
      * @return default decimal precision
      */
     int getDefaultDecimalPrecision();
+
+    /**
+     * Get the default time precision for the dialect.
+     *
+     * @return default time precision
+     */
+    int getDefaultTimePrecision();
 
     /**
      * Get the default timestamp precision for the dialect.
@@ -341,7 +347,7 @@ public interface DatabaseDialect {
      * @param schema connect schema, never {@code null}
      * @return resolved type to use
      */
-    Type getSchemaType(Schema schema);
+    JdbcType getSchemaType(Schema schema);
 
     /**
      * Resolves a JDBC type to a given SQL type name.
@@ -349,7 +355,7 @@ public interface DatabaseDialect {
      * @param jdbcType the JDBC type
      * @return the resolved type name
      */
-    String getTypeName(int jdbcType);
+    String getJdbcTypeName(int jdbcType);
 
     /**
      * Resolves a JDBC type with optional size parameters to a given SQL type name.
@@ -358,7 +364,7 @@ public interface DatabaseDialect {
      * @param size the optional size parameters, should not be {@code null}
      * @return the resolved type name
      */
-    String getTypeName(int jdbcType, Size size);
+    String getJdbcTypeName(int jdbcType, Size size);
 
     /**
      * +Infinity value for a timestamp.
@@ -382,5 +388,12 @@ public interface DatabaseDialect {
      * @param value      the value to be bound, may be {@code null}
      * @return the list of bounded values
      */
-    List<ValueBindDescriptor> bindValue(FieldDescriptor field, int startIndex, Object value);
+    List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, int startIndex, Object value);
+
+    /**
+     * Set of retriable exceptions if flush fails.
+     *
+     * @return set of retriable exception classes
+     */
+    Set<Class<? extends Exception>> getCommunicationExceptions();
 }

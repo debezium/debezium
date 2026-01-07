@@ -72,6 +72,11 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         final SnapshotContext<P, O> ctx;
         try {
             ctx = prepare(partition, snapshottingTask.isOnDemand());
+            // In case of a bocking snapshot the offsets of snapshot context must be the set to avoid reinitialization
+            // to an empty one during the determineSnapshotOffset function
+            if (previousOffset != null && snapshottingTask.isOnDemand()) {
+                ctx.offset = previousOffset;
+            }
             connectorConfig.getBeanRegistry().add(StandardBeanNames.SNAPSHOT_CONTEXT, ctx);
         }
         catch (Exception e) {
@@ -82,6 +87,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         Offsets<P, OffsetContext> offsets = getOffsets(ctx, previousOffset, snapshottingTask);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
+            snapshotProgressListener.snapshotSkipped(partition);
             notificationService.initialSnapshotNotificationService().notifySkipped(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             return SnapshotResult.skipped(previousOffset);
         }
@@ -116,7 +122,17 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
                 notificationService.initialSnapshotNotificationService().notifyCompleted(ctx.partition, ctx.offset);
             }
             else {
-                LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
+
+                String basicWarnMessage = "Snapshot was not completed successfully";
+                String finalWarnMessage = String.format("%s %s", basicWarnMessage, ", it will be re-executed upon connector restart");
+
+                if (snapshottingTask.isOnDemand()) {
+                    // In case of error blocking snapshot will not be automatically executed.
+                    previousOffset.postSnapshotCompletion();
+                    finalWarnMessage = basicWarnMessage;
+                }
+
+                LOGGER.warn(finalWarnMessage);
                 aborted(ctx);
                 snapshotProgressListener.snapshotAborted(offsets.getTheOnlyPartition());
                 notificationService.initialSnapshotNotificationService().notifyAborted(ctx.partition, ctx.offset);
@@ -209,7 +225,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      *
      * @param snapshotContext snapshot context
      */
-    protected void aborted(SnapshotContext<P, O> snapshotContext) {
+    protected void aborted(SnapshotContext<P, O> snapshotContext) throws InterruptedException {
     }
 
     protected Set<Pattern> getDataCollectionPattern(List<String> dataCollections) {

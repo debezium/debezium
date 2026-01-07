@@ -7,13 +7,14 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import java.util.Properties;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
@@ -29,19 +30,16 @@ import oracle.jdbc.OracleTypes;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerDmlParserTest {
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private LogMinerDmlParser fastDmlParser;
     private LogMinerColumnResolverDmlParser columnResolverDmlParser;
 
-    @Before
-    public void beforeEach() throws Exception {
-        fastDmlParser = new LogMinerDmlParser();
-        columnResolverDmlParser = new LogMinerColumnResolverDmlParser();
+    @BeforeEach
+    void beforeEach() throws Exception {
+        fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        columnResolverDmlParser = new LogMinerColumnResolverDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
 
     // Oracle's generated SQL avoids common spacing patterns such as spaces between column values or values
@@ -451,7 +449,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    public void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
+    void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST"))
                 .addColumn(Column.editor().name("ID").create())
@@ -621,5 +619,138 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
         assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
         assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-8200")
+    public void shouldParseUpdateStatementWithUnescapedQuotes() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"HEVPROD\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"' where \"PKEY\" = '2310822';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("2310822");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("2310822");
+    }
+
+    @Test
+    @FixFor("DBZ-8034")
+    public void shouldParseUpdateStatementWithUnescapedQuotesDuex() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"ASEDBUSR\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"' where \"PKEY\" = '3228569776';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("3228569776");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("3228569776");
+    }
+
+    @Test
+    @FixFor("DBZ-8869")
+    public void shouldNotTruncateColumnValueWhenApostropheFollowedByComma() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DESCRIPTION").create())
+                .addColumn(Column.editor().name("ID").create())
+                .create();
+
+        String sql = "update \"SCHEMA\".\"TAB\" set \"DESCRIPTION\" = 'Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi', \"NAME\" = 'Another field', does it work?' where \"ID\" = '1' and \"NAME\" = 'Acme';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(3);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Acme");
+        assertThat(entry.getOldValues()[1]).isNull(); // not provided
+        assertThat(entry.getOldValues()[2]).isEqualTo("1");
+        assertThat(entry.getNewValues()).hasSize(3);
+        assertThat(entry.getNewValues()[0]).isEqualTo("Another field', does it work?");
+        assertThat(entry.getNewValues()[1])
+                .isEqualTo("Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi");
+        assertThat(entry.getNewValues()[2]).isEqualTo("1");
+    }
+
+    @Test
+    @FixFor("DBZ-9191")
+    public void shouldNotTruncateInsertColumnValuesWithRelaxedQuoteDetectionLogMinerApostropheBug() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('12345','M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.');";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("12345");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.");
+    }
+
+    @Test
+    @FixFor("DBZ-9366")
+    public void shouldEmitInsertUpdateRelaxedQuoteDetectionValuesUsingSameLengths() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('Test','Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d''une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial');";
+
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
+
+        sql = "update \"SCHEMA\".\"TAB\" set \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial' where \"NAME\" = 'Test' and \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse';";
+
+        entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Test");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Hypersignal du LCA probablement séquellaire d'une ancienne entorse");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
     }
 }

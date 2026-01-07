@@ -170,7 +170,7 @@ public class OlrNetworkClient {
 
     private void confirm(long newScn, Long index) {
         if (prevScn != 0 && prevScn < newScn && index != null) {
-            LOGGER.info("Confirming SCN {} with index {}", newScn, index);
+            LOGGER.debug("Confirming SCN {} with index {}", newScn, index);
             send(createRequest(RequestCode.CONFIRM).setCScn(newScn).setCIdx(index).build());
         }
         prevScn = newScn;

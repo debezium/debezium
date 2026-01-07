@@ -39,7 +39,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Percentage;
 import org.awaitility.Awaitility;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -234,7 +234,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     public void sinkNotificationWillCorrectlySaveOffsetAfterSnapshot() throws InterruptedException {
         // Testing.Print.enable();
 
-        startConnector(config -> config
+        startConnector(config -> config.with("slot.drop.on.stop", "false")
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 
@@ -353,7 +353,11 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
     private ObjectName getObjectName() throws MalformedObjectNameException {
 
-        return new ObjectName(String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server()));
+        String objName = String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server());
+        if (task() != null) {
+            objName += ",task=" + task();
+        }
+        return new ObjectName(objName);
     }
 
     private List<javax.management.Notification> registerJmxNotificationListener()

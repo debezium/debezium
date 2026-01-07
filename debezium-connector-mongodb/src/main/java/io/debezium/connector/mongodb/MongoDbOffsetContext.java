@@ -29,7 +29,6 @@ import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.pipeline.CommonOffsetContext;
@@ -72,14 +71,14 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         Map<String, Object> offset = Collect.hashMapOf(
                 TIMESTAMP, position.getTime(),
                 ORDER, position.getInc());
-        if (isSnapshotRunning()) {
+        if (isInitialSnapshotRunning()) {
             offset.put(INITIAL_SYNC, true);
         }
 
         addSessionTxnIdToOffset(position, offset);
         addResumeTokenToOffset(position, offset);
 
-        return isSnapshotRunning() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
+        return isInitialSnapshotRunning() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
     private Map<String, Object> addSessionTxnIdToOffset(SourceInfo.Position position, Map<String, Object> offset) {
@@ -101,13 +100,13 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     @Override
-    public boolean isSnapshotRunning() {
+    public boolean isInitialSnapshotRunning() {
         return sourceInfo.isSnapshot() && sourceInfo.isSnapshotRunning();
     }
 
     @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    public void preSnapshotStart(boolean onDemand) {
+        super.preSnapshotStart(onDemand);
     }
 
     @Override
@@ -135,7 +134,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public void readEvent(CollectionId collectionId, Instant timestamp) {
-        sourceInfo.collectionEvent(collectionId, 0L);
+        sourceInfo.readEvent(collectionId, 0L);
     }
 
     public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {

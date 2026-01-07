@@ -15,15 +15,15 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
+public class SnapshotSelectOverridesIT extends AbstractAsyncEngineConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 10;
 
@@ -42,8 +42,8 @@ public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         connection = TestHelper.testConnection();
         cleanupTables();
 
@@ -68,8 +68,8 @@ public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null) {
             cleanupTables();
             connection.close();

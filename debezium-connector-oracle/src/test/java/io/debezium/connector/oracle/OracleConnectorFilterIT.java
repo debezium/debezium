@@ -18,22 +18,19 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -41,22 +38,19 @@ import io.debezium.util.Testing;
  *
  * @author Gunnar Morling
  */
-public class OracleConnectorFilterIT extends AbstractConnectorTest {
+public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
     private static OracleConnection adminConnection;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         adminConnection = TestHelper.adminConnection();
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (adminConnection != null) {
             adminConnection.close();
         }
@@ -68,8 +62,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         }
     }
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         TestHelper.dropTable(connection, "debezium.table1");
         TestHelper.dropTable(connection, "debezium.table2");
@@ -118,20 +112,20 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         TestHelper.dropTable(adminConnection, "debezium2.table2");
         TestHelper.dropTable(adminConnection, "debezium2.nopk");
         adminConnection.execute("DROP USER debezium2");
     }
 
     @Test
-    public void shouldApplyTableIncludeListConfiguration() throws Exception {
+    void shouldApplyTableIncludeListConfiguration() throws Exception {
         shouldApplyTableInclusionConfiguration();
     }
 
     @Test
-    public void shouldApplyTableExcludeListConfiguration() throws Exception {
+    void shouldApplyTableExcludeListConfiguration() throws Exception {
         shouldApplyTableExclusionsConfiguration();
     }
 
@@ -278,7 +272,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     private void shouldApplyTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -340,7 +334,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     private void shouldApplySchemaAndTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isAnyLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -393,8 +387,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(testTableRecords).isNull();
 
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM2.TABLE2");
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM) ||
-                TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.OLR)) {
+        if (TestHelper.isXStream() || TestHelper.isOpenLogReplicator()) {
             assertThat(testTableRecords).isNull();
         }
         else {
@@ -420,7 +413,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     private void shouldApplyTableExclusionsConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -483,14 +476,10 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
         boolean includeDdlChanges = true;
         boolean isLogMiner = false;
-        boolean isOlr = false;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
             isLogMiner = true;
-        }
-        else if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.OLR)) {
-            isOlr = true;
         }
 
         Configuration config = TestHelper.defaultConfig()
@@ -555,7 +544,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldTakeTimeDifference() throws Exception {
+    void shouldTakeTimeDifference() throws Exception {
         Testing.Print.enable();
         String stmt = "select current_timestamp from dual";
         try (Connection conn = connection.connection(true);

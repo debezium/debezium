@@ -5,6 +5,8 @@
  */
 package io.debezium.transforms.extractnewstate;
 
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
+
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
@@ -23,7 +25,8 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDeleteHandlingStrategy.class);
     private final DeleteTombstoneHandling deleteTombstoneHandling;
 
-    public DefaultDeleteHandlingStrategy(DeleteTombstoneHandling deleteTombstoneHandling) {
+    public DefaultDeleteHandlingStrategy(DeleteTombstoneHandling deleteTombstoneHandling, boolean replaceNullWithDefault) {
+        super(replaceNullWithDefault);
         this.deleteTombstoneHandling = deleteTombstoneHandling;
     }
 
@@ -33,7 +36,8 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
             case DROP:
             case TOMBSTONE:
             case REWRITE:
-                LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
+            case DELETE_TO_TOMBSTONE:
+                LOGGER.trace("Tombstone {} arrived and requested to be dropped", maybeRedactSensitiveData(record.key()));
                 return null;
             case REWRITE_WITH_TOMBSTONE:
                 return record;
@@ -46,7 +50,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
     public R handleDeleteRecord(R record) {
         switch (deleteTombstoneHandling) {
             case DROP:
-                LOGGER.trace("Delete message {} requested to be dropped", record.key());
+                LOGGER.trace("Delete message {} requested to be dropped", maybeRedactSensitiveData(record.key()));
                 return null;
             case TOMBSTONE:
                 // NOTE
@@ -54,9 +58,18 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
                 // a record only with null value that by JDBC connector is treated as a flattened delete.
                 // Any change to this behavior can have impact on JDBC connector.
                 return afterDelegate.apply(record);
+            case DELETE_TO_TOMBSTONE:
+                LOGGER.trace("Delete message {} requested to be converted to tombstone", maybeRedactSensitiveData(record.key()));
+                return record.newRecord(record.topic(),
+                        record.kafkaPartition(),
+                        record.keySchema(),
+                        record.key(),
+                        null, // value schema is null for tombstone
+                        null, // value is null for tombstone
+                        record.timestamp());
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
-                LOGGER.trace("Delete message {} requested to be rewritten", record.key());
+                LOGGER.trace("Delete message {} requested to be rewritten", maybeRedactSensitiveData(record.key()));
                 R oldRecord = beforeDelegate.apply(record);
                 // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
                 if (oldRecord.value() instanceof Struct) {
@@ -74,7 +87,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
         switch (deleteTombstoneHandling) {
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
-                LOGGER.trace("Insert/update message {} requested to be rewritten", record.key());
+                LOGGER.trace("Insert/update message {} requested to be rewritten", maybeRedactSensitiveData(record.key()));
                 // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
                 if (newRecord.value() instanceof Struct) {
                     return updatedDelegate.apply(newRecord);

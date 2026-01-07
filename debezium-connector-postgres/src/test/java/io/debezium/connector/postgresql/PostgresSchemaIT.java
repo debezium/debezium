@@ -9,10 +9,10 @@ package io.debezium.connector.postgresql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -27,9 +27,8 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
@@ -44,7 +43,6 @@ import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -66,9 +64,6 @@ import io.debezium.util.Strings;
  */
 public class PostgresSchemaIT {
 
-    @Rule
-    public final SkipTestRule skipTest = new SkipTestRule();
-
     private static final String[] TEST_TABLES = new String[]{ "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
             "public.cash_table", "public.bitbin_table", "public.network_address_table",
             "public.cidr_network_address_table", "public.macaddr_table",
@@ -79,13 +74,13 @@ public class PostgresSchemaIT {
 
     private PostgresSchema schema;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
     @Test
-    public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
+    void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
@@ -161,7 +156,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
+    void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
@@ -177,7 +172,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldLoadSchemaForPostgisTypes() throws Exception {
+    void shouldLoadSchemaForPostgisTypes() throws Exception {
         TestHelper.executeDDL("init_postgis.ddl");
         TestHelper.executeDDL("postgis_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
@@ -195,7 +190,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldApplyFilters() throws Exception {
+    void shouldApplyFilters() throws Exception {
         String statements = "CREATE SCHEMA s1; " +
                 "CREATE SCHEMA s2; " +
                 "DROP TABLE IF EXISTS s1.A;" +
@@ -268,7 +263,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldDetectNewChangesAfterRefreshing() throws Exception {
+    void shouldDetectNewChangesAfterRefreshing() throws Exception {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  PRIMARY KEY(pk));";
@@ -307,7 +302,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldPopulateToastableColumnsCache() throws Exception {
+    void shouldPopulateToastableColumnsCache() throws Exception {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  toasted text, untoasted int, PRIMARY KEY(pk));";
@@ -336,7 +331,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    public void shouldProperlyGetDefaultColumnValues() throws Exception {
+    void shouldProperlyGetDefaultColumnValues() throws Exception {
         String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE default_column_test (" +
                 "pk SERIAL, " +
                 "ss SMALLSERIAL, " +
@@ -547,7 +542,7 @@ public class PostgresSchemaIT {
             String fieldName = fields[i].trim();
 
             Field field = actualSchema.field(Strings.unquoteIdentifierPart(fieldName));
-            assertNotNull(fieldName + " not found in schema", field);
+            assertNotNull(field, fieldName + " not found in schema");
             VerifyRecord.assertConnectSchemasAreEqual(fieldName, field.schema(), expectedSchemas[i]);
         }
     }
@@ -555,7 +550,7 @@ public class PostgresSchemaIT {
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
             TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
-            assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
+            assertNotNull(tableSchema, fullyQualifiedTableName + " not included");
             assertThat(tableSchema.keySchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Key"));
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
         });
@@ -579,10 +574,10 @@ public class PostgresSchemaIT {
             String fullyQualifiedTableName = fqColumnName.substring(0, lastDotIdx);
             String columnName = lastDotIdx > 0 ? fqColumnName.substring(lastDotIdx + 1) : fqColumnName;
             TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
-            assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
+            assertNotNull(tableSchema, fullyQualifiedTableName + " not included");
             Schema valueSchema = tableSchema.valueSchema();
-            assertNotNull(fullyQualifiedTableName + ".Value schema not included", valueSchema);
-            assertNull(columnName + " not excluded;", valueSchema.field(columnName));
+            assertNotNull(valueSchema, fullyQualifiedTableName + ".Value schema not included");
+            assertNull(valueSchema.field(columnName), columnName + " not excluded;");
         });
     }
 

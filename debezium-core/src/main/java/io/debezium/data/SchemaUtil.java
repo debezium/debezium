@@ -28,6 +28,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * Utilities for obtaining JSON string representations of {@link Schema}, {@link Struct}, and {@link Field} objects.
  *
@@ -129,6 +132,7 @@ public class SchemaUtil {
     }
 
     private static class RecordWriter {
+        private final ObjectMapper om = new ObjectMapper();
         private final StringBuilder sb = new StringBuilder();
         private boolean detailed = false;
 
@@ -239,7 +243,13 @@ public class SchemaUtil {
                 sb.append('}');
             }
             else if (obj instanceof String) {
-                sb.append('"').append(obj.toString()).append('"');
+                try {
+                    String escaped = om.writeValueAsString(obj.toString());
+                    sb.append(escaped);
+                }
+                catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
             }
             else if (obj instanceof Type) {
                 sb.append('"').append(obj.toString()).append('"');
@@ -313,12 +323,12 @@ public class SchemaUtil {
     }
 
     /**
-     * Copy all properties to a new schema builder
+     * Copy all schema basic properties, excluding fields.
      *
      * @param source Connect schema
-     * @return Connect schema build
+     * @return Connect schema builder
      */
-    public static SchemaBuilder copySchema(Schema source) {
+    public static SchemaBuilder copySchemaBasics(Schema source) {
         SchemaBuilder builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(source);
         if (source.isOptional()) {
             builder.optional();
@@ -326,6 +336,17 @@ public class SchemaUtil {
         else {
             builder.required();
         }
+        return builder;
+    }
+
+    /**
+     * Copy all properties to a new schema builder
+     *
+     * @param source Connect schema
+     * @return Connect schema build
+     */
+    public static SchemaBuilder copySchema(Schema source) {
+        SchemaBuilder builder = copySchemaBasics(source);
         for (org.apache.kafka.connect.data.Field field : source.fields()) {
             builder.field(field.name(), field.schema());
         }

@@ -19,7 +19,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -36,7 +35,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
         extends AbstractIncrementalSnapshotChangeEventSource<P, TableId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
-    private static final String SHOW_MASTER_STMT = "SHOW MASTER STATUS";
 
     private final GtidSetFactory gtidSetFactory;
 
@@ -115,7 +113,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    protected void emitWindowOpen() {
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) {
         updateLowWatermark();
     }
 
@@ -143,13 +141,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             throws InterruptedException {
         final Map<String, Object> additionalData = signalPayload.additionalData;
         super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
-        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
     @Override
-    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
-        super.stopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
-        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
+    public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+        super.requestStopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
     }
 
     private BinlogReadOnlyIncrementalSnapshotContext<TableId> getContext() {

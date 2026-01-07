@@ -12,12 +12,12 @@ import java.util.stream.IntStream;
 
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,12 +30,12 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
-public class MongoDbConnectorCollectionRestrictedIT extends AbstractConnectorTest {
+public class MongoDbConnectorCollectionRestrictedIT extends AbstractAsyncEngineConnectorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorCollectionRestrictedIT.class);
     public static final String AUTH_DATABASE = "admin";
     public static final String TEST_DATABASE = "dbit";
@@ -47,9 +47,9 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractConnectorTes
     private static final int INIT_DOCUMENT_COUNT = 10;
     protected static MongoDbReplicaSet mongo;
 
-    @BeforeClass
-    public static void beforeAll() {
-        Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
+    @BeforeAll
+    static void beforeAll() {
+        Assumptions.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.dockerAuthReplicaSet();
         LOGGER.info("Starting {}...", mongo);
@@ -58,22 +58,22 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractConnectorTes
         mongo.createUser(TEST_USER, TEST_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE);
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         stopConnector();
         initializeConnectorTestFramework();
         cleanDatabase(mongo, TEST_DATABASE);
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
     }

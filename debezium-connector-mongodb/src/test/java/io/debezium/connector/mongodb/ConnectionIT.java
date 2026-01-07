@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -13,8 +14,8 @@ import java.util.List;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.client.FindIterable;
@@ -32,15 +33,15 @@ import io.debezium.util.Testing;
 
 public class ConnectionIT extends AbstractMongoIT {
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         TestHelper.cleanDatabase(mongo, "dbA");
         TestHelper.cleanDatabase(mongo, "dbB");
         TestHelper.cleanDatabase(mongo, "dbC");
     }
 
     @Test
-    public void shouldHonorReadPreference() throws InterruptedException {
+    void shouldHonorReadPreference() throws InterruptedException {
 
         connection.execute("Check client read preference", (MongoClient mongo) -> {
             if (mongo instanceof MongoClientImpl) {
@@ -50,25 +51,27 @@ public class ConnectionIT extends AbstractMongoIT {
         });
     }
 
-    @Test(expected = DebeziumException.class)
-    public void shouldUseSSL() throws InterruptedException, IOException {
-        // Use the DB configuration to define the connector's configuration ...
-        useConfiguration(config.edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.SSL_ENABLED, true)
-                .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
-                .build());
+    @Test
+    void shouldUseSSL() throws InterruptedException, IOException {
+        assertThrows(DebeziumException.class, () -> {
+            // Use the DB configuration to define the connector's configuration ...
+            useConfiguration(config.edit()
+                    .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                    .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                    .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                    .with(MongoDbConnectorConfig.SSL_ENABLED, true)
+                    .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
+                    .build());
 
-        connection.execute("Try SSL connection", mongo -> {
-            connection.close();
-            mongo.getDatabase("dbit").listCollectionNames().first();
+            connection.execute("Try SSL connection", mongo -> {
+                connection.close();
+                mongo.getDatabase("dbit").listCollectionNames().first();
+            });
         });
     }
 
     @Test
-    public void shouldCreateMovieDatabase() throws InterruptedException {
+    void shouldCreateMovieDatabase() throws InterruptedException {
         useConfiguration(config.edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "dbA,dbB")
                 .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, "dbB.moviesB")

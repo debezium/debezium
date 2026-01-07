@@ -8,8 +8,8 @@ package io.debezium.connector.oracle.logminer.parser;
 import java.util.Arrays;
 import java.util.Objects;
 
+import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.VisibleForMarshalling;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.VisibleForMarshalling;
 
 /**
  * This class holds one parsed DML LogMiner record details
@@ -64,6 +64,12 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
         // TODO: can that copy be avoided?
         final Object[] newColumnValues = Arrays.copyOf(oldColumnValues, oldColumnValues.length);
         return new LogMinerDmlEntryImpl(EventType.XML_BEGIN, newColumnValues, oldColumnValues);
+    }
+
+    public static LogMinerDmlEntry forExtendedString(Object[] newColumnValues) {
+        // TODO: can that copy be avoided?
+        final Object[] oldColumnValues = Arrays.copyOf(newColumnValues, newColumnValues.length);
+        return new LogMinerDmlEntryImpl(EventType.EXTENDED_STRING_BEGIN, newColumnValues, oldColumnValues);
     }
 
     @Override

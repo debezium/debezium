@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,11 +37,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -75,6 +71,7 @@ import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A utility that simplifies using a JDBC connection and executing transactions composed of multiple statements.
@@ -86,7 +83,13 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
-    private static final String ESCAPE_CHAR = "\\";
+
+    /**
+     * The wildcard characters that must be escaped when constructing patterns for the JDBC
+     * {@link java.sql.DatabaseMetaData} methods such as {@code getColumns}, {@code getTables}, etc.
+     */
+    private final Set<Character> likeWildcardCharacters;
+
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -359,6 +362,7 @@ public class JdbcConnection implements AutoCloseable {
         this.closingQuoteCharacter = closingQuotingChar;
         this.conn = null;
         this.queryTimeout = (int) config.getQueryTimeout().toSeconds();
+        this.likeWildcardCharacters = getLikeWildcardCharacters();
     }
 
     /**
@@ -444,9 +448,7 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      */
     public JdbcConnection execute(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            statement.setQueryTimeout(queryTimeout);
+        try (Statement statement = createStatement()) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Executing query with {}s timeout", queryTimeout);
             }
@@ -551,9 +553,7 @@ public class JdbcConnection implements AutoCloseable {
      * @see #execute(Operations)
      */
     public JdbcConnection query(String query, StatementFactory statementFactory, ResultSetConsumer resultConsumer) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn)) {
-            statement.setQueryTimeout(queryTimeout);
+        try (Statement statement = createStatementFromFactory(statementFactory)) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
@@ -640,9 +640,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     public <T> T queryAndMap(String query, StatementFactory statementFactory, ResultSetMapper<T> mapper) throws SQLException {
         Objects.requireNonNull(mapper, "Mapper must be provided");
-        Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn)) {
-            statement.setQueryTimeout(queryTimeout);
+        try (Statement statement = createStatementFromFactory(statementFactory)) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
@@ -654,13 +652,11 @@ public class JdbcConnection implements AutoCloseable {
 
     public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer)
             throws SQLException, InterruptedException {
-        Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn)) {
-            statement.setQueryTimeout(queryTimeout);
+        try (Statement statement = createStatementFromFactory(statementFactory)) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
-            try (ResultSet resultSet = statement.executeQuery(query);) {
+            try (ResultSet resultSet = statement.executeQuery(query)) {
                 if (resultConsumer != null) {
                     resultConsumer.accept(resultSet);
                 }
@@ -698,7 +694,7 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException, InterruptedException {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
-        statement.setQueryTimeout(queryTimeout);
+        initializeStatement(statement);
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Executing '{}' with {}s timeout", preparedQueryString, queryTimeout);
         }
@@ -780,7 +776,7 @@ public class JdbcConnection implements AutoCloseable {
         if (preparer != null) {
             preparer.accept(statement);
         }
-        statement.setQueryTimeout(queryTimeout);
+        initializeStatement(statement);
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Executing statement '{}' with {}s timeout", stmt, queryTimeout);
         }
@@ -977,31 +973,31 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void doClose() throws SQLException {
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        // attempting to close the connection gracefully
-        Future<Object> futureClose = executor.submit(() -> {
-            conn.close();
-            LOGGER.info("Connection gracefully closed");
-            return null;
-        });
         try {
-            futureClose.get(WAIT_FOR_CLOSE_SECONDS, TimeUnit.SECONDS);
-        }
-        catch (ExecutionException e) {
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
-            }
-            else if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            }
-            throw new DebeziumException(e.getCause());
+            Threads.runWithTimeout(JdbcConnection.class, () -> {
+                try {
+                    conn.close();
+                    LOGGER.info("Connection gracefully closed");
+                }
+                catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }, Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
             conn.abort(Runnable::run);
         }
-        finally {
-            executor.shutdownNow();
+        catch (Exception e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                Throwable rootCause = cause.getCause();
+                if (rootCause instanceof SQLException) {
+                    throw (SQLException) rootCause;
+                }
+                throw (RuntimeException) cause;
+            }
+            throw new DebeziumException(cause);
         }
     }
 
@@ -1073,18 +1069,17 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Get the identifiers of the tables.
      *
-     * @param databaseCatalog the name of the catalog, which is typically the database name; may be an empty string for tables
+     * @param catalogName the name of the catalog, which is typically the database name; may be an empty string for tables
      *            that have no catalog, or {@code null} if the catalog name should not be used to narrow the list of table
      *            identifiers
-     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
-     *            no schema or {@code null} if the schema name should not be used to narrow the list of table
-     *            identifiers
+     * @param schemaName the name of the schema; may be {@code null} if all accessible schemas are to be processed or if
+     *                   the target database platform does not support schemas
      * @param tableNamePattern the pattern used to match database table names, which may be null to match all table names
      * @param tableTypes the set of table types to include in the results, which may be null for all table types
      * @return the set of {@link TableId}s; never null but possibly empty
      * @throws SQLException if an error occurs while accessing the database metadata
      */
-    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+    public Set<TableId> readTableNames(String catalogName, String schemaName, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
         if (tableNamePattern == null) {
@@ -1092,16 +1087,31 @@ public class JdbcConnection implements AutoCloseable {
         }
         Set<TableId> tableIds = new HashSet<>();
         DatabaseMetaData metadata = connection().getMetaData();
-        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
+        try (ResultSet rs = metadata.getTables(catalogName, schemaName, tableNamePattern, tableTypes)) {
             while (rs.next()) {
-                String catalogName = rs.getString(1);
-                String schemaName = rs.getString(2);
-                String tableName = rs.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                String metaCatalogName = rs.getString(1);
+                String metaSchemaName = rs.getString(2);
+                String metaTableName = rs.getString(3);
+                TableId tableId = createTableId(metaCatalogName, metaSchemaName, metaTableName);
                 tableIds.add(tableId);
             }
         }
         return tableIds;
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in a given database catalog, mainly used to determine then the captured table.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return readTableNames(
+                catalogName,
+                null,
+                null,
+                new String[]{ "TABLE" });
     }
 
     /**
@@ -1163,10 +1173,10 @@ public class JdbcConnection implements AutoCloseable {
      * column filter.
      *
      * @param tables the set of table definitions to be modified; may not be null
-     * @param databaseCatalog the name of the catalog, which is typically the database name; may be null if all accessible
+     * @param catalogName the name of the catalog, which is typically the database name; may be null if all accessible
      *            databases are to be processed
-     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
-     *            no schema or null to process all accessible tables regardless of database schema name
+     * @param schemaName the name of the schema; may be {@code null} if all accessible schemas are to be processed or if
+     *                  the target database platform does not support schemas
      * @param tableFilter used to determine for which tables are to be processed; may be null if all accessible tables are to be
      *            processed
      * @param columnFilter used to determine which columns should be included as fields in its table's definition; may
@@ -1175,7 +1185,7 @@ public class JdbcConnection implements AutoCloseable {
      *            that are not found in the database metadata, or {@code false} if such tables should be left untouched
      * @throws SQLException if an error occurs while accessing the database metadata
      */
-    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+    public void readSchema(Tables tables, String catalogName, String schemaName,
                            TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
         // Before we make any changes, get the copy of the set of table IDs ...
@@ -1191,24 +1201,24 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
 
         int totalTables = 0;
-        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
+        String schemaNamePattern = createPatternFromName(schemaName, metadata.getSearchStringEscape());
+        try (ResultSet rs = metadata.getTables(catalogName, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
-                final String catalogName = resolveCatalogName(rs.getString(1));
-                final String schemaName = rs.getString(2);
-                final String tableName = rs.getString(3);
+                final String metaCatalogName = resolveCatalogName(rs.getString(1));
+                final String metaSchemaName = rs.getString(2);
+                final String metaTableName = rs.getString(3);
                 final String tableType = rs.getString(4);
                 if (isTableType(tableType)) {
                     totalTables++;
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = createTableId(metaCatalogName, metaSchemaName, metaTableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
                         attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                     }
                 }
                 else {
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = createTableId(metaCatalogName, metaSchemaName, metaTableName);
                     viewIds.add(tableId);
-                    attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                 }
             }
         }
@@ -1217,13 +1227,19 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
         if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
-            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+            columnsByTable = getColumnsDetails(catalogName, schemaName, null, tableFilter, columnFilter, metadata, viewIds);
+            if (columnsByTable.isEmpty()) {
+                for (TableId emptyTableId : tableIds) {
+                    LOGGER.warn("Table {} has no column or all columns were excluded due to include/exclude lists.", emptyTableId);
+                    columnsByTable.put(emptyTableId, new ArrayList<>());
+                }
+            }
         }
         else {
             for (TableId includeTable : tableIds) {
                 LOGGER.debug("Retrieving columns of table {}", includeTable);
 
-                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                Map<TableId, List<Column>> cols = getColumnsDetails(catalogName, schemaName, includeTable.table(), tableFilter,
                         columnFilter, metadata, viewIds);
                 columnsByTable.putAll(cols);
             }
@@ -1262,29 +1278,85 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
-    protected String escapeEscapeSequence(String str) {
-        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    /**
+     * Given a database object name, creates a pattern, escaping any special characters such that the pattern matches
+     * the name itself.
+     */
+    protected String createPatternFromName(String name, String searchEscapeCharacter) {
+        if (name == null) {
+            return null;
+        }
+
+        if (Strings.isNullOrBlank(searchEscapeCharacter) || searchEscapeCharacter.length() > 1) {
+            throw new DebeziumException("The driver's search escape character should be a length of 1");
+        }
+
+        final int length = name.length();
+        StringBuilder pattern = null;
+
+        final char escapeCharacter = searchEscapeCharacter.charAt(0);
+        for (int i = 0; i < length; i++) {
+            char c = name.charAt(i);
+
+            if (likeWildcardCharacters.contains(c) || escapeCharacter == c) {
+                if (pattern == null) {
+                    pattern = new StringBuilder();
+                    pattern.append(name, 0, i);
+                }
+                pattern.append(escapeCharacter);
+            }
+
+            if (pattern != null) {
+                pattern.append(c);
+            }
+        }
+
+        return pattern == null ? name : pattern.toString();
     }
 
-    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
-                                                           final Set<TableId> viewIds)
+                                                           final Set<TableId> viewIds, boolean throwOnCaseInsensitiveColumnMismatch)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
-            tableName = escapeEscapeSequence(tableName);
-        }
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+
+        // Track case-insensitive column names per table
+        Map<TableId, Set<String>> lowercaseColumnNamesByTable = new HashMap<>();
+
+        String tableNamePattern = createPatternFromName(tableName, metadata.getSearchStringEscape());
+        String schemaNamePattern = createPatternFromName(schemaName, metadata.getSearchStringEscape());
+        try (ResultSet columnMetadata = metadata.getColumns(catalogName, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
-                String catalogName = resolveCatalogName(columnMetadata.getString(1));
-                String schemaName = columnMetadata.getString(2);
+                String metaCatalogName = resolveCatalogName(columnMetadata.getString(1));
+                String metaSchemaName = columnMetadata.getString(2);
                 String metaTableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+                TableId tableId = createTableId(metaCatalogName, metaSchemaName, metaTableName);
 
                 // exclude views and non-captured tables
                 if (viewIds.contains(tableId) ||
                         (tableFilter != null && !tableFilter.isIncluded(tableId))) {
                     continue;
+                }
+
+                final String columnName = columnMetadata.getString(4);
+
+                // Validate no case-sensitive duplicate columns
+                Set<String> seenLowercaseNames = lowercaseColumnNamesByTable.computeIfAbsent(tableId, t -> new HashSet<>());
+                String lowercaseColumnName = columnName.toLowerCase();
+
+                if (!seenLowercaseNames.add(lowercaseColumnName)) {
+                    String message = String.format("Table '%s' has columns that differ only by case. " +
+                            "Column name: '%s'. " +
+                            "Debezium does not support case-sensitive duplicate column names as this causes data corruption. " +
+                            "Please rename one of the duplicate columns before running Debezium.",
+                            tableId, columnName);
+
+                    if (throwOnCaseInsensitiveColumnMismatch) {
+                        throw new DebeziumException(message);
+                    }
+                    else {
+                        LOGGER.warn(message);
+                    }
                 }
 
                 // add all included columns
@@ -1295,6 +1367,13 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return columnsByTable;
+    }
+
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, false);
     }
 
     protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId, String tableType) {
@@ -1386,6 +1465,13 @@ public class JdbcConnection implements AutoCloseable {
                     continue;
                 }
 
+                // Table statistics are also returned as part of the index info, and these have a columnIndex of 0.
+                // There is type tableIndexStatistic for these records available but it is unsure whether all databases
+                // behaves the same way, so we simply ignore any record with a columnIndex of 0.
+                if (columnIndex == 0) {
+                    continue;
+                }
+
                 // Check whether the index and/or its column is included by the connector
                 boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
                 if (!indexIncluded) {
@@ -1458,8 +1544,7 @@ public class JdbcConnection implements AutoCloseable {
         return statementCache.computeIfAbsent(preparedQueryString, query -> {
             try {
                 LOGGER.trace("Inserting prepared statement '{}' removed from the cache", query);
-                PreparedStatement preparedStatement = connection().prepareStatement(query);
-                preparedStatement.setQueryTimeout(queryTimeout);
+                PreparedStatement preparedStatement = createUncachedPreparedStatement(query);
                 if (LOGGER.isTraceEnabled()) {
                     LOGGER.trace("PreparedStatement '{}' with {}s timeout", preparedQueryString, queryTimeout);
                 }
@@ -1469,6 +1554,25 @@ public class JdbcConnection implements AutoCloseable {
                 throw new ConnectException(e);
             }
         });
+    }
+
+    private PreparedStatement createUncachedPreparedStatement(String query) throws SQLException {
+        PreparedStatement preparedStatement = connection().prepareStatement(query);
+        initializeStatement(preparedStatement);
+        return preparedStatement;
+    }
+
+    private Statement createStatement() throws SQLException {
+        final Statement statement = connection().createStatement();
+        initializeStatement(statement);
+        return statement;
+    }
+
+    private Statement createStatementFromFactory(StatementFactory factory) throws SQLException {
+        final Connection connection = connection();
+        final Statement statement = factory.createStatement(connection);
+        initializeStatement(statement);
+        return statement;
     }
 
     /**
@@ -1483,8 +1587,7 @@ public class JdbcConnection implements AutoCloseable {
         if (conn.getAutoCommit()) {
             throw new DebeziumException("Cannot execute without committing because auto-commit is enabled");
         }
-        try (Statement statement = conn.createStatement()) {
-            statement.setQueryTimeout(queryTimeout);
+        try (Statement statement = createStatement()) {
             for (String stmt : statements) {
                 if (LOGGER.isTraceEnabled()) {
                     LOGGER.trace("Executing statement '{}' with {}s timeout", stmt, queryTimeout);
@@ -1499,6 +1602,27 @@ public class JdbcConnection implements AutoCloseable {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
     }
 
+    /**
+     * Returns the wildcard characters that must be escaped when constructing patterns for the JDBC
+     * {@link java.sql.DatabaseMetaData} methods such as {@code getColumns}, {@code getTables}, etc.
+     *
+     * <p>The base implementation returns the wildcard characters defined by the ANSI SQL standard. Subclasses may
+     * override this method to include additional characters that need to be escaped in their specific database
+     * dialects.</p>
+     */
+    protected Set<Character> getLikeWildcardCharacters() {
+        return Set.of('%', '_');
+    }
+
+    public StatementPreparer statementValuesSetter(List<Object> values) {
+        return statement -> {
+            int index = 1;
+            for (final Object parameter : values) {
+                statement.setObject(index++, parameter);
+            }
+        };
+    }
+
     public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
         return (rs) -> {
             if (rs.next()) {
@@ -1508,6 +1632,25 @@ public class JdbcConnection implements AutoCloseable {
                 }
             }
             throw new IllegalStateException(error);
+        };
+    }
+
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, T defaultValue, String msg) throws SQLException {
+        return singleResultMapper(extractor, defaultValue, msg, msg);
+    }
+
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, T defaultValue, String notFoundMsg, String multipleResultMsg)
+            throws SQLException {
+        return (rs) -> {
+            if (!rs.next()) {
+                LOGGER.warn(notFoundMsg);
+                return defaultValue;
+            }
+            final T ret = extractor.apply(rs);
+            if (rs.next()) {
+                LOGGER.warn(multipleResultMsg);
+            }
+            return ret;
         };
     }
 
@@ -1571,8 +1714,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
-        final Statement statement = connection().createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setQueryTimeout(queryTimeout);
+        final Statement statement = createStatement(); // the default cursor is FORWARD_ONLY
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Created Statement with {}s timeout", queryTimeout);
         }
@@ -1585,8 +1727,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     public PreparedStatement readTablePreparedStatement(CommonConnectorConfig connectorConfig, String sql, OptionalLong tableSize) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
-        final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
-        statement.setQueryTimeout(queryTimeout);
+        final PreparedStatement statement = createUncachedPreparedStatement(sql); // the default cursor is FORWARD_ONLY
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("PreparedStatement '{}' with {}s timeout", sql, queryTimeout);
         }
@@ -1621,6 +1762,17 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Returns an SQL identifier representing the given database object name.
+     */
+    public String quoteIdentifier(String name) {
+        if (name.contains(closingQuoteCharacter)) {
+            name = name.replace(closingQuoteCharacter, closingQuoteCharacter + closingQuoteCharacter);
+        }
+
+        return openingQuoteCharacter + name + closingQuoteCharacter;
+    }
+
+    /**
      * Converts a table id into a string with all components of the id quoted so non-alphanumeric
      * characters are properly handled.
      *
@@ -1629,13 +1781,6 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedTableIdString(TableId tableId) {
         return tableId.toDoubleQuotedString();
-    }
-
-    /**
-     * Prepares qualified column names with appropriate quote character as per the specific database's rules.
-     */
-    public String quotedColumnIdString(String columnName) {
-        return openingQuoteCharacter + columnName + closingQuoteCharacter;
     }
 
     /**
@@ -1660,29 +1805,28 @@ public class JdbcConnection implements AutoCloseable {
         return tableId.schema() + "." + tableId.table();
     }
 
-    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
-                quotedTableIdString(tableId),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
+                quotedTableIdString(table.id()),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-        return reselectColumns(query, tableId, columns, keyValues);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
-    protected Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
-        final Map<String, Object> results = new HashMap<>();
-        prepareQuery(query, bindValues, (params, rs) -> {
-            if (!rs.next()) {
-                LOGGER.warn("No data found for re-selection on table {}.", tableId);
-                return;
-            }
-            for (String columnName : columns) {
-                results.put(columnName, rs.getObject(columnName));
-            }
-            if (rs.next()) {
-                LOGGER.warn("Re-selection detected multiple rows for the same key in table {}, using first.", tableId);
-            }
-        });
-        return results;
+    protected boolean reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, ResultSetConsumer resultConsumer)
+            throws SQLException {
+        return prepareQueryAndMap(query, statementValuesSetter(bindValues), singleResultMapper(resultSet -> {
+            resultConsumer.accept(resultSet);
+            return true;
+        },
+                false,
+                "No data found for re-selection on table %s.".formatted(tableId),
+                "Re-selection detected multiple rows for the same key in table %s, using first.".formatted(tableId)));
+    }
+
+    protected void initializeStatement(Statement statement) throws SQLException {
+        statement.setQueryTimeout(queryTimeout);
     }
 }

@@ -10,17 +10,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
 import org.bson.BsonTimestamp;
 import org.bson.types.ObjectId;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -28,7 +30,7 @@ import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * @author Randall Hauch
@@ -61,7 +63,7 @@ public class SourceInfoTest {
     private SourceInfo source;
     private MongoDbOffsetContext context;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         createOffsetContext();
     }
@@ -103,6 +105,7 @@ public class SourceInfoTest {
                 null, // txnNumber
                 null, // lsid
                 null, // wallTime
+                null, // spiltEvent
                 null // extraElements
         );
 
@@ -141,15 +144,24 @@ public class SourceInfoTest {
         assertThat(source.hasPosition()).isEqualTo(hasOffset);
 
         Map<String, ?> offset = context.getOffset();
-        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
+        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : -1);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
         String resumeToken = source.lastResumeToken();
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
-        source.collectionEvent(new CollectionId("test", "names"), 0L);
+        source.readEvent(new CollectionId("test", "names"), 0L);
+
+        var structPreMakeTime = Instant.now().toEpochMilli();
         Struct struct = source.struct();
-        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
+        var structPostMakeTime = Instant.now().toEpochMilli();
+
+        if (timestamp != null) {
+            assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(timestamp.getTime() * 1000L);
+        }
+        else {
+            assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isBetween(structPreMakeTime, structPostMakeTime);
+        }
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("test");
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("names");
@@ -158,7 +170,7 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void shouldSetAndReturnRecordedOffset() {
+    void shouldSetAndReturnRecordedOffset() {
         var cursor = mockEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
 
@@ -171,31 +183,31 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void shouldReturnOffsetForUnusedReplicaName() {
+    void shouldReturnOffsetForUnusedReplicaName() {
         assertThat(source.hasPosition()).isEqualTo(false);
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), null);
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaName() {
+    void shouldReturnRecordedOffsetForUsedReplicaName() {
         var cursor = mockEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameWithoutEvent() {
+    void shouldReturnRecordedOffsetForUsedReplicaNameWithoutEvent() {
         var cursor = mockNoEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_STRING, null, null);
     }
 
     @Test
-    public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSnapshot() {
+    void shouldReturnOffsetForUnusedReplicaNameDuringInitialSnapshot() {
         source.startInitialSnapshot();
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), "true");
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshot() {
+    void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshot() {
         source.startInitialSnapshot();
 
         var cursor = mockEventChangeStreamCursor();
@@ -203,7 +215,7 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshotWithoutEvent() {
+    void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshotWithoutEvent() {
         source.startInitialSnapshot();
 
         var cursor = mockNoEventChangeStreamCursor();
@@ -211,50 +223,51 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void versionIsPresent() {
+    void versionIsPresent() {
         var cursor = mockEventChangeStreamCursor();
         source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
-    public void connectorIsPresent() {
+    void connectorIsPresent() {
         var cursor = mockEventChangeStreamCursor();
         source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
-    public void wallTimeIsPresent() {
+    void wallTimeIsPresent() {
         var cursor = mockEventChangeStreamCursor();
         source.initEvent(cursor);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
-        source.collectionEvent(new CollectionId("test", "names"), 10L);
+        source.readEvent(new CollectionId("test", "names"), 10L);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
     }
 
     @Test
-    public void shouldHaveSchemaForSource() {
+    void shouldHaveSchemaForSource() {
         Schema schema = context.getSourceInfoSchema();
         assertThat(schema.name()).isNotEmpty();
-        assertThat(schema.version()).isNull();
+        assertThat(schema.version()).isEqualTo(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION);
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
-        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA);
+        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaFactory.get().snapshotRecordSchema());
     }
 
     @Test
-    public void schemaIsCorrect() {
+    void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
+                .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("snapshot", SchemaFactory.get().snapshotRecordSchema())
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
@@ -267,5 +280,74 @@ public class SourceInfoTest {
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);
+    }
+
+    @SuppressWarnings("unchecked")
+    private MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> mockEventChangeStreamCursorWithWallTime(long wallTimeMs) {
+        final var cursor = mock(MongoChangeStreamCursor.class);
+
+        final var event = new ChangeStreamDocument<BsonDocument>(
+                OperationType.INSERT.getValue(), // operation type
+                CHANGE_RESUME_TOKEN, // resumeToken
+                BsonDocument.parse("{db: \"test\", coll: \"names\"}"), // namespaceDocument
+                null, // destinationNamespaceDocument
+                null, // fullDocument
+                null, // fullDocumentBeforeChange
+                new BsonDocument("_id", new BsonObjectId(new ObjectId("635019a078be67426d7cf4d2"))), // documentKey
+                CHANGE_TIMESTAMP, // clusterTime
+                null, // updateDescription
+                null, // txnNumber
+                null, // lsid
+                new BsonDateTime(wallTimeMs), // wallTime
+                null, // spiltEvent
+                null // extraElements
+        );
+        when(cursor.tryNext()).thenReturn(event);
+        return cursor;
+    }
+
+    @Test
+    void timestampShouldPreferWallTimeOverClusterTime() {
+        // Given: wallTime is available (e.g., MongoDB 6.0+)
+        final long wallTimeMs = 1704067200000L; // 2024-01-01 00:00:00 UTC in milliseconds
+        final var cursor = mockEventChangeStreamCursorWithWallTime(wallTimeMs);
+
+        // When: processing the change stream event
+        source.initEvent(cursor);
+        source.readEvent(new CollectionId("test", "names"), wallTimeMs);
+
+        // Then: timestamp() should return wallTime, not clusterTime
+        final Instant timestamp = source.timestamp();
+        assertThat(timestamp).isNotNull();
+        assertThat(timestamp.toEpochMilli()).isEqualTo(wallTimeMs);
+
+        // Verify that source.ts_ms in struct uses wallTime
+        final Struct struct = source.struct();
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(wallTimeMs);
+
+        // Verify it's NOT using clusterTime
+        final long clusterTimeMs = CHANGE_TIMESTAMP.getTime() * 1000L;
+        assertThat(timestamp.toEpochMilli()).isNotEqualTo(clusterTimeMs);
+    }
+
+    @Test
+    void timestampShouldFallbackToClusterTimeWhenWallTimeIsNotAvailable() {
+        // Given: wallTime is null (e.g., MongoDB < 6.0 or not provided)
+        final var cursor = mockEventChangeStreamCursor(); // This has null wallTime
+
+        // When: processing the change stream event
+        source.initEvent(cursor);
+        source.readEvent(new CollectionId("test", "names"), 0L); // wallTime = 0L means not available
+
+        // Then: timestamp() should fall back to clusterTime
+        final Instant timestamp = source.timestamp();
+        assertThat(timestamp).isNotNull();
+        // clusterTime is in seconds, so convert to milliseconds for comparison
+        final long expectedClusterTimeMs = CHANGE_TIMESTAMP.getTime() * 1000L;
+        assertThat(timestamp.toEpochMilli()).isEqualTo(expectedClusterTimeMs);
+
+        // Verify that source.ts_ms in struct uses clusterTime
+        final Struct struct = source.struct();
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(expectedClusterTimeMs);
     }
 }

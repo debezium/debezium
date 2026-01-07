@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.GtidSet;
 import com.github.shyiko.mysql.binlog.event.AnnotateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
@@ -20,7 +21,9 @@ import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.pipeline.ErrorHandler;
@@ -46,9 +49,11 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
                                            ErrorHandler errorHandler,
                                            Clock clock,
                                            MySqlTaskContext taskContext,
+                                           MySqlDatabaseSchema schema,
                                            MySqlStreamingChangeEventSourceMetrics metrics,
-                                           SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, taskContext.getSchema(), metrics, snapshotterService);
+                                           SnapshotterService snapshotterService,
+                                           BinaryLogClient binaryLogClient) {
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
         this.connectorConfig = connectorConfig;
     }
 
@@ -145,6 +150,23 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
     @Override
     protected void initializeGtidSet(String value) {
         this.gtidSet = new GtidSet(value);
+    }
+
+    @Override
+    protected SSLMode sslModeFor(BinlogConnectorConfig.SecureConnectionMode mode) {
+        switch ((MySqlConnectorConfig.MySqlSecureConnectionMode) mode) {
+            case DISABLED:
+                return SSLMode.DISABLED;
+            case PREFERRED:
+                return SSLMode.PREFERRED;
+            case REQUIRED:
+                return SSLMode.REQUIRED;
+            case VERIFY_CA:
+                return SSLMode.VERIFY_CA;
+            case VERIFY_IDENTITY:
+                return SSLMode.VERIFY_IDENTITY;
+        }
+        return null;
     }
 
 }

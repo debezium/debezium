@@ -102,18 +102,21 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
 
     @Override
     public R doApply(final R record) {
+        var isTombstone = record.value() == null;
+        var isValidEnvelope = smtManager.isValidEnvelope(record);
+
         // Add headers if needed
-        if (!additionalHeaders.isEmpty()) {
+        if ((isValidEnvelope || isTombstone) && !additionalHeaders.isEmpty()) {
             Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
             headersToAdd.forEach(h -> record.headers().add(h));
         }
 
         // Handling tombstone record
-        if (record.value() == null) {
+        if (isTombstone) {
             return extractRecordStrategy.handleTombstoneRecord(record);
         }
 
-        if (!smtManager.isValidEnvelope(record)) {
+        if (!isValidEnvelope) {
             return record;
         }
 

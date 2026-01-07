@@ -10,6 +10,7 @@
 :connector-class: MongoDb
 :connector-name: MongoDB
 :include-list-example: public.inventory
+:collection-container:  database
 ifdef::community[]
 
 :toc:
@@ -196,14 +197,11 @@ Grant the user permission to read the collection specified by the connector's xr
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 
@@ -332,7 +330,7 @@ ifdef::community[]
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
-If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
+If you use the {prodname} `DebeziumEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -368,28 +366,24 @@ For more information about BSON string types in MongoDB, see the https://www.mon
 To use incremental snapshots with sharded MongoDB clusters, you must set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
 
 // Type: procedure
-// ModuleID: debezium-mongodb-triggering-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongdb-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongodb-stopping-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongodb-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
@@ -1062,8 +1056,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`after`
@@ -1150,8 +1144,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`source`
@@ -1246,7 +1240,7 @@ ifdef::community[]
 To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * MongoDB is installed and is xref:setting-up-mongodb[set up to work with the {prodname} connector].
 
 .Procedure
@@ -1261,7 +1255,15 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the MongoDB connector already installed and ready to run.
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
@@ -1274,11 +1276,13 @@ You can use either of the following methods to deploy a {prodname} MongoDB conne
 * xref:openshift-streams-mongodb-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
 
 .Additional resources
 
-* xref:mongodb-connector-properties[]
+* xref:mongodb-connector-properties[MongoDB connector configuration properties]
 
 // Type: concept
 [id="openshift-streams-mongodb-connector-deployment"]
@@ -1577,11 +1581,14 @@ Many properties have default values. Information about the properties is organiz
 
 * xref:debezium-mongodb-connector-required-configuration-properties[Required {prodname} MongoDB connector configuration properties]
 * xref:debezium-mongodb-connector-advanced-configuration-properties[Advanced {prodname} MongoDB connector configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
 
 The following configuration properties are _required_ unless a default value is available.
 
 [id="debezium-mongodb-connector-required-configuration-properties"]
-.Required {prodname} MongoDB connector configuration properties
+==== Required {prodname} MongoDB connector configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
@@ -1753,6 +1760,10 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
+|[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
+|
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. The value ought to be a long representation of Bson timestamp.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -1779,21 +1790,18 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 +
 [WARNING]
 ====
 Setting the value of the `capture.scope` property to `collection` prevents the connector from using the default `source` {link-prefix}:{link-signalling}[signaling] channel.
-Because the `source` channel must be enabled to permit connectors to process incremental snapshot signals -- even for signals are sent over the Kafka, JMX, or File channels -- the connector cannot perform incremental snapshots when `capture-scope` is set to `collection`. 
+Because the `source` channel must be enabled to permit connectors to process incremental snapshot signals -- even for signals are sent over the Kafka, JMX, or File channels -- the connector cannot perform incremental snapshots when `capture-scope` is set to `collection`.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
@@ -1841,9 +1849,9 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-// Title: Advanced {prodname} MongoDB connector configuration properties
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
-.{prodname} MongoDB connector advanced configuration properties
+==== {prodname} MongoDB connector advanced configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
@@ -1897,21 +1905,33 @@ To specify the number of bytes that the queue can consume, set this property to 
 If xref:mongodb-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
-|[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
-
-|[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the initial delay when trying to reconnect to a primary after the first failed connection attempt or when no primary is available. Defaults to 1 second (1000 ms).
-
-|[[mongodb-property-connect-backoff-max-delay-ms]]<<mongodb-property-connect-backoff-max-delay-ms, `+connect.backoff.max.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
-
 |[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
+
+|[[mongodb-property-ssl-keystore]]<<mongodb-property-ssl-keystore, `+mongodb.ssl.keystore+`>>
+|No Default
+|An optional setting that specifies the location of the key store file. A key store file can be used for two-way authentication between the client and the MongoDB server.
+
+|[[mongodb-property-mongodb-ssl-keystore-password]]<<mongodb-property-mongodb-ssl-keystore-password, `+mongodb.ssl.keystore.password+`>>
+|No Default
+|The password for the key store file. Specify a password only if the xref:mongodb-property-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-keystore-type]]<<mongodb-property-mongodb-ssl-keystore-type, `+mongodb.ssl.keystore.type+`>>
+|No Default
+|The type of key store file. Specify a type only if the xref:mongodb-property-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore]]<<mongodb-property-mongodb-ssl-truststore, `+mongodb.ssl.truststore+`>>
+|No Default
+|The location of the trust store file for the server certificate verification.
+
+|[[mongodb-property-mongodb-ssl-truststore-password]]<<mongodb-property-mongodb-ssl-truststore-password, `+mongodb.ssl.truststore.password+`>>
+|No Default
+|The password for the trust store file. Used to check the integrity of the truststore, and unlock the truststore. Specify a password only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore-type]]<<mongodb-property-mongodb-ssl-truststore-type, `+mongodb.ssl.truststore.type+`>>
+|No Default
+|The type of trust store file. Specify a type only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
 
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
@@ -1938,9 +1958,16 @@ Disabled by default.
 
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates/replace, `d` for deletes, `t` for truncates, and `none` to not skip any aforementioned operations.
-By default, for consistency with other Debezium connectors, truncate operations are skipped (not emitted by this connector). However, since MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, this is effectively the same as specifying `none`.
+|A comma-separated list of the operation types that you want the connector to skip during streaming.
+You can configure the connector to skip the following types of operations:
+
+* `c` (insert/create)
+* `u` (update)
+* `d` (delete)
+* `t` (truncate)
+
+Set the value to `none` if you do not want the connector to skip any operations.
+Because MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, setting the default `t` value has the same effect as setting the value to `none`.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |No default
@@ -1969,7 +1996,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 | All collections specified in `collection.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
 The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
-This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -2137,8 +2164,11 @@ A value of `0` indicates using the server/driver default wait timeout.
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
-`_<databaseName>_._<collectionName>_` +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
+`_<databaseName>_._<collectionName>_`
 
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
@@ -2236,17 +2266,47 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[mongodb-property-guardrail-collections-max]]<<mongodb-property-guardrail-collections-max, `+guardrail.collections.max+`>>
+|`0`
+|Specifies the maximum number of collections that the connector can capture.
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
+
+|[[mongodb-property-guardrail-collections-limit-action]]<<mongodb-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
+|`warn`
+|Specifies the action to trigger if the number of collections that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails and reports an exception.
+
+`warn`::
+The connector logs a warning.
+
+|[[mongodb-property-extended-headers-enabled]]<<mongodb-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
-[id="debezium-mongodb-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+
+[id="debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties"]
+==== Pass-through properties for configuring how the MongoDB connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-mongodb-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+[id="debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties"]
+==== Pass-through properties for configuring the MongoDB connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-mongodb-connector-performance
@@ -2254,7 +2314,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-n
 [[mongodb-monitoring]]
 == Monitoring
 
-The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Kafka and Kafka Connect have.
 
 * xref:mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

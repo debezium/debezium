@@ -69,7 +69,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         this.connection = connection;
 
         this.tableId = tableId;
-        Objects.requireNonNull(this.tableId);
     }
 
     @Override
@@ -98,6 +97,11 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+    }
+
+    @Override
+    public boolean ignoreRecord() {
+        return message.isSkippedMessage();
     }
 
     @Override
@@ -176,7 +180,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {
-                Object value = column.getValue(() -> (BaseConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                Object value = column.getValue(() -> connection.connection().unwrap(BaseConnection.class), connectorConfig.includeUnknownDatatypes());
                 if (sourceOfToasted) {
                     cachedOldToastedValues.put(columnName, value);
                 }

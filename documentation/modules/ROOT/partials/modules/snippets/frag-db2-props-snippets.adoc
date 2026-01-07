@@ -1,0 +1,12 @@
+= Db2 snippets
+
+== Database history properties
+
+// Boolean value for Db2 `schema-history-cfg-store-only-captured-dbs-ddl` config property.
+// // Used in `ref-connector-configuration-database-history-properties.adoc`.
+// Long term, for each connector, we could create a catalog of these snippet values and store them in connector-specific attribute files.
+// Then include those files in the headers of each connector's main file.
+
+tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+`false`
+end::schema-hist-prop-store-only-cap-db-ddl-boolean[]

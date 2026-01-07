@@ -23,6 +23,7 @@ public final class ConfigProperties {
 
     public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
+    public static final String VERSION_KAFKA = System.getProperty("version.kafka");
     public static final boolean PRODUCT_BUILD = booleanProperty("test.product.build");
     public static final boolean PREPARE_NAMESPACES_AND_STRIMZI = booleanProperty("test.prepare.strimzi");
 
@@ -46,6 +47,7 @@ public final class ConfigProperties {
     public static final String OCP_PROJECT_DBZ = System.getProperty("test.ocp.project.debezium");
     public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", OCP_PROJECT_DBZ + "-registry");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", OCP_PROJECT_DBZ + "-mysql");
+    public static final String OCP_PROJECT_MARIADB = System.getProperty("test.ocp.project.mariadb", OCP_PROJECT_DBZ + "-mariadb");
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", OCP_PROJECT_DBZ + "-postgresql");
     public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", OCP_PROJECT_DBZ + "-sqlserver");
     public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", OCP_PROJECT_DBZ + "-mongo");
@@ -56,14 +58,15 @@ public final class ConfigProperties {
 
     // Strimzi configuration
     public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
-
+    public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "0.45.0");
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
+    public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", false);
 
     // Apicurio Registry configuration
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
     public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
-
+    public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", "1.1.3-v2.6.4.final");
     public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
 
     // MySql Configuration
@@ -73,6 +76,13 @@ public final class ConfigProperties {
     public static final String DATABASE_MYSQL_DBZ_PASSWORD = System.getProperty("test.database.mysql.dbz.password", "dbz");
     public static final Optional<String> DATABASE_MYSQL_HOST = stringOptionalProperty("test.database.mysql.host");
     public static final int DATABASE_MYSQL_PORT = Integer.parseInt(System.getProperty("test.database.mysql.port", "3306"));
+
+    public static final String DATABASE_MARIADB_USERNAME = System.getProperty("test.database.mariadb.username", "mysqluser");
+    public static final String DATABASE_MARIADB_PASSWORD = System.getProperty("test.database.mariadb.password", "mysqlpw");
+    public static final String DATABASE_MARIADB_DBZ_USERNAME = System.getProperty("test.database.mariadb.dbz.username", "debezium");
+    public static final String DATABASE_MARIADB_DBZ_PASSWORD = System.getProperty("test.database.mariadb.dbz.password", "dbz");
+    public static final Optional<String> DATABASE_MARIADB_HOST = stringOptionalProperty("test.database.mariadb.host");
+    public static final int DATABASE_MARIADB_PORT = Integer.parseInt(System.getProperty("test.database.mariadb.port", "3306"));
 
     // PostgreSql Configuration
     public static final String DATABASE_POSTGRESQL_USERNAME = System.getProperty("test.database.postgresql.username", "debezium");

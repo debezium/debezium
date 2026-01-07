@@ -10,12 +10,12 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mongodb.sink.converters.LazyBsonDocument.Type;
+import io.debezium.sink.DebeziumSinkRecord;
 
 /**
  * Converts a Kafka Connect record into one BsonDocument for the record key and one for the record value, choosing the correct SinkValueConverter based on the record type.
@@ -28,7 +28,7 @@ public class SinkRecordConverter {
     private static final SinkValueConverter JSON_STRING_VALUE_CONVERTER = new JsonStringValueConverter();
     private static final SinkValueConverter BYTE_ARRAY_VALUE_CONVERTER = new ByteArrayValueConverter();
 
-    public SinkDocument convert(final SinkRecord record) {
+    public SinkDocument convert(final DebeziumSinkRecord record) {
         LOGGER.trace("record: {}", record);
 
         BsonDocument keyDoc = null;

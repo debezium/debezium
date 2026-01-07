@@ -13,14 +13,14 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -29,14 +29,14 @@ import io.debezium.util.Testing;
  *
  * @author Gunnar Morling
  */
-public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
+public class SnapshotWithSelectOverridesIT extends AbstractAsyncEngineConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 10;
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -82,8 +82,8 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }

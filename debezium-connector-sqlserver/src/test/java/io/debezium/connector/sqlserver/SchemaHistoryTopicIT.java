@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -15,15 +16,16 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -36,12 +38,12 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SchemaHistoryTopicIT extends AbstractConnectorTest {
+public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -53,10 +55,14 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+
+        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
+        // the operations done above needed some time to be captured by the capture process.
+        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -96,7 +102,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
@@ -228,7 +234,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");

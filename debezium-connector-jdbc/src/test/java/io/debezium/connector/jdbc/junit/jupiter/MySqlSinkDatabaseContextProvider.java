@@ -18,7 +18,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mysql:8.2")
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.0")
             .asCompatibleSubstituteFor("mysql");
 
     @SuppressWarnings("resource")
@@ -28,7 +28,7 @@ public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContex
 
     private static MySQLContainer createContainer() {
         MySQLContainer container = new MySQLContainer<>(IMAGE_NAME)
-                .withNetwork(Network.newNetwork())
+                .withNetwork(Network.SHARED)
                 .withDatabaseName("test")
                 .withUsername("mysqluser")
                 .withPassword("debezium")

@@ -48,7 +48,7 @@ public class OcpArtifactServerController {
     private final OpenShiftClient ocp;
     private final OkHttpClient http;
 
-    private final Map<String, HttpUrl> artifacts;
+    private Map<String, HttpUrl> artifacts;
     private final OpenShiftUtils ocpUtils;
 
     public OcpArtifactServerController(Deployment deployment, Service service, OpenShiftClient ocp, OkHttpClient http) throws IOException {
@@ -58,7 +58,6 @@ public class OcpArtifactServerController {
         this.ocp = ocp;
         this.ocpUtils = new OpenShiftUtils(ocp);
         this.http = http;
-        this.artifacts = listArtifacts();
     }
 
     public HttpUrl getBaseUrl() {
@@ -112,12 +111,26 @@ public class OcpArtifactServerController {
         List<String> commonArtifacts = List.of(
                 "debezium-connector-" + database,
                 "debezium-scripting",
-                "connect-converter",
                 "groovy/groovy",
                 "groovy/groovy-json",
                 "groovy/groovy-jsr223");
-        List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
-
+        Stream<String> artifactsStream = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream());
+        if (!database.equalsIgnoreCase("jdbc")) {
+            List<String> apicurio = List.of(
+                    // add archive with Apicurio converters
+                    "connect-converter",
+                    // and libraries to override old libs pulled by Apicurio
+                    "jackson/jackson-databind",
+                    "jackson/jackson-dataformat-csv",
+                    "jackson/jackson-datatype-jsr310",
+                    "jackson/jackson-jaxrs-base",
+                    "jackson/jackson-jaxrs-json-provider",
+                    "jackson/jackson-module-jaxb-annotations",
+                    "jackson/jackson-module-afterburner",
+                    "jackson/jackson-module-scala_2.13");
+            artifactsStream = Stream.concat(artifactsStream, apicurio.stream());
+        }
+        List<String> artifacts = artifactsStream.collect(toList());
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 
@@ -139,7 +152,6 @@ public class OcpArtifactServerController {
                 .inContainer("debezium-artifact-server")
                 .file("/opt/plugins/artifacts.txt")
                 .read()) {
-
             String listing = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             return listing.lines().collect(toList());
         }
@@ -151,13 +163,18 @@ public class OcpArtifactServerController {
         return listing.stream().map(l -> l.split("::", 2)).collect(toMap(e -> e[0], e -> createArtifactUrl(e[1])));
     }
 
-    public void waitForServer() {
+    public void waitForServer() throws IOException {
         LOGGER.info("Waiting for Artifact Server");
+        ocp.pods()
+                .inNamespace(project)
+                .withLabel("app", "debezium-artifact-server")
+                .waitUntilReady(scaled(5), TimeUnit.MINUTES);
+
         ocp.apps()
                 .deployments()
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName())
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
-
+        this.artifacts = listArtifacts();
     }
 }

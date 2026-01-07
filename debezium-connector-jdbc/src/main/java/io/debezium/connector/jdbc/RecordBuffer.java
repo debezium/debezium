@@ -11,8 +11,11 @@ import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+
 /**
- * A buffer of {@link SinkRecordDescriptor}. It contains the logic of when is the time to flush
+ * A buffer of {@link JdbcSinkRecord}. It contains the logic of when is the time to flush
  *
  * @author Mario Fiore Vitale
  */
@@ -21,31 +24,38 @@ public class RecordBuffer implements Buffer {
     private final JdbcSinkConnectorConfig connectorConfig;
     private Schema keySchema;
     private Schema valueSchema;
-    private final ArrayList<SinkRecordDescriptor> records = new ArrayList<>();
+    private final ArrayList<JdbcSinkRecord> records = new ArrayList<>();
+    private final TableDescriptor tableDescriptor;
 
+    @VisibleForTesting
     public RecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
-
         this.connectorConfig = connectorConfig;
+        this.tableDescriptor = null;
     }
 
-    public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
+    public RecordBuffer(JdbcSinkConnectorConfig connectorConfig, TableDescriptor tableDescriptor) {
+        this.connectorConfig = connectorConfig;
+        this.tableDescriptor = tableDescriptor;
+    }
 
-        List<SinkRecordDescriptor> flushed = new ArrayList<>();
+    @Override
+    public List<JdbcSinkRecord> add(JdbcSinkRecord record) {
+        List<JdbcSinkRecord> flushed = new ArrayList<>();
         boolean isSchemaChanged = false;
 
         if (records.isEmpty()) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
         }
 
-        if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+        if (!Objects.equals(keySchema, record.keySchema()) || !Objects.equals(valueSchema, record.valueSchema())) {
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
             flushed = flush();
             isSchemaChanged = true;
         }
 
-        records.add(recordDescriptor);
+        records.add(record);
 
         if (isSchemaChanged) {
             // current record is already added in internal buffer after flush
@@ -60,15 +70,27 @@ public class RecordBuffer implements Buffer {
         return flushed;
     }
 
-    public List<SinkRecordDescriptor> flush() {
+    @Override
+    public List<JdbcSinkRecord> flush() {
 
-        List<SinkRecordDescriptor> flushed = new ArrayList<>(records);
+        List<JdbcSinkRecord> flushed = new ArrayList<>(records);
         records.clear();
 
         return flushed;
     }
 
+    @Override
     public boolean isEmpty() {
         return records.isEmpty();
+    }
+
+    @Override
+    public TableDescriptor getTableDescriptor() {
+        return tableDescriptor;
+    }
+
+    @Override
+    public void remove(JdbcSinkRecord record) {
+        throw new IllegalStateException("Can't remove record in simple buffer");
     }
 }

@@ -5,12 +5,18 @@
  */
 package io.debezium.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.SQLClientInfoException;
@@ -25,11 +31,13 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 
-public class JdbcConnectionTest {
+class JdbcConnectionTest {
 
     @Test
     public void testNormalClose() throws SQLException {
@@ -47,12 +55,40 @@ public class JdbcConnectionTest {
         conn.close();
     }
 
-    @Test(expected = SQLException.class)
-    public void testRogueConnection() throws SQLException {
-        ConnectionFactory connFactory = (config) -> new RogueConnection();
-        JdbcConnection conn = new JdbcConnection(JdbcConfiguration.empty(), connFactory, "\"", "\"");
-        conn.connect();
-        conn.close();
+    @Test
+    void testRogueConnection() {
+        assertThrows(SQLException.class, () -> {
+            ConnectionFactory connFactory = (config) -> new RogueConnection();
+            JdbcConnection conn = new JdbcConnection(JdbcConfiguration.empty(), connFactory, "\"", "\"");
+            conn.connect();
+            conn.close();
+        });
+    }
+
+    @Test
+    public void testPatternBasedFactorySpecialCharacters() throws SQLException {
+        String urlPattern = "jdbc:driver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "};" +
+                "databaseName=${" + JdbcConfiguration.DATABASE + "}";
+        ConnectionFactory connFactory = JdbcConnection.patternBasedFactory(urlPattern);
+
+        JdbcConfiguration config = JdbcConfiguration.create()
+                .withHostname("db-host$01.example.com")
+                .withDatabase("db$name-dev_01#test@mock+v1!")
+                .withPort(5432)
+                .build();
+
+        try (MockedStatic<DriverManager> driverManager = Mockito.mockStatic(DriverManager.class)) {
+            driverManager.when(() -> DriverManager.getConnection(anyString(), any(Properties.class)))
+                    .thenReturn(new NormalConnection());
+
+            JdbcConnection conn = new JdbcConnection(config, connFactory, "\"", "\"");
+            conn.connect();
+            conn.close();
+
+            driverManager.verify(() -> DriverManager.getConnection(
+                    eq("jdbc:driver://db-host$01.example.com:5432;databaseName=db$name-dev_01#test@mock+v1!"),
+                    eq(new Properties())));
+        }
     }
 
     private static class RogueConnection extends NormalConnection {

@@ -45,7 +45,7 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
                 uidContext = dottedIdContextList.get(dottedIdContextList.size() - 1).uid();
             }
 
-            String columnName = parser.parseName(uidContext);
+            String columnName = parser.removeRepeatedBacktick(parser.parseName(uidContext));
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);

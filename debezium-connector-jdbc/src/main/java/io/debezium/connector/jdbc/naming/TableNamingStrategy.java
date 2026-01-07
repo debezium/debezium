@@ -8,13 +8,17 @@ package io.debezium.connector.jdbc.naming;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.sink.DebeziumSinkRecord;
+import io.debezium.sink.naming.CollectionNamingStrategy;
 
 /**
  * A pluggable strategy contract for defining how table names are resolved from kafka records.
  *
  * @author Chris Cranford
  */
-public interface TableNamingStrategy {
+@Deprecated
+public interface TableNamingStrategy extends CollectionNamingStrategy {
+
     /**
      * Resolves the logical table name from the sink record.
      *
@@ -23,4 +27,12 @@ public interface TableNamingStrategy {
      * @return the resolved logical table name; if {@code null} the record should not be processed
      */
     String resolveTableName(JdbcSinkConnectorConfig config, SinkRecord record);
+
+    /**
+     * Ensure compatibility with the new interface, but it must never been called directly!
+     */
+    default String resolveCollectionName(DebeziumSinkRecord record, String collectionNameFormat) {
+        throw new UnsupportedOperationException("This should never been called!");
+    }
+
 }

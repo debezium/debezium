@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.relational.Table;
 
@@ -61,6 +62,12 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int VALUES_LENGTH = VALUES.length();
     private static final int SET_LENGTH = SET.length();
     private static final int WHERE_LENGTH = WHERE.length();
+
+    private final boolean useRelaxedQuotes;
+
+    public LogMinerDmlParser(OracleConnectorConfig connectorConfig) {
+        this.useRelaxedQuotes = connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection();
+    }
 
     @Override
     public LogMinerDmlEntry parse(String sql, Table table) {
@@ -280,20 +287,30 @@ public class LogMinerDmlParser implements DmlParser {
         index += VALUES_LENGTH;
 
         int columnIndex = 0;
+        int sqlLength = sql.length();
         StringBuilder collectedValue = null;
-        for (; index < sql.length(); ++index) {
+        for (; index < sqlLength; ++index) {
             char c = sql.charAt(index);
+            char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
 
             if (inQuote) {
                 if (c != '\'') {
                     collectedValue.append(c);
                 }
-                else {
-                    if (sql.charAt(index + 1) == '\'') {
-                        collectedValue.append('\'');
-                        index = index + 1;
-                        continue;
-                    }
+                else if (lookAhead == '\'') {
+                    collectedValue.append('\'');
+                    index = index + 1;
+                    continue;
+                }
+                else if (useRelaxedQuotes && (lookAhead != ',' && lookAhead != ')')) {
+                    // When using extended strings, LogMiner may provide the inserted column value without escaping
+                    // apostrophes, which will lead to parsing issues. This rule attempts to isolate that use case
+                    // and treat the lone apostrophe as part of the value if the next character is not a comma, to
+                    // signify the next value, or the end parenthesis to identify that being the last column value.
+                    // Obviously if the text has "'," or "')" as the text sequence, this rule will fail, but there
+                    // really is no other way to identify this.
+                    collectedValue.append(c);
+                    continue;
                 }
             }
 
@@ -379,6 +396,8 @@ public class LogMinerDmlParser implements DmlParser {
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
+            char lookAhead2 = (index + 2 < sql.length()) ? sql.charAt(index + 2) : 0;
+            char lookAhead3 = (index + 3 < sql.length()) ? sql.charAt(index + 3) : 0;
 
             if (inSingleQuote) {
                 if (c != '\'') {
@@ -429,6 +448,22 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote && lookAhead == '\'') {
                     index += 1;
                     continue;
+                }
+                if (useRelaxedQuotes && inSingleQuote && nested == 0) {
+                    if (lookAhead == ',' && lookAhead2 == ' ' && (lookAhead3 == '\"' || lookAhead3 == 'w')) {
+                        // reached end of value
+                    }
+                    else if (lookAhead == ' ' && lookAhead2 == 'w' && sql.substring(index + 1).startsWith(" where ")) {
+                        // reached each of set clause and moving onto where condition
+                    }
+                    else if (lookAhead == ';' && lookAhead2 == 0) {
+                        // reached end of the SQL
+                    }
+                    else {
+                        // found a solo single quote, treat it as part of value
+                        collectedValue.append(c);
+                        continue;
+                    }
                 }
                 // Set clause single-quoted column value
                 if (inSingleQuote) {

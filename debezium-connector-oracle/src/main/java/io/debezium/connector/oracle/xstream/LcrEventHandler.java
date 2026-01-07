@@ -107,6 +107,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
             offsetContext.setRowId(""); // specifically reset on each event
             offsetContext.setScn(lcrPosition.getScn());
+            offsetContext.setEventCommitScn(lcrPosition.getCommitScn());
             offsetContext.setEventScn(lcrPosition.getScn());
             offsetContext.setLcrPosition(lcrPosition.toString());
             offsetContext.setTransactionId(lcr.getTransactionId());
@@ -174,7 +175,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 tableDdl = getTableMetadataDdl(tableId);
             }
             catch (NonRelationalTableException e) {
-                LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+                LOGGER.warn("{} The event will be skipped.", e.getMessage());
                 streamingMetrics.incrementWarningCount();
                 return;
             }
@@ -311,7 +312,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig)) {
             if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }

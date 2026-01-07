@@ -61,7 +61,7 @@ public class MariaDbSnapshotChangeEventSource extends BinlogSnapshotChangeEventS
                                                                            SnapshotterService snapshotterService)
             throws Exception {
         LOGGER.info("Read binlog position of MariaDB primary server");
-        final String showMasterStmt = "SHOW MASTER STATUS";
+        final String showMasterStmt = connection.binaryLogStatusStatement();
         connection.query(showMasterStmt, rs -> {
             if (rs.next()) {
                 final String binlogFilename = rs.getString(1);

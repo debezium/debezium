@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigInteger;
-import java.time.Duration;
 import java.util.Set;
 
 import io.debezium.connector.oracle.OracleCommonStreamingChangeEventSourceMetricsMXBean;
@@ -18,88 +17,6 @@ import io.debezium.connector.oracle.OracleCommonStreamingChangeEventSourceMetric
  */
 public interface LogMinerStreamingChangeEventSourceMetricsMXBean
         extends OracleCommonStreamingChangeEventSourceMetricsMXBean {
-
-    /**
-     * @return array of currently mined log files
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getCurrentLogFileNames()}
-     */
-    @Deprecated
-    default String[] getCurrentRedoLogFileName() {
-        return getCurrentLogFileNames();
-    }
-
-    /**
-     * @return array of log files and their respective statues in Oracle
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getRedoLogStatuses()}
-     */
-    @Deprecated
-    default String[] getRedoLogStatus() {
-        return getRedoLogStatuses();
-    }
-
-    /**
-     * @return number of log switches observed in the last day
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getLogSwitchCount()}
-     */
-    @Deprecated
-    default int getSwitchCounter() {
-        return getLogSwitchCount();
-    }
-
-    /**
-     * @return number of LogMiner queries executed by the connector
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getFetchQueryCount()}
-     */
-    @Deprecated
-    default long getFetchingQueryCount() {
-        return getFetchQueryCount();
-    }
-
-    /**
-     * @return duration in hours that transactions are retained in the transaction buffer
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getMillisecondsToKeepTransactionsInBuffer()}
-     */
-    @Deprecated
-    default int getHoursToKeepTransactionInBuffer() {
-        return (int) Duration.ofMillis(getMillisecondsToKeepTransactionsInBuffer()).toHours();
-    }
-
-    /**
-     * @return total duration in milliseconds for processing all LogMiner query batches
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getTotalBatchProcessingTimeInMilliseconds()}
-     */
-    @Deprecated
-    default long getTotalProcessingTimeInMilliseconds() {
-        return getTotalBatchProcessingTimeInMilliseconds();
-    }
-
-    /**
-     * @return total number of change events
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getTotalChangesCount()}
-     */
-    @Deprecated
-    default long getRegisteredDmlCount() {
-        return getTotalChangesCount();
-    }
-
-    /**
-     * @return number of milliseconds to sleep between each LogMiner query
-     * @deprecated to be removed in Debezium 2.7, replaced by {@link #getSleepTimeInMilliseconds()}
-     */
-    @Deprecated
-    default long getMillisecondsToSleepBetweenMiningQuery() {
-        return getSleepTimeInMilliseconds();
-    }
-
-    /**
-     * @return total number of network problems
-     * @deprecated to be removed in Debezium 2.7 with no replacement
-     */
-    @Deprecated
-    default long getNetworkConnectionProblemsCounter() {
-        // This was never used except in tests
-        return 0L;
-    }
 
     /**
      * Specifies the number of milliseconds that transactions are retained in the transaction buffer
@@ -150,9 +67,14 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getOldestScnAgeInMilliseconds();
 
     /**
-     * @return array of current filenames to be used by the mining session
+     * @return array of online redo log filenames to be used by the mining session
      */
     String[] getCurrentLogFileNames();
+
+    /**
+     * @return array of all archive and redo logs that are read by the mining session
+     */
+    String[] getMinedLogFileNames();
 
     /**
      * Specifies the maximum gap between the start and end system change number range used for
@@ -171,6 +93,26 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      * @return the maximum number of logs used by a mining session
      */
     long getMaximumMinedLogCount();
+
+    /**
+     * @return the minimum SCN used for reading the current mined logs.
+     */
+    BigInteger getMiningSessionLowerBounds();
+
+    /**
+     * @return the maximum SCN used for reading the current mined logs
+     */
+    BigInteger getMiningSessionUpperBounds();
+
+    /**
+     * @return the minimum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchLowerBounds();
+
+    /**
+     * @return the maximum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchUpperBounds();
 
     /**
      * Exposes states of redo logs: current, active, inactive, unused ...
@@ -247,6 +189,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      * @return total duration in milliseconds for processing results for all LogMiner queries
      */
     long getTotalBatchProcessingTimeInMilliseconds();
+
+    /**
+     * @return total duration in milliseconds for dispatching committed transactions
+     */
+    long getTotalCommitTimeInMilliseconds();
 
     /**
      * @return average number of committed transactions per second in the transaction buffer
@@ -357,11 +304,23 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      */
     Set<String> getAbandonedTransactionIds();
 
+    /**
+     * @return the number of transactions that were abandoned from the transaction buffer
+     */
     long getAbandonedTransactionCount();
+
+    /**
+     * @return the number of events that were partially rolled back in committed transactions
+     */
+    long getNumberOfPartialRollbackCount();
 
     /**
      * @return most recent transaction identifiers that were rolled back
      */
     Set<String> getRolledBackTransactionIds();
 
+    /**
+     * @return the number of events currently buffered
+     */
+    long getNumberOfEventsInBuffer();
 }

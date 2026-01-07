@@ -5,6 +5,9 @@
  */
 package io.debezium.storage.azure.blob.history;
 
+import static io.debezium.util.Strings.isNullOrEmpty;
+import static java.lang.String.format;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
@@ -13,6 +16,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
@@ -42,12 +46,20 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
 
     public static final String ACCOUNT_CONNECTION_STRING_CONFIG = "azure.storage.account.connectionstring";
 
+    public static final String ACCOUNT_NAME_CONFIG = "azure.storage.account.name";
+
     public static final String CONTAINER_NAME_CONFIG = "azure.storage.account.container.name";
 
     public static final String BLOB_NAME_CONFIG = "azure.storage.blob.name";
 
     public static final Field ACCOUNT_CONNECTION_STRING = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + ACCOUNT_CONNECTION_STRING_CONFIG)
             .withDisplayName("storage connection string")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.HIGH);
+
+    public static final Field ACCOUNT_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + ACCOUNT_NAME_CONFIG)
+            .withDisplayName("account name")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH);
@@ -66,7 +78,9 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
             .withImportance(ConfigDef.Importance.HIGH)
             .required();
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(ACCOUNT_CONNECTION_STRING, CONTAINER_NAME, BLOB_NAME);
+    public static final Field.Set ALL_FIELDS = Field.setOf(ACCOUNT_CONNECTION_STRING, ACCOUNT_NAME, CONTAINER_NAME, BLOB_NAME);
+
+    private static final String ENDPOINT_FORMAT = "https://%s.blob.core.windows.net";
 
     private volatile BlobServiceClient blobServiceClient = null;
     private volatile BlobClient blobClient = null;
@@ -88,10 +102,19 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
     @Override
     protected void doPreStart() {
         if (blobServiceClient == null) {
-            blobServiceClient = new BlobServiceClientBuilder()
-                    .connectionString(config.getString(ACCOUNT_CONNECTION_STRING))
-                    .buildClient();
+            if (isNullOrEmpty(config.getString(ACCOUNT_CONNECTION_STRING))) {
+                blobServiceClient = new BlobServiceClientBuilder()
+                        .endpoint(format(ENDPOINT_FORMAT, config.getString(ACCOUNT_NAME)))
+                        .credential(new DefaultAzureCredentialBuilder().build())
+                        .buildClient();
+            }
+            else {
+                blobServiceClient = new BlobServiceClientBuilder()
+                        .connectionString(config.getString(ACCOUNT_CONNECTION_STRING))
+                        .buildClient();
+            }
         }
+
         if (blobClient == null) {
             blobClient = blobServiceClient.getBlobContainerClient(container)
                     .getBlobClient(blobName);

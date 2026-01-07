@@ -70,10 +70,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         boolean snapshotInProgress = false;
 
         if (offsetExists) {
-            snapshotInProgress = previousOffset.isSnapshotRunning();
+            snapshotInProgress = previousOffset.isInitialSnapshotRunning();
         }
 
-        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+        if (offsetExists && !previousOffset.isInitialSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
 
@@ -106,7 +106,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         if (snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot() && startingSlotInfo == null) {
             setSnapshotTransactionIsolationLevel(snapshotContext.onDemand);
         }
-        schema.refresh(jdbcConnection, false);
     }
 
     @Override
@@ -141,8 +140,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
             LOGGER.info("Waiting a maximum of '{}' seconds for each table lock", lockTimeout.getSeconds());
             jdbcConnection.executeWithoutCommitting(statements.toString());
-            // now that we have the locks, refresh the schema
-            schema.refresh(jdbcConnection, false);
         }
     }
 
@@ -285,9 +282,18 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
         }
 
-        // TODO should this customizable?
-
-        // we're using the same isolation level that pg_backup uses
+        final PostgresConnectorConfig.SnapshotIsolationMode isolationMode = connectorConfig.getSnapshotIsolationMode();
+        if (isolationMode == PostgresConnectorConfig.SnapshotIsolationMode.REPEATABLE_READ) {
+            return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY;";
+        }
+        if (isolationMode == PostgresConnectorConfig.SnapshotIsolationMode.READ_COMMITTED) {
+            return "SET TRANSACTION ISOLATION LEVEL READ COMMITTED, READ ONLY;";
+        }
+        if (isolationMode == PostgresConnectorConfig.SnapshotIsolationMode.READ_UNCOMMITTED) {
+            return "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED, READ ONLY;";
+        }
+        // DEFERRABLE only takes affect for READY ONLY and SERIALIZABLE
+        // https://www.postgresql.org/docs/current/sql-set-transaction.html
         return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
     }
 

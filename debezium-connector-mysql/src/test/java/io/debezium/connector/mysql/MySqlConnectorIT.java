@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -25,7 +25,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPartition, MySqlOffsetContext> implements MySqlCommon {
 
     @Test
-    public void shouldNotStartWithUnknownJdbcDriver() {
+    void shouldNotStartWithUnknownJdbcDriver() {
         final Configuration config = getDatabase().defaultConfig()
                 .with(MySqlConnectorConfig.JDBC_DRIVER, "foo.bar")
                 .build();
@@ -43,7 +43,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
     }
 
     @Test
-    public void shouldNotStartWithWrongProtocol() {
+    void shouldNotStartWithWrongProtocol() {
         final Configuration config = getDatabase().defaultConfig()
                 .with(MySqlConnectorConfig.JDBC_PROTOCOL, "foo:bar")
                 .build();
@@ -69,12 +69,14 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
     protected void assertInvalidConfiguration(Config result) {
         super.assertInvalidConfiguration(result);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
     }
 
     @Override
     protected void assertValidConfiguration(Config result) {
         super.assertValidConfiguration(result);
         validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
+        validateConfigField(result, MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.MySqlSecureConnectionMode.PREFERRED);
     }
 
     @Override

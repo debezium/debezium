@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation used to group tests that require the assembly profile, using the {@code isAssemblyProfileActive} system property.
  *
@@ -17,6 +19,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(RequiresAssemblyProfileExtension.class)
 public @interface RequiresAssemblyProfile {
 
     String REQUIRES_ASSEMBLY_PROFILE_PROPERTY = "isAssemblyProfileActive";

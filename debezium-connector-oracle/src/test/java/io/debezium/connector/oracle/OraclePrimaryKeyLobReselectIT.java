@@ -14,20 +14,17 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration tests when LOB is enabled and the primary key changes, to re-select LOB columns
@@ -35,14 +32,11 @@ import io.debezium.embedded.AbstractConnectorTest;
  *
  * @author Chris Cranford
  */
-public class OraclePrimaryKeyLobReselectIT extends AbstractConnectorTest {
-
-    @Rule
-    public TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+public class OraclePrimaryKeyLobReselectIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -50,8 +44,8 @@ public class OraclePrimaryKeyLobReselectIT extends AbstractConnectorTest {
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         super.stopConnector();
 
         if (connection != null) {

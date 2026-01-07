@@ -18,9 +18,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -29,7 +29,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -39,12 +39,12 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
+public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -59,15 +59,15 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         // Testing.Debug.enable();
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void addTable() throws Exception {
+    void addTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -132,7 +132,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void removeTable() throws Exception {
+    void removeTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -173,7 +173,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addColumnToTableEndOfBatchWithoutLsnLimit() throws Exception {
+    void addColumnToTableEndOfBatchWithoutLsnLimit() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -191,7 +191,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addColumnToTableMiddleOfBatchWithoutLsnLimit() throws Exception {
+    void addColumnToTableMiddleOfBatchWithoutLsnLimit() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -319,7 +319,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void removeColumnFromTable() throws Exception {
+    void removeColumnFromTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -441,7 +441,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addColumnToTableWithParallelWrites() throws Exception {
+    void addColumnToTableWithParallelWrites() throws Exception {
         final int RECORDS_PER_TABLE = 20;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -540,7 +540,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void readHistoryAfterRestart() throws Exception {
+    void readHistoryAfterRestart() throws Exception {
         final int RECORDS_PER_TABLE = 1;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -633,7 +633,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void renameColumn() throws Exception {
+    void renameColumn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -720,7 +720,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void changeColumn() throws Exception {
+    void changeColumn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;

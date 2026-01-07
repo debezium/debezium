@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.binlog;
 
+import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+
 import org.apache.kafka.connect.source.SourceConnector;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -24,4 +27,18 @@ public interface BinlogConnectorTest<C extends SourceConnector> {
     BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName);
 
     boolean isMariaDb();
+
+    default void executeStatements(String databaseName, String... statements) {
+        throw new UnsupportedOperationException("not support operation for the datasource");
+    }
+
+    default ExecutorService executeScheduledStatement(int times,
+                                                      long period,
+                                                      int delay,
+                                                      String databaseName,
+                                                      String statement)
+            throws SQLException {
+        throw new UnsupportedOperationException("not support operation for the datasource");
+    }
+
 }

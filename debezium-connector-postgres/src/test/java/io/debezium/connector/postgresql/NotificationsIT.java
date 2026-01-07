@@ -8,23 +8,23 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.pipeline.notification.AbstractNotificationsIT;
 
 public class NotificationsIT extends AbstractNotificationsIT<PostgresConnector> {
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();

@@ -15,8 +15,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+
 /**
- * A reduced implementation buffer of {@link SinkRecordDescriptor}.
+ * A reduced implementation buffer of {@link JdbcSinkRecord}.
  * It reduces events in buffer before submit to external database.
  *
  * @author Gaurav Miglani
@@ -27,32 +30,40 @@ public class ReducedRecordBuffer implements Buffer {
     private Schema keySchema;
     private Schema valueSchema;
 
-    private final Map<Struct, SinkRecordDescriptor> records = new HashMap<>();
+    private final Map<Object, JdbcSinkRecord> records = new HashMap<>();
+    private final TableDescriptor tableDescriptor;
 
+    @VisibleForTesting
     public ReducedRecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
+        this.tableDescriptor = null;
+    }
+
+    public ReducedRecordBuffer(JdbcSinkConnectorConfig connectorConfig, TableDescriptor tableDescriptor) {
+        this.connectorConfig = connectorConfig;
+        this.tableDescriptor = tableDescriptor;
     }
 
     @Override
-    public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
-        List<SinkRecordDescriptor> flushed = new ArrayList<>();
+    public List<JdbcSinkRecord> add(JdbcSinkRecord record) {
+        List<JdbcSinkRecord> flushed = new ArrayList<>();
         boolean isSchemaChanged = false;
 
         if (records.isEmpty()) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
         }
 
-        if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+        if (!Objects.equals(keySchema, record.keySchema()) || !Objects.equals(valueSchema, record.valueSchema())) {
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
             flushed = flush();
             isSchemaChanged = true;
         }
 
-        Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode());
+        Struct keyStruct = record.filteredKey();
         if (keyStruct != null) {
-            records.put(keyStruct, recordDescriptor);
+            records.put(keyStruct, record);
         }
         else {
             throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
@@ -72,8 +83,8 @@ public class ReducedRecordBuffer implements Buffer {
     }
 
     @Override
-    public List<SinkRecordDescriptor> flush() {
-        List<SinkRecordDescriptor> flushed = new ArrayList<>(records.values());
+    public List<JdbcSinkRecord> flush() {
+        List<JdbcSinkRecord> flushed = new ArrayList<>(records.values());
         records.clear();
         return flushed;
     }
@@ -81,5 +92,25 @@ public class ReducedRecordBuffer implements Buffer {
     @Override
     public boolean isEmpty() {
         return records.isEmpty();
+    }
+
+    @Override
+    public TableDescriptor getTableDescriptor() {
+        return tableDescriptor;
+    }
+
+    @Override
+    public void remove(JdbcSinkRecord record) {
+        if (records.isEmpty()) {
+            return;
+        }
+
+        Struct keyStruct = record.filteredKey();
+        if (keyStruct != null) {
+            records.remove(keyStruct);
+        }
+        else {
+            throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
+        }
     }
 }

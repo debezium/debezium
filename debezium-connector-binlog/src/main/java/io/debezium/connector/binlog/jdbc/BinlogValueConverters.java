@@ -49,6 +49,7 @@ import io.debezium.connector.binlog.BinlogUnsignedIntegerConverter;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.vector.FloatVector;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -183,6 +184,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 && column.scale().isEmpty() && column.length() <= 24) {
             return SchemaBuilder.float32();
         }
+        if (matches(typeName, "VECTOR")) {
+            return FloatVector.builder();
+        }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
     }
@@ -251,6 +255,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                     return (data) -> convertUnsignedBigint(column, fieldDefn, data);
             }
         }
+        if (matches(typeName, "VECTOR")) {
+            return (data) -> convertVector(column, fieldDefn, data);
+        }
 
         // We have to convert bytes encoded in the column's character set ...
         switch (column.jdbcType()) {
@@ -272,7 +279,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
-                if (adaptiveTimeMicrosecondsPrecisionMode) {
+                if (temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS) {
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
             case Types.TIMESTAMP:
@@ -834,6 +841,26 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return data;
         }
         return ((Timestamp) data).toLocalDateTime();
+    }
+
+    /**
+     * Convert a value representing a Vector {@code float[]} value to a FloatVector value used in a {@link SourceRecord}.
+     *
+     * @param column the column in which the value appears
+     * @param fieldDefn the field definition for the {@link SourceRecord}'s {@link Schema}; never null
+     * @param rawData the data; may be null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertVector(Column column, Field fieldDefn, Object rawData) {
+        return convertValue(column, fieldDefn, rawData, new float[0], (r) -> {
+            if (rawData instanceof float[] data) {
+                r.deliver(FloatVector.fromLogical(fieldDefn.schema(), data));
+            }
+            else if (rawData instanceof byte[] data) {
+                r.deliver(FloatVector.fromLogical(fieldDefn, data));
+            }
+        });
     }
 
     protected abstract List<String> extractEnumAndSetOptions(Column column);

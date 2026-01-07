@@ -45,14 +45,17 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
-import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
+import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.IoUtil;
@@ -80,7 +83,7 @@ public class EndToEndPerf {
     @State(Scope.Thread)
     public static class EndToEndState {
 
-        private EmbeddedEngine engine;
+        private DebeziumEngine<SourceRecord> engine;
         private ExecutorService executors;
         private BlockingQueue<SourceRecord> consumedLines;
 
@@ -126,14 +129,15 @@ public class EndToEndPerf {
                     .build();
 
             Consumer<SourceRecord> recordArrivedListener = this::processRecord;
-            this.engine = (EmbeddedEngine) new EmbeddedEngine.EngineBuilder()
+            this.engine = new ConvertingAsyncEngineBuilderFactory()
+                    .builder((KeyValueHeaderChangeEventFormat) null)
                     .using(config.asProperties())
                     .notifying((record) -> {
-                        if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                        if (Thread.currentThread().isInterrupted()) {
                             return;
                         }
                         while (!consumedLines.offer((SourceRecord) record)) {
-                            if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                            if (Thread.currentThread().isInterrupted()) {
                                 return;
                             }
                         }
@@ -163,31 +167,15 @@ public class EndToEndPerf {
         }
 
         @TearDown(Level.Iteration)
-        public void doCleanup() {
+        public void doCleanup() throws IOException {
             try {
-                if (engine != null && engine.isRunning()) {
-                    engine.stop();
-                    try {
-                        engine.await(60, TimeUnit.SECONDS);
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                if (engine != null) {
+                    engine.close();
                 }
                 if (executors != null) {
                     executors.shutdownNow();
                     try {
                         while (!executors.awaitTermination(60, TimeUnit.SECONDS)) {
-                            // wait
-                        }
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-                if (engine != null && engine.isRunning()) {
-                    try {
-                        while (!engine.await(60, TimeUnit.SECONDS)) {
                             // wait
                         }
                     }
@@ -235,7 +223,7 @@ public class EndToEndPerf {
             JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
 
             Configuration.Builder builder = Configuration.create();
-            jdbcConfiguration.forEach((f, v) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
+            jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
 
             return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                     .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
@@ -248,7 +236,7 @@ public class EndToEndPerf {
         private Configuration.Builder testConfig() {
             JdbcConfiguration jdbcConfiguration = testJdbcConfig();
             Configuration.Builder builder = Configuration.create();
-            jdbcConfiguration.forEach((f, v) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
+            jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
             return builder;
         }
 

@@ -7,8 +7,8 @@ package io.debezium.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.util.Testing;
 
@@ -22,7 +22,7 @@ public class JacksonArrayReadingAndWritingTest implements Testing {
     private JacksonWriter writer = JacksonWriter.INSTANCE;
     private JacksonReader reader = JacksonReader.DEFAULT_INSTANCE;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         array = Array.create();
         after = null;

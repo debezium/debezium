@@ -15,9 +15,8 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
-import org.assertj.db.type.DataSourceWithLetterCase;
+import org.assertj.db.type.AssertDbConnection;
 import org.assertj.db.type.ValueType;
 import org.assertj.db.type.lettercase.CaseComparisons;
 import org.assertj.db.type.lettercase.CaseConversions;
@@ -30,9 +29,9 @@ import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -41,7 +40,10 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.SchemaAndValueField;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Insert Mode tests for PostgreSQL.
@@ -99,12 +101,12 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", Base64.getDecoder().decode("AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes()))
                 .put("srid", 4326);
 
-        final SinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+        final KafkaDebeziumSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("geometry", "point", "geography", "p"), List.of(geometrySchema, pointSchema, geographySchema, pointSchema),
                 Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }));
         consume(createGeometryRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createGeometryRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(5);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -130,6 +132,63 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         getSink().assertColumnHasNullValue(tableAssert, "p");
     }
 
+    @WithPostgresExtension("postgis")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-8221")
+    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory) throws SQLException {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord recordA = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
+                List.of(
+                        new SchemaAndValueField("gis_area",
+                                Geometry.schema(),
+                                Geometry.createValue(
+                                        Geometry.schema(),
+                                        Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
+                                        3857)),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                0);
+
+        final KafkaDebeziumSinkRecord recordB = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(new SchemaAndValueField("gis_area", Geometry.schema(), null),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                1);
+
+        final KafkaDebeziumSinkRecord recordC = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(
+                        new SchemaAndValueField("gis_area",
+                                Geometry.schema(),
+                                Geometry.createValue(
+                                        Geometry.schema(),
+                                        Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
+                                        3857)),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                0);
+
+        final List<KafkaDebeziumSinkRecord> records = List.of(recordA, recordB, recordC);
+        consume(records);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(recordA));
+        tableAssert.hasNumberOfRows(2).hasNumberOfColumns(3);
+    }
+
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6682")
@@ -148,13 +207,13 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
-        final SinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        final KafkaDebeziumSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
+        final KafkaDebeziumSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
-        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
-        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
+        AssertDbConnection assertDbConnection = assertDbConnection(LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection, destinationTableName(createSimpleRecord1));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "ID", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -179,14 +238,13 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
-        final SinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        final KafkaDebeziumSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
+        final KafkaDebeziumSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
-        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
-
-        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1), null, null);
+        AssertDbConnection assertDbConnection = assertDbConnection(LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection, destinationTableName(createSimpleRecord1), null, null);
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -217,13 +275,13 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         Schema rangeSchema = SchemaBuilder.string().build();
 
-        final SinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+        final KafkaDebeziumSinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("timestamp_infinity-", "timestamp_infinity+", "range_with_infinity"),
                 List.of(zonedTimestampSchema, zonedTimestampSchema, rangeSchema),
                 Arrays.asList(new Object[]{ "-infinity", "infinity", "[2010-01-01 14:30, infinity)" }));
         consume(createInfinityRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createInfinityRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createInfinityRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);

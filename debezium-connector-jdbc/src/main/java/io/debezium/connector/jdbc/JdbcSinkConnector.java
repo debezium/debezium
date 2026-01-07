@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +48,9 @@ public class JdbcSinkConnector extends SinkConnector {
     public List<Map<String, String>> taskConfigs(int maxTasks) {
         final List<Map<String, String>> configs = new ArrayList<>(maxTasks);
         for (int i = 0; i < maxTasks; ++i) {
-            configs.add(properties);
+            Map<String, String> taskProperties = new HashMap<>(properties);
+            taskProperties.put(TASK_ID_PROPERTY_NAME, String.valueOf(i));
+            configs.add(Collections.unmodifiableMap(taskProperties));
         }
         return configs;
     }

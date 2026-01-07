@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -17,16 +18,16 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
@@ -38,14 +39,14 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleDefaultValueIT extends AbstractConnectorTest {
+public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
     private Consumer<Configuration.Builder> configUpdater;
     private Configuration config;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         configUpdater = builder -> {
         };
         connection = TestHelper.testConnection();
@@ -58,8 +59,8 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         connection.execute("CREATE SEQUENCE debezium_seq MINVALUE 1 MAXVALUE 999999999 INCREMENT BY 1 START WITH 1");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "default_value_test");
             TestHelper.dropSequence(connection, "debezium_seq");
@@ -70,11 +71,6 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleNumericDefaultTypes() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_int", "int",
                         "1", "2",
@@ -143,6 +139,14 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
                 new ColumnDefinition("val_number_1", "number(1)",
                         "1", "2",
                         (byte) 1, (byte) 2,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_numeric_wrapped", "number(10,0)",
+                        "(0)", "(1)",
+                        0L, 1L,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_numeric_multiwrapped", "number(10,0)",
+                        "(((0)))", "(((1)))",
+                        0L, 1L,
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
@@ -151,11 +155,6 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_bf", "binary_float",
                         "3.14", "6.28",
@@ -421,6 +420,100 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz4388");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8248")
+    public void shouldTreatEmptyClobFunctionAsEmptyStrings() throws Exception {
+        TestHelper.dropTable(connection, "dbz8248");
+        try {
+            connection.execute("CREATE TABLE dbz8248 (id numeric(9,0) primary key, data1 clob default empty_clob() not null, data2 nclob default empty_clob())");
+            TestHelper.streamTable(connection, "dbz8248");
+
+            connection.execute("INSERT INTO dbz8248 (id) values (1)");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8248")
+                    .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz8248 (id) values (2)");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8248");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord record = tableRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA1")).isEqualTo("");
+            assertThat(after.get("DATA2")).isEqualTo("");
+
+            record = tableRecords.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA1")).isEqualTo("");
+            assertThat(after.get("DATA2")).isEqualTo("");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8248");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8248")
+    public void shouldTreatEmptyClobFunctionAsEmptyByteArray() throws Exception {
+        TestHelper.dropTable(connection, "dbz8248");
+        try {
+            connection.execute("CREATE TABLE dbz8248 (id numeric(9,0) primary key, data1 blob default empty_blob() not null)");
+            TestHelper.streamTable(connection, "dbz8248");
+
+            connection.execute("INSERT INTO dbz8248 (id) values (1)");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8248")
+                    .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz8248 (id) values (2)");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8248");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord record = tableRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA1")).isEqualTo(ByteBuffer.wrap(new byte[0]));
+
+            record = tableRecords.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA1")).isEqualTo(ByteBuffer.wrap(new byte[0]));
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8248");
         }
     }
 

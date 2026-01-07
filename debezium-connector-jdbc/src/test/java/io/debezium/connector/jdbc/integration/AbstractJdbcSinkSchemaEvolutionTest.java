@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -13,12 +13,12 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -44,7 +44,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final Map<String, String> config = super.getDefaultSinkConfig();
         final String databaseSchemaName = getDatabaseSchemaName();
         if (!Strings.isNullOrBlank(databaseSchemaName)) {
-            config.put(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT, databaseSchemaName + ".${topic}");
+            config.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, databaseSchemaName + ".${topic}");
         }
         return config;
     }
@@ -115,10 +115,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -137,10 +137,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord updateRecord = factory.updateRecord(topicName);
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecord(topicName);
         consume(updateRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(updateRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(updateRecord));
         tableAssert.hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -160,10 +160,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
+        final KafkaDebeziumSinkRecord deleteRecord = factory.deleteRecord(topicName);
         consume(deleteRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(deleteRecord));
         tableAssert.hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -182,10 +182,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
-        final SinkRecord updateRecord = factory.updateBuilder()
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateBuilder()
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -206,7 +206,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .build();
         consume(updateRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(2).hasNumberOfColumns(5);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -227,10 +227,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
-        final SinkRecord updateRecord = factory.updateBuilder()
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateBuilder()
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -243,7 +243,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .build();
         consume(updateRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -264,7 +264,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String topicName = topicName("server1", "schema", tableName);
 
         // Create record, optionals provided.
-        final SinkRecord createRecord = factory.createBuilder()
+        final KafkaDebeziumSinkRecord createRecord = factory.createBuilder()
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -294,7 +294,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .build();
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(1).hasNumberOfColumns(19);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -337,7 +337,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String topicName = topicName("server1", "schema", tableName);
 
         // Create record, optionals provided.
-        final SinkRecord createRecord = factory.createBuilder()
+        final KafkaDebeziumSinkRecord createRecord = factory.createBuilder()
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -358,7 +358,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .build();
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(1).hasNumberOfColumns(19);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -423,7 +423,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String topicName = topicName("server1", "schema", tableName);
 
         // Create record, optionals provided.
-        final SinkRecord createRecord = factory.createBuilder()
+        final KafkaDebeziumSinkRecord createRecord = factory.createBuilder()
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -444,7 +444,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .build();
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.hasNumberOfRows(1).hasNumberOfColumns(19);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);

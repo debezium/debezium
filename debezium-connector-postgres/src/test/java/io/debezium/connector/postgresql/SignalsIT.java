@@ -22,17 +22,17 @@ import javax.management.ReflectionException;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.spi.CustomActionProvider;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.SignalRecord;
 import io.debezium.pipeline.signal.actions.Log;
 
 public class SignalsIT extends AbstractAsyncEngineConnectorTest {
@@ -45,31 +45,31 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
             "CREATE TABLE s1.debezium_signal (id varchar(32), type varchar(32), data varchar(2048));" +
             INSERT_STMT;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
     }
 
     @Test
-    public void signalLog() throws InterruptedException {
+    void signalLog() throws InterruptedException {
         signalLog(false);
     }
 
     @Test
-    public void signalLogViaInProcessChannel() throws InterruptedException {
+    void signalLogViaInProcessChannel() throws InterruptedException {
         signalLog(false, false);
     }
 
     @Test
-    public void signalLogWithEscapedCharacter() throws InterruptedException {
+    void signalLogWithEscapedCharacter() throws InterruptedException {
         signalLog(true);
     }
 
@@ -114,7 +114,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         }
         else {
             expectedNumRecords = 1;
-            signaler.signal(new SignalRecord("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
+            getSignaler().signal(new DebeziumEngine.Signal("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
         }
 
         waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
@@ -125,7 +125,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void signalingDisabled() throws InterruptedException {
+    void signalingDisabled() throws InterruptedException {
         // Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
@@ -160,7 +160,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void signalSchemaChange() throws InterruptedException {
+    void signalSchemaChange() throws InterruptedException {
         // Testing.Print.enable();
 
         TestHelper.dropDefaultReplicationSlot();
@@ -238,7 +238,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void jmxSignals() throws Exception {
+    void jmxSignals() throws Exception {
         // Testing.Print.enable();
 
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
@@ -264,7 +264,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void customAction() throws Exception {
+    void customAction() throws Exception {
         // Testing.Print.enable();
 
         final LogInterceptor logInterceptor = new LogInterceptor(CustomActionProvider.CustomAction.class);

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.binlog.util;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import java.net.URI;
@@ -46,8 +46,6 @@ import io.debezium.storage.file.history.FileSchemaHistory;
  * @author Chris Cranford
  */
 public abstract class UniqueDatabase {
-
-    public static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
 
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[]{
@@ -160,7 +158,7 @@ public abstract class UniqueDatabase {
     public void createAndInitialize(Map<String, Object> urlProperties) {
         final String ddlFile = String.format("ddl/%s.sql", templateName);
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
-        assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
+        assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
         try {
             try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
                 final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(
@@ -239,25 +237,12 @@ public abstract class UniqueDatabase {
 
         builder = applyConnectorDefaultJdbcConfiguration(builder);
 
-        String sslMode = System.getProperty("database.ssl.mode", "preferred");
-
-        if (sslMode.equals("disabled")) {
-            builder.with(BinlogConnectorConfig.SSL_MODE, BinlogConnectorConfig.SecureConnectionMode.DISABLED);
-        }
-        else {
-            URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");
-            URL keyStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/keystore");
-
-            builder.with(BinlogConnectorConfig.SSL_MODE, sslMode)
-                    .with(BinlogConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore", trustStoreFile.getPath()))
-                    .with(BinlogConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password", "debezium"))
-                    .with(BinlogConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore", keyStoreFile.getPath()))
-                    .with(BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password", "debezium"));
-        }
-
         if (dbHistoryPath != null) {
             builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }
+
+        // enable database DDL capture
+        builder.with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true);
 
         return builder;
     }
@@ -293,9 +278,7 @@ public abstract class UniqueDatabase {
     /**
      * @return timezone in which the database is located
      */
-    public ZoneId timezone() {
-        return TIMEZONE;
-    }
+    public abstract ZoneId getTimezone();
 
     protected Configuration.Builder applyConnectorDefaultJdbcConfiguration(Configuration.Builder builder) {
         return builder;

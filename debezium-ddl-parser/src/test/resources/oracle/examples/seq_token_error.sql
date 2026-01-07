@@ -1,0 +1,1 @@
+select seq from employees;

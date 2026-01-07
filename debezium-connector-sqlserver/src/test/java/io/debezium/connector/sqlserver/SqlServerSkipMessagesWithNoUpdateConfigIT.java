@@ -12,15 +12,15 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration Tests for config skip.messages.without.change
@@ -28,7 +28,7 @@ import io.debezium.embedded.AbstractConnectorTest;
  * @author Ronak Jain
  *
  */
-public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnectorTest {
+public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     private final Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -36,8 +36,8 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
             .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.skip_messages_test")
             .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, "dbo.skip_messages_test.id, dbo.skip_messages_test.white");
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -48,15 +48,15 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
+    void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
         Configuration config = configBuilder
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
                 .build();

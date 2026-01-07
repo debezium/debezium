@@ -180,6 +180,65 @@ CREATE TABLE `test_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = IN
 CREATE TABLE `\\test_table`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 CREATE TABLE `\\test\\_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 
+-- Using string literal `PAGE_COMPRESSED` as `ON`
+CREATE TABLE `product_labels_relation` (
+  `id_label` int(11) NOT NULL,
+  `id_product` int(11) NOT NULL,
+  `generated` tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_label`,`id_product`),
+  KEY `id_product` (`id_product`),
+  CONSTRAINT `product_labels_relation_ibfk_1` FOREIGN KEY (`id_label`) REFERENCES `labels` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `product_labels_relation_ibfk_2` FOREIGN KEY (`id_product`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= `ON`;
+
+-- Using boolean literal `PAGE_COMPRESSED`as ON
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= ON;
+
+-- Using boolean literal `PAGE_COMPRESSED` as OFF
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= OFF;
+
+-- Using `PAGE_COMPRESSED` as 1
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= 1;
+
+-- Using `PAGE_COMPRESSED` as 0
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= 0;
+
+-- Create Table with vector column
+CREATE TABLE VECTOR_TABLE (id INT AUTO_INCREMENT PRIMARY KEY, embedding1 VECTOR(3) DEFAULT NULL, embedding VECTOR(3));
+
+-- Create table with ROW START/END
+CREATE TABLE `rebate_account` (
+  `id` char(36) NOT NULL,
+  `ts` timestamp(6) GENERATED ALWAYS AS ROW START,
+  `te` timestamp(6) GENERATED ALWAYS AS ROW END,
+  `assigned_account_id` char(36) DEFAULT NULL,
+  `assigned_user_id` char(36) DEFAULT NULL,
+  PRIMARY KEY (`id`,`te`),
+  UNIQUE KEY `rebate_account_unique` (`account_id`,`te`),
+  KEY `idx` (`id`),
+  PERIOD FOR SYSTEM_TIME(`ts`, `te`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci WITH SYSTEM VERSIONING
+
 #end
 #begin
 -- Rename table
@@ -189,6 +248,7 @@ RENAME TABLE table_b TO table_a;
 RENAME TABLE current_db.tbl_name TO other_db.tbl_name;
 rename table debezium_all_types_old to debezium_all_types, test_json_object_old wait 10 to test_json_object;
 RENAME TABLE IF EXISTS EMPLOYEE TO employee;
+RENAME TABLES IF EXISTS TABLE11 to TABLE12, TABLE21 to TABLE22;
 #end
 #begin
 -- Truncate table

@@ -42,8 +42,8 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpan.class);
 
-    private static final String DEFAULT_TRACING_SPAN_CONTEXT_FIELD = "tracingspancontext";
-    private static final String DEFAULT_TRACING_OPERATION_NAME = "debezium-read";
+    public static final String DEFAULT_TRACING_SPAN_CONTEXT_FIELD = "tracingspancontext";
+    public static final String DEFAULT_TRACING_OPERATION_NAME = "debezium-read";
 
     private static final boolean OPEN_TELEMETRY_AVAILABLE = resolveOpenTelemetryApiAvailable();
 
@@ -116,20 +116,16 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             propagatedSpanContext = after.getString(spanContextField);
         }
 
-        if (propagatedSpanContext == null) {
-            if (requireContextField) {
-                return connectRecord;
-            }
+        if (propagatedSpanContext == null && requireContextField) {
+            return connectRecord;
         }
-        else {
-            try {
-                return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
-            }
-            catch (NoClassDefFoundError e) {
-                throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
-            }
+
+        try {
+            return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
         }
-        return connectRecord;
+        catch (NoClassDefFoundError e) {
+            throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
+        }
     }
 
     @Override

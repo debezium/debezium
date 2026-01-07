@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Randall Hauch
@@ -16,7 +16,7 @@ import org.junit.Test;
 public class ModuleTest {
 
     @Test
-    public void shouldReturnVersion() {
+    void shouldReturnVersion() {
         assertThat(Module.version()).isNotNull();
         assertThat(Module.version()).isNotEmpty();
     }

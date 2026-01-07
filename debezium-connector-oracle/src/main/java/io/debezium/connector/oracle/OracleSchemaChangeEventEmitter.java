@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.logminer.LogMinerAdapter;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Table;
@@ -96,12 +96,11 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         final Table tableBefore = schema.tableFor(tableId);
 
         final OracleDdlParser parser = schema.getDdlParser();
-        final DdlChanges ddlChanges = parser.getDdlChanges();
+        DdlChanges ddlChanges = new DdlChanges();
         try {
-            ddlChanges.reset();
             parser.setCurrentDatabase(sourceDatabaseName);
             parser.setCurrentSchema(objectOwner);
-            parser.parse(ddlText, schema.getTables());
+            ddlChanges = parser.parse(ddlText, schema.getTables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (schema.skipUnparseableDdlStatements()) {
@@ -218,15 +217,15 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     }
 
     void applyTableObjectAttributes(TableId tableId) {
-        if (connectorConfig.getAdapter() instanceof LogMinerAdapter) {
+        if (connectorConfig.getAdapter() instanceof AbstractLogMinerStreamingAdapter) {
             if (OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy())) {
                 // todo: centralize this with other attribute set locations
                 final Table table = schema.tableFor(tableId);
                 if (table != null) {
                     // If the table has not yet been registered, there is nothing to apply
                     final TableEditor editor = table.edit();
-                    editor.addAttribute(Attribute.editor().name("OBJECT_ID").value(objectId).create());
-                    editor.addAttribute(Attribute.editor().name("DATA_OBJECT_ID").value(dataObjectId).create());
+                    editor.addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(objectId).create());
+                    editor.addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(dataObjectId).create());
                     schema.getTables().overwriteTable(editor.create());
                 }
                 else {

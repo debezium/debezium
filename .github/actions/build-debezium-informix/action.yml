@@ -8,6 +8,13 @@ inputs:
   path-informix:
     description: "Debezium Informix repository checkout path"
     required: true
+  cache-hit:
+    required: false
+    default: 'false'
+  profile:
+    description: "The Informix build profile to use"
+    required: false
+    default: "assembly"
   shell:
     description: "The shell to use"
     required: false
@@ -17,10 +24,11 @@ runs:
   using: "composite"
   steps:
     - name: Build Debezium (Core)
+      if: inputs.cache-hit != 'true'
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
         -am
         -DskipTests=true
         -DskipITs=true
@@ -31,16 +39,16 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    - name: Build Informix
+    - name: Build Informix connector (Informix - ${{ inputs.profile }})
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-informix }}/pom.xml 
-        -Passembly,informix14        
-        -Dcheckstyle.skip=true
-        -Dformat.skip=true
+        -P${{ inputs.profile }}
+        -Dcheckstyle.skip=false
+        -Dformat.skip=false
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -Ddebezium.test.records.waittime=5
-        -Ddebezium.test.records.waittime.after.nulls=5        
+        -Ddebezium.test.records.waittime=10
+        -Ddebezium.test.records.waittime.after.nulls=10
         -DfailFlakyTests=false

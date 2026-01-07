@@ -14,16 +14,16 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.converters.NumberOneToBooleanConverter;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,12 +31,12 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleNumberOneIT extends AbstractConnectorTest {
+public class OracleNumberOneIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.number_one_test");
@@ -49,8 +49,8 @@ public class OracleNumberOneIT extends AbstractConnectorTest {
         TestHelper.streamTable(connection, "debezium.number_one_test");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "debezium.number_one_test");
             connection.close();

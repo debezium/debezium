@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -91,15 +92,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Consumer group id for the signal topic")
             .withDefault("kafka-signal");
-    public static final Field SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.consumer.offset.commit.enabled")
-            .withDisplayName("Enable offset commit for the signal topic")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(false)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("Enable the offset commit for the signal topic in order to guarantee At-Least-Once delivery." +
-                    "If disabled, only signals received when the consumer is up&running are processed. Any signals received when the consumer is down are lost.")
-            .withValidation(Field::isRequired);
+
+    private static final Field.Set ALL_FIELDS = Field.setOf(
+            SIGNAL_TOPIC,
+            BOOTSTRAP_SERVERS,
+            SIGNAL_POLL_TIMEOUT_MS,
+            GROUP_ID);
 
     private Optional<SignalRecord> processSignal(ConsumerRecord<String, String> record) {
 
@@ -150,24 +148,22 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public void init(CommonConnectorConfig connectorConfig) {
-
         this.connectorName = connectorConfig.getLogicalName();
         Configuration signalConfig = connectorConfig.getConfig().subset(CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
                 .withDefault(KafkaSignalChannel.SIGNAL_TOPIC, connectorName + "-signal")
                 .build();
+
+        if (!signalConfig.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
+            throw new DebeziumException("Signal channel " + CHANNEL_NAME + " configuration is invalid. See logs for details.");
+        }
+
         this.topicName = signalConfig.getString(SIGNAL_TOPIC);
         this.pollTimeoutMs = Duration.ofMillis(signalConfig.getInteger(SIGNAL_POLL_TIMEOUT_MS));
         Configuration consumerConfig = buildKafkaConfiguration(signalConfig);
         this.signalsConsumer = new KafkaConsumer<>(consumerConfig.asProperties());
         LOGGER.info("Subscribing to signals topic '{}'", topicName);
         signalsConsumer.assign(Collect.arrayListOf(new TopicPartition(topicName, 0)));
-    }
-
-    @Override
-    public void reset(Object reference) {
-
-        signalsConsumer.seek(new TopicPartition(topicName, 0), ((Long) reference) + 1);
     }
 
     private static Configuration buildKafkaConfiguration(Configuration signalConfig) {
@@ -177,14 +173,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
                 .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
                 .withDefault(ConsumerConfig.GROUP_ID_CONFIG, signalConfig.getString(GROUP_ID))
                 .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even the smallest message
-                .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                 .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) // readjusted since 0.10.1.0
                 .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
-                .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        if (signalConfig.getBoolean(SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED)) {
-            confBuilder.withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
-                    .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        }
+                .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
         return confBuilder
                 .build();
     }
@@ -193,8 +187,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
     public List<SignalRecord> read() {
 
         LOGGER.debug("Reading signal form kafka");
-        // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
-        ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
+        ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs);
 
         return StreamSupport.stream(recoveredRecords.spliterator(), false)
                 .map(this::processSignal)

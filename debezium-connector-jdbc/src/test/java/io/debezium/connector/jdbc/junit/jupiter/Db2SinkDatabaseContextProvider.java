@@ -18,13 +18,13 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("ibmcom/db2:11.5.0.0a");
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("icr.io/db2_community/db2:11.5.9.0");
 
     @SuppressWarnings("resource")
     public Db2SinkDatabaseContextProvider() {
         super(SinkType.DB2, new Db2Container(IMAGE_NAME)
                 .acceptLicense()
-                .withNetwork(Network.newNetwork())
+                .withNetwork(Network.SHARED)
                 .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 

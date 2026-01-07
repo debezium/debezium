@@ -1,0 +1,46 @@
+= Shared snippets for MongoDB incremental snapshots
+
+
+
+
+=== Kafka snapshot with additional conditions example
+
+
+tag::triggering-incremental-snapshot-kafka-addtl-cond-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["db1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "db1.products" ,"filter":"color='blue'"}]}}`
+----
+end::triggering-incremental-snapshot-kafka-addtl-cond-example[]
+
+
+
+
+=== Kafka snapshot with multiple additional conditions
+
+tag::triggering-incremental-snapshot-kafka-multi-addtl-cond-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["db1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "db1.products" ,"filter":"color='blue' AND brand='MyBrand'"}]}}`
+----
+end::triggering-incremental-snapshot-kafka-multi-addtl-cond-example[]
+
+
+
+
+
+=== Stopping an incremental snapshot using the Kafka signaling channel
+
+
+tag::stopping-incremental-snapshot-kafka-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"stop-snapshot","data": {"data-collections": ["db1.table1", "db1.table2"], "type": "INCREMENTAL"}}`
+----
+end::stopping-incremental-snapshot-kafka-example[]

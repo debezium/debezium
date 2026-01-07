@@ -15,9 +15,10 @@ public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistry
     private static final String APICURIO_VERSION = getApicurioVersion();
     private static final Integer APICURIO_PORT = 8080;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    public static final String APICURIO_REGISTRY_IMAGE = "quay.io/apicurio/apicurio-registry-mem";
 
     public ApicurioRegistryContainer() {
-        super("apicurio/apicurio-registry-mem:" + APICURIO_VERSION);
+        super(APICURIO_REGISTRY_IMAGE + ":" + APICURIO_VERSION);
 
         this.waitStrategy = new LogMessageWaitStrategy()
                 .withRegEx(".*apicurio-registry-app.*started in.*");
@@ -28,6 +29,6 @@ public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistry
     public static String getApicurioVersion() {
         String apicurioVersionTestProperty = System.getProperty(TEST_PROPERTY_PREFIX + "apicurio.version");
         return apicurioVersionTestProperty != null ? apicurioVersionTestProperty
-                : ContainerImageVersions.getStableVersion("apicurio/apicurio-registry-mem");
+                : ContainerImageVersions.getStableVersion(APICURIO_REGISTRY_IMAGE);
     }
 }

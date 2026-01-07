@@ -6,6 +6,7 @@
 package io.debezium.bean;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
@@ -54,4 +55,9 @@ public interface StandardBeanNames {
      * The context used during snapshots.
      */
     String SNAPSHOT_CONTEXT = AbstractSnapshotChangeEventSource.SnapshotContext.class.getName();
+
+    /**
+     * The task context.
+     */
+    String CDC_SOURCE_TASK_CONTEXT = CdcSourceTaskContext.class.getName();
 }

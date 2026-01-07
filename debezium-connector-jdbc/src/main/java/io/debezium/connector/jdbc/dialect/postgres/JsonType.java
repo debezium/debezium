@@ -9,15 +9,14 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Json;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@link Json} types.
+ * An implementation of {@link JdbcType} for {@link Json} types.
  *
  * @author Chris Cranford
  */
@@ -40,7 +39,7 @@ class JsonType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return resolveType(schema);
     }
 

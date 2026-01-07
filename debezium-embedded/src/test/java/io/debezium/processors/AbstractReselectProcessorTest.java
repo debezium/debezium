@@ -12,15 +12,16 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
@@ -54,15 +55,15 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
-    @Before
+    @BeforeEach
     @SuppressWarnings("resource")
     public void beforeEach() throws Exception {
         createTable();
         databaseConnection().setAutoCommit(false);
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    protected void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         dropTable();
@@ -71,7 +72,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
+    void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithNullValue());
@@ -80,9 +81,9 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.null.values", "false")
-                .with("reselector.reselect.unavailable.values", "false")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
+                .with("post.processors.reselector.reselect.null.values", "false")
+                .with("post.processors.reselector.reselect.unavailable.values", "false")
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList()).build();
 
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -106,7 +107,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
+    void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithValue());
@@ -115,7 +116,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList()).build();
 
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -139,13 +140,13 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
+    void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
         enableTableForCdc();
 
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         Configuration config = getConfigurationBuilder()
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -193,7 +194,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testColumnsReselectedWhenValueIsNullSnapshot() throws Exception {
+    void testColumnsReselectedWhenValueIsNullSnapshot() throws Exception {
         databaseConnection().execute(getInsertWithNullValue());
         databaseConnection().execute(String.format("UPDATE %s SET data = 'two' where id = 1", tableName()));
 
@@ -201,7 +202,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -224,11 +225,11 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
-    public void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
+    void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
         enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -258,6 +259,27 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         assertThat(after.get(fieldName("id"))).isEqualTo(1);
         assertThat(after.get(fieldName("data"))).isEqualTo("two");
         assertThat(after.get(fieldName("data2"))).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-8901")
+    void shouldThrowAnExceptionWhenConfigurationAreNotProvided() throws Exception {
+
+        final LogInterceptor logInterceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
+        logInterceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.ERROR);
+
+        enableTableForCdc();
+
+        Configuration config = getConfigurationBuilder()
+                .without("post.processors.reselector.type")
+                .build();
+
+        start(getConnectorClass(), config);
+
+        assertThat(logInterceptor.containsStacktraceElement("Post processor 'reselector' is missing 'reselector.type' and/or 'reselector.<option>' configurations"))
+                .isTrue();
+
+        assertConnectorNotRunning();
     }
 
     protected SourceRecords consumeRecordsByTopicReselectWhenNotNullSnapshot() throws InterruptedException {

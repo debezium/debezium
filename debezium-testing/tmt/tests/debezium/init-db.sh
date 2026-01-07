@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 
-docker exec -d oracledb /bin/bash /opt/oracle/setPassword.sh top_secret
+docker exec -i oracledb /bin/bash /opt/oracle/setPassword.sh top_secret
 
 docker exec oracledb /bin/bash -l -c  'mkdir /opt/oracle/oradata/recovery_area'
 

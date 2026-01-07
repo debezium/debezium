@@ -1,0 +1,71 @@
+[id="swap-geometry-coordinates"]
+= SwapGeometryCoordinates
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+In environments where you must send data from a source database that uses one coordinate system to a target that uses a different system, you can use the `SwapGeometryCoordinates` SMT  to reformat the data.
+When serializing geometry information into a well-known binary (WKB) or extended well-known binary (EWKB) byte array, the source database uses one of the following coordinate systems:
+
+Legacy CRS:84::
+An older convention that serializes coordinates by using `(x, y)` or `(longitude, latitude)` axis order.
+
+European Petroleum Survey Group (EPSG)::
+A modern convention that serializes coordinates by using `(y, x)` or `(latitude, longitude)` axis order.
+
+The serialization format is irrelevant in a {prodname} source connector, because the connector always uses the coordinate system of the source database when it writes data to a change event.
+However, a sink connector must not only be able to interpret the coordinate system of the source database, but also provide data to the target system in a format that it can consume.
+
+[[example-swap-geometry-coordinates]]
+== Example
+
+To convert the coordinate system of the data that a {prodname} connector captures from a source database to a different coordinate system, add the `SwapGeometryCoordinates` SMT to the connector configuration.
+You can configure the transformation so that it converts the default set of spatial reference identifiers, or you can customize the configuration so that the transform applies only to specific identifiers.
+Other fields are left unchanged.
+For example, to configure the connector to convert the default set of spatial reference identifiers, add the following lines to the connector configuration:
+
+[source]
+----
+transforms=swap
+transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
+----
+
+To apply the transformation only to spatial reference identifier `4326`, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=swap
+transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
+transforms.swap.srids=4326
+----
+
+[[swap-geometry-coordinates-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `SwapGeometryCoordinates` SMT.
+
+.SwapGeometryCoordinates SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[swap-geometry-coordinates-srids]]<<swap-geometry-coordinates-srids, `srids`>>
+|A comma-separated list of spatial reference identifier values to which you want to apply the transformation.
+The transformation swaps the coordinate system only for the specified values.
+Other geometry values are passed as-is.
+|list
+|`4326,3857, 4269`
+|non-empty list
+|low
+
+|===

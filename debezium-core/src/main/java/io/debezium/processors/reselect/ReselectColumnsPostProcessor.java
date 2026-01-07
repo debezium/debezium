@@ -14,19 +14,26 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
+import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
+import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.processors.spi.PostProcessor;
@@ -37,6 +44,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.util.ByteBuffers;
 import io.debezium.util.Strings;
 
 /**
@@ -67,8 +75,60 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private ByteBuffer unavailableValuePlaceholderBytes;
     private Map<String, String> unavailableValuePlaceholderMap;
     private String unavailableValuePlaceholderJson;
+    private List<Integer> unavailablePlaceholderIntArray;
+    private List<Long> unavailablePlaceholderLongArray;
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
+
+    public static final Field ERROR_HANDLING_MODE = Field.create("reselect.error.handling.mode")
+            .withDisplayName("Error Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+            .withEnum(ErrorHandlingMode.class, ErrorHandlingMode.WARN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Specify how to handle error in case of lookup sql failure or empty reselection: "
+                    + "'warn' only log the error; "
+                    + "'fail' fail the connector with an error message.");
+
+    private ErrorHandlingMode errorHandlingMode;
+
+    public enum ErrorHandlingMode implements EnumeratedValue {
+        /**
+         * Error handling to be used when doing lookup for the value.
+         */
+        WARN("warn"),
+        FAIL("fail");
+
+        private final String value;
+
+        ErrorHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ErrorHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ErrorHandlingMode option : ErrorHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
 
     @Override
     public void configure(Map<String, ?> properties) {
@@ -76,6 +136,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         this.reselectUnavailableValues = config.getBoolean(RESELECT_UNAVAILABLE_VALUES, true);
         this.reselectNullValues = config.getBoolean(RESELECT_NULL_VALUES, true);
         this.reselectUseEventKeyFields = config.getBoolean(RESELECT_USE_EVENT_KEY, false);
+        this.errorHandlingMode = ErrorHandlingMode.parse(config.getString(ERROR_HANDLING_MODE));
         this.selector = new ReselectColumnsPredicateBuilder()
                 .includeColumns(config.getString(RESELECT_COLUMNS_INCLUDE_LIST))
                 .excludeColumns(config.getString(RESELECT_COLUMNS_EXCLUDE_LIST))
@@ -150,40 +211,44 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         if (reselectUseEventKeyFields) {
             for (org.apache.kafka.connect.data.Field field : key.schema().fields()) {
                 keyColumns.add(field.name());
-                keyValues.add(key.get(field));
+                keyValues.add(resolveKeyFieldValue(key, field));
             }
         }
         else {
             for (Column column : table.primaryKeyColumns()) {
                 keyColumns.add(column.name());
-                keyValues.add(after.get(after.schema().field(column.name())));
+                keyValues.add(resolveKeyFieldValue(after, after.schema().field(column.name())));
             }
         }
 
-        final Map<String, Object> selections;
         try {
-            selections = jdbcConnection.reselectColumns(tableId, requiredColumnSelections, keyColumns, keyValues, source);
-            if (selections.isEmpty()) {
+            boolean found = jdbcConnection.reselectColumns(table, requiredColumnSelections, keyColumns, keyValues, source, rs -> {
+                // Iterate re-selection columns and override old values
+                for (String columnName : requiredColumnSelections) {
+                    final Column column = table.columnWithName(columnName);
+                    final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
+
+                    final Object convertedValue = getConvertedValue(column, field, rs.getObject(columnName));
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
+                    }
+                    after.put(field.name(), convertedValue);
+                }
+            });
+            if (!found) {
+                if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                    throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
+                }
                 LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
                 return;
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to re-select row for table {} and key {}", tableId, key, e);
-            return;
-        }
-
-        // Iterate re-selection columns and override old values
-        for (Map.Entry<String, Object> selection : selections.entrySet()) {
-            final String columnName = selection.getKey();
-            final Column column = table.columnWithName(columnName);
-            final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
-
-            final Object convertedValue = getConvertedValue(column, field, selection.getValue());
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
+            if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                throw new DebeziumException("Failed to re-select columns for table " + tableId + " and key " + keyValues, e);
             }
-            after.put(field.name(), convertedValue);
+            LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
+            return;
         }
     }
 
@@ -196,10 +261,27 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         this.unavailableValuePlaceholderBytes = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
         this.unavailableValuePlaceholderMap = Map.of(this.unavailableValuePlaceholder, this.unavailableValuePlaceholder);
         this.unavailableValuePlaceholderJson = "{\"" + this.unavailableValuePlaceholder + "\":\"" + this.unavailableValuePlaceholder + "\"}";
+        unavailablePlaceholderIntArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
+        unavailablePlaceholderLongArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
+        for (byte b : unavailableValuePlaceholderBytes.array()) {
+            unavailablePlaceholderIntArray.add((int) b);
+            unavailablePlaceholderLongArray.add((long) b);
+        }
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
         this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
         this.schema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, RelationalDatabaseSchema.class);
+    }
+
+    private Object resolveKeyFieldValue(Struct key, org.apache.kafka.connect.data.Field field) {
+        if (field.schema() != null && VariableScaleDecimal.LOGICAL_NAME.equals(field.schema().name())) {
+            final Struct value = key.getStruct(field.name());
+            if (value != null) {
+                final SpecialValueDecimal decimal = VariableScaleDecimal.toLogical(key.getStruct(field.name()));
+                return decimal.getWrappedValue();
+            }
+        }
+        return key.get(field);
     }
 
     private List<String> getRequiredColumnSelections(TableId tableId, Struct after) {
@@ -235,6 +317,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                         return true;
                     }
                 }
+                // Case for whole array value representing unavailable value
+                return isUnavailableArrayValueHolder(field.schema(), value);
             }
             else {
                 return isUnavailableValueHolder(field.schema(), value);
@@ -246,7 +330,13 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private boolean isUnavailableValueHolder(Schema schema, Object value) {
         switch (schema.type()) {
             case BYTES:
-                return unavailableValuePlaceholderBytes.equals(value);
+                if (value instanceof byte[] valueArray) {
+                    return ByteBuffers.equals(unavailableValuePlaceholderBytes, valueArray);
+                }
+                else if (value instanceof ByteBuffer valueBuffer) {
+                    return unavailableValuePlaceholderBytes.equals(valueBuffer);
+                }
+                return false;
             case MAP:
                 return unavailableValuePlaceholderMap.equals(value);
             case STRING:
@@ -260,6 +350,18 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                 return unavailableValuePlaceholder.equals(value) || isJsonAndUnavailable;
         }
         return false;
+    }
+
+    private boolean isUnavailableArrayValueHolder(Schema schema, Object value) {
+        assert schema.type() == Type.ARRAY;
+        switch (schema.valueSchema().type()) {
+            case INT32:
+                return unavailablePlaceholderIntArray.equals(value);
+            case INT64:
+                return unavailablePlaceholderLongArray.equals(value);
+            default:
+                return false;
+        }
     }
 
     private Object getConvertedValue(Column column, org.apache.kafka.connect.data.Field field, Object value) {

@@ -44,6 +44,7 @@ freeStyleJob('release/release-debezium-nightly-image') {
         stringParam('DEBEZIUM_BRANCH', 'main', 'Branch used to build Debezium')
         stringParam('IMAGES_REPOSITORY', 'https://github.com/debezium/container-images.git', 'Repository with Debezium Dockerfiles')
         stringParam('IMAGES_BRANCH', 'main', 'Branch used for images repository')
+        stringParam('DEFAULT_PLATFORMS', 'linux/amd64,linux/arm64', 'Platform to build')
     }
 
    scm {

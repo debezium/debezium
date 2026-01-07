@@ -7,6 +7,7 @@ package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.Set;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -16,16 +17,39 @@ import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.IoUtil;
 
 /**
  * @author Chris Cranford
  */
 public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnectorConfig, MariaDbDatabaseSchema, MariaDbPartition, MariaDbOffsetContext> {
+
+    private static final String baseStatements = IoUtil.readClassPathResource("ddl/mysql-products.ddl");
+
+    public DatabaseSchemaTest() {
+        super(baseStatements + """
+                # creating a table without primary key which is valid for MariaDB
+                CREATE TABLE connector_test.orders (
+                  order_number INTEGER NOT NULL,
+                  order_date DATE NOT NULL,
+                  purchaser INTEGER NOT NULL,
+                  quantity INTEGER NOT NULL,
+                  product_id INTEGER NOT NULL,
+                  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
+                  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
+                ) AUTO_INCREMENT = 10001;
+
+                ALTER TABLE connector_test.customers ADD PRIMARY KEY IF NOT EXISTS (id);
+                ALTER TABLE connector_test.orders ADD PRIMARY KEY IF NOT EXISTS (order_number);
+                """);
+    }
+
     @Override
     protected MariaDbConnectorConfig getConnectorConfig(Configuration config) {
         config = config.edit().with(AbstractSchemaHistory.INTERNAL_PREFER_DDL, true).build();
@@ -46,7 +70,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false);
+                false, new CustomConverterRegistry(Collections.emptyList()), new MariaDbTaskContext(config, connectorConfig));
     }
 
     @Override

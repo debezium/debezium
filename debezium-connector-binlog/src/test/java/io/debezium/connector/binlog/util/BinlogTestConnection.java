@@ -5,13 +5,14 @@
  */
 package io.debezium.connector.binlog.util;
 
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 import static io.debezium.connector.binlog.jdbc.BinlogSystemVariables.LOWER_CASE_TABLE_NAMES;
 
 import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -53,6 +54,32 @@ public abstract class BinlogTestConnection extends JdbcConnection {
             throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
         }
         return versionString;
+    }
+
+    public String getMySqlVersionComment() {
+        String versionString;
+        try {
+            versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version_comment'", rs -> {
+                rs.next();
+                return rs.getString(2);
+            });
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
+        }
+        return versionString;
+    }
+
+    public String binaryLogStatusStatement() {
+        final var binaryLogStatus = "SHOW BINARY LOG STATUS";
+        try {
+            query(binaryLogStatus, rs -> {
+            });
+            return binaryLogStatus;
+        }
+        catch (SQLException e) {
+            return BinlogConnectorConnection.MASTER_STATUS_STATEMENT;
+        }
     }
 
     public abstract boolean isGtidEnabled();

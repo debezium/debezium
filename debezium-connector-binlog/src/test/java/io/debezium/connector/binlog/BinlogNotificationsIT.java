@@ -11,14 +11,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.pipeline.notification.AbstractNotificationsIT;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * @author Chris Cranford
@@ -30,16 +31,16 @@ public abstract class BinlogNotificationsIT<C extends SourceConnector> extends A
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         try {
             stopConnector();
         }
@@ -60,7 +61,9 @@ public abstract class BinlogNotificationsIT<C extends SourceConnector> extends A
 
     @Override
     protected Configuration.Builder config() {
-        return DATABASE.defaultConfig().with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue());
+        return DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     @Override

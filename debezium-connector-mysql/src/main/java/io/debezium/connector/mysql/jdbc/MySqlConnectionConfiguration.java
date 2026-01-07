@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql.jdbc;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
@@ -56,5 +57,16 @@ public class MySqlConnectionConfiguration extends BinlogConnectionConfiguration 
                 driverClassName,
                 getClass().getClassLoader(),
                 MySqlConnectorConfig.JDBC_PROTOCOL);
+    }
+
+    @Override
+    public BinlogConnectorConfig.SecureConnectionMode sslMode() {
+        final String sslMode = originalConfig().getString(MySqlConnectorConfig.SSL_MODE);
+        return MySqlConnectorConfig.MySqlSecureConnectionMode.parse(sslMode);
+    }
+
+    @Override
+    public boolean sslModeEnabled() {
+        return sslMode() != MySqlConnectorConfig.MySqlSecureConnectionMode.DISABLED;
     }
 }

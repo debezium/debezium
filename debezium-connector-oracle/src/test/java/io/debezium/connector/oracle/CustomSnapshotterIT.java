@@ -12,26 +12,26 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public class CustomSnapshotterIT extends AbstractConnectorTest {
+public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
     private static final String PK_FIELD = "PK";
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
 
         connection = TestHelper.testConnection();
 
@@ -45,8 +45,8 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
         connection.execute("ALTER TABLE debezium.b ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.a");
             TestHelper.dropTable(connection, "debezium.b");
@@ -54,8 +54,8 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
         }
     }
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -63,7 +63,7 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+    void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         connection.execute("INSERT INTO debezium.a (pk, aa) VALUES (1, 1)");
         connection.execute("INSERT INTO debezium.b (pk, aa) VALUES (1, 1)");

@@ -1,0 +1,102 @@
+:page-aliases: configuration/vitess-replace-field-value.adoc
+[id="vitess-replace-field-value"]
+= Vitess Replace Field Value
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `ReplaceFieldValue` SMT replaces the value of a specified field from the event record.
+When the connector is configured to provide transaction metadata, use this SMT to redact the `transaction.id` field to avoid storing a duplicate entry of the VGTID, or use for both `transaction.id` and `source.vgtid` to avoid storing any large VGTIDs.
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
+The SMT uses the `field_names` configuration option to specify a comma-separated list of paths that identify the fields that will have their values replaced.
+The SMT uses the `field_value` configuration option to specify the replacement value for the fields. Defaults to the empty string.
+
+The SMT replaces the value of each field that you specify.
+The following example shows how to add the SMT to the connector configuration so that it replaces the values of specific fields from the change event records that the connector emits.
+
+[[example-vitess-replace-field-value.adoc]]
+== Example: Configuring the `ReplaceFieldValue` SMT
+
+
+[source]
+----
+"connector.class": "io.debezium.connector.vitess.VitessConnector",
+...
+"transforms": "replaceFieldValue",
+"transforms.replaceFieldValue.type": "io.debezium.connector.vitess.transforms.ReplaceFieldValue",
+"transforms.replaceFieldValue.field_names": "transaction.id",
+...
+----
+
+The following example shows the value of a change event record before and after the transformation is applied.
+
+.Effect of applying the `ReplaceFieldValue` SMT
+====
+Value before the SMT processes the record::
++
+[source, json]
+----
+{
+    "before": {...}
+    "after": {...}
+    "source": {...}
+    "transaction": {
+        "id": "[{\"keyspace\":\"test_unsharded_keyspace\",\"shard\":\"0\",\"gtid\":\"MySQL56/e03ece6c-4c04-11ec-8e20-0242ac110004:1-68\"}]",
+        "total_order": 1,
+        "data_collection_order": 1
+      }
+}
+----
+
+Value after the SMT processes the record::
++
+[source, json]
+----
+{
+    "before": {...}
+    "after": {...}
+    "source": {...}
+    "transaction": {
+        "id": "",
+        "total_order": 1,
+        "data_collection_order": 1
+      }
+}
+----
+====
+
+[[vitess-replace-field-value-options]]
+== Configuration options for the `ReplaceFieldValue` SMT
+
+The following table lists the configuration options that you can use with the `ReplaceFieldValue` SMT.
+
+.ReplaceFieldValue SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[replace-field-value-field-names]]<<replace-field-value-field-names, `fields_names`>>
+|A comma-separated list that specifies the paths of the fields to replace values for the event record, for example, `transaction.id`).
+|List
+|No default value
+|Non-empty list
+|High
+
+|[[replace-field-value-field_value]]<<replace-field-value-field_value, `field_value`>>
+|The value that each replace field is set to, for example.
+|List
+|"" (Empty string)
+|String value
+|Medium
+|===

@@ -5,26 +5,31 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.assertj.core.data.Index;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
-import org.fest.assertions.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Common primary key mode tests.
@@ -49,12 +54,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -76,12 +81,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
@@ -106,12 +111,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
@@ -136,19 +141,19 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
-        TestHelper.assertTable(dataSource(), destinationTableName)
+        TestHelper.assertTable(assertDbConnection(), destinationTableName)
                 .exists()
                 .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
@@ -170,12 +175,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -197,22 +202,20 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        SinkRecord createRecord = factory.createRecord(topicName);
-        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
-                createRecord.kafkaOffset());
-        createRecord.headers().addInt("id", 1);
+        KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
+        createRecord.getOriginalKafkaRecord().headers().addInt("id", 1);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
-        TestHelper.assertTable(dataSource(), destinationTableName)
+        TestHelper.assertTable(assertDbConnection(), destinationTableName)
                 .exists()
                 .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
@@ -234,16 +237,18 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
-        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
-                createRecord.kafkaOffset());
-        createRecord.headers().addInt("id1", 1);
-        createRecord.headers().addInt("id2", 10);
-        consume(createRecord);
+        KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        SinkRecord kafkaSinkRecord = new SinkRecord(createRecord.topicName(), createRecord.partition(), null, null, createRecord.valueSchema(), createRecord.value(),
+                createRecord.offset());
+        kafkaSinkRecord.headers().addInt("id1", 1);
+        kafkaSinkRecord.headers().addInt("id2", 10);
+        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord,
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+        consume(kafkaSinkRecordWithHeader);
 
-        final String destinationTableName = destinationTableName(createRecord);
+        final String destinationTableName = destinationTableName(kafkaSinkRecordWithHeader);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -266,12 +271,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -292,12 +297,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -320,12 +325,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -348,12 +353,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -361,6 +366,50 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id1", "id2", "name");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordWithPrimaryKeyColumnWithPrimaryKeyModeRecordValueAndReductionBuffer(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "true");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id1_value,id2_value");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord createRecord1 = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("id1_value", "id2_value", "name"),
+                List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                Arrays.asList((byte) 11, (byte) 22, "John Doe 1"));
+
+        final KafkaDebeziumSinkRecord createRecord2 = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("id1_value", "id2_value", "name"),
+                List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                Arrays.asList((byte) 11, (byte) 22, "John Doe 2"));
+
+        consume(List.of(createRecord1, createRecord2));
+
+        final String destinationTableName = destinationTableName(createRecord1);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
+        tableAssert.exists().hasNumberOfColumns(4);
+
+        getSink().assertColumnType(tableAssert, "id1_value", ValueType.NUMBER, (byte) 11);
+        getSink().assertColumnType(tableAssert, "id2_value", ValueType.NUMBER, (byte) 22);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe 2");
     }
 
     @ParameterizedTest
@@ -376,12 +425,12 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -389,6 +438,27 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id1", "name");
+    }
+
+    @FixFor("DBZ-8648")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordPrimaryKeyValueWithDeleteEvent(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord record = factory.deleteRecord(topicName);
+        consume(record);
+
+        // Just to trigger failure because prior consume throw exception
+        consume(factory.createRecord(topicName));
     }
 
     protected void assertHasPrimaryKeyColumns(String tableName, String... columnNames) {

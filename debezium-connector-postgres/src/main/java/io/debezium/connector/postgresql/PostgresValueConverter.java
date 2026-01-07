@@ -55,18 +55,19 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.data.Ltree;
-import io.debezium.connector.postgresql.data.vector.HalfVector;
-import io.debezium.connector.postgresql.data.vector.SparseVector;
-import io.debezium.connector.postgresql.data.vector.Vector;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.TsVector;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.data.vector.DoubleVector;
+import io.debezium.data.vector.FloatVector;
+import io.debezium.data.vector.SparseDoubleVector;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -74,9 +75,6 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
-import io.debezium.time.MicroTime;
-import io.debezium.time.MicroTimestamp;
-import io.debezium.time.NanoTime;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
@@ -224,6 +222,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.BPCHAR:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -235,6 +234,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return numericSchema(column);
             case PgOid.BYTEA:
                 return binaryMode.getSchema();
+            case PgOid.TSVECTOR_OID:
+                return TsVector.builder();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -266,30 +267,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
-                }
-                return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getDateBuilder().optional().build());
             case PgOid.UUID_ARRAY:
                 return SchemaBuilder.array(Uuid.builder().optional().build());
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
                 return SchemaBuilder.array(Json.builder().optional().build());
             case PgOid.TIME_ARRAY:
-                return SchemaBuilder.array(MicroTime.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMETZ_ARRAY:
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return SchemaBuilder.array(io.debezium.time.Timestamp.builder().optional().build());
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return SchemaBuilder.array(MicroTimestamp.builder().optional().build());
-                    }
-                    return SchemaBuilder.array(NanoTime.builder().optional().build());
-                }
-                return SchemaBuilder.array(org.apache.kafka.connect.data.Timestamp.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
@@ -325,13 +314,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return Ltree.builder();
                 }
                 else if (oidValue == typeRegistry.vectorOid()) {
-                    return Vector.builder();
+                    return DoubleVector.builder();
                 }
                 else if (oidValue == typeRegistry.halfVectorOid()) {
-                    return HalfVector.builder();
+                    return FloatVector.builder();
                 }
                 else if (oidValue == typeRegistry.sparseVectorOid()) {
-                    return SparseVector.builder();
+                    return SparseDoubleVector.builder();
                 }
                 else if (oidValue == typeRegistry.hstoreArrayOid()) {
                     return SchemaBuilder.array(hstoreSchema().optional().build());
@@ -468,6 +457,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.TSVECTOR_OID:
+            case PgOid.BPCHAR:
                 return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
@@ -683,13 +674,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private Object convertPgVector(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
             if (data instanceof byte[] typedData) {
-                r.deliver(Vector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
+                r.deliver(DoubleVector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
             }
             if (data instanceof String typedData) {
-                r.deliver(Vector.fromLogical(fieldDefn.schema(), typedData));
+                r.deliver(DoubleVector.fromLogical(fieldDefn.schema(), typedData));
             }
             else if (data instanceof PGobject typedData) {
-                r.deliver(Vector.fromLogical(fieldDefn.schema(), typedData.getValue()));
+                r.deliver(DoubleVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
             }
         });
     }
@@ -697,13 +688,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private Object convertPgHalfVector(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
             if (data instanceof byte[] typedData) {
-                r.deliver(HalfVector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
+                r.deliver(FloatVector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
             }
             if (data instanceof String typedData) {
-                r.deliver(HalfVector.fromLogical(fieldDefn.schema(), typedData));
+                r.deliver(FloatVector.fromLogical(fieldDefn.schema(), typedData));
             }
             else if (data instanceof PGobject typedData) {
-                r.deliver(HalfVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
+                r.deliver(FloatVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
             }
         });
     }
@@ -711,13 +702,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private Object convertPgSparseVector(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
             if (data instanceof byte[] typedData) {
-                r.deliver(SparseVector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
+                r.deliver(SparseDoubleVector.fromLogical(fieldDefn.schema(), new String(typedData, databaseCharset)));
             }
             if (data instanceof String typedData) {
-                r.deliver(SparseVector.fromLogical(fieldDefn.schema(), typedData));
+                r.deliver(SparseDoubleVector.fromLogical(fieldDefn.schema(), typedData));
             }
             else if (data instanceof PGobject typedData) {
-                r.deliver(SparseVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
+                r.deliver(SparseDoubleVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
             }
         });
     }

@@ -6,7 +6,8 @@
 package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -19,8 +20,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
@@ -72,7 +73,7 @@ public class TableSchemaBuilderTest {
     private FieldNamer<Column> defaultFieldNamer;
     private FieldNamer<Column> avroFieldNamer;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         adjuster = SchemaNameAdjuster.create(ReplacementFunction.UNDERSCORE_REPLACEMENT, (original, replacement, conflict) -> {
             fail("Should not have come across an invalid schema name");
@@ -156,11 +157,13 @@ public class TableSchemaBuilderTest {
         assertThat(c10).isNotNull();
     }
 
-    @Test(expected = NullPointerException.class)
-    public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false)
-                .create(topicNamingStrategy, null, null, null, null);
+    @Test
+    void shouldFailToBuildTableSchemaFromNullTable() {
+        assertThrows(NullPointerException.class, () -> {
+            new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                    SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                    .create(topicNamingStrategy, null, null, null, null);
+        });
     }
 
     @Test

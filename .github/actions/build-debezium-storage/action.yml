@@ -24,7 +24,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,:debezium-schema-generator
         -am
         -DskipTests=true
         -DskipITs=true
@@ -39,7 +39,7 @@ runs:
     - name: Build Debezium MySQL Connector
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl debezium-connector-mysql 
+        ./mvnw clean install -B -pl debezium-connector-binlog,debezium-connector-mysql 
         -Passembly
         -DskipTests=true
         -DskipITs=true

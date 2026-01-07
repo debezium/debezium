@@ -98,6 +98,14 @@ public class LogFile {
         return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || getNextScn().equals(Scn.MAX));
     }
 
+    public boolean isArchive() {
+        return type == Type.ARCHIVE;
+    }
+
+    public boolean isRedo() {
+        return type == Type.REDO;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(thread, sequence);

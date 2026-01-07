@@ -60,7 +60,7 @@ IMPORTANT: After the routing SMT is present in a Kafka Connect instance, any use
 To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the routing SMT.
 
 ifdef::community[]
-With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
+With http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect] and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
@@ -146,7 +146,7 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
-|`headers`
+|`header`
 a|A Java map of message headers. The key field is the header name.
 The `headers` variable exposes the following properties:
 
@@ -225,6 +225,21 @@ For example:
 value.op == 'u' ? 'updates' : null
 ----
 
+.Go with TinyGo
+When you create content-based routing conditions by using Go with the TinyGo compiler, you can leverage a fully typed API for lazy access to the fields.
+For example:
+
+[source,go]
+----
+var value = debezium.Get(proxyPtr, "value")
+if !debezium.IsNull(value) {
+    var op = debezium.GetString(debezium.Get(proxyPtr, "value.op"))
+    if op == "u" {
+        return debezium.SetString("updates")
+    }
+}
+return debezium.SetNull()
+----
 
 // Type: reference
 // ModuleID: options-for-configuring-the-content-based-routing-transformation
@@ -238,18 +253,24 @@ value.op == 'u' ? 'updates' : null
 |Description
 
 |[[content-based-router-topic-regex]]<<content-based-router-topic-regex, `topic.regex`>>
-|
+|No default value
 |An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply the condition logic.
 If the name of the destination topic matches the value in `topic.regex`, the transformation applies the condition logic before it passes the event to the topic.
 If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[content-based-router-language]]<<content-based-router-language, `language`>>
-|
-|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+|No default value
+|The language in which the expression is written. 
+For JSR223, prefix the value with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+For Go-based filters, specify `wasm.chicory` or `wasm.chicory-interpreter`.
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
-|
-|The expression to be evaluated for every message. Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
+|No default value
+|The expression to be evaluated for every message.
+Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
+With Go, the value of this property specifies the filesystem location where the `wasm` expression is available to be evaluated for every message.
+The Go function must evaluate to a String value or Null.
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`

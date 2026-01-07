@@ -11,6 +11,8 @@
 :connector-class: InformixConnector
 :connector-name: Informix
 :include-list-example: public.inventory
+:collection-container:  database.schema
+
 ifdef::community[]
 
 :toc:
@@ -270,13 +272,13 @@ Snapshots that capture the schema for all tables require more time to complete.
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
 `initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
 If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
-`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+`no_data`:: When you restart the connector, it takes a snapshot that captures only the table schema.
 Unlike a full data snapshot, this option does not capture any table data.
 Use this option if you want to restart the connector more quickly than with a full snapshot.
 
 5. Restart the connector.
 The connector completes the type of snapshot specified by the `snapshot.mode`.
-6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+6. (Optional) If the connector performed a `no_data` snapshot, after the snapshot completes, initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
 The connector runs the snapshot while it continues to stream real-time changes from the tables.
 Running an incremental snapshot captures the following data changes:
 +
@@ -322,7 +324,7 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Set values for properties in the connector configuration as described in the following steps:
-.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
 .. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
@@ -378,6 +380,12 @@ The {prodname} connector for Informix does not support schema changes while an i
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+[id="informix-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
 
 // Type: procedure
 // ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
@@ -1844,7 +1852,7 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -1861,7 +1869,15 @@ To enable the connector to access the database, you must add the driver and clie
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
@@ -1959,8 +1975,13 @@ Information about the properties is organized as follows:
 * xref:informix-required-configuration-properties[Required configuration properties]
 * xref:informix-advanced-configuration-properties[Advanced configuration properties]
 * xref:debezium-informix-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
-** xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
-* xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+* xref:debezium-informix-connector-pass-through-properties[Pass-through Informix connector configuration properties]
+** xref:debezium-informix-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties for configuring producer and consumer clients]
+** xref:debezium-informix-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+** xref:debezium-informix-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
+** xref:debezium-informix-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
+** xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
+
 
 
 [id="informix-required-configuration-properties"]
@@ -2112,9 +2133,9 @@ If tombstones are disabled, and {link-kafka-docs}/#compaction[log compaction] is
 
 |[[informix-property-include-schema-changes]]<<informix-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector publishes changes in the database schema to the Kafka topic that has the same name as the database server ID.
-When the default value is set, schema changes are recorded with a `key` that contains the database name and a `value` that is a JSON structure that describes the schema update.
-This property does not effect the way that the connector records information to its internal database schema history topic.
+|Boolean value that specifies whether the connector publishes changes in the database schema to a Kafka topic with the same name as the topic prefix.
+The connector records each schema change with a key that contains the database name, and a value that is a JSON structure that describes the schema update.
+This mechanism for recording schema changes is independent of the connector's internal recording of changes to the database schema history.
 
 |[[informix-property-column-truncate-to-length-chars]]<<informix-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
@@ -2348,6 +2369,10 @@ In subsequent phases of the snapshot, the connector uses a flashback query, whic
 `share`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
 The connector holds a read table lock that ensures read table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
 In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+If you prefer snapshots to run without setting any locks, set the following option, `none`.
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:informix-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
@@ -2409,8 +2434,6 @@ Only `exclusive` mode guarantees full consistency; the initial snapshot and stre
 |Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
 Specify one of the following values:
 
- +
-
 `<0`:: Do not timeout.
 
 `0`:: Return immediately if no data is available.
@@ -2421,11 +2444,15 @@ Specify one of the following values:
 |`0x100000`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
+|[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
+|`true`
+|Boolean value that specifies whether Informix should stop Full Row Logging of watched tables when streaming is closed.
+
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events. +
 Specify one of the following values:
- +
+
 `fail`:: The connector logs the offset of the problematic event and stops processing.
 
 `warn`:: The connector logs the offset of the problematic event and continues processing with the next event.
@@ -2467,6 +2494,17 @@ To send heartbeat messages, set this property to a positive integer, which indic
 Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual, but rarely emits change records to Kafka.
 In such a situation, the connector has few opportunities to send the latest offset to Kafka.
 Enable the connector to send heartbeat messages to ensure that it sends the latest offset to Kafka even when few changes occur in monitored tables.
+
+|[[informix-property-heartbeat-action-query]]<<informix-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last commited/restart LSN before the physical log files rotate.
+To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotate.
 
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
@@ -2533,7 +2571,7 @@ From a `customers.orders` table that includes the soft-delete column, `delete_fl
 
 ----
 "snapshot.select.statement.overrides": "mydatabase.customer.orders",
-"snapshot.select.statement.overrides.mydatabase.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+"snapshot.select.statement.overrides.mydatabase.customer.orders": "SELECT * FROM customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
 ----
 
 In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
@@ -2558,7 +2596,10 @@ You can specify the following values:
 |[[informix-property-signal-data-collection]]<<informix-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
-Use the following format to specify the collection name: +
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
 |[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>
@@ -2664,6 +2705,18 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
 
+|[[informix-property-extended-headers-enabled]]<<informix-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
+
 |===
 
 [id="debezium-informix-connector-database-history-configuration-properties"]
@@ -2671,20 +2724,42 @@ Set the value to `0` (zero) to remove the timeout limit.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+
+[id="debezium-informix-connector-pass-through-properties"]
+==== Pass-through Informix connector configuration properties
+
+The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
+
+[id="debezium-informix-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
+
+[id="debezium-informix-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the Informix connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+[id="debezium-informix-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-informix-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the Informix connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
+
 
 [id="debezium-informix-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
 
 // Type: assembly
 // ModuleID: monitoring-debezium-informix-connector-performance
@@ -2692,7 +2767,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[informix-monitoring]]
 == Monitoring
 
-The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

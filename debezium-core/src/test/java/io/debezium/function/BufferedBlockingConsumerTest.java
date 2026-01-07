@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Randall Hauch
@@ -21,7 +21,7 @@ public class BufferedBlockingConsumerTest {
     private List<Integer> history;
     private BlockingConsumer<Integer> consumer;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         history = new LinkedList<>();
         consumer = history::add;

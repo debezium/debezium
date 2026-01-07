@@ -24,10 +24,30 @@ import io.debezium.connector.mysql.gtid.MySqlGtidSet;
  */
 public class MySqlConnection extends BinlogConnectorConnection {
 
+    public static final String BINARY_LOG_STATUS_STATEMENT = "SHOW BINARY LOG STATUS";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnection.class);
+
+    private final String binaryLogStatusStatement;
 
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
+
+        try {
+            query(BINARY_LOG_STATUS_STATEMENT, rs -> {
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.info("Using '{}' to get binary log status", MASTER_STATUS_STATEMENT);
+            binaryLogStatusStatement = MASTER_STATUS_STATEMENT;
+            return;
+        }
+        LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
+        binaryLogStatusStatement = BINARY_LOG_STATUS_STATEMENT;
+    }
+
+    public String binaryLogStatusStatement() {
+        return binaryLogStatusStatement;
     }
 
     @Override
@@ -48,7 +68,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
     @Override
     public GtidSet knownGtidSet() {
         try {
-            return queryAndMap("SHOW MASTER STATUS", rs -> {
+            return queryAndMap(binaryLogStatusStatement(), rs -> {
                 if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
                     return new MySqlGtidSet(rs.getString(5)); // GTID set, may be null, blank, or contain a GTID set
                 }

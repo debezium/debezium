@@ -9,8 +9,8 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
@@ -45,16 +45,17 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
 
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox " +
             "(" +
-            "  id            varchar(36)  not null," +
-            "  aggregatetype varchar(255) not null," +
-            "  aggregateid   varchar(255) not null," +
-            "  event_type    varchar(255) not null," +
-            "  payload       json," +
+            "  id                   varchar(36)  not null," +
+            "  aggregatetype        varchar(255) not null," +
+            "  aggregateid          varchar(255) not null," +
+            "  event_type           varchar(255) not null," +
+            "  tracingspancontext   varchar(255)," +
+            "  payload              json," +
             "  CONSTRAINT outbox_pk PRIMARY KEY (id));";
 
     private static final String INSERT_STMT = "INSERT INTO a VALUES (1, 1);";
 
-    @Before
+    @BeforeEach
     @Override
     public void beforeEach() throws Exception {
         stopConnector();
@@ -67,7 +68,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         try {
             stopConnector();
@@ -124,6 +125,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
                                           String eventType,
                                           String aggregateType,
                                           String aggregateId,
+                                          String tracingSpanContext,
                                           String payloadJson,
                                           String additional) {
         StringBuilder insert = new StringBuilder();
@@ -133,6 +135,12 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
         insert.append(", '").append(aggregateId).append("'");
         insert.append(", '").append(eventType).append("'");
 
+        if (tracingSpanContext == null) {
+            insert.append(", null");
+        }
+        else {
+            insert.append(", '").append(tracingSpanContext).append("'");
+        }
         if (payloadJson == null) {
             insert.append(", null");
         }

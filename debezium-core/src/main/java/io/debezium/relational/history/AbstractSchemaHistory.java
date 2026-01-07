@@ -28,6 +28,7 @@ import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 
 /**
  * @author Randall Hauch
@@ -86,7 +87,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     }
 
     @Override
-    public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) {
+    public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException {
         listener.recoveryStarted();
         Map<Document, HistoryRecord> stopPoints = new HashMap<>();
         offsets.forEach((Map<String, ?> source, Map<String, ?> position) -> {
@@ -131,8 +132,8 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                         ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
                     }
                     if (ddlFilter.test(ddl)) {
-                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'", ddl,
-                                config.getString(DDL_FILTER));
+                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'",
+                                Loggings.maybeRedactSensitiveData(ddl), config.getString(DDL_FILTER));
                         return;
                     }
                     try {
@@ -159,7 +160,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
 
     protected abstract void storeRecord(HistoryRecord record) throws SchemaHistoryException;
 
-    protected abstract void recoverRecords(Consumer<HistoryRecord> records);
+    protected abstract void recoverRecords(Consumer<HistoryRecord> records) throws InterruptedException;
 
     @Override
     public void stop() {

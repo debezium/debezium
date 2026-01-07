@@ -5,6 +5,7 @@
  */
 package io.debezium.engine.source;
 
+import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
@@ -57,5 +58,11 @@ public class EngineSourceConnectorContext implements DebeziumSourceConnectorCont
     @Override
     public void raiseError(Exception e) {
         // no-op, only for Kafka compatibility
+    }
+
+    @Override
+    public PluginMetrics pluginMetrics() {
+        // no-op, only for Kafka compatibility
+        return null;
     }
 }

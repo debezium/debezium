@@ -20,16 +20,16 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Date;
@@ -46,7 +46,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTest {
+public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngineConnectorTest {
 
     /**
      * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
@@ -189,18 +189,18 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
     private boolean useSnapshot = true;
 
-    @AfterClass
-    public static void dropTables() throws SQLException {
+    @AfterAll
+    static void dropTables() throws SQLException {
         TestHelper.dropTestDatabase();
     }
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.createTestDatabase();
     }
 
     @Test
-    public void intTypes() throws Exception {
+    void intTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -219,7 +219,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
-    public void fpTypes() throws Exception {
+    void fpTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -238,7 +238,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
-    public void stringTypes() throws Exception {
+    void stringTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -257,7 +257,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
-    public void dateTimeTypes() throws Exception {
+    void dateTimeTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {
@@ -276,7 +276,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
-    public void dateTimeTypesAsConnect() throws Exception {
+    void dateTimeTypesAsConnect() throws Exception {
         stopConnector();
         init(TemporalPrecisionMode.CONNECT, useSnapshot);
 
@@ -298,7 +298,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
-    public void otherTypes() throws Exception {
+    void otherTypes() throws Exception {
         Testing.debug("Inserted");
 
         if (!useSnapshot) {

@@ -12,9 +12,10 @@ import java.util.function.UnaryOperator;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.converters.spi.SerializerType;
+import io.debezium.data.SchemaAndValueField;
 
 /**
  * @author Chris Cranford
@@ -198,7 +199,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord createRecordNoKey(String topicName) {
+    default KafkaDebeziumSinkRecord createRecordNoKey(String topicName) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -212,15 +213,15 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord createRecord(String topicName) {
+    default KafkaDebeziumSinkRecord createRecord(String topicName) {
         return createRecord(topicName, (byte) 1);
     }
 
-    default SinkRecord createRecord(String topicName, byte key) {
+    default KafkaDebeziumSinkRecord createRecord(String topicName, byte key) {
         return createRecord(topicName, key, UnaryOperator.identity());
     }
 
-    default SinkRecord createRecord(String topicName, byte key, UnaryOperator<String> columnNameTransformation) {
+    default KafkaDebeziumSinkRecord createRecord(String topicName, byte key, UnaryOperator<String> columnNameTransformation) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -238,7 +239,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord createRecordWithSchemaValue(String topicName, byte key, List<String> fieldNames, List<Schema> fieldSchemas, List<Object> values) {
+    default KafkaDebeziumSinkRecord createRecordWithSchemaValue(String topicName, byte key, List<String> fieldNames, List<Schema> fieldSchemas, List<Object> values) {
         SinkRecordBuilder.SinkRecordTypeBuilder basicSchemaBuilder = SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -250,11 +251,13 @@ public interface SinkRecordFactory {
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .key("id", key);
 
-        SchemaBuilder recordSchema = SchemaBuilder.struct().field("id", Schema.INT8_SCHEMA);
+        SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct().field("id", Schema.INT8_SCHEMA);
 
         for (int i = 0; i < fieldNames.size(); i++) {
-            recordSchema.field(fieldNames.get(i), fieldSchemas.get(i));
+            recordSchemaBuilder.field(fieldNames.get(i), fieldSchemas.get(i));
         }
+
+        Schema recordSchema = recordSchemaBuilder.build();
 
         basicSchemaBuilder.recordSchema(recordSchema);
 
@@ -267,7 +270,45 @@ public interface SinkRecordFactory {
         return basicSchemaBuilder.build();
     }
 
-    default SinkRecord createRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
+    default KafkaDebeziumSinkRecord createInsertSchemaAndValue(String topicName, List<SchemaAndValueField> keyFields, List<SchemaAndValueField> valueFields, int offset) {
+        Schema keySchema = null;
+        if (!keyFields.isEmpty()) {
+            SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+            for (SchemaAndValueField keyField : keyFields) {
+                keySchemaBuilder.field(keyField.fieldName(), keyField.schema());
+            }
+            keySchema = keySchemaBuilder.build();
+        }
+
+        final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
+        keyFields.forEach(keyField -> recordSchemaBuilder.field(keyField.fieldName(), keyField.schema()));
+        valueFields.forEach(valueField -> recordSchemaBuilder.field(valueField.fieldName(), valueField.schema()));
+        final Schema recordSchema = recordSchemaBuilder.build();
+
+        SinkRecordBuilder.SinkRecordTypeBuilder builder = SinkRecordBuilder.create()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(offset)
+                .partition(0)
+                .keySchema(keySchema)
+                .recordSchema(recordSchema)
+                .sourceSchema(basicSourceSchema())
+                .source("ts_ms", (int) Instant.now().getEpochSecond());
+
+        for (SchemaAndValueField keyField : keyFields) {
+            builder.key(keyField.fieldName(), keyField.value());
+            builder.after(keyField.fieldName(), keyField.value());
+        }
+
+        for (SchemaAndValueField valueField : valueFields) {
+            builder.after(valueField.fieldName(), valueField.value());
+        }
+
+        return builder.build();
+    }
+
+    default KafkaDebeziumSinkRecord createRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -287,7 +328,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord createRecord(String topicName, byte key, String database, String schema, String table) {
+    default KafkaDebeziumSinkRecord createRecord(String topicName, byte key, String database, String schema, String table) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -307,7 +348,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord createRecordMultipleKeyColumns(String topicName) {
+    default KafkaDebeziumSinkRecord createRecordMultipleKeyColumns(String topicName) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
@@ -324,7 +365,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord updateRecord(String topicName) {
+    default KafkaDebeziumSinkRecord updateRecord(String topicName) {
         return SinkRecordBuilder.update()
                 .flat(isFlattened())
                 .name("prefix")
@@ -342,7 +383,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord updateRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
+    default KafkaDebeziumSinkRecord updateRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
         return SinkRecordBuilder.update()
                 .flat(isFlattened())
                 .name("prefix")
@@ -364,7 +405,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord deleteRecord(String topicName) {
+    default KafkaDebeziumSinkRecord deleteRecord(String topicName) {
         return SinkRecordBuilder.delete()
                 .flat(isFlattened())
                 .name("prefix")
@@ -379,7 +420,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord deleteRecordMultipleKeyColumns(String topicName) {
+    default KafkaDebeziumSinkRecord deleteRecordMultipleKeyColumns(String topicName) {
         return SinkRecordBuilder.delete()
                 .flat(isFlattened())
                 .name("prefix")
@@ -396,7 +437,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord tombstoneRecord(String topicName) {
+    default KafkaDebeziumSinkRecord tombstoneRecord(String topicName) {
         return SinkRecordBuilder.tombstone()
                 .topic(topicName)
                 .keySchema(basicKeySchema())
@@ -404,7 +445,7 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord truncateRecord(String topicName) {
+    default KafkaDebeziumSinkRecord truncateRecord(String topicName) {
         return SinkRecordBuilder.truncate()
                 .flat(isFlattened())
                 .topic(topicName)
@@ -415,10 +456,14 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord cloudEventRecord(String topicName, SerializerType serializerType, String cloudEventsSchemaName) {
-        final SinkRecord baseRecord = updateRecord(topicName);
+    default KafkaDebeziumSinkRecord cloudEventRecord(String topicName, SerializerType serializerType) {
+        return cloudEventRecord(topicName, serializerType, null);
+    }
+
+    default KafkaDebeziumSinkRecord cloudEventRecord(String topicName, SerializerType serializerType, String cloudEventsSchemaName) {
+        final KafkaDebeziumSinkRecord baseRecord = updateRecord(topicName);
         return SinkRecordBuilder.cloudEvent()
-                .baseRecord(baseRecord)
+                .baseRecord(baseRecord.getOriginalKafkaRecord())
                 .cloudEventsSerializerType(serializerType)
                 .cloudEventsSchemaName(cloudEventsSchemaName)
                 .build();

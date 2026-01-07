@@ -45,7 +45,7 @@ public class DockerSqlServerController extends AbstractDockerSqlDatabaseControll
         try {
             container.copyFileToContainer(Transferable.of(Files.readAllBytes(initScript)), DB_INIT_SCRIPT_PATH_CONTAINER);
             container.execInContainer(
-                    "/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", DB_INIT_SCRIPT_PATH_CONTAINER);
+                    "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", DB_INIT_SCRIPT_PATH_CONTAINER, "-C", "-N", "o");
         }
         catch (IOException e) {
             throw new RuntimeException(e);

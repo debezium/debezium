@@ -417,10 +417,15 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 "This may indicate a potential error in your configuration.", tableId);
         final String tableDdl;
         try {
+            // Ensure auto-commit is disabled before calling getTableMetadataDdl().
+            // The JDBC connection may have been re-established (e.g., due to timeout),
+            // and new connections default to autoCommit=true.
+            // See: https://issues.redhat.com/browse/DBZ-1480
+            jdbcConnection.setAutoCommit(false);
             tableDdl = jdbcConnection.getTableMetadataDdl(tableId);
         }
         catch (NonRelationalTableException e) {
-            LOGGER.warn("Table {} is not a relational table, the {} will be skipped.", tableId, eventType);
+            LOGGER.warn("{} The event will be skipped.", e.getMessage());
             streamingMetrics.incrementWarningCount();
             return Optional.empty();
         }

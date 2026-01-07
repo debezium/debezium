@@ -1,0 +1,17 @@
+name: Commit Sign-off Check
+on:
+  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  # re security implications of using this trigger; in particular, no code from PR branches must
+  # be executed in any flows triggered by it
+  - pull_request_target
+
+jobs:
+  # Checks that all commits contain sign-offs
+  # Will add/remove comments as necessary based on the current status of the pull request.
+  check-signed-commits:
+    name: Check signed commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: debezium/dbz/.github/actions/check-dco@main
+        with:
+          add-comments: "true"

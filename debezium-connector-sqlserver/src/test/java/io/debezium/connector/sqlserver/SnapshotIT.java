@@ -7,9 +7,10 @@ package io.debezium.connector.sqlserver;
 
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -25,13 +26,13 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -41,7 +42,7 @@ import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
@@ -54,15 +55,15 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SnapshotIT extends AbstractConnectorTest {
+public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 500;
     private static final int STREAMING_RECORDS_PER_TABLE = 500;
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -80,8 +81,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -89,28 +90,28 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void takeSnapshotInExclusiveMode() throws Exception {
+    void takeSnapshotInExclusiveMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.EXCLUSIVE);
     }
 
     @Test
-    public void takeSnapshotInSnapshotMode() throws Exception {
+    void takeSnapshotInSnapshotMode() throws Exception {
         Testing.Print.enable();
         takeSnapshot(SnapshotIsolationMode.SNAPSHOT);
     }
 
     @Test
-    public void takeSnapshotInRepeatableReadMode() throws Exception {
+    void takeSnapshotInRepeatableReadMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.REPEATABLE_READ);
     }
 
     @Test
-    public void takeSnapshotInReadCommittedMode() throws Exception {
+    void takeSnapshotInReadCommittedMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.READ_COMMITTED);
     }
 
     @Test
-    public void takeSnapshotInReadUncommittedMode() throws Exception {
+    void takeSnapshotInReadUncommittedMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.READ_UNCOMMITTED);
     }
 
@@ -141,16 +142,14 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
+            assertThat(record1.sourceOffset()).extracting("snapshot").isEqualTo(SnapshotType.INITIAL.toString());
+            assertThat(record1.sourceOffset()).extracting("snapshot_completed").isEqualTo(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
 
     @Test
-    public void takeSnapshotAndStartStreaming() throws Exception {
+    void takeSnapshotAndStartStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig().build();
 
         start(SqlServerConnector.class, config);
@@ -222,15 +221,15 @@ public class SnapshotIT extends AbstractConnectorTest {
             assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset()).hasSize(3);
 
-            Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
-            Assert.assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
-            Assert.assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
+            assertTrue(record1.sourceOffset().containsKey("change_lsn"));
+            assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
+            assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
             assertNull(value1.get("before"));
         }
     }
 
     @Test
-    public void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
+    void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
@@ -280,16 +279,14 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
+            assertThat(record1.sourceOffset()).extracting("snapshot").isEqualTo(SnapshotType.INITIAL.toString());
+            assertThat(record1.sourceOffset()).extracting("snapshot_completed").isEqualTo(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
 
     @Test
-    public void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
+    void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
@@ -405,7 +402,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTables() throws Exception {
+    void reoderCapturedTables() throws Exception {
         connection.execute(
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_b (id int, name varchar(30), amount integer primary key(id))");
@@ -437,7 +434,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
+    void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
         connection.execute(
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
@@ -479,7 +476,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
+    void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
         connection.execute(
                 "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",

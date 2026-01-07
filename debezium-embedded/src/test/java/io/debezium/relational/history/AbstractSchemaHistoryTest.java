@@ -9,13 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -28,17 +28,17 @@ import io.debezium.relational.ddl.DdlParser;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSchemaHistoryTest extends AbstractConnectorTest {
+public abstract class AbstractSchemaHistoryTest extends AbstractAsyncEngineConnectorTest {
 
     private MemorySchemaHistory schemaHistory;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         this.schemaHistory = new MemorySchemaHistory();
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         if (this.schemaHistory != null) {
             this.schemaHistory.stop();
         }
@@ -46,7 +46,7 @@ public abstract class AbstractSchemaHistoryTest extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4451")
-    public void shouldRecoverRenamedTableWithOnlyTheRenamedEntry() throws Exception {
+    void shouldRecoverRenamedTableWithOnlyTheRenamedEntry() throws Exception {
         // Record records
         record(getRenameCreateHistoryRecord(), getRenameAlterHistoryRecord());
 
@@ -76,7 +76,7 @@ public abstract class AbstractSchemaHistoryTest extends AbstractConnectorTest {
         Arrays.stream(records).forEach(schemaHistory::storeRecord);
     }
 
-    protected Tables recoverHistory() {
+    protected Tables recoverHistory() throws InterruptedException {
         // Initialize history
         schemaHistory.configure(getHistoryConfiguration(), null, SchemaHistoryMetrics.NOOP, true);
         schemaHistory.start();

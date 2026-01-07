@@ -1,0 +1,3 @@
+DROP USER sidney;
+DROP USER sidney CASCADE;
+DROP USER sidney IF EXISTS;

@@ -102,7 +102,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    protected void emitWindowOpen() {
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) {
 
         getCurrentSnapshot(getContext()::setLowWatermark);
     }
@@ -125,7 +125,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         getContext().updateWindowState(offsetContext);
 
         boolean windowClosed = getContext().isWindowClosed();
-        if (windowClosed) {
+        if (getContext().snapshotRunning() && windowClosed) {
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
         }

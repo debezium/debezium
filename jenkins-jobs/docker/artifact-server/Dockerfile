@@ -1,4 +1,4 @@
-FROM svenstaro/miniserve:alpine
+FROM mirror.gcr.io/svenstaro/miniserve:alpine
 
 RUN apk add --no-cache bash
 

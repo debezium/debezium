@@ -46,10 +46,10 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.embedded.ConvertingEngineBuilderFactory;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
@@ -123,7 +123,7 @@ public class PostgresEndToEndPerf {
                 if (executors != null) {
                     executors.shutdown();
                     try {
-                        executors.awaitTermination(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+                        executors.awaitTermination(CommonConnectorConfig.DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                     }
                     catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
@@ -151,7 +151,7 @@ public class PostgresEndToEndPerf {
     private static Configuration.Builder defaultConnectorConfig() {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
-        jdbcConfiguration.forEach((f, v) -> builder.with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
+        jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -287,28 +287,6 @@ public class PostgresEndToEndPerf {
     }
 
     @State(Scope.Thread)
-    public static class EmbeddedEngineEndToEndPerfTest extends DebeziumEndToEndPerfTest {
-        public String getBaseTableName() {
-            return BASE_TABLE_NAME + "_engine";
-        }
-
-        public DebeziumEngine createEngine() {
-            Configuration config = defaultConnectorConfig()
-                    .with(PostgresConnectorConfig.SLOT_NAME, "engine_" + eventCount)
-                    // .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC)
-                    .build();
-            Properties configProps = addSmtConfig(config);
-
-            return new ConvertingEngineBuilderFactory()
-                    .builder(KV_EVENT_FORMAT)
-                    .using(configProps)
-                    .notifying(getRecordConsumer(consumedLines))
-                    .using(this.getClass().getClassLoader())
-                    .build();
-        }
-    }
-
-    @State(Scope.Thread)
     public static class AsyncEngineEndToEndPerfTest extends DebeziumEndToEndPerfTest {
         @Param({ "1", "2", "4", "8", "16" })
         public int threadCount;
@@ -338,21 +316,6 @@ public class PostgresEndToEndPerf {
                     .notifying(getRecordConsumer(consumedLines))
                     .using(this.getClass().getClassLoader())
                     .build();
-        }
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.SingleShotTime)
-    @OutputTimeUnit(TimeUnit.SECONDS)
-    @Fork(value = 1)
-    @Warmup(iterations = 1)
-    @Measurement(iterations = 1, time = 1)
-    public void processRecordsEmbeddedEngine(EmbeddedEngineEndToEndPerfTest state) {
-        List<EmbeddedEngineChangeEvent> records = new ArrayList<>();
-        while (records.size() < state.eventCount) {
-            List<EmbeddedEngineChangeEvent> temp = new ArrayList<>();
-            state.consumedLines.drainTo(temp);
-            records.addAll(temp);
         }
     }
 

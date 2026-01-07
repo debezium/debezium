@@ -67,6 +67,8 @@ public interface Configuration {
     Pattern PASSWORD_PATTERN = Pattern.compile(".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret",
             Pattern.CASE_INSENSITIVE);
 
+    String CUSTOM_SANITIZE_PATTERN_KEY = "custom.sanitize.pattern";
+
     /**
      * The basic interface for configuration builders.
      *
@@ -799,7 +801,7 @@ public interface Configuration {
     static Configuration from(Properties properties) {
         Properties props = new Properties();
         if (properties != null) {
-            props.putAll(properties);
+            properties.stringPropertyNames().forEach(key -> props.setProperty(key.trim(), properties.getProperty(key)));
         }
         return new Configuration() {
             @Override
@@ -1079,7 +1081,18 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field) {
-        return getString(field.name(), field.defaultValueAsString());
+        if (hasKey(field)) {
+            return getString(field.name(), field.defaultValueAsString());
+        }
+        if (!field.deprecatedAliases().isEmpty()) {
+            for (String alias : field.deprecatedAliases()) {
+                String aliasString = getString(alias);
+                if (aliasString != null) {
+                    return aliasString;
+                }
+            }
+        }
+        return field.defaultValueAsString();
     }
 
     /**
@@ -1453,6 +1466,17 @@ public interface Configuration {
      * @return the configuration value, or the {@code defaultValue} if there is no such key-value pair in the configuration
      */
     default String getString(Field field, Supplier<String> defaultValueSupplier) {
+        if (hasKey(field)) {
+            return getString(field.name(), defaultValueSupplier);
+        }
+        if (field.deprecatedAliases() != null && !field.deprecatedAliases().isEmpty()) {
+            for (String alias : field.deprecatedAliases()) {
+                String aliasString = getString(alias);
+                if (aliasString != null) {
+                    return aliasString;
+                }
+            }
+        }
         return getString(field.name(), defaultValueSupplier);
     }
 
@@ -1741,13 +1765,17 @@ public interface Configuration {
     }
 
     /**
-     * Return a new {@link Configuration} that contains all of the same fields as this configuration, except with masked values
-     * for all keys that end in "password".
+     * Returns a new {@link Configuration} with values masked for all keys matching
+     * the configured sanitize pattern.
+     *
+     * <p>The pattern is taken from {@link ConfigBuilder#CUSTOM_SANITIZE_PATTERN_KEY}, which defaults
+     * to {@link Configuration#PASSWORD_PATTERN} if not set.</p>
      *
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMaskedPasswords() {
-        return withMasked(PASSWORD_PATTERN);
+        String customPattern = getString(CUSTOM_SANITIZE_PATTERN_KEY);
+        return withMasked(customPattern != null ? customPattern : PASSWORD_PATTERN.pattern());
     }
 
     /**

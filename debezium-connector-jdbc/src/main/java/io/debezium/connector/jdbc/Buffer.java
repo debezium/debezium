@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc;
 
 import java.util.List;
 
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+
 /**
  * An interface for implementing several kind of buffers
  *
@@ -15,22 +17,34 @@ import java.util.List;
 public interface Buffer {
 
     /**
-     * to add a {@link SinkRecordDescriptor} to the internal buffer and
+     * to add a {@link JdbcSinkRecord} to the internal buffer and
      * call the {@link Buffer#flush()} when buffer size >= {@link JdbcSinkConnectorConfig#getBatchSize()}
-     * @param recordDescriptor the Sink record descriptor
+     * @param record the Debezium sink record
      * @return the  buffer  records
      */
-    List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor);
+    List<JdbcSinkRecord> add(JdbcSinkRecord record);
 
     /**
      * to clear and flush the internal buffer
-     * @return {@link SinkRecordDescriptor} the flushed buffer records.
+     * @return {@link JdbcSinkRecord} the flushed buffer records.
      */
-    List<SinkRecordDescriptor> flush();
+    List<JdbcSinkRecord> flush();
 
     /**
      * to check whether buffer is empty or not.
      * @return true if empty else false.
      */
     boolean isEmpty();
+
+    /**
+     * to get the table descriptor
+     * @return the table descriptor
+     */
+    TableDescriptor getTableDescriptor();
+
+    /**
+     * to remove a {@link JdbcSinkRecord} from the internal buffer and
+     * @param record the Debezium sink record
+     */
+    void remove(JdbcSinkRecord record);
 }

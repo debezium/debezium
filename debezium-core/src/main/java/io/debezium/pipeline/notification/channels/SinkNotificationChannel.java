@@ -134,7 +134,7 @@ public class SinkNotificationChannel implements NotificationChannel, ConnectChan
         }
 
         @Override
-        public boolean isSnapshotRunning() {
+        public boolean isInitialSnapshotRunning() {
             return false;
         }
 
@@ -144,7 +144,7 @@ public class SinkNotificationChannel implements NotificationChannel, ConnectChan
         }
 
         @Override
-        public void preSnapshotStart() {
+        public void preSnapshotStart(boolean onDemand) {
 
         }
 

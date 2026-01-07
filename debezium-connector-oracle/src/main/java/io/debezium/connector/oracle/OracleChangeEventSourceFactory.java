@@ -8,7 +8,6 @@ package io.debezium.connector.oracle;
 import java.util.Optional;
 
 import io.debezium.config.Configuration;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -22,12 +21,11 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OraclePartition, OracleOffsetContext> {
 
     private final OracleConnectorConfig configuration;
-    private final MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory;
+    private final OracleConnectionFactory connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
@@ -37,7 +35,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
 
-    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
+    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnectionFactory connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
@@ -82,7 +80,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
                                                                                                                                                NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
-        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
 
@@ -92,7 +90,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(connectionFactory.mainConnection().config()),
+                new OracleConnection(configuration, connectionFactory.mainConnection().config()),
                 dispatcher,
                 schema,
                 clock,

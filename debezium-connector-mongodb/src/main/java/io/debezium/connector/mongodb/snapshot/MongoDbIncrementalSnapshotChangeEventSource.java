@@ -48,6 +48,7 @@ import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -63,7 +64,6 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -115,8 +115,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.clock = clock;
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
-        this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
-                : CollectionId.parse(connectorConfig.getSignalingDataCollectionId());
+        this.signallingCollectionId = connectorConfig.getSignalingDataCollectionIds().isEmpty() ? null
+                : CollectionId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         this.notificationService = notificationService;
         this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
                 "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
@@ -209,7 +209,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     /**
      * Update low watermark for the incremental snapshot chunk
      */
-    protected void emitWindowOpen() throws InterruptedException {
+    protected void emitWindowOpen(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-open";
 
@@ -231,7 +231,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     /**
      * Update high watermark for the incremental snapshot chunk
      */
-    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
+    protected void emitWindowClose(MongoDbPartition partition, OffsetContext offsetContext) throws Exception {
 
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, mongo, signallingCollectionId);
 
@@ -250,7 +250,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = taskContext.getConnection(dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -275,6 +275,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void readChunk(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndProcessStopFlag(partition, offsetContext);
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -287,7 +288,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         try {
             preReadChunk(context);
             context.startNewChunk();
-            emitWindowOpen();
+            emitWindowOpen(partition, offsetContext);
             while (context.snapshotRunning()) {
                 final CollectionId currentDataCollectionId = context.currentDataCollectionId().getId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
@@ -430,60 +431,65 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
-
+    public void requestStopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
-        if (context.snapshotRunning()) {
-            if (dataCollectionPatterns == null || dataCollectionPatterns.isEmpty()) {
-                LOGGER.info("Stopping incremental snapshot.");
-                try {
-                    // This must be called prior to closeWindow to ensure that the correct state is set
-                    // to prevent chunk rads from triggering additional open/close events.
-                    context.stopSnapshot();
+        context.requestSnapshotStop(dataCollectionPatterns);
+    }
 
-                    // Clear the state
-                    window.clear();
-                    closeWindow(partition, context.currentChunkId(), offsetContext);
-
-                    progressListener.snapshotAborted(partition);
-
-                    notificationService
-                            .incrementalSnapshotNotificationService()
-                            .notifyAborted(context, partition, offsetContext);
-                }
-                catch (InterruptedException e) {
-                    LOGGER.warn("Failed to stop snapshot successfully.", e);
-                }
+    @SuppressWarnings("unchecked")
+    private void checkAndProcessStopFlag(MongoDbPartition partition, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
+        if (dataCollectionsToStop.isEmpty()) {
+            return;
+        }
+        LOGGER.trace("Stopping incremental snapshot with context {}", context);
+        if (!context.snapshotRunning()) {
+            context.unsetCorrelationId();
+            LOGGER.warn("No active incremental snapshot, stop ignored");
+            return;
+        }
+        final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionsToStop);
+        final List<String> stopped = new ArrayList<>();
+        LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
+        // Iterate and remove any collections that are not current.
+        // If current is marked for removal, delay that until after others have been removed.
+        DataCollectionId stopCurrentTableId = null;
+        for (String dataCollectionId : expandedDataCollectionIds) {
+            final CollectionId collectionId = CollectionId.parse(dataCollectionId);
+            if (currentCollection != null && currentCollection.id().equals(collectionId)) {
+                stopCurrentTableId = currentCollection.id();
             }
             else {
-                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionPatterns);
-                for (String dataCollectionId : dataCollectionPatterns) {
-                    final CollectionId collectionId = CollectionId.parse(dataCollectionId);
-                    if (currentCollection != null && currentCollection.id().equals(collectionId)) {
-                        window.clear();
-                        LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-
-                        collectionScanCompleted(partition);
-                        nextDataCollection(partition, offsetContext);
-                    }
-                    else {
-                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
-                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-                        }
-                        else {
-                            LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
-                        }
-                    }
+                if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                    stopped.add(dataCollectionId);
+                    LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
                 }
-
-                notificationService
-                        .incrementalSnapshotNotificationService()
-                        .notifyAborted(context, partition, offsetContext, dataCollectionPatterns);
+                else {
+                    LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
+                }
             }
         }
-        else {
-            LOGGER.warn("No active incremental snapshot, stop ignored");
+        // If current is requested to stop, proceed with stopping it.
+        if (stopCurrentTableId != null) {
+            LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
+            collectionScanCompleted(partition);
+            stopped.add(stopCurrentTableId.identifier());
+            // If snapshot has no more collections, abort; otherwise advance to the next collection.
+            if (!context.snapshotRunning()) {
+                LOGGER.info("Incremental snapshot has stopped.");
+                progressListener.snapshotAborted(partition);
+            }
+            else {
+                LOGGER.info("Advancing to next available collection in the incremental snapshot.");
+                nextDataCollection(partition, offsetContext);
+            }
         }
+        notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+        if (!context.snapshotRunning()) {
+            context.unsetCorrelationId();
+        }
+        LOGGER.info("Removed collections from incremental snapshot: '{}'", stopped);
     }
 
     /**
@@ -494,11 +500,13 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         return collectionIds
                 .stream()
                 .flatMap(dataId -> {
-                    CollectionId collectionId = CollectionId.parse(dataId);
-                    if (collectionId == null) {
-                        return Stream.of(dataId);
-                    }
-                    return Pattern.compile(dataId).matcher(collectionId.identifier()).matches() ? Stream.of(collectionId.identifier()) : Stream.of(dataId);
+                    final List<String> ids = collectionSchema
+                            .collections()
+                            .stream()
+                            .map(CollectionId::identifier)
+                            .filter(t -> Pattern.compile(dataId).matcher(t).matches())
+                            .collect(Collectors.toList());
+                    return ids.isEmpty() ? Stream.of(dataId) : ids.stream();
                 }).distinct().collect(Collectors.toList());
     }
 
@@ -630,6 +638,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             else {
                 predicate = new Document("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
             }
+        }
+        else if (!additionalConditions.isEmpty()) {
+            Document additionalConditionsPredicate = Document.parse(additionalConditions);
+            predicate = new Document("$and", Arrays.asList(maxKeyPredicate, additionalConditionsPredicate));
         }
         return predicate;
     }

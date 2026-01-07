@@ -53,7 +53,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
      * Default should match {@code version.mongo.server} in parent {@code pom.xml}.
      */
     public static final String IMAGE_VERSION = System.getProperty("version.mongo.server", "6.0");
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mongo:" + IMAGE_VERSION);
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mirror.gcr.io/library/mongo:" + IMAGE_VERSION);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final String CONTAINER_KEYFILE_PATH = "/data/replica.key";
@@ -200,7 +200,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                 + " " + (replicaSet == null ? "" : "--replSet " + replicaSet)
                 + " " + (configAddress == null ? "" : "--configdb " + configAddress)
                 + " --port " + port
-                + " --bind_ip localhost," + name;
+                + " --bind_ip_all";
 
         if (authEnabled) {
             var keyFileCommand = "echo 'secret' > " + CONTAINER_KEYFILE_PATH

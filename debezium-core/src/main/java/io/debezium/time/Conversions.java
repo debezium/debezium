@@ -194,4 +194,15 @@ public final class Conversions {
                 TimeUnit.MILLISECONDS.toSeconds(millisecondSinceEpoch),
                 TimeUnit.MILLISECONDS.toNanos(millisecondSinceEpoch % TimeUnit.SECONDS.toMillis(1)));
     }
+
+    public static Instant toInstantFromNanos(Long nanosSinceEpoch) {
+        return Instant.ofEpochSecond(
+                TimeUnit.NANOSECONDS.toSeconds(nanosSinceEpoch),
+                nanosSinceEpoch % TimeUnit.SECONDS.toNanos(1));
+    }
+
+    public static long toEpochNanos(Instant instant) {
+        return TimeUnit.SECONDS.toNanos(instant.getEpochSecond()) + instant.getNano();
+    }
+
 }

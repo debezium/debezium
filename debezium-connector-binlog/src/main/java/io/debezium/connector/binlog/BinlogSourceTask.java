@@ -14,8 +14,6 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
-import io.debezium.pipeline.signal.SignalProcessor;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.snapshot.Snapshotter;
@@ -76,33 +74,6 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
             }
         }
     }
-
-    /**
-     * Reset the specified offset.
-     *
-     * @param connectorConfig the connector configuration, should not be null
-     * @param previousOffset the previous offsets
-     * @param signalProcessor the signal processor, should not be null
-     */
-    protected void resetOffset(BinlogConnectorConfig connectorConfig, O previousOffset, SignalProcessor<P, O> signalProcessor) {
-        boolean isKafkaChannelEnabled = connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
-        if (previousOffset != null && isKafkaChannelEnabled && connectorConfig.isReadOnlyConnection()) {
-            KafkaSignalChannel kafkaSignal = signalProcessor.getSignalChannel(KafkaSignalChannel.class);
-            Long signalOffset = getReadOnlyIncrementalSnapshotSignalOffset(previousOffset);
-            if (signalOffset != null) {
-                LOGGER.info("Resetting Kafka Signal offset to {}", signalOffset);
-                kafkaSignal.reset(signalOffset);
-            }
-        }
-    }
-
-    /**
-     * Obtain the read-only incremental snapshot signal offset.
-     *
-     * @param previousOffset the previous offsets
-     * @return the read-only incremental snapshot signal offset
-     */
-    protected abstract Long getReadOnlyIncrementalSnapshotSignalOffset(O previousOffset);
 
     /**
      * Common heartbeat error handler for binlog-based connectors.

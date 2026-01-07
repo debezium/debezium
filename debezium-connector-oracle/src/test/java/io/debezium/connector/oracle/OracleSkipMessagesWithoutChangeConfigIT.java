@@ -13,33 +13,27 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration tests for config skip.messages.without.change
  *
  * @author Ronak Jain
  */
-public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
-
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         connection = TestHelper.testConnection();
         TestHelper.dropTable(connection, "debezium.test");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -47,8 +41,8 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.test");
             connection.close();

@@ -32,7 +32,7 @@ public class RestPrometheusMetricReader implements ConnectorMetricsReader {
     }
 
     public List<String> getMetrics() {
-        LOGGER.info("Retrieving connector metrics");
+        LOGGER.info("Retrieving connector metrics from {}", url);
         OkHttpClient httpClient = new OkHttpClient();
         Request r = new Request.Builder().url(url).get().build();
 
@@ -62,6 +62,11 @@ public class RestPrometheusMetricReader implements ConnectorMetricsReader {
     @Override
     public void waitForMySqlSnapshot(String connectorName) {
         waitForSnapshot(connectorName, "debezium_mysql_connector_metrics_snapshotcompleted");
+    }
+
+    @Override
+    public void waitForMariaDbSnapshot(String connectorName) {
+        waitForSnapshot(connectorName, "debezium_mariadb_connector_metrics_snapshotcompleted");
     }
 
     @Override

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.Uuid;
 import org.apache.kafka.connect.data.Schema;
@@ -24,6 +25,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
@@ -76,11 +78,12 @@ public class SinkRecordBuilder {
         private int offset;
         private SinkRecord baseRecord;
         private SerializerType cloudEventsSerializerType;
-        private String cloudEventsSchemaName;
-        private Map<String, Object> keyValues = new HashMap<>();
-        private Map<String, Object> beforeValues = new HashMap<>();
-        private Map<String, Object> afterValues = new HashMap<>();
-        private Map<String, Object> sourceValues = new HashMap<>();
+        private String cloudEventsSchemaName = null;
+        private String cloudEventsSchemaNamePattern = ".*" + Pattern.quote(CloudEventsMaker.CLOUDEVENTS_SCHEMA_SUFFIX) + "$";
+        private final Map<String, Object> keyValues = new HashMap<>();
+        private final Map<String, Object> beforeValues = new HashMap<>();
+        private final Map<String, Object> afterValues = new HashMap<>();
+        private final Map<String, Object> sourceValues = new HashMap<>();
 
         private SinkRecordTypeBuilder(Type type) {
             this.type = type;
@@ -157,29 +160,26 @@ public class SinkRecordBuilder {
         }
 
         public SinkRecordTypeBuilder cloudEventsSchemaName(String cloudEventsSchemaName) {
+            if (null == cloudEventsSchemaName) {
+                return this;
+            }
             this.cloudEventsSchemaName = cloudEventsSchemaName;
+            cloudEventsSchemaNamePattern = ".*" + Pattern.quote(cloudEventsSchemaName) + ".*";
             return this;
         }
 
-        public SinkRecord build() {
-            switch (type) {
-                case CREATE:
-                    return buildCreateSinkRecord();
-                case UPDATE:
-                    return buildUpdateSinkRecord();
-                case DELETE:
-                    return buildDeleteSinkRecord();
-                case TOMBSTONE:
-                    return buildTombstoneSinkRecord();
-                case TRUNCATE:
-                    return buildTruncateSinkRecord();
-                case CLOUD_EVENT:
-                    return buildCloudEventRecord();
-            }
-            return null;
+        public KafkaDebeziumSinkRecord build() {
+            return switch (type) {
+                case CREATE -> buildCreateSinkRecord();
+                case UPDATE -> buildUpdateSinkRecord();
+                case DELETE -> buildDeleteSinkRecord();
+                case TOMBSTONE -> buildTombstoneSinkRecord();
+                case TRUNCATE -> buildTruncateSinkRecord();
+                case CLOUD_EVENT -> buildCloudEventRecord();
+            };
         }
 
-        private SinkRecord buildCreateSinkRecord() {
+        private KafkaDebeziumSinkRecord buildCreateSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
@@ -190,69 +190,71 @@ public class SinkRecordBuilder {
             if (!flat) {
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.create(after, source, Instant.now());
-                return new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
+                        cloudEventsSchemaNamePattern);
             }
             else {
-                return new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset), cloudEventsSchemaNamePattern);
             }
         }
 
-        private SinkRecord buildUpdateSinkRecord() {
+        private KafkaDebeziumSinkRecord buildUpdateSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
-            final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
             final Struct after = populateStructFromMap(new Struct(recordSchema), afterValues);
-            final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
 
             if (!flat) {
+                final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
+                final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.update(before, after, source, Instant.now());
-                return new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset), cloudEventsSchemaName);
             }
             else {
-                return new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset), cloudEventsSchemaName);
             }
         }
 
-        private SinkRecord buildDeleteSinkRecord() {
+        private KafkaDebeziumSinkRecord buildDeleteSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
-            final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
-            final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
 
             if (!flat) {
+                final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
+                final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.delete(before, source, Instant.now());
-                return new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
+                        cloudEventsSchemaNamePattern);
             }
             else {
-                return new SinkRecord(topicName, partition, keySchema, key, recordSchema, null, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, null, offset), cloudEventsSchemaNamePattern);
             }
         }
 
-        private SinkRecord buildTombstoneSinkRecord() {
+        private KafkaDebeziumSinkRecord buildTombstoneSinkRecord() {
             final Struct key = populateStructForKey();
-            return new SinkRecord(topicName, partition, keySchema, key, null, null, offset);
+            return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, null, null, offset), cloudEventsSchemaNamePattern);
         }
 
-        private SinkRecord buildTruncateSinkRecord() {
+        private KafkaDebeziumSinkRecord buildTruncateSinkRecord() {
             if (!flat) {
                 final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.truncate(source, Instant.now());
-                return new SinkRecord(topicName, partition, null, null, envelope.schema(), payload, offset);
+                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, null, null, envelope.schema(), payload, offset), cloudEventsSchemaNamePattern);
             }
             else {
                 return null;
             }
         }
 
-        private SinkRecord buildCloudEventRecord() {
-            final String schemaName = cloudEventsSchemaName != null ? cloudEventsSchemaName : "test.test.CloudEvents.Envelope";
+        private KafkaDebeziumSinkRecord buildCloudEventRecord() {
+            final String schemaName = (cloudEventsSchemaName != null ? cloudEventsSchemaName : "test.test") + "." + CloudEventsMaker.CLOUDEVENTS_SCHEMA_SUFFIX;
             final SchemaBuilder schemaBuilder = SchemaBuilder.struct()
                     .name(schemaName)
                     .field(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA)
@@ -277,15 +279,15 @@ public class SinkRecordBuilder {
             final Object ceValue;
             if (cloudEventsSerializerType == SerializerType.JSON) {
                 ceValue = convertCloudEventToMap(ceSchema, ceValueStruct);
-                ceSchema = null;
+                ceSchema = SchemaBuilder.map(SchemaBuilder.string(), SchemaBuilder.string()).name(schemaName).build();
             }
             else {
                 ceValue = ceValueStruct;
             }
 
-            return new SinkRecord(baseRecord.topic(), baseRecord.kafkaPartition(), baseRecord.keySchema(), baseRecord.key(),
+            return new KafkaDebeziumSinkRecord(new SinkRecord(baseRecord.topic(), baseRecord.kafkaPartition(), baseRecord.keySchema(), baseRecord.key(),
                     ceSchema, ceValue,
-                    baseRecord.kafkaOffset(), baseRecord.timestamp(), baseRecord.timestampType(), baseRecord.headers());
+                    baseRecord.kafkaOffset(), baseRecord.timestamp(), baseRecord.timestampType(), baseRecord.headers()), cloudEventsSchemaNamePattern);
         }
 
         private Envelope createEnvelope() {
@@ -332,7 +334,7 @@ public class SinkRecordBuilder {
             }
             final Object dataMap = map.get(CloudEventsMaker.FieldName.DATA);
             if (dataMap != null) {
-                map.put(CloudEventsMaker.FieldName.DATA, dataMap.toString());
+                map.put(CloudEventsMaker.FieldName.DATA, dataMap);
             }
             return map;
         }

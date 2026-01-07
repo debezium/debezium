@@ -188,12 +188,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         /**
          * Never perform a snapshot and only receive logical changes.
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        NEVER("never"),
-
-        /**
-         * Never perform a snapshot and only receive logical changes.
          */
         NO_DATA("no_data"),
 
@@ -257,6 +251,77 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SnapshotMode parse(String value, String defaultValue) {
             SnapshotMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined snapshot isolation mode options.
+     */
+    public enum SnapshotIsolationMode implements EnumeratedValue {
+
+        /**
+         * This mode uses SERIALIZABLE isolation level.
+         */
+        SERIALIZABLE("serializable"),
+
+        /**
+         * This mode uses REPEATABLE READ isolation level.
+         */
+        REPEATABLE_READ("repeatable_read"),
+
+        /**
+         * This mode uses READ COMMITTED isolation level.
+         */
+        READ_COMMITTED("read_committed"),
+
+        /**
+         * This mode uses READ UNCOMMITTED isolation level.
+         */
+        READ_UNCOMMITTED("read_uncommitted");
+
+        private final String value;
+
+        SnapshotIsolationMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotIsolationMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotIsolationMode option : SnapshotIsolationMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value        the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotIsolationMode parse(String value, String defaultValue) {
+            SnapshotIsolationMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
@@ -583,6 +648,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly. " +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field CREATE_FAIL_OVER_SLOT = Field.create("slot.failover")
+            .withDisplayName("Create failover slot")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 11))
+            .withDefault(false)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Whether or not to create a failover slot. This is only supported when connecting to a primary server of a Postgres cluster, version 17 or newer. " +
+                            "When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.");
+
+    /**
+     * @deprecated Replaced by {@link #OFFSET_SLOT_MISMATCH_STRATEGY}
+     */
+    @Deprecated
     public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
             .withDisplayName("Seek to last known offset on the replication slot")
             .withType(Type.BOOLEAN)
@@ -591,8 +670,21 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
             .withDescription(
-                    "Whether or not to seek to the last known offset on the replication slot." +
-                            "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
+                    "(Deprecated) Whether or not to seek to the last known offset on the replication slot. " +
+                            "Use 'offset.mismatch.strategy' instead. A value of 'true' maps to 'trust_offset' strategy, 'false' maps to 'no_validation' strategy.");
+
+    public static final Field OFFSET_SLOT_MISMATCH_STRATEGY = Field.create("offset.mismatch.strategy")
+            .withDisplayName("Offset Slot Mismatch Strategy")
+            .withEnum(OffsetSlotMismatchStrategy.class, OffsetSlotMismatchStrategy.NO_VALIDATION)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Determines behavior when the connector's stored offset LSN differs from the replication slot's confirmed LSN. " +
+                            "'no_validation' (default) uses offset without validation, may fail if WAL unavailable; " +
+                            "'trust_offset' validates and advances slot to offset, detects slot recreation (prevents data loss when slot can't be trusted); " +
+                            "'trust_slot' slot is authoritative, advances offset to slot. (recommended when slot is durable, even through primary-replica failover); " +
+                            "'trust_greater_lsn' uses max(offset, slot) for automatic self-healing in either direction.");
 
     public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
             .withDisplayName("Replication slot creation timeout")
@@ -826,6 +918,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "'exported': This option is deprecated; use 'initial' instead.; "
                     + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the PostgreSQL connector documentation.");
 
+    public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
+            .withDisplayName("Snapshot isolation mode")
+            .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.SERIALIZABLE)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls which transaction isolation level is used. "
+                    + "The default is '" + SnapshotIsolationMode.SERIALIZABLE.getValue()
+                    + "', which means that serializable isolation level is used. "
+                    + "When '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
+                    + "' is specified, connector runs the initial snapshot in REPEATABLE READ isolation level. "
+                    + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
+                    + "' is specified, connector runs the initial snapshot in READ COMMITTED isolation level. "
+                    + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
+                    + "' is specified, connector runs the initial snapshot in READ UNCOMMITTED isolation level.");
+
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
@@ -896,6 +1004,94 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Frequency for sending replication connection status updates to the server, given in milliseconds. Defaults to 10 seconds (10,000 ms).")
             .withValidation(Field::isPositiveInteger);
 
+    public static final Field LSN_FLUSH_TIMEOUT_MS = Field.create("lsn.flush.timeout.ms")
+            .withDisplayName("LSN flush timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 12))
+            .withDefault(30_000)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Maximum time in milliseconds to wait for LSN flush operation to complete. "
+                    + "If the flush operation does not complete within this timeout, the action specified by "
+                    + "lsn.flush.timeout.action will be taken. Defaults to 30 seconds.")
+            .withValidation(Field::isPositiveInteger);
+
+    /**
+     * The set of predefined LSN flush timeout action options
+     */
+    public enum LsnFlushTimeoutAction implements EnumeratedValue {
+        /**
+         * Fail the connector when timeout occurs
+         */
+        FAIL("fail"),
+
+        /**
+         * Log a warning when timeout occurs, but continue processing
+         */
+        WARN("warn"),
+
+        /**
+         * Continue processing and ignore timeouts
+         */
+        IGNORE("ignore");
+
+        private final String value;
+
+        LsnFlushTimeoutAction(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LsnFlushTimeoutAction parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LsnFlushTimeoutAction option : LsnFlushTimeoutAction.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static LsnFlushTimeoutAction parse(String value, String defaultValue) {
+            LsnFlushTimeoutAction action = parse(value);
+            if (action == null && defaultValue != null) {
+                action = parse(defaultValue);
+            }
+            return action;
+        }
+    }
+
+    public static final Field LSN_FLUSH_TIMEOUT_ACTION = Field.create("lsn.flush.timeout.action")
+            .withDisplayName("LSN flush timeout action")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 13))
+            .withEnum(LsnFlushTimeoutAction.class, LsnFlushTimeoutAction.FAIL)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Action to take when an LSN flush timeout occurs. Options include: " +
+                    "'fail' (default) to fail the connector; " +
+                    "'warn' to log a warning and continue processing; " +
+                    "'ignore' to continue processing and ignore the timeout.");
+
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
             .withDisplayName("TCP keep-alive probe")
             .withType(Type.BOOLEAN)
@@ -960,6 +1156,182 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
+    public static final Field PUBLISH_VIA_PARTITION_ROOT = Field.create("publish.via.partition.root")
+            .withDisplayName("Publish via partition root")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("A boolean that determines whether the connector should publish changes via the partition root. " +
+                    "When true, changes are published through partition root. When false, changes are published directly.")
+            .withDefault(false)
+            .withValidation(Field::isBoolean);
+
+    public enum OffsetSlotMismatchStrategy implements EnumeratedValue {
+        /**
+         * Do not validate or seek slot/offset positions (legacy behavior).
+         * Attempts to stream from the stored offset without validating against the replication slot.
+         * Slot recreation is not detected. Replaces internal.slot.seek.to.known.offset.on.start = false.
+         */
+        NO_VALIDATION("no_validation"),
+
+        /**
+         * Validate and advance slot to match offset when possible.
+         * Fails if slot position is ahead of offset, detecting slot recreation and preventing silent data issues.
+         * Recommended for preventing silent data loss when slot is untrustworthy. Replaces internal.slot.seek.to.known.offset.on.start = true.
+         */
+        TRUST_OFFSET("trust_offset"),
+
+        /**
+         * Trust the replication slot as the authoritative position (server-side source of truth).
+         * Advances offset to slot when slot is ahead.
+         * Useful where the slot is durable (even during primary-replica failover), and teams prefer server-side state over client-side offset tracking. Valuable for LsnFlushMode.CONNECTOR_AND_DRIVER
+         *
+         */
+        TRUST_SLOT("trust_slot"),
+
+        /**
+         * Self-healing mode that uses max(offset_lsn, slot_lsn).
+         * Automatically resolves mismatches in either direction, providing fully automatic recovery.
+         * Similar to TRUST_SLOT, but also makes use of the offset position to reduce duplicates in case of a crash. Valuable for LsnFlushMode.CONNECTOR_AND_DRIVER
+         */
+        TRUST_GREATER_LSN("trust_greater_lsn");
+
+        private final String value;
+
+        OffsetSlotMismatchStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if one of the strategies is to seek the slot to the offset.
+         */
+        public boolean shouldSeekSlotToOffset() {
+            return this == TRUST_OFFSET || this == TRUST_GREATER_LSN;
+        }
+
+        /**
+         * Determine if one of the strategies is to seek the offset to the slot (jump ahead).
+         */
+        public boolean shouldSeekOffsetToSlot() {
+            return this == TRUST_SLOT || this == TRUST_GREATER_LSN;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static OffsetSlotMismatchStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (OffsetSlotMismatchStrategy option : OffsetSlotMismatchStrategy.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static OffsetSlotMismatchStrategy parse(String value, String defaultValue) {
+            OffsetSlotMismatchStrategy mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * Modes for LSN flushing strategy
+     */
+    public enum LsnFlushMode implements EnumeratedValue {
+        /**
+         * Debezium manages LSN flushing (standard behavior).
+         *
+         * Replaces deprecated configuration option flush.lsn.source with a value of true.
+         */
+        CONNECTOR("connector"),
+
+        /**
+         * LSN flushing is externally managed.
+         *
+         * Replaces deprecated configuration option flush.lsn.source with a value of false.
+         */
+        MANUAL("manual"),
+
+        /**
+         * Both Debezium and pgjdbc driver manage LSN flushing.
+         *  - Debezium flushes LSN when processing events
+         *  - pgjdbc automatically flushes using server keepalive messages during idle periods.
+         */
+        CONNECTOR_AND_DRIVER("connector_and_driver");
+
+        private final String value;
+
+        LsnFlushMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LsnFlushMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LsnFlushMode option : LsnFlushMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static LsnFlushMode parse(String value, String defaultValue) {
+            LsnFlushMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * @deprecated Replaced by {@link #LSN_FLUSH_MODE}
+     */
+    @Deprecated
     public static final Field SHOULD_FLUSH_LSN_IN_SOURCE_DB = Field.create("flush.lsn.source")
             .withDisplayName("Boolean to determine if Debezium should flush LSN in the source database")
             .withType(Type.BOOLEAN)
@@ -967,9 +1339,23 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
-                    "Boolean to determine if Debezium should flush LSN in the source postgres database. If set to false, user will have to flush the LSN manually outside Debezium.")
+                    "(Deprecated) Boolean to determine if Debezium should flush LSN in the source postgres database. " +
+                            "Use 'lsn.flush.mode' instead. A value of 'true' maps to 'connector' mode, 'false' maps to 'manual' mode.")
             .withDefault(Boolean.TRUE)
-            .withValidation(Field::isBoolean, PostgresConnectorConfig::validateFlushLsnSource);
+            .withValidation(Field::isBoolean);
+
+    public static final Field LSN_FLUSH_MODE = Field.create("lsn.flush.mode")
+            .withDisplayName("LSN flush mode")
+            .withEnum(LsnFlushMode.class)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 100))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Determines the LSN flushing strategy. Options include: " +
+                            "'connector' (default) for Debezium managed LSN flushing (replaces deprecated flush.lsn.source=true); " +
+                            "'manual' for externally managed LSN flushing (replaces deprecated flush.lsn.source=false); " +
+                            "'connector_and_driver' for Debezium managed LSN flushing with the pgjdbc driver flushing unmonitored LSNs" +
+                            "using server keepalive LSN, which prevents WAL growth on low-activity databases.");
 
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
@@ -988,12 +1374,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SchemaRefreshMode schemaRefreshMode;
-    private final boolean flushLsnOnSource;
+    private final LsnFlushMode lsnFlushMode;
     private final ReplicaIdentityMapper replicaIdentityMapper;
+    private final LsnFlushTimeoutAction lsnFlushTimeoutAction;
 
     private final SnapshotMode snapshotMode;
+    private final SnapshotIsolationMode snapshotIsolationMode;
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyConnection;
+    private final boolean publishViaPartitionRoot;
+    private final OffsetSlotMismatchStrategy offsetSlotMismatchStrategy;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -1010,12 +1400,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
-        this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+        this.lsnFlushMode = resolveLsnFlushMode(config);
         final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
+        this.publishViaPartitionRoot = config.getBoolean(PUBLISH_VIA_PARTITION_ROOT);
+        this.lsnFlushTimeoutAction = LsnFlushTimeoutAction.parse(config.getString(LSN_FLUSH_TIMEOUT_ACTION));
+        this.offsetSlotMismatchStrategy = resolveOffsetSlotMismatchStrategy(config);
     }
 
     protected String hostname() {
@@ -1039,15 +1433,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected boolean dropSlotOnStop() {
-        if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
-            return getConfig().getBoolean(DROP_SLOT_ON_STOP);
-        }
-        // Return default value
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
 
+    protected boolean createFailOverSlot() {
+        return getConfig().getBoolean(CREATE_FAIL_OVER_SLOT);
+    }
+
     public boolean slotSeekToKnownOffsetOnStart() {
-        return getConfig().getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
+        return offsetSlotMismatchStrategy.shouldSeekSlotToOffset();
+    }
+
+    public boolean offsetSeekToSlotOnStart() {
+        return offsetSlotMismatchStrategy.shouldSeekOffsetToSlot();
     }
 
     public long createSlotCommandTimeout() {
@@ -1078,6 +1476,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
     }
 
+    protected Duration lsnFlushTimeout() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.LSN_FLUSH_TIMEOUT_MS));
+    }
+
+    protected LsnFlushTimeoutAction lsnFlushTimeoutAction() {
+        return lsnFlushTimeoutAction;
+    }
+
     public LogicalDecodingMessageFilter getMessageFilter() {
         return logicalDecodingMessageFilter;
     }
@@ -1106,8 +1512,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
+    public LsnFlushMode getLsnFlushMode() {
+        return lsnFlushMode;
+    }
+
     public boolean isFlushLsnOnSource() {
-        return flushLsnOnSource;
+        return lsnFlushMode != LsnFlushMode.MANUAL;
+    }
+
+    public boolean isPublishViaPartitionRoot() {
+        return publishViaPartitionRoot;
     }
 
     @Override
@@ -1126,6 +1540,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public SnapshotMode getSnapshotMode() {
         return this.snapshotMode;
+    }
+
+    public SnapshotIsolationMode getSnapshotIsolationMode() {
+        return this.snapshotIsolationMode;
     }
 
     @Override
@@ -1165,6 +1583,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     PUBLICATION_AUTOCREATE_MODE,
                     REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP,
+                    CREATE_FAIL_OVER_SLOT,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,
                     SSL_MODE,
@@ -1176,16 +1595,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     RETRY_DELAY_MS,
                     SSL_SOCKET_FACTORY,
                     STATUS_UPDATE_INTERVAL_MS,
+                    LSN_FLUSH_TIMEOUT_MS,
+                    LSN_FLUSH_TIMEOUT_ACTION,
                     TCP_KEEPALIVE,
                     XMIN_FETCH_INTERVAL,
                     // Use this connector's implementation rather than common connector's flavor
                     SKIPPED_OPERATIONS,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB)
+                    LSN_FLUSH_MODE,
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB) // Deprecated, for backward compatibility
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
                     SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
+                    SNAPSHOT_ISOLATION_MODE,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
                     SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
@@ -1198,7 +1621,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST)
+                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST,
+                    PUBLISH_VIA_PARTITION_ROOT)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
@@ -1236,12 +1660,38 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return 0;
     }
 
-    private static int validateFlushLsnSource(Configuration config, Field field, Field.ValidationOutput problems) {
-        if (config.getString(PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB, "true").equalsIgnoreCase("false")) {
-            LOGGER.warn("Property '" + PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB.name()
-                    + "' is set to 'false', the LSN will not be flushed to the database source and WAL logs will not be cleared. User is expected to handle this outside Debezium.");
+    private LsnFlushMode resolveLsnFlushMode(Configuration config) {
+        LsnFlushMode mode = null;
+
+        String newModeValue = config.getString(LSN_FLUSH_MODE);
+        if (newModeValue != null) {
+            mode = LsnFlushMode.parse(newModeValue);
         }
-        return 0;
+        if (mode == null && config.hasKey(SHOULD_FLUSH_LSN_IN_SOURCE_DB)) {
+            LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB.name(), LSN_FLUSH_MODE.name());
+            boolean deprecatedValue = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+            mode = deprecatedValue ? LsnFlushMode.CONNECTOR : LsnFlushMode.MANUAL;
+        }
+
+        if (mode == null) {
+            mode = LsnFlushMode.CONNECTOR; // Use default
+        }
+
+        logLsnFlushModeInfo(mode);
+        return mode;
+    }
+
+    private static void logLsnFlushModeInfo(LsnFlushMode mode) {
+        switch (mode) {
+            case CONNECTOR ->
+                LOGGER.info(
+                        "Using LSN flush mode 'connector': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is DISABLED; consider using heartbeat.action.query to prevent WAL growth on low-activity databases.");
+            case MANUAL -> LOGGER.warn(
+                    "Using LSN flush mode 'manual': LSN will NOT be flushed to the database and WAL logs will NOT be cleared automatically. User is responsible for external LSN management.");
+            case CONNECTOR_AND_DRIVER -> LOGGER.info(
+                    "Using LSN flush mode 'connector_and_driver': Debezium will flush LSN on event processing. The pgjdbc driver keepalive flush is ENABLED and will automatically flush unmonitored LSNs to prevent WAL growth on low-activity databases.");
+        }
     }
 
     protected static int validateReplicaAutoSetField(Configuration config, Field field, Field.ValidationOutput problems) {
@@ -1262,6 +1712,42 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
         }
         return problemCount;
+    }
+
+    private OffsetSlotMismatchStrategy resolveOffsetSlotMismatchStrategy(Configuration config) {
+        OffsetSlotMismatchStrategy mode = null;
+
+        String newModeValue = config.getString(OFFSET_SLOT_MISMATCH_STRATEGY);
+        if (newModeValue != null) {
+            mode = OffsetSlotMismatchStrategy.parse(newModeValue);
+        }
+        if (mode == null && config.hasKey(SLOT_SEEK_TO_KNOWN_OFFSET)) {
+            LOGGER.warn("Property '{}' is deprecated and replaced by '{}' and will be removed in a future build.",
+                    SLOT_SEEK_TO_KNOWN_OFFSET.name(), OFFSET_SLOT_MISMATCH_STRATEGY.name());
+            boolean deprecatedValue = config.getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
+            mode = deprecatedValue ? OffsetSlotMismatchStrategy.TRUST_OFFSET : OffsetSlotMismatchStrategy.NO_VALIDATION;
+        }
+
+        if (mode == null) {
+            mode = OffsetSlotMismatchStrategy.NO_VALIDATION; // Use default
+        }
+
+        logOffsetSlotMismatchStrategyInfo(mode);
+        return mode;
+    }
+
+    private static void logOffsetSlotMismatchStrategyInfo(OffsetSlotMismatchStrategy strategy) {
+        switch (strategy) {
+            case NO_VALIDATION ->
+                LOGGER.info(
+                        "Using offset mismatch strategy 'no_validation': Connector will not validate slot position and will attempt to stream from the stored offset. Slot recreation is not detected.");
+            case TRUST_OFFSET -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_offset': Validates and advances slot to offset when offset is ahead. Fails when slot is ahead, detecting slot recreation and preventing silent data issues.");
+            case TRUST_SLOT -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_slot': Treats the replication slot as authoritative. Advances offset to slot when slot is ahead, trusting server-side tracking.");
+            case TRUST_GREATER_LSN -> LOGGER.info(
+                    "Using offset mismatch strategy 'trust_greater_lsn': Self-healing mode that synchronizes to max(offset_lsn, slot_lsn), providing automatic recovery in either direction.");
+        }
     }
 
     @Override

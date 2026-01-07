@@ -5,13 +5,18 @@
  */
 package io.debezium.pipeline.spi;
 
+import static io.debezium.pipeline.CommonOffsetContext.SNAPSHOT_COMPLETED_KEY;
+
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -31,6 +36,23 @@ public interface OffsetContext {
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
     interface Loader<O extends OffsetContext> {
+
+        default Optional<SnapshotType> loadSnapshot(Map<String, ?> offset) {
+
+            Object snapshot = offset.getOrDefault(AbstractSourceInfo.SNAPSHOT_KEY, null);
+            // this is to manage transition from a boolean snapshot to SnapshotType
+            if (Boolean.TRUE.equals(snapshot) || Boolean.TRUE.toString().equals(snapshot)) {
+                return Optional.of(SnapshotType.INITIAL);
+            }
+
+            return snapshot == null ? Optional.empty() : Optional.of(SnapshotType.valueOf((String) snapshot));
+        }
+
+        default boolean loadSnapshotCompleted(Map<String, ?> offset) {
+
+            return Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY)) || "true".equals(offset.get(SNAPSHOT_COMPLETED_KEY));
+        }
+
         O load(Map<String, ?> offset);
     }
 
@@ -44,7 +66,7 @@ public interface OffsetContext {
      * Whether this offset indicates that an (uncompleted) snapshot is currently running or not.
      * @return
      */
-    boolean isSnapshotRunning();
+    boolean isInitialSnapshotRunning();
 
     /**
      * Mark the position of the record in the snapshot.
@@ -53,8 +75,9 @@ public interface OffsetContext {
 
     /**
      * Signals that a snapshot will begin, which should reflect in an updated offset state.
+     * @param onDemand indicates whether the snapshot is initial or blocking
      */
-    void preSnapshotStart();
+    void preSnapshotStart(boolean onDemand);
 
     /**
      * Signals that a snapshot will complete, which should reflect in an updated offset state.

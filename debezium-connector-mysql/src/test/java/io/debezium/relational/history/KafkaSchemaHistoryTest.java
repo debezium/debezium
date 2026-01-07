@@ -27,7 +27,7 @@ public class KafkaSchemaHistoryTest extends AbstractKafkaSchemaHistoryTest<MySql
     @Override
     protected MySqlOffsetContext createOffsetContext(Configuration config) {
         return new MySqlOffsetContext(
-                false,
+                null,
                 true,
                 new TransactionContext(),
                 new MySqlReadOnlyIncrementalSnapshotContext<>(),

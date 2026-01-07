@@ -7,16 +7,17 @@ package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -25,9 +26,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.assertj.core.api.Assertions;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
@@ -39,6 +42,8 @@ import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -51,16 +56,16 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
     protected static final String SERVER_NAME = "is_test";
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws Exception {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         try {
             stopConnector();
         }
@@ -387,6 +392,48 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8207")
+    public void all4PksAreInNotification() throws Exception {
+        // Testing.Print.enable();
+
+        populate4PkTable();
+        startConnector(c -> c.with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1),
+                loggingCompletion(), false);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        sendAdHocSnapshotSignal(DATABASE.qualifiedTableName("a4"));
+
+        List<SourceRecord> inProgressNotifications = new ArrayList<>();
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            consumeAvailableRecords(r -> {
+                if (r.topic().equals("io.debezium.notification")
+                        && ((Struct) r.value()).getString("type").equals("IN_PROGRESS")
+                        && ((Struct) r.value()).getString("aggregate_type").equals("Incremental Snapshot")) {
+                    inProgressNotifications.add(r);
+                }
+            });
+            return inProgressNotifications.size() > 0;
+        });
+
+        assertThat(inProgressNotifications.size()).isGreaterThan(0);
+        SourceRecord sourceRecord = inProgressNotifications.get(0);
+        Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Incremental Snapshot");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("IN_PROGRESS");
+        Assertions.assertThat(((String) ((Struct) sourceRecord.value()).getMap("additional_data").get("last_processed_key"))).contains(",");
+        Assertions.assertThat(((String) ((Struct) sourceRecord.value()).getMap("additional_data").get("last_processed_key")).split(",").length).isEqualTo(4);
+    }
+
+    protected void populate4PkTable() throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, "a4");
         }
     }
 }

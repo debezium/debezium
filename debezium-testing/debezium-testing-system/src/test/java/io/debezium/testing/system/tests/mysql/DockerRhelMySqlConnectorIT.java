@@ -15,6 +15,7 @@ import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
 import io.debezium.testing.system.fixtures.databases.docker.DockerMySql;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
+import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -37,7 +38,8 @@ public class DockerRhelMySqlConnectorIT extends MySqlTests {
     public DockerRhelMySqlConnectorIT(KafkaController kafkaController,
                                       KafkaConnectController connectController,
                                       ConnectorConfigBuilder connectorConfig,
-                                      KafkaAssertions<?, ?> assertions) {
-        super(kafkaController, connectController, connectorConfig, assertions);
+                                      KafkaAssertions<?, ?> assertions,
+                                      MySqlController dbController) {
+        super(kafkaController, connectController, connectorConfig, assertions, dbController);
     }
 }

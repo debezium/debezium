@@ -12,6 +12,8 @@
 :connector-name: MySQL
 :include-list-example: inventory.*
 :MYSQL:
+:collection-container: database
+
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -110,28 +112,30 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mysql-triggering-an-incremental-snapshot
 [id="mysql-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mysql-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
+[id="mysql-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
+// Type: procedure
 [id="mysql-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mysql-stopping-an-incremental-snapshot
 [id="mysql-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mysql-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="mysql-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
@@ -256,6 +260,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 == Data type mappings
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings-list-mysql-only]
 
 [id="mysql-basic-types"]
 === Basic types
@@ -282,6 +287,22 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 === Spatial types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
+
+[id="mysql-vector-types"]
+=== Vector types
+
+Currently, the {prodname} {connector-name} connector supports the following vector data types.
+
+.Description of vector type mappings
+[cols="35%a,15%a,50%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`VECTOR`
+|`ARRAY (FLOAT32)`
+|`io.debezium.data.FloatVector` +
+
+|===
 
 // Type: concept
 // Title: Custom converters for mapping {connector-name} data to alternative data types
@@ -512,26 +533,48 @@ include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-rqd-connector-cf
 
 include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-adv-connector-cfg-props.adoc[leveloffset=+1]
 
-/
 [id="debezium-mysql-connector-database-history-configuration-properties"]
 ==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+[id="debezium-mysql-connector-pass-through-properties"]
+==== Pass-through MySQL connector configuration properties
+
+You can set  _pass-through_ properties in the connector configuration to customize the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
+
+[id="debezium-mysql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the MySQL connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+[id="debezium-mysql-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
 
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the MySQL connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-database-driver-configuration-properties"]
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
+
+
 
 // Type: assembly
 // ModuleID: monitoring-debezium-mysql-connector-performance
@@ -575,6 +618,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[mysql-schema-history-metrics]]
 === Schema history metrics
 
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 // Type: concept

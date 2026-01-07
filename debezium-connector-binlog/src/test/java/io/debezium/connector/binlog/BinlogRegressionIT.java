@@ -7,9 +7,9 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -30,13 +30,14 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -62,16 +63,16 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -87,7 +88,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with("database.connectionTimeZone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
@@ -100,7 +101,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After DBZ-9186 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -203,7 +204,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
-                assertTimestamp(c4);
+                assertTimestamp(DATABASE.getTimezone(), c4);
             }
             else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -442,7 +443,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                .with("database.connectionTimeZone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
@@ -454,7 +455,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After DBZ-9186 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -547,7 +548,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
-                assertTimestamp(c4);
+                assertTimestamp(DATABASE.getTimezone(), c4);
             }
             else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -645,6 +646,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     }
 
     @Test
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB JDBC driver issue CONJ-1226")
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -660,7 +662,6 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numTables = 12;
         int numDataRecords = 22;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
-        int numCreateDefiner = 1;
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
@@ -781,7 +782,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 OffsetDateTime expected = ZonedDateTime.of(
                         LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(nanos)),
-                        UniqueDatabase.TIMEZONE)
+                        DATABASE.getTimezone())
                         .withZoneSameInstant(ZoneOffset.UTC)
                         .toOffsetDateTime();
 
@@ -978,7 +979,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
         TimeZone originalTimeZone = TimeZone.getDefault();
         try {
             // Set the timezone of the JVM to an offset that is earlier than the
@@ -1060,7 +1061,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                     // '2014-09-08 17:51:04.777'
                     String c4 = after.getString("c4"); // timestamp
-                    assertTimestamp(c4);
+                    assertTimestamp(DATABASE.getTimezone(), c4);
                 }
             });
         }
@@ -1190,12 +1191,13 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         });
     }
 
-    private void assertTimestamp(String c4) {
+    private void assertTimestamp(ZoneId timezoneId, String c4) {
         // '2014-09-08 17:51:04.777'
         // MySQL container is in UTC and the test time is during summer time period
         String expectedValue = isMariaDb() ? "2014-09-08T17:51:04.770" : "2014-09-08T17:51:04.780";
+
         ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse(expectedValue).atZone(ZoneId.of("US/Samoa")).toInstant(),
+                LocalDateTime.parse(expectedValue).atZone(timezoneId).toInstant(),
                 ZoneId.systemDefault());
         ZoneId defaultZoneId = ZoneId.systemDefault();
         ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);

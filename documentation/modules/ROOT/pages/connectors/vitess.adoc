@@ -9,6 +9,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:connector-name: Vitess
 
 toc::[]
 
@@ -66,6 +67,11 @@ As a result, the connector is unable to read the entire history of the database 
 For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database.
 You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
++
+When starting from an empty GTID, you can control which tables are copied during the snapshot phase by setting
+the xref:{link-vitess-connector}#vitess-property-snapshot-include-collection-list[`snapshot.include.collection.list` connector
+configuration property] to specify a comma-separated list of table patterns. If this property is not set or is empty,
+all tables are copied during the snapshot phase.
 
 [NOTE]
 ====
@@ -259,13 +265,13 @@ The following example shows a data change event with ordered transaction metadat
 [[vitess-efficient-transaction-metadata]]
 === Efficient Transaction Metadata
 
-If you enable the connector to provide transaction metadata, it generates significantly more data. 
+If you enable the connector to provide transaction metadata, it generates significantly more data.
 Not only does the connector send additional messages to the transaction topics, but messages that it sends to the data change topics are larger, because they include a transaction metadata block.
 The added volume is due to the following factors:
 
-* The VGTID is stored twice, once as `source.vgtid`, and then again as `transaction.id`. 
+* The VGTID is stored twice, once as `source.vgtid`, and then again as `transaction.id`.
 In keyspaces that include many shards, these VGTIDs can be quite large
-* In a sharded environment, the VGTID typically contains the VGTID for every shard. 
+* In a sharded environment, the VGTID typically contains the VGTID for every shard.
 In keyspaces with many shards, the amount of data in the VGTID field can be quite large.
 * The connector sends transaction topic messages for every transaction boundary event.
 Typically, keyspaces that include many shards tend to generate a high number of transaction boundary events.
@@ -275,6 +281,7 @@ The following SMTs are designed to reduce the amount of data in events that the 
 
 * xref:transformations/vitess-use-local-vgtid.adoc[Use Local VGTID]
 * xref:transformations/vitess-remove-field.adoc[Remove Field]
+* xref:transformations/vitess-replace-field-value.adoc[Replace Field Value]
 * xref:transformations/vitess-filter-transaction-topic-records.adoc[Filter Transaction Topic Records]
 
 The following example shows an excerpt from the configuration of a Vitess connector that uses the preceding transformations:
@@ -1186,6 +1193,28 @@ Represents the number of milliseconds elapsed since the UNIX epoch, and does not
 
 |===
 
+time.precision.mode=isostring::
+The Vitess connector uses string representations for all temporal types.
++
+.Mappings when `time.precision.mode=connect`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`STRING`
+|n/a
+
+|`TIME[(M)]`
+|`STRING`
+|n/a
+
+|`DATETIME[(M)]`
+|`STRING`
+|n/a
+
+|===
+
 // Type: assembly
 // ModuleID: setting-up-vitess-to-run-a-debezium-connector
 // Title: Setting up Vitess to run a {prodname} connector
@@ -1213,9 +1242,19 @@ Because Vitess connector reads change events from the VTGate VStream gRPC server
 [[vitess-deploying-a-connector]]
 == Deployment
 
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Vitess connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:http://kafka.apache.org/[Kafka] and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Vitess connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Vitess connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka and Kafka Connect with the Vitess connector already installed and ready to run.
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
 
 // Type: concept
 // ModuleID:debezium-vitess-connector-configuration-example
@@ -1352,7 +1391,7 @@ When the connector starts, it starts generating data change events for row-level
 [[vitess-monitoring]]
 === Monitoring
 
-The {prodname} Vitess connector provides only one type of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} Vitess connector provides only one type of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:vitess-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
@@ -1485,6 +1524,15 @@ The following configuration properties are _required_ unless a default value is 
  +
 If set to `true`, you should also consider setting `vitess.gtid` in the configuration.
 
+|[[vitess-property-stream-keyspace-heartbeats]]<<vitess-property-stream-keyspace-heartbeats, `+vitess.stream_keyspace_heartbeats+`>>
+|`false`
+|Controls Vitess flag `StreamKeyspaceHeartbeats`. +
++
+`true` - the stream will receive events from `_vt.heartbeat` tables (must also be enabled for the tablets).  +
++
+`false` - the stream will not receive events from the `_vt.heartbeat` tables. +
+If set to `true`, you may also want to add `<keyspace>.heartbeat` to the table include list in order to output the events.
+
 |[[vitess-property-database-user]]<<vitess-property-database-user, `+vitess.database.user+`>>
 |_n/a_
 |An optional username of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
@@ -1614,16 +1662,35 @@ When the connector starts, if it does not detect a value in its offsets topic, i
 `never`::
 When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
 
+|[[vitess-property-snapshot-include-collection-list]]<<vitess-property-snapshot-include-collection-list,`+snapshot.include.collection.list+`>>
+|none
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy. +
+
+The connector uses this property to determine which tables should be copied during the snapshot phase (VStream when starting from an empty GTID.
+Table names must be specified in the format `keyspace.table`. You can use regular expressions to match multiple tables. For example:
+`test_keyspace.numeric_.\*,test_keyspace.string_.*`
+
+If this property is not set or is empty, all tables are copied during the snapshot phase.
+
+This property only applies when `snapshot.mode` is set to `initial` or the connector resumes from an empty GTID.
+
+When starting from a non-empty GTID (such as `current`, or a valid binlog position),
+the copy phase is skipped regardless of this setting.
+
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
 |You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values: +
-+
+
+
 `adaptive_time_microseconds`::
-(Default) Captures date, datetime, and timestamp values exactly as they exist in the database.
+(Default)
 Values are represented with a precision in milliseconds, microseconds, or nanoseconds, depending on the database column type, with the exception of `TIME` type fields, which are always captured as microseconds.
 
 `connect`::
 Time and timestamp values are always represented in the default Kafka Connect formats for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
+
+`isostring`::
+Temporal types are represented as strings. For certain temporal values that cannot be represented numerically (e.g., 0000-00-00) this sends the original string representation of the value.
 
 |[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
 |string
@@ -1711,9 +1778,16 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped (not emitted by this connector).
+|A comma-separated list of the operation types that you want the connector to skip during streaming.
+You can configure the connector to skip the following types of operations:
+
+* `c` (insert/create)
+* `u` (update)
+* `d` (delete)
+* `t` (truncate)
+
+Because the {prodname} Vitess connector never emits `truncate` events to data change topics, setting the default `t` option has the same effect as setting the property to `none`.
+That is, the connector streams all `insert`, `update`, and `delete` operations.
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
@@ -1774,7 +1848,7 @@ See xref:vitess-data-types[how Vitess connectors map data types] for the list of
 |[[vitess-property-override-data-change-topic-prefix]]<<vitess-property-override-data-change-topic-prefix, `override.data.change.topic.prefix`>>
 |No default
 |Specifies the prefix that the connector uses to create the names of data change topics when xref:vitess-property-topic-naming-strategy[topic.naming.strategy] is set to `io.debezium.connector.vitess.TableTopicNamingStrategy`.
-The connector uses the value of this property instead of the specified xref:vitess-property-topic-prefix[`topic.prefix`]. 
+The connector uses the value of this property instead of the specified xref:vitess-property-topic-prefix[`topic.prefix`].
 
 
 |[[vitess-property-topic-delimiter]]<<vitess-property-topic-delimiter, `topic.delimiter`>>
@@ -1810,6 +1884,17 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[vitess-property-extended-headers-enabled]]<<vitess-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="vitess-pass-through-properties"]

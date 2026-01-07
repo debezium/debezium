@@ -25,7 +25,6 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
-import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CharsetNameContext;
@@ -47,30 +46,24 @@ import io.debezium.relational.Tables;
 public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBParser> {
 
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
-    private final MariaDbValueConverters converters;
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
+    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
 
     @VisibleForTesting
     public MariaDbAntlrDdlParser() {
-        this(null, Tables.TableFilter.includeAll());
+        this(Tables.TableFilter.includeAll());
     }
 
     @VisibleForTesting
-    public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters) {
-        this(valueConverters, Tables.TableFilter.includeAll());
-    }
-
-    @VisibleForTesting
-    public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter) {
-        this(true, false, true, valueConverters, tableFilter, null);
+    public MariaDbAntlrDdlParser(Tables.TableFilter tableFilter) {
+        this(true, false, true, tableFilter, null);
     }
 
     public MariaDbAntlrDdlParser(boolean throwWerrorsFromTreeWalk, boolean includeViews, boolean includeComments,
-                                 MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+                                 Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
         super(throwWerrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
-        this.converters = valueConverters;
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
     }
@@ -106,7 +99,11 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     }
 
     @Override
-    protected DataTypeResolver initializeDataTypeResolver() {
+    public DataTypeResolver dataTypeResolver() {
+        return dataTypeResolver;
+    }
+
+    private DataTypeResolver initializeDataTypeResolver() {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR),
@@ -190,6 +187,8 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeResolver.DataTypeEntry(Types.BIT, MariaDBParser.BIT)
                         .setDefaultLengthDimension(1),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.VECTOR)
+                        .setDefaultLengthDimension(2048),
                 new DataTypeResolver.DataTypeEntry(Types.TIME, MariaDBParser.TIME),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MariaDBParser.TIMESTAMP),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP, MariaDBParser.DATETIME),
@@ -230,6 +229,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONG)
                         .setSuffixTokens(MariaDBParser.VARCHAR)));
+
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.UuidDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.UUID)));
 
         return dataTypeResolverBuilder.build();
     }
@@ -326,10 +328,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                     // MariaDB does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();
@@ -382,10 +384,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 .map(indexColumnNameContext -> {
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();
@@ -451,10 +453,6 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
         return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
-    }
-
-    public MariaDbValueConverters getConverters() {
-        return converters;
     }
 
     public Tables.TableFilter getTableFilter() {

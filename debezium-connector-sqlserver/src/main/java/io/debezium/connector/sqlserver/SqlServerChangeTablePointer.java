@@ -46,18 +46,20 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private static final int COL_DATA = 5;
 
     private ResultSetMapper<Object[]> resultSetMapper;
-    private final ResultSet resultSet;
     private final int columnDataOffset;
+    private final SqlServerConnection connection;
+    private final Lsn fromLsn;
+    private final Lsn toLsn;
+    private final int maxRowsPerResultSet;
 
-    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
-        super(changeTable, resultSet, COL_DATA);
+    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, SqlServerConnection connection, Lsn fromLsn, Lsn toLsn, int maxRowsPerResultSet) {
+        super(changeTable, COL_DATA, maxRowsPerResultSet);
         // Store references to these because we can't get them from our superclass
-        this.resultSet = resultSet;
         this.columnDataOffset = COL_DATA;
-    }
-
-    protected ResultSet getResultSet() {
-        return resultSet;
+        this.connection = connection;
+        this.fromLsn = fromLsn;
+        this.toLsn = toLsn;
+        this.maxRowsPerResultSet = maxRowsPerResultSet;
     }
 
     @Override
@@ -76,7 +78,10 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     @Override
     protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
         return isCompleted() ? TxLogPosition.NULL
-                : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
+                : TxLogPosition.valueOf(
+                        Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)),
+                        Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)),
+                        resultSet.getInt(COL_OPERATION));
     }
 
     /**
@@ -90,11 +95,22 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     }
 
     @Override
+    protected ResultSet getNextResultSet(TxLogPosition lastPositionSeen) throws SQLException {
+        if (lastPositionSeen == null || lastPositionSeen.equals(TxLogPosition.NULL)) {
+            return connection.getChangesForTable(getChangeTable(), fromLsn, toLsn, maxRowsPerResultSet);
+        }
+        else {
+            return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(), lastPositionSeen.getOperation(),
+                    toLsn, maxRowsPerResultSet);
+        }
+    }
+
+    @Override
     public Object[] getData() throws SQLException {
         if (resultSetMapper == null) {
             this.resultSetMapper = createResultSetMapper(getChangeTable().getSourceTable());
         }
-        return resultSetMapper.apply(resultSet);
+        return resultSetMapper.apply(getResultSet());
     }
 
     /**
@@ -110,7 +126,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
         ColumnUtils.MappedColumns columnMap = ColumnUtils.toMap(table);
-        final ResultSetMetaData rsmd = resultSet.getMetaData();
+        final ResultSetMetaData rsmd = getResultSet().getMetaData();
         final int columnCount = rsmd.getColumnCount() - columnDataOffset;
         final List<String> resultColumns = new ArrayList<>(columnCount);
         for (int i = 0; i < columnCount; ++i) {

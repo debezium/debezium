@@ -2,7 +2,7 @@ Snapshot metrics are not exposed unless a snapshot operation is active, or if a 
 
 The following table lists the snapshot metrics that are available.
 
-[cols="45%a,25%a,30%a",options="header"]
+[cols="35%a,20%a,45%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -13,6 +13,14 @@ The following table lists the snapshot metrics that are available.
 |[[connectors-snaps-metric-millisecondssincelastevent_{context}]]<<connectors-snaps-metric-millisecondssincelastevent_{context}, `MilliSecondsSinceLastEvent`>>
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
+
+|[[connectors-snaps-metric-numberoferroneousevents_{context}]]<<connectors-snaps-metric-numberoferroneousevents_{context}, `NumberOfErroneousEvents`>>
+|`long`
+|Records the number of change events that the connector identifies as erroneous during a snapshot operation.
+The connector increments this metric each time that it encounters an event that it cannot process during an initial, incremental, or ad hoc snapshot.
+Events might fail processing if they are malformed, are incompatible with the schema, or if they encounter failures during transformation.
+The metric value persists for the lifetime of the connector task.
+If the snapshot is interrupted, and the connector task restarts, the metric count resets to `0`.
 
 |[[connectors-snaps-metric-totalnumberofeventsseen_{context}]]<<connectors-snaps-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
@@ -57,6 +65,10 @@ The following table lists the snapshot metrics that are available.
 |[[connectors-snaps-metric-snapshotcompleted_{context}]]<<connectors-snaps-metric-snapshotcompleted_{context}, `SnapshotCompleted`>>
 |`boolean`
 |Whether the snapshot completed.
+
+|[[connectors-snaps-metric-snapshotskipped_{context}]]<<connectors-snaps-metric-snapshotskipped_{context}, `SnapshotSkipped`>>
+|`boolean`
+|Whether the snapshot was skipped.
 
 |[[connectors-snaps-metric-snapshotdurationinseconds_{context}]]<<connectors-snaps-metric-snapshotdurationinseconds_{context}, `SnapshotDurationInSeconds`>>
 |`long`

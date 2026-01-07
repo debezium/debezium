@@ -40,7 +40,8 @@ public class OracleErrorHandler extends ErrorHandler {
             "ORA-04030", // out of process memory
             "ORA-00310", // archived log contains sequence *; sequence * required
             "ORA-01343", // LogMiner encountered corruption in the logstream
-            "ORA-01371"); // Complete LogMiner dictionary not found
+            "ORA-01371", // Complete LogMiner dictionary not found
+            "ORA-01001"); // Invalid cursor
 
     /**
      * Contents of this set should be any type of error message text;
@@ -60,8 +61,9 @@ public class OracleErrorHandler extends ErrorHandler {
      */
     @Immutable
     private static final Set<String> RETRIABLE_ORA600_ERROR_MESSAGES = Collect.unmodifiableSet(
-            "krvrdGetUID" // Changes made to object identifier (schema change)
-    );
+            "krvrdGetUID", // Changes made to object identifier (schema change)
+            "krvrdccs10",
+            "krvrdccs30");
 
     public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
         super(OracleConnector.class, connectorConfig, queue, replacedErrorHandler);

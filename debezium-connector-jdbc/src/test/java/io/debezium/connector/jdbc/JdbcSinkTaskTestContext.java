@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.sink.SinkTaskContext;
 
 /**
@@ -62,5 +63,11 @@ public class JdbcSinkTaskTestContext implements SinkTaskContext {
     @Override
     public void requestCommit() {
         // no-op
+    }
+
+    @Override
+    public PluginMetrics pluginMetrics() {
+        // No metrics are exposed yet
+        return null;
     }
 }

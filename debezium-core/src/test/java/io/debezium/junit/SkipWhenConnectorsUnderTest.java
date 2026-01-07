@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Containing annotation for repeatable {@link SkipWhenConnectorUnderTest}
  *
@@ -17,6 +19,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(SkipTestExtension.class)
 public @interface SkipWhenConnectorsUnderTest {
 
     SkipWhenConnectorUnderTest[] value();

@@ -27,6 +27,14 @@ tag::sqlserver-streaming[]
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<topic.prefix>_,task=_<task.id>_,context=streaming`.
 end::sqlserver-streaming[]
 
+tag::common-schema-history[]
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<topic.prefix>_`.
+end::common-schema-history[]
+
+tag::sqlserver-schema-history[]
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<topic.prefix>_,task=_<task.id>_`.
+end::sqlserver-schema-history[]
+
 
 // Shared
 tag::mbeans-shared[]

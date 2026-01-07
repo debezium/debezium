@@ -11,6 +11,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -28,11 +30,14 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * reason will only be present if there are no version contraints or if all version constraits
  * provide no reason text.
  *
+ * This annotation automatically registers the {@link SkipTestDependingOnDatabaseExtension} to process the skip logic.
+ *
  * @author Chris Cranford
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
 @Repeatable(SkipWhenDatabaseIsMultiple.class)
+@ExtendWith(SkipTestDependingOnDatabaseExtension.class)
 public @interface SkipWhenDatabaseIs {
     /**
      * Returns which database platform this skip exclusion applies

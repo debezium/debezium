@@ -10,6 +10,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+
 /**
  * Marker annotation used together with the {@link SkipTestDependingOnAdapterNameRule} JUnit rule, that allows
  * tests to be skipped based on the adapter name that is being used for testing.
@@ -18,6 +20,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@ExtendWith(SkipTestDependingOnAdapterNameExtension.class)
 public @interface SkipWhenAdapterNameIs {
 
     SkipWhenAdapterNameIs.AdapterName value();
@@ -34,10 +37,22 @@ public @interface SkipWhenAdapterNameIs {
                 return adapterName.equalsIgnoreCase("xstream");
             }
         },
-        LOGMINER {
+        ANY_LOGMINER {
+            @Override
+            boolean isEqualTo(String adapterName) {
+                return adapterName.equalsIgnoreCase("logminer") || adapterName.equalsIgnoreCase("logminer_unbuffered");
+            }
+        },
+        LOGMINER_BUFFERED {
             @Override
             boolean isEqualTo(String adapterName) {
                 return adapterName.equalsIgnoreCase("logminer");
+            }
+        },
+        LOGMINER_UNBUFFERED {
+            @Override
+            boolean isEqualTo(String adapterName) {
+                return adapterName.equalsIgnoreCase("logminer_unbuffered");
             }
         },
         OLR {

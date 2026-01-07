@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 
 /**
  * Implementation of {@link DebeziumSourceTask} which currently serves only as a wrapper
@@ -37,9 +38,10 @@ public class EngineSourceTask implements DebeziumSourceTask {
     }
 
     @SuppressWarnings("unchecked")
-    public Optional<BaseSourceTask<?, ?>> debeziumConnectTask() {
+    public Optional<? extends SignalChannelWriter> signalChannelWriter() {
         return Optional.of(connectTask)
                 .filter(BaseSourceTask.class::isInstance)
-                .map(BaseSourceTask.class::cast);
+                .map(BaseSourceTask.class::cast)
+                .flatMap(BaseSourceTask::getAvailableSignalChannelWriter);
     }
 }

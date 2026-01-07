@@ -10,6 +10,7 @@ import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -61,6 +62,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private static final String SQL_STATE_INSUFFICIENT_PRIVILEGE = "42501";
 
+    private static final String SQL_LOCK_NOT_AVAILABLE = "55P03";
+
+    private static final String PUBLICATION_QUERY_FAILURE_MESSAGE = "Creation of publication failed: query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
+
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
@@ -69,6 +74,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
+    private final boolean createFailOverSlot;
     private final PostgresConnectorConfig connectorConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
@@ -80,7 +86,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private SlotCreationResult slotCreationInfo;
     private boolean hasInitedSlot;
 
-    private Optional<ReplicaIdentityMapper> replicaIdentityMapper;
+    private final Optional<ReplicaIdentityMapper> replicaIdentityMapper;
 
     /**
      * Creates a new replication connection with the given params.
@@ -92,6 +98,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
+     * @param createFailOverSlot        whether to create a failover slot (on a PG 17+ primary node)
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param jdbcConnection            general PostgreSQL JDBC connection
      * @param typeRegistry              registry with PostgreSQL types
@@ -105,6 +112,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
+                                          boolean createFailOverSlot,
                                           Duration statusUpdateInterval,
                                           PostgresConnection jdbcConnection,
                                           TypeRegistry typeRegistry,
@@ -119,6 +127,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.publicationAutocreateMode = publicationAutocreateMode;
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
+        this.createFailOverSlot = createFailOverSlot;
         this.statusUpdateInterval = statusUpdateInterval;
         this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema), jdbcConnection);
         this.jdbcConnection = jdbcConnection;
@@ -145,73 +154,306 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
+    /**
+     * Captures the current statement_timeout value from the database.
+     *
+     * @param stmt the Statement to use for querying
+     * @return the current statement_timeout value as an Optional<String>, empty if unable to capture
+     */
+    private Optional<String> captureCurrentStatementTimeout(Statement stmt) {
+        try (ResultSet timeoutRs = stmt.executeQuery("SHOW statement_timeout;")) {
+            if (timeoutRs.next()) {
+                String timeout = timeoutRs.getString(1);
+                LOGGER.debug("Captured original statement_timeout: {}", timeout);
+                return Optional.of(timeout);
+            }
+        }
+        catch (SQLException ex) {
+            LOGGER.warn("Failed to capture current statement_timeout", ex);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Resets the statement_timeout to the specified value.
+     *
+     * @param stmt the Statement to use for execution
+     * @param originalTimeout the timeout value to restore
+     */
+    private void resetStatementTimeout(Statement stmt, Optional<String> originalTimeout) {
+        if (originalTimeout.isPresent()) {
+            try {
+                stmt.execute("SET statement_timeout = '" + originalTimeout.get() + "';");
+                LOGGER.debug("Reset statement_timeout to: {}", originalTimeout.get());
+            }
+            catch (SQLException ex) {
+                LOGGER.warn("Failed to reset statement_timeout to original value: {}", originalTimeout.get(), ex);
+            }
+        }
+    }
+
+    /**
+     * Executes a statement with a temporary statement_timeout, automatically restoring the original timeout afterwards.
+     *
+     * @param stmt the Statement to use for execution
+     * @param statementToExecute the SQL statement to execute
+     * @throws SQLException if the execution fails
+     */
+    private void executeWithTimeout(Statement stmt, String statementToExecute) throws SQLException {
+        Optional<String> originalTimeout = captureCurrentStatementTimeout(stmt);
+        try {
+            StringBuilder statements = new StringBuilder();
+            statements.append("SET statement_timeout = ").append(TimeUnit.SECONDS.toMillis(connectorConfig.createSlotCommandTimeout()))
+                    .append("; ");
+            statements.append(statementToExecute);
+            stmt.execute(statements.toString());
+        }
+        finally {
+            resetStatementTimeout(stmt, originalTimeout);
+        }
+    }
+
     protected void initPublication() {
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
+                if (isConnected() && !isValid()) {
+                    reconnect();
+                }
                 // Unless the autocommit is disabled the SELECT publication query will stay running
                 Connection conn = pgConnection();
                 conn.setAutoCommit(false);
 
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
-                try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
-                    final boolean publicationExists = rs.next();
-                    if (!publicationExists) {
-                        // Close eagerly as the transaction might stay running
-                        LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
-                        switch (publicationAutocreateMode) {
-                            case DISABLED:
-                                throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
-                            case ALL_TABLES:
-                                String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
-                                LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
-                                // Publication doesn't exist, create it.
-                                stmt.execute(createPublicationStmt);
-                                break;
-                            case FILTERED:
-                                createOrUpdatePublicationModeFiltered(stmt, false);
-                                break;
-                            case NO_TABLES:
-                                final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s;", publicationName);
-                                LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
-                                stmt.execute(createPublicationWithNoTablesStmt);
-                                break;
+                try (Statement stmt = conn.createStatement()) {
+                    boolean isOnlyRead = isReadOnlyDb();
+                    try (ResultSet rs = stmt.executeQuery(selectPublication)) {
+                        final boolean publicationExists = rs.next();
+                        if (!publicationExists) {
+                            // Close eagerly as the transaction might stay running
+                            LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
+                            switch (publicationAutocreateMode) {
+                                case DISABLED:
+                                    throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
+                                case ALL_TABLES:
+                                    String createPublicationStmt = connectorConfig.isPublishViaPartitionRoot()
+                                            ? String.format("CREATE PUBLICATION %s FOR ALL TABLES WITH (publish_via_partition_root = true);", publicationName)
+                                            : String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                    // Publication doesn't exist, create it.
+                                    if (!isOnlyRead) {
+                                        try {
+                                            executeWithTimeout(stmt, createPublicationStmt);
+                                        }
+                                        catch (SQLException ex) {
+                                            if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                                throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                            }
+                                            else {
+                                                throw ex;
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
+                                    }
+                                    break;
+                                case FILTERED:
+                                    if (isOnlyRead) {
+                                        validatePublications(stmt);
+                                    }
+                                    else {
+                                        createOrUpdatePublicationModeFiltered(stmt, false);
+                                    }
+                                    break;
+                                case NO_TABLES:
+                                    final String createPublicationWithNoTablesStmt = connectorConfig.isPublishViaPartitionRoot()
+                                            ? String.format("CREATE PUBLICATION %s WITH (publish_via_partition_root = true);", publicationName)
+                                            : String.format("CREATE PUBLICATION %s;", publicationName);
+                                    LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
+                                    try {
+                                        executeWithTimeout(stmt, createPublicationWithNoTablesStmt);
+                                    }
+                                    catch (SQLException ex) {
+                                        if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                            throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                        }
+                                        else {
+                                            throw ex;
+                                        }
+                                    }
+                                    break;
+                            }
                         }
-                    }
-                    else {
-                        switch (publicationAutocreateMode) {
-                            case FILTERED:
-                                // Checking that publication can be altered
-                                Boolean allTables = rs.getBoolean(1);
-                                if (allTables) {
-                                    throw new DebeziumException(String.format(
-                                            "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
-                                                    "is already active on the server and can not be altered. " +
-                                                    "If you need to exclude some tables or include only specific subset, " +
-                                                    "please recreate the publication with necessary configuration " +
-                                                    "or let plugin recreate it by dropping existing publication. " +
-                                                    "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
-                                            publicationName, plugin, database()));
-                                }
-                                else {
-                                    createOrUpdatePublicationModeFiltered(stmt, true);
-                                }
-                                break;
-                            default:
-                                LOGGER.trace(
-                                        "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
-                                                "and will be used by the plugin",
-                                        publicationName, plugin, database());
+                        else {
+                            switch (publicationAutocreateMode) {
+                                case FILTERED:
+                                    // Checking that publication can be altered
+                                    boolean allTables = rs.getBoolean(1);
+                                    if (allTables) {
+                                        throw new DebeziumException(String.format(
+                                                "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
+                                                        "is already active on the server and can not be altered. " +
+                                                        "If you need to exclude some tables or include only specific subset, " +
+                                                        "please recreate the publication with necessary configuration " +
+                                                        "or let plugin recreate it by dropping existing publication. " +
+                                                        "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
+                                                publicationName, plugin, database()));
+                                    }
+                                    else {
+                                        if (isOnlyRead) {
+                                            validatePublications(stmt);
+                                        }
+                                        else {
+                                            // Only update publication if tables have changed
+                                            if (isPublicationUpdateRequired(stmt)) {
+                                                createOrUpdatePublicationModeFiltered(stmt, true);
+                                            }
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    LOGGER.trace(
+                                            "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
+                                                    "and will be used by the plugin",
+                                            publicationName, plugin, database());
 
+                            }
                         }
                     }
+                    conn.commit();
+                    conn.setAutoCommit(true);
                 }
-                conn.commit();
-                conn.setAutoCommit(true);
+                catch (SQLException e) {
+                    throw new JdbcConnectionException(e);
+                }
             }
             catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
+        }
+    }
+
+    /**
+     * Determines whether the PostgreSQL database is in standby mode (read-only).
+     * <p>
+     * This method queries the `pg_is_in_recovery()` function to check if the database is in recovery mode.
+     * Recovery mode typically occurs when the server is operating as a standby (replica) in a replication
+     * setup or during crash recovery.
+     * </p>
+     * @return {@code true} if the database is in standby mode (read-only), {@code false} otherwise.
+     * @throws SQLException if an error occurs while querying the database.
+     */
+    private boolean isReadOnlyDb() throws SQLException {
+        AtomicBoolean isReadOnly = new AtomicBoolean();
+        query("select pg_is_in_recovery()", rs -> {
+            if (rs.next()) {
+                isReadOnly.set(rs.getBoolean(1));
+            }
+        });
+        return isReadOnly.get();
+    }
+
+    /**
+     * Gets the list of tables currently configured in the publication.
+     *
+     * @param stmt the statement to use for the query
+     * @return Optional containing Set of TableId objects representing tables in the publication, empty if unable to query
+     */
+    private Optional<Set<TableId>> getCurrentPublicationTables(Statement stmt) {
+        String getPublicationTablesQuery = String.format("SELECT schemaname, tablename FROM pg_publication_tables WHERE pubname = '%s'", publicationName);
+
+        Set<TableId> publicationTables = new HashSet<>();
+        try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(getPublicationTablesQuery)) {
+            try (ResultSet rs = prepStmt.executeQuery()) {
+                while (rs.next()) {
+                    String schemaName = rs.getString("schemaname");
+                    String tableName = rs.getString("tablename");
+                    TableId tableId = jdbcConnection.createTableId(connectorConfig.databaseName(), schemaName, tableName);
+                    publicationTables.add(tableId);
+                }
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to query pg_publication_tables for publication '{}'. This may be due to insufficient privileges. " +
+                    "Publication will be updated to ensure synchronization. Error: {}", publicationName, e.getMessage());
+            return Optional.empty();
+        }
+        return Optional.of(publicationTables);
+    }
+
+    /**
+     * Checks if the current publication tables match the desired captured tables.
+     *
+     * @param stmt the statement to use for database queries
+     * @return true if the publication needs to be updated, false otherwise
+     * @throws SQLException if database queries fail
+     */
+    public boolean isPublicationUpdateRequired(Statement stmt) throws SQLException {
+        Optional<Set<TableId>> currentPublicationTables = getCurrentPublicationTables(stmt);
+
+        // If we couldn't query the current publication tables (e.g., due to insufficient privileges),
+        // we should update the publication to ensure synchronization
+        if (currentPublicationTables.isEmpty()) {
+            LOGGER.info("Unable to determine current publication tables for '{}', will update publication to ensure synchronization", publicationName);
+            return true;
+        }
+
+        Set<TableId> desiredTables;
+        try {
+            desiredTables = determineCapturedTables();
+        }
+        catch (Exception e) {
+            throw new SQLException("Failed to determine captured tables", e);
+        }
+
+        if (desiredTables.isEmpty()) {
+            LOGGER.warn("No table filters found for filtered publication {}", publicationName);
+            return false;
+        }
+
+        Set<TableId> currentTables = currentPublicationTables.get();
+        if (currentTables.equals(desiredTables)) {
+            LOGGER.info("Publication '{}' is already up to date with desired tables", publicationName);
+            return false;
+        }
+
+        Set<TableId> toAdd = new HashSet<>(desiredTables);
+        toAdd.removeAll(currentTables);
+        Set<TableId> toRemove = new HashSet<>(currentTables);
+        toRemove.removeAll(desiredTables);
+
+        LOGGER.info("Publication '{}' has to be updated. Tables to add: {}, Tables to remove: {}",
+                publicationName, toAdd, toRemove);
+        return true;
+    }
+
+    private void validatePublications(Statement stmt) throws SQLException {
+        String validatePublication = "SELECT schemaname, tablename FROM pg_catalog.pg_publication_tables WHERE pubname=? ";
+        Set<TableId> tablesToCapture = null;
+        try {
+            tablesToCapture = determineCapturedTables();
+            if (tablesToCapture.isEmpty()) {
+                throw new SQLException(String.format("No table filters found for filtered publication %s", publicationName));
+            }
+        }
+        catch (Exception e) {
+            throw new SQLException("Failed to determine captured tables", e);
+        }
+
+        final Set<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toSet());
+        final Set<String> dbTableNamesHashSet = new HashSet<>();
+        try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(validatePublication)) {
+            prepStmt.setString(1, publicationName);
+            ResultSet rs = prepStmt.executeQuery();
+            while (rs.next()) {
+                final var tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
+                dbTableNamesHashSet.add(tableName);
+            }
+        }
+
+        if (dbTableNamesHashSet.equals(tableNames)) {
+            throw new SQLException("Database replication is not up to date");
         }
     }
 
@@ -224,10 +466,26 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (tableFilterString.isEmpty()) {
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
-            createOrUpdatePublicationStmt = isUpdate ? String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString)
-                    : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            if (isUpdate) {
+                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString);
+            }
+            else {
+                createOrUpdatePublicationStmt = connectorConfig.isPublishViaPartitionRoot()
+                        ? String.format("CREATE PUBLICATION %s FOR TABLE %s WITH (publish_via_partition_root = true);", publicationName, tableFilterString)
+                        : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
-            stmt.execute(createOrUpdatePublicationStmt);
+            try {
+                executeWithTimeout(stmt, createOrUpdatePublicationStmt);
+            }
+            catch (SQLException ex) {
+                if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                    throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                }
+                else {
+                    throw ex;
+                }
+            }
         }
         catch (Exception e) {
             throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),
@@ -369,6 +627,28 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     /**
+     * Creating failover slots when a) enabled, b) on PG >= 17, and c) connecting to a primary.
+     */
+    private boolean useFailOverSlot() throws SQLException {
+        if (!createFailOverSlot) {
+            return false;
+        }
+
+        if (!pgConnection().haveMinimumServerVersion(ServerVersion.from("17"))) {
+            LOGGER.debug("Can't create a failover slot on Postgres before version 17. Continuing to create a non-failover slot");
+            return false;
+        }
+
+        boolean isPrimary = !isReadOnlyDb();
+
+        if (!isPrimary) {
+            LOGGER.debug("Can't create a failover on a replica server. Continuing to create a non-failover slot");
+        }
+
+        return isPrimary;
+    }
+
+    /**
      * creating a replication connection and starting to stream involves a few steps:
      * 1. we create the connection and ensure that
      * a. the slot exists
@@ -397,7 +677,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         initConnection();
 
         connect();
-        if (offset == null || !offset.isValid()) {
+        if (shouldIgnoreExistingOffsetPosition(offset)) {
             offset = defaultStartingPos;
         }
         Lsn lsn = offset;
@@ -424,12 +704,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     throw new DebeziumException(message, e);
                 }
                 else {
-                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries, e);
+                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay.toMillis(), tryCount, maxRetries, e);
                     final Metronome metronome = Metronome.sleeper(delay, Clock.SYSTEM);
                     metronome.pause();
                 }
             }
         }
+    }
+
+    private boolean shouldIgnoreExistingOffsetPosition(Lsn offset) {
+        return offset == null || !offset.isValid() ||
+                (offset.compareTo(defaultStartingPos) < 0 && connectorConfig.offsetSeekToSlotOnStart());
     }
 
     protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
@@ -522,6 +807,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             tempPart = "TEMPORARY";
         }
 
+        String failOverPart = "";
+        if (useFailOverSlot()) {
+            // Braces need to around the entire set of options, should we have to add
+            // others later on; see here for the syntax:
+            // https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-CREATE-REPLICATION-SLOT
+            failOverPart = "( FAILOVER )";
+        }
+
         // See https://www.postgresql.org/docs/current/logical-replication-quick-setup.html
         // For pgoutput specifically, the publication must be created prior to the slot.
         initPublication();
@@ -529,10 +822,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         try (Statement stmt = pgConnection().createStatement()) {
             stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
             String createCommand = String.format(
-                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s",
+                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s %s",
                     slotName,
                     tempPart,
-                    plugin.getPostgresPluginName());
+                    plugin.getPostgresPluginName(),
+                    failOverPart);
             LOGGER.info("Creating replication slot with command {}", createCommand);
 
             final int maxRetries = connectorConfig.maxRetries();
@@ -580,7 +874,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected BaseConnection pgConnection() throws SQLException {
-        return (BaseConnection) connection(false);
+        return connection(false).unwrap(BaseConnection.class);
     }
 
     private SlotCreationResult parseSlotCreation(ResultSet rs) {
@@ -720,8 +1014,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 stream.forceUpdateStatus();
                                 metronome.pause();
                             }
+                            catch (InterruptedException ie) {
+                                LOGGER.debug("Keep-alive thread interrupted, shutting down");
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
                             catch (Exception exp) {
-                                throw new RuntimeException("received unexpected exception will perform keep alive", exp);
+                                // Immediately log the error. Don't rethrow the exception, because it will
+                                // never be seen (or be seen in a timely manner).
+                                LOGGER.error("Unexpected exception while performing keepalive status update on the replication stream", exp);
+                                return;
                             }
                         }
                     });
@@ -759,12 +1061,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                                          BiFunction<ChainedLogicalStreamBuilder, Function<Integer, Boolean>, ChainedLogicalStreamBuilder> configurator)
             throws SQLException {
         assert lsn != null;
+
+        boolean enableDriverKeepaliveFlush = (connectorConfig.getLsnFlushMode() == PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER);
+        LOGGER.info("Starting replication stream from LSN {} with automaticFlush={} (mode={})", lsn, enableDriverKeepaliveFlush, connectorConfig.getLsnFlushMode());
+
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
                 .getReplicationAPI()
                 .replicationStream()
                 .logical()
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
+                .withAutomaticFlush(enableDriverKeepaliveFlush)
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 
@@ -842,6 +1149,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
+        private boolean createFailOverSlot = DEFAULT_CREATE_FAIL_OVER_SLOT;
         private Duration statusUpdateIntervalVal;
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
@@ -895,6 +1203,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public ReplicationConnectionBuilder createFailOverSlot(final boolean createFailOverSlot) {
+            this.createFailOverSlot = createFailOverSlot;
+            return this;
+        }
+
+        @Override
         public ReplicationConnectionBuilder streamParams(final String slotStreamParams) {
             if (slotStreamParams != null && !slotStreamParams.isEmpty()) {
                 this.slotStreamParams = new Properties();
@@ -928,7 +1242,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
-                    publicationAutocreateMode, plugin, dropSlotOnClose, statusUpdateIntervalVal,
+                    publicationAutocreateMode, plugin, dropSlotOnClose, createFailOverSlot, statusUpdateIntervalVal,
                     jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
 

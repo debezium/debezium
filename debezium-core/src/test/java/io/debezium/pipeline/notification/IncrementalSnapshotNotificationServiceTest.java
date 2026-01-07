@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
@@ -32,7 +34,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class IncrementalSnapshotNotificationServiceTest {
 
     @Mock
@@ -50,7 +53,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
     private IncrementalSnapshotNotificationService<Partition, OffsetContext> incrementalSnapshotNotificationService;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(connectorConfig.getLogicalName()).thenReturn("connector-test");
         when(incrementalSnapshotContext.getCorrelationId()).thenReturn("12345");
@@ -147,8 +150,8 @@ public class IncrementalSnapshotNotificationServiceTest {
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer",
                 "current_collection_in_progress", "db.inventory.product",
-                "maximum_key", "100",
-                "last_processed_key", "50"), clock.millis());
+                "maximum_key", "100,0,0",
+                "last_processed_key", "50,0,0"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }

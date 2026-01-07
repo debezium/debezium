@@ -6,15 +6,16 @@
 package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit test for {@code HexConverter}.
  *
  * @author Gunnar Morling
  */
-public class HexConverterTest {
+class HexConverterTest {
 
     @Test
     public void shouldConvertHexString() {
@@ -22,13 +23,17 @@ public class HexConverterTest {
         assertThat(bytes).isEqualTo(new byte[]{ 0, 1, 10, 11, 15, 16, 99, 100, 101, 127, -128, -127, -1 });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldRejectStringOfWrongLength() {
-        HexConverter.convertFromHex("1");
+    @Test
+    void shouldRejectStringOfWrongLength() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            HexConverter.convertFromHex("1");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldRejectNonHexCharacter() {
-        HexConverter.convertFromHex("GG");
+    @Test
+    void shouldRejectNonHexCharacter() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            HexConverter.convertFromHex("GG");
+        });
     }
 }

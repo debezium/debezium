@@ -33,6 +33,7 @@ public abstract class AbstractDdlParser implements DdlParser {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private String currentSchema = null;
+    private static final String BACKTICK_CHARACTER = "`";
 
     /**
      * Create a new parser.
@@ -59,9 +60,10 @@ public abstract class AbstractDdlParser implements DdlParser {
         this.currentSchema = databaseName;
     }
 
-    @Override
-    public DdlChanges getDdlChanges() {
-        return ddlChanges;
+    public DdlChanges getAndResetDdlChanges() {
+        DdlChanges changes = ddlChanges;
+        ddlChanges = new DdlChanges();
+        return changes;
     }
 
     @Override
@@ -294,6 +296,16 @@ public abstract class AbstractDdlParser implements DdlParser {
      */
     public static boolean isQuote(char c) {
         return c == '\'' || c == '"' || c == '`';
+    }
+
+    /**
+     * Remove the repeated backtick in the middle of the name
+     *
+     * @param columnName column name
+     * @return name without repeated backtick.
+     */
+    public String removeRepeatedBacktick(String columnName) {
+        return columnName.replaceAll(BACKTICK_CHARACTER + BACKTICK_CHARACTER, BACKTICK_CHARACTER);
     }
 
     /**

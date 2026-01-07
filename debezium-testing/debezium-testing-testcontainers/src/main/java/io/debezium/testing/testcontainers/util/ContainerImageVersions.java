@@ -25,7 +25,6 @@ public class ContainerImageVersions {
 
     private static final String QUAY_IO_REGISTRY = "quay.io/";
     private static final String QUAY_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
-    private static final String DOCKER_HUB_URL = "https://hub.docker.com/v2/repositories/%s/tags/";
 
     private static final String VERSION_PROPERTY_PREFIX = "debezium.testcontainers.version";
 
@@ -47,10 +46,6 @@ public class ContainerImageVersions {
 
     public static String getStableVersionFromQuay(String name, String pattern) {
         return getStableVersionFromRegistry(QUAY_URL, name, pattern);
-    }
-
-    public static String getStableVersionFromDockerHub(String name, String pattern) {
-        return getStableVersionFromRegistry(DOCKER_HUB_URL, name, pattern);
     }
 
     public static String getStableVersionFromRegistry(String baseUrl, String image, String versionRegexPattern) {
@@ -103,7 +98,7 @@ public class ContainerImageVersions {
             return getStableVersionFromQuay(name, pattern);
         }
         catch (Exception e) {
-            return getStableVersionFromDockerHub(name, pattern);
+            throw new RuntimeException(String.format("Fail to find image '%s:%s' on quay.io, dockerhub is suspended.", name, pattern), e);
         }
     }
 }

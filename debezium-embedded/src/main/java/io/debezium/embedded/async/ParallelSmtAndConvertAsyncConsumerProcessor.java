@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 
 /**
  * {@link RecordProcessor} which transforms and converts the records in parallel. Records are passed to the user-provided {@link Consumer} in arbitrary order, once
@@ -51,7 +53,15 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
         LOGGER.trace("Waiting for the batch to finish processing.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
-            recordFutures[i].get();
+            try {
+                recordFutures[i].get();
+            }
+            catch (ExecutionException e) {
+                if (e.getCause() instanceof StopEngineException) {
+                    committer.markProcessed(recordsIterator.next());
+                }
+                throw e;
+            }
             committer.markProcessed(recordsIterator.next());
         }
 

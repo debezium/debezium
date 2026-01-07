@@ -16,8 +16,8 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -59,7 +59,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         return String.format("%s.%s.%s", SERVER_NAME, DB_NAME, this.getCollectionName());
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         // Use the DB configuration to define the connector's configuration ...
         Configuration config = getBaseConfigBuilder().build();
@@ -83,13 +83,15 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         start(MongoDbConnector.class, config);
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         super.afterEach();
         transformation.close();
     }
 
-    protected void restartConnectorWithoutEmittingTombstones() {
+    protected void restartConnectorWithoutEmittingTombstones() throws InterruptedException {
+        // make sure connector is fully running
+        waitForStreamingRunning();
         // stop connector
         afterEach();
 
@@ -108,7 +110,10 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
     }
 
-    protected void restartConnectorWithConfig(Configuration config) {
+    protected void restartConnectorWithConfig(Configuration config) throws InterruptedException {
+        // make sure connector is fully running
+        waitForStreamingRunning();
+
         // stop connector
         afterEach();
 

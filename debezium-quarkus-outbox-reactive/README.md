@@ -1,0 +1,1 @@
+# Debezium Extensions for Quarkus have been moved to a [separate repository](https://github.com/debezium/debezium-quarkus).

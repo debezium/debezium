@@ -74,7 +74,15 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
 
-        return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        // Fix rare JDK issue where one of the components of ChronoLocalDateTime is null
+        try {
+            return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        }
+        catch (NullPointerException e) {
+            // Fallback for NPE from ChronoLocalDateTime#toLocalDate, see DBZ-9558
+            var ignored = dateTime.toString();
+            return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        }
     }
 
     private Timestamp() {

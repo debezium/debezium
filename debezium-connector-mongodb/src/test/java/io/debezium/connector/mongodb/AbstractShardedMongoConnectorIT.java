@@ -14,11 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -33,13 +33,13 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Testing;
 
-public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
+public class AbstractShardedMongoConnectorIT extends AbstractAsyncEngineConnectorTest {
     protected static final String DEFAULT_DATABASE = "dbit";
 
     protected static final String DEFAULT_COLLECTION = "items";
@@ -55,23 +55,23 @@ public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
         return MongoClients.create(mongo.getConnectionString());
     }
 
-    @BeforeClass
-    public static void beforeAll() {
-        Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
+    @BeforeAll
+    static void beforeAll() {
+        Assumptions.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.mongoDbShardedCluster();
         mongo.start();
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         stopConnector();
         initializeConnectorTestFramework();
@@ -85,7 +85,7 @@ public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
         });
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
     }

@@ -9,11 +9,10 @@ import java.sql.Types;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} that supports {@code FLOAT64} connect schema types.
+ * An implementation of {@link JdbcType} that supports {@code FLOAT64} connect schema types.
  *
  * @author Chris Cranford
  */
@@ -27,8 +26,8 @@ public class ConnectFloat64Type extends AbstractConnectSchemaType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return dialect.getTypeName(Types.DOUBLE);
+    public String getTypeName(Schema schema, boolean isKey) {
+        return getDialect().getJdbcTypeName(Types.DOUBLE);
     }
 
 }

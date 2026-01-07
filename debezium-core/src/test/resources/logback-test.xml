@@ -7,22 +7,6 @@
         </encoder>
     </appender>
 
-    <!-- Direct Zookeeper log messages to stdout with special prefix -->
-    <appender name="CONSOLE-ZOOKEEPER-SERVER"
-        class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{ISO8601} %-5p ZOO %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n</pattern>
-        </encoder>
-    </appender>
-
-    <!-- Direct Zookeeper client log messages to stdout with special prefix -->
-    <appender name="CONSOLE-ZOOKEEPER-CLIENT"
-        class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{ISO8601} %-5p ZKC %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n</pattern>
-        </encoder>
-    </appender>
-
     <!-- Direct Kafka log messages to stdout with special prefix -->
     <appender name="CONSOLE-KAFKA"
         class="ch.qos.logback.core.ConsoleAppender">
@@ -66,19 +50,5 @@
         name="state.change.logger"
         level="error" additivity="false">
         <appender-ref ref="CONSOLE-KAFKA" />
-    </logger>
-
-    <!-- Zookeeper is pretty verbose at INFO level, so for brevity use ERROR everywhere except INFO at org.apache.zookeeper.server.ZooKeeperServer -->
-    <logger
-        name="org.apache.zookeeper"
-        level="error" additivity="false">
-        <appender-ref ref="CONSOLE-ZOOKEEPER-SERVER" />
-    </logger>
-
-    <!-- Zookeeper Client is pretty verbose at INFO level, so for brevity use ERROR everywhere ... -->
-    <logger
-        name="org.I0Itec.zkclient"
-        level="error" additivity="false">
-        <appender-ref ref="CONSOLE-ZOOKEEPER-CLIENT" />
     </logger>
 </configuration>

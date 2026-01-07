@@ -18,4 +18,4 @@ GRANT ALL PRIVILEGES ON *.* TO 'mysqlreplica'@'%';
 CHANGE MASTER TO MASTER_HOST='alt-database-gtids', MASTER_PORT=3306, MASTER_USER='replicator', MASTER_PASSWORD = 'replpass', MASTER_AUTO_POSITION=1;
 
 -- And start the replica ...
-START SLAVE;
+START REPLICA;

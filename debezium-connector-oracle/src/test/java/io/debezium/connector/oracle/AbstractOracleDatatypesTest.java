@@ -23,17 +23,12 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
-import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -41,9 +36,10 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.time.IsoTimestamp;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -56,7 +52,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest {
+public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineConnectorTest {
 
     /**
      * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
@@ -124,6 +120,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_tsltz timestamp with local time zone, " +
             "  val_int_ytm interval year to month, " +
             "  val_int_dts interval day(3) to second(2), " +
+            "  val_max_date date, " +
             "  primary key (id)" +
             ")";
 
@@ -220,37 +217,54 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
             new SchemaAndValueField("VAL_TS", MicroTimestamp.builder().optional().build(),
-                    LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890),
+                    LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7891),
             new SchemaAndValueField("VAL_TS_PRECISION2", Timestamp.builder().optional().build(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130),
             new SchemaAndValueField("VAL_TS_PRECISION4", MicroTimestamp.builder().optional().build(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500),
             new SchemaAndValueField("VAL_TS_PRECISION9", NanoTimestamp.builder().optional().build(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 125456789),
-            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007890-11:00"),
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007891-11:00"),
             new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
-                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7891 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", Timestamp.builder().optional().build(), 71_863_286_400_000L));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDate.of(2018, 3, 27).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TS", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
-                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
+                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7891 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TS_PRECISION2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TS_PRECISION4", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125500 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TS_PRECISION9", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125456789).atOffset(ZoneOffset.UTC).toInstant())),
-            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007890-11:00"),
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007891-11:00"),
             new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
-                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7891 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDate.of(4247, 4, 5).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ISOSTRING = Arrays.asList(
+            new SchemaAndValueField("VAL_DATE", IsoTimestamp.builder().optional().build(), "2018-03-27T00:00:00Z"),
+            new SchemaAndValueField("VAL_TS", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.007891Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION2", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.13Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION4", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.1255Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION9", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.125456789Z"),
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007891-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7891 * 1_000).atZone(ZoneOffset.systemDefault())
+                            .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
+            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", IsoTimestamp.builder().optional().build(), "4247-04-05T00:00:00Z"));
 
     private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data.json");
     private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data2.json");
@@ -291,25 +305,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             DDL_GEOMETRY
     };
 
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-
-    @Rule
-    public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
-
-    @Rule
-    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
-
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         dropTables();
     }
 
-    @AfterClass
-    public static void dropTables() throws SQLException {
+    @AfterAll
+    static void dropTables() throws SQLException {
         if (connection != null) {
             for (String table : ALL_TABLES) {
                 TestHelper.dropTable(connection, table);
@@ -334,15 +339,15 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     protected abstract void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception;
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void stringTypes() throws Exception {
+    void stringTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
@@ -373,7 +378,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     @Test
-    public void fpTypes() throws Exception {
+    void fpTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
@@ -522,7 +527,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     @Test
-    public void timeTypes() throws Exception {
+    void timeTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
@@ -620,6 +625,41 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_TIME_AS_CONNECT);
+    }
+
+    @Test
+    @FixFor("DBZ-8889")
+    public void timeTypesAsIsoString() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.ISOSTRING);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_ISOSTRING);
     }
 
     @Test
@@ -724,14 +764,15 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         connection.execute("INSERT INTO debezium.type_time VALUES ("
                 + "1"
                 + ", TO_DATE('2018-03-27', 'yyyy-mm-dd')"
-                + ", TO_TIMESTAMP('2018-03-27 12:34:56.00789', 'yyyy-mm-dd HH24:MI:SS.FF5')"
-                + ", TO_TIMESTAMP('2018-03-27 12:34:56.12545', 'yyyy-mm-dd HH24:MI:SS.FF5')"
-                + ", TO_TIMESTAMP('2018-03-27 12:34:56.12545', 'yyyy-mm-dd HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP('2018-03-27 12:34:56.007891234', 'yyyy-mm-dd HH24:MI:SS.FF9')"
                 + ", TO_TIMESTAMP('2018-03-27 12:34:56.125456789', 'yyyy-mm-dd HH24:MI:SS.FF9')"
-                + ", TO_TIMESTAMP_TZ('2018-03-27 01:34:56.00789 -11:00', 'yyyy-mm-dd HH24:MI:SS.FF5 TZH:TZM')"
-                + ", TO_TIMESTAMP_TZ('2018-03-27 01:34:56.00789', 'yyyy-mm-dd HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP('2018-03-27 12:34:56.125456789', 'yyyy-mm-dd HH24:MI:SS.FF9')"
+                + ", TO_TIMESTAMP('2018-03-27 12:34:56.125456789', 'yyyy-mm-dd HH24:MI:SS.FF9')"
+                + ", TO_TIMESTAMP_TZ('2018-03-27 01:34:56.007891234 -11:00', 'yyyy-mm-dd HH24:MI:SS.FF9 TZH:TZM')"
+                + ", TO_TIMESTAMP_TZ('2018-03-27 01:34:56.007891234', 'yyyy-mm-dd HH24:MI:SS.FF9')"
                 + ", INTERVAL '-3-6' YEAR TO MONTH"
                 + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
+                + ", TO_DATE('4247-04-05', 'yyyy-mm-dd')"
                 + ")");
         connection.execute("COMMIT");
     }

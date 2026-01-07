@@ -6,9 +6,9 @@
 
 package io.debezium.converters;
 
-import static junit.framework.TestCase.fail;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -20,8 +20,8 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -31,7 +31,7 @@ public class ByteArrayConverterTest {
 
     private final ByteArrayConverter converter = new ByteArrayConverter();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         converter.configure(Collections.emptyMap(), false);
     }

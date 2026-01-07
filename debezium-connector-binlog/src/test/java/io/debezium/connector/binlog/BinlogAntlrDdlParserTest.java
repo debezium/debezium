@@ -7,8 +7,8 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,8 +31,8 @@ import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
@@ -70,23 +70,23 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     private TableSchemaBuilder tableSchemaBuilder;
     private Properties properties;
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters);
+    protected abstract P getParser(SimpleDdlParserListener listener);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, boolean includeViews);
+    protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, TableFilter tableFilter);
+    protected abstract P getParser(SimpleDdlParserListener listener, TableFilter tableFilter);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, boolean includeViews, boolean includeComments);
+    protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments);
 
     protected abstract V getValueConverters();
 
     protected abstract D getDefaultValueConverters(V valueConverters);
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         listener = new SimpleDdlParserListener();
         converters = getValueConverters();
-        parser = getParser(listener, converters);
+        parser = getParser(listener);
         tables = new Tables();
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
@@ -370,7 +370,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-4000")
     public void shouldProcessCommentForTable() {
-        parser = getParser(listener, converters, false, true);
+        parser = getParser(listener, false, true);
         parser.parse("CREATE TABLE table1(\n"
                 + "id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY COMMENT 'pk',\n"
                 + "bin_volume DECIMAL(20, 4) COMMENT 'decimal column'\n"
@@ -509,7 +509,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldProcessQueryWithIndexHintPrimary() {
+    void shouldProcessQueryWithIndexHintPrimary() {
         String sp = "CREATE DEFINER=`my-user`@`%` PROCEDURE `my_table`()\n" +
                 "BEGIN\n" +
                 "  DECLARE i INT DEFAULT 0;\n" +
@@ -857,89 +857,6 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    @FixFor("DBZ-4841")
-    public void shouldProcessMariadbCreateIndex() {
-        String createIndexDdl = "CREATE INDEX IF NOT EXISTS DX_DT_LAST_UPDATE ON patient(DT_LAST_UPDATE)\n"
-                + "WAIT 100\n"
-                + "KEY_BLOCK_SIZE=1024M\n"
-                + "CLUSTERING =YES\n"
-                + "USING RTREE\n"
-                + "NOT IGNORED\n"
-                + "ALGORITHM = NOCOPY\n"
-                + "LOCK EXCLUSIVE";
-        parser.parse(createIndexDdl, tables);
-        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
-    }
-
-    @Test
-    @FixFor("DBZ-4661")
-    public void shouldSupportCreateTableWithEcrytion() {
-        parser.parse(
-                "CREATE TABLE `t_test_encrypted_test1` " +
-                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
-                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `ENCRYPTED`=YES COMMENT 'MariaDb encrypted table'",
-                tables);
-        parser.parse(
-                "CREATE TABLE `t_test_encrypted_test2` " +
-                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
-                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=yes COMMENT 'MariaDb encrypted table'",
-                tables);
-        parser.parse(
-                "CREATE TABLE `t_test_encrypted_test3` " +
-                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
-                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTED=yes COMMENT 'MariaDb encrypted table'",
-                tables);
-        parser.parse(
-                "CREATE TABLE `t_test_encrypted_test` " +
-                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
-                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=YES COMMENT 'MariaDb encrypted table'",
-                tables);
-        parser.parse("CREATE TABLE `t_test_encryption` " +
-                "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
-                "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTION='Y' COMMENT 'Mysql encrypted table';", tables);
-        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
-    }
-
-    @Test
-    @FixFor("DBZ-4675")
-    public void shouldSupportCreateTableWithCompressed() {
-        parser.parse(
-                "CREATE TABLE `my_table_page_compressed1` (\n" +
-                        "`column1` bigint(20) NOT NULL,\n" +
-                        "`column2` bigint(20) NOT NULL,\n" +
-                        "`column3` bigint(20) NOT NULL,\n" +
-                        "`column4` bigint(20) NOT NULL,\n" +
-                        "`column5` bigint(20) NOT NULL,\n" +
-                        "`column6` bigint(20) NOT NULL,\n" +
-                        "`column7` bigint(20) NOT NULL,\n" +
-                        "`column8` blob,\n" +
-                        "`column9` varchar(64) DEFAULT NULL,\n" +
-                        "PRIMARY KEY (`column1`),\n" +
-                        "KEY `idx_my_index_column2` (`column2`)\n" +
-                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED `encrypted`=yes `page_compressed`=0",
-                tables);
-        parser.parse(
-                "CREATE TABLE `my_table_page_compressed2` (\n" +
-                        "`column1` bigint(20) NOT NULL" +
-                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
-                        "`encrypted`=yes `page_compressed`=1 `PAGE_COMPRESSION_LEVEL`=0",
-                tables);
-        parser.parse(
-                "CREATE TABLE `my_table_page_compressed3` (\n" +
-                        "`column1` bigint(20) NOT NULL" +
-                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
-                        "`encrypted`=yes page_compressed=1 `page_compression_level`=3",
-                tables);
-        parser.parse(
-                "CREATE TABLE `my_table_page_compressed4` (\n" +
-                        "`column1` bigint(20) NOT NULL" +
-                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
-                        "`encrypted`=yes `page_compressed`=0 PAGE_COMPRESSION_LEVEL=3",
-                tables);
-        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
-    }
-
-    @Test
     @FixFor("DBZ-1349")
     public void shouldSupportUtfMb3Charset() {
         String ddl = " CREATE TABLE `engine_cost` (\n" +
@@ -978,7 +895,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldNotGetExceptionOnParseAlterStatementsWithoutCreate() {
+    void shouldNotGetExceptionOnParseAlterStatementsWithoutCreate() {
         String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
         parser.parse(ddl, tables);
         assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
@@ -1278,7 +1195,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateStatements() {
+    void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);
         int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 50;
@@ -1287,7 +1204,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseTestStatements() {
+    void shouldParseTestStatements() {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
@@ -1305,7 +1222,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSomeLinesFromCreateStatements() {
+    void shouldParseSomeLinesFromCreateStatements() {
         parser.parse(readLines(189, "ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39);
         int numberOfIndexesOnNonExistingTables = parser.getParsingExceptionsFromWalker().size();
@@ -1316,7 +1233,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseMySql56InitializationStatements() {
+    void shouldParseMySql56InitializationStatements() {
         parser.parse(readLines(1, "ddl/mysql-test-init-5.6.ddl"), tables);
         assertThat(tables.size()).isEqualTo(85); // 1 table
         int truncateTableStatements = 8;
@@ -1325,7 +1242,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseMySql57InitializationStatements() {
+    void shouldParseMySql57InitializationStatements() {
         parser.parse(readLines(1, "ddl/mysql-test-init-5.7.ddl"), tables);
         assertThat(tables.size()).isEqualTo(123);
         int truncateTableStatements = 4;
@@ -1346,25 +1263,26 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseTruncateStatementsAfterCreate() {
-        String ddl1 = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );" + System.lineSeparator();
-        String ddl2 = "TRUNCATE TABLE foo" + System.lineSeparator();
-        parser.parse(ddl1, tables);
-        parser.parse(ddl2, tables);
+    void shouldParseTruncateStatementsAfterCreate() {
+        String ddl = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );"
+                + System.lineSeparator()
+                + "TRUNCATE TABLE foo"
+                + System.lineSeparator();
+        parser.parse(ddl, tables);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
         listener.assertNext().truncateTableNamed("foo").ddlStartsWith("TRUNCATE TABLE foo");
         assertThat(tables.size()).isEqualTo(1);
     }
 
     @Test
-    public void shouldParseCreateViewStatementStartSelect() {
+    void shouldParseCreateViewStatementStartSelect() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1377,14 +1295,14 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseDropView() {
+    void shouldParseDropView() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
         String ddl3 = "DROP VIEW fooView";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         parser.parse(ddl3, tables);
@@ -1400,7 +1318,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY);"
                 + "ALTER TABLE `t1` RENAME TO `t2`;"
                 + "ALTER TABLE `db`.`t2` RENAME TO `db`.`t3`;";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t3"));
@@ -1409,14 +1327,14 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateViewStatementColumnAlias() {
+    void shouldParseCreateViewStatementColumnAlias() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT c2 as w1 FROM foo)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1428,14 +1346,14 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateViewStatementColumnAliasInnerSelect() {
+    void shouldParseCreateViewStatementColumnAliasInnerSelect() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1447,17 +1365,16 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseAlterViewStatementColumnAliasInnerSelect() {
+    void shouldParseAlterViewStatementColumnAliasInnerSelect() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
-                + "); " + System.lineSeparator();
-        String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
-        String ddl3 = "ALTER VIEW fooView AS (SELECT c2 FROM foo)";
-        parser = getParser(listener, converters, true);
+                + "); " + System.lineSeparator()
+                + "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)"
+                + System.lineSeparator()
+                + "ALTER VIEW fooView AS (SELECT c2 FROM foo)";
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
-        parser.parse(ddl2, tables);
-        parser.parse(ddl3, tables);
         assertThat(tables.size()).isEqualTo(2);
         assertThat(listener.total()).isEqualTo(3);
         Table foo = tables.forTable(new TableId(null, null, "fooView"));
@@ -1468,8 +1385,8 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldUseFiltersForAlterTable() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+    void shouldUseFiltersForAlterTable() {
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "CREATE TABLE ok (id int primary key, val smallint);" + System.lineSeparator()
                 + "ALTER TABLE ignored ADD COLUMN(x tinyint)" + System.lineSeparator()
@@ -1495,7 +1412,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-903")
     public void shouldParseFunctionNamedDatabase() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "SELECT `table_name` FROM `information_schema`.`TABLES` WHERE `table_schema` = DATABASE()";
         parser.parse(ddl, tables);
@@ -1504,7 +1421,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-910")
     public void shouldParseConstraintCheck() {
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
 
         final String ddl = "CREATE TABLE t1 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CHECK (c2 IN ('A', 'B', 'C')));"
                 + "CREATE TABLE t2 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT c1 CHECK (c2 IN ('A', 'B', 'C')));"
@@ -1543,7 +1460,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-780")
     public void shouldRenameColumnWithoutDefinition() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "CREATE TABLE foo (id int primary key, old INT);" + System.lineSeparator()
                 + "ALTER TABLE foo RENAME COLUMN old to new ";
@@ -1665,7 +1582,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseMultipleStatements() {
+    void shouldParseMultipleStatements() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
@@ -1679,17 +1596,18 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseAlterStatementsAfterCreate() {
-        String ddl1 = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );" + System.lineSeparator();
-        String ddl2 = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
-        parser.parse(ddl1, tables);
-        parser.parse(ddl2, tables);
+    void shouldParseAlterStatementsAfterCreate() {
+        String ddl = "CREATE TABLE foo ( c1 INTEGER NOT NULL, c2 VARCHAR(22) );"
+                + System.lineSeparator()
+                + "ALTER TABLE foo ADD COLUMN c bigint;"
+                + System.lineSeparator();
+        parser.parse(ddl, tables);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
         listener.assertNext().alterTableNamed("foo").ddlStartsWith("ALTER TABLE foo ADD COLUMN c");
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithSingleGeneratedAndPrimaryKeyColumn() {
+    void shouldParseCreateTableStatementWithSingleGeneratedAndPrimaryKeyColumn() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
@@ -1705,7 +1623,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithSingleGeneratedColumnAsPrimaryKey() {
+    void shouldParseCreateTableStatementWithSingleGeneratedColumnAsPrimaryKey() {
         String ddl = "CREATE TABLE my.foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
                 + " c2 VARCHAR(22), " + System.lineSeparator()
@@ -1725,7 +1643,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithMultipleColumnsForPrimaryKey() {
+    void shouldParseCreateTableStatementWithMultipleColumnsForPrimaryKey() {
         String ddl = "CREATE TABLE shop ("
                 + " id BIGINT(20) NOT NULL AUTO_INCREMENT,"
                 + " version BIGINT(20) NOT NULL,"
@@ -1797,7 +1715,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-990")
     @Test
-    public void shouldParseEngineNameWithApostrophes() {
+    void shouldParseEngineNameWithApostrophes() {
         String ddl = "CREATE TABLE t1 (id INT PRIMARY KEY) ENGINE 'InnoDB'"
                 + "CREATE TABLE t2 (id INT PRIMARY KEY) ENGINE `InnoDB`"
                 + "CREATE TABLE t3 (id INT PRIMARY KEY) ENGINE \"InnoDB\""
@@ -1842,7 +1760,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateUserTable() {
+    void shouldParseCreateUserTable() {
         String ddl = "CREATE TABLE IF NOT EXISTS user (   Host char(60) binary DEFAULT '' NOT NULL, User char(32) binary DEFAULT '' NOT NULL, Select_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Insert_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Update_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Delete_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Drop_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Reload_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Shutdown_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Process_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, File_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Grant_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, References_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Index_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_db_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Super_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_user_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Event_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Trigger_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tablespace_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, ssl_type enum('','ANY','X509', 'SPECIFIED') COLLATE utf8_general_ci DEFAULT '' NOT NULL, ssl_cipher BLOB NOT NULL, x509_issuer BLOB NOT NULL, x509_subject BLOB NOT NULL, max_questions int(11) unsigned DEFAULT 0  NOT NULL, max_updates int(11) unsigned DEFAULT 0  NOT NULL, max_connections int(11) unsigned DEFAULT 0  NOT NULL, max_user_connections int(11) unsigned DEFAULT 0  NOT NULL, plugin char(64) DEFAULT 'mysql_native_password' NOT NULL, authentication_string TEXT, password_expired ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, password_last_changed timestamp NULL DEFAULT NULL, password_lifetime smallint unsigned NULL DEFAULT NULL, account_locked ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, PRIMARY KEY Host (Host,User) ) engine=MyISAM CHARACTER SET utf8 COLLATE utf8_bin comment='Users and global privileges';";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -1856,7 +1774,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithSignedTypes() {
+    void shouldParseCreateTableStatementWithSignedTypes() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 BIGINT SIGNED NOT NULL, " + System.lineSeparator()
                 + " c2 INT UNSIGNED NOT NULL " + System.lineSeparator()
@@ -1872,7 +1790,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithCharacterSetForTable() {
+    void shouldParseCreateTableStatementWithCharacterSetForTable() {
         String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ) DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci; ";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -1911,7 +1829,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableStatementWithCharacterSetForColumns() {
+    void shouldParseCreateTableStatementWithCharacterSetForColumns() {
         String ddl = "CREATE TABLE t ( col1 VARCHAR(25) CHARACTER SET greek ); ";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -1923,7 +1841,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseAlterTableStatementThatAddsCharacterSetForColumns() {
+    void shouldParseAlterTableStatementThatAddsCharacterSetForColumns() {
         String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -1951,7 +1869,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateDatabaseAndTableThatUsesDefaultCharacterSets() {
+    void shouldParseCreateDatabaseAndTableThatUsesDefaultCharacterSets() {
         String ddl = "SET character_set_server=utf8;" + System.lineSeparator()
                 + "CREATE DATABASE db1 CHARACTER SET utf8mb4;" + System.lineSeparator()
                 + "USE db1;" + System.lineSeparator()
@@ -1996,7 +1914,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateDatabaseAndUseDatabaseStatementsAndHaveCharacterEncodingVariablesUpdated() {
+    void shouldParseCreateDatabaseAndUseDatabaseStatementsAndHaveCharacterEncodingVariablesUpdated() {
         parser.parse("SET character_set_server=utf8;", tables);
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null);
@@ -2031,7 +1949,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetCharacterSetStatement() {
+    void shouldParseSetCharacterSetStatement() {
         parser.parse("SET character_set_server=utf8;", tables);
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_connection", null);
@@ -2084,7 +2002,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetNamesStatement() {
+    void shouldParseSetNamesStatement() {
         parser.parse("SET character_set_server=utf8;", tables);
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_connection", null);
@@ -2129,7 +2047,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseAlterTableStatementAddColumns() {
+    void shouldParseAlterTableStatementAddColumns() {
         String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2183,7 +2101,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-660")
     @Test
-    public void shouldParseAlterTableStatementAddConstraintUniqueKey() {
+    void shouldParseAlterTableStatementAddConstraintUniqueKey() {
         String ddl = "CREATE TABLE t ( col1 VARCHAR(25) ); ";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2208,7 +2126,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableWithEnumAndSetColumns() {
+    void shouldParseCreateTableWithEnumAndSetColumns() {
         String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL, c2 SET('a','b','c') NULL);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2223,7 +2141,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseDefiner() {
+    void shouldParseDefiner() {
         String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin -- anything end;";
         String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
         parser.parse(ddl, tables);
@@ -2344,7 +2262,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-1300")
     @Test
-    public void shouldParseGrantStatementWithoutSpecifiedHostName() {
+    void shouldParseGrantStatementWithoutSpecifiedHostName() {
         String ddl = "GRANT ALL PRIVILEGES ON `add-new-user`.* TO `add_new_user`";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // no tables
@@ -2352,21 +2270,21 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetOfOneVariableStatementWithoutTerminator() {
+    void shouldParseSetOfOneVariableStatementWithoutTerminator() {
         String ddl = "set character_set_client=utf8";
         parser.parse(ddl, tables);
         assertVariable("character_set_client", "utf8");
     }
 
     @Test
-    public void shouldParseSetOfOneVariableStatementWithTerminator() {
+    void shouldParseSetOfOneVariableStatementWithTerminator() {
         String ddl = "set character_set_client = utf8;";
         parser.parse(ddl, tables);
         assertVariable("character_set_client", "utf8");
     }
 
     @Test
-    public void shouldParseSetOfSameVariableWithDifferentScope() {
+    void shouldParseSetOfSameVariableWithDifferentScope() {
         String ddl = "SET GLOBAL sort_buffer_size=1000000, SESSION sort_buffer_size=1000000";
         parser.parse(ddl, tables);
         assertGlobalVariable("sort_buffer_size", "1000000");
@@ -2374,7 +2292,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetOfMultipleVariablesWithInferredScope() {
+    void shouldParseSetOfMultipleVariablesWithInferredScope() {
         String ddl = "SET GLOBAL v1=1, v2=2";
         parser.parse(ddl, tables);
         assertGlobalVariable("v1", "1");
@@ -2383,7 +2301,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetOfGlobalVariable() {
+    void shouldParseSetOfGlobalVariable() {
         String ddl = "SET GLOBAL v1=1; SET @@global.v2=2";
         parser.parse(ddl, tables);
         assertGlobalVariable("v1", "1");
@@ -2393,7 +2311,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetOfLocalVariable() {
+    void shouldParseSetOfLocalVariable() {
         String ddl = "SET LOCAL v1=1; SET @@local.v2=2";
         parser.parse(ddl, tables);
         assertLocalVariable("v1", "1");
@@ -2405,7 +2323,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseSetOfSessionVariable() {
+    void shouldParseSetOfSessionVariable() {
         String ddl = "SET SESSION v1=1; SET @@session.v2=2";
         parser.parse(ddl, tables);
         assertLocalVariable("v1", "1");
@@ -2417,7 +2335,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseButNotSetUserVariableWithUnderscoreDelimiter() {
+    void shouldParseButNotSetUserVariableWithUnderscoreDelimiter() {
         String ddl = "SET @a_b_c_d:=1";
         parser.parse(ddl, tables);
         assertLocalVariable("a_b_c_d", null);
@@ -2426,14 +2344,14 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseVariableWithUnderscoreDelimiter() {
+    void shouldParseVariableWithUnderscoreDelimiter() {
         String ddl = "SET a_b_c_d=1";
         parser.parse(ddl, tables);
         assertSessionVariable("a_b_c_d", "1");
     }
 
     @Test
-    public void shouldParseAndIgnoreDeleteStatements() {
+    void shouldParseAndIgnoreDeleteStatements() {
         String ddl = "DELETE FROM blah";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0);
@@ -2441,7 +2359,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseAndIgnoreInsertStatements() {
+    void shouldParseAndIgnoreInsertStatements() {
         String ddl = "INSERT INTO blah (id) values (1)";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0);
@@ -2449,7 +2367,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseStatementsWithQuotedIdentifiers() {
+    void shouldParseStatementsWithQuotedIdentifiers() {
         parser.parse(readFile("ddl/mysql-quoted.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(4);
@@ -2461,7 +2379,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseIntegrationTestSchema() {
+    void shouldParseIntegrationTestSchema() {
         parser.parse(readFile("ddl/mysql-integration.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(10);
@@ -2469,7 +2387,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseStatementForDbz106() {
+    void shouldParseStatementForDbz106() {
         parser.parse(readFile("ddl/mysql-dbz-106.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2477,7 +2395,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseStatementForDbz123() {
+    void shouldParseStatementForDbz123() {
         parser.parse(readFile("ddl/mysql-dbz-123.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2486,7 +2404,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-162")
     @Test
-    public void shouldParseAndIgnoreCreateFunction() {
+    void shouldParseAndIgnoreCreateFunction() {
         parser.parse(readFile("ddl/mysql-dbz-162.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(1); // 1 table
@@ -2496,7 +2414,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-667")
     @Test
-    public void shouldParseScientificNotationNumber() {
+    void shouldParseScientificNotationNumber() {
         String ddl = "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1E10, PRIMARY KEY (`id`));"
                 + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.3E-10, PRIMARY KEY (`id`));"
                 + "CREATE TABLE t (id INT NOT NULL, myvalue DOUBLE DEFAULT 1.4E+10, PRIMARY KEY (`id`));"
@@ -2508,7 +2426,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-162")
     @Test
-    public void shouldParseAlterTableWithNewlineFeeds() {
+    void shouldParseAlterTableWithNewlineFeeds() {
         String ddl = "CREATE TABLE `test` (id INT(11) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2530,7 +2448,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-176")
     @Test
-    public void shouldParseButIgnoreCreateTriggerWithDefiner() {
+    void shouldParseButIgnoreCreateTriggerWithDefiner() {
         parser.parse(readFile("ddl/mysql-dbz-176.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2540,7 +2458,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-193")
     @Test
-    public void shouldParseFulltextKeyInCreateTable() {
+    void shouldParseFulltextKeyInCreateTable() {
         parser.parse(readFile("ddl/mysql-dbz-193.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(1); // 1 table
@@ -2567,7 +2485,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseProcedureWithCase() {
+    void shouldParseProcedureWithCase() {
         parser.parse(readFile("ddl/mysql-dbz-198b.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0);
@@ -2575,7 +2493,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-415")
     @Test
-    public void shouldParseProcedureEmbeddedIfs() {
+    void shouldParseProcedureEmbeddedIfs() {
         parser.parse(readFile("ddl/mysql-dbz-415a.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0);
@@ -2583,7 +2501,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-415")
     @Test
-    public void shouldParseProcedureIfWithParenthesisStart() {
+    void shouldParseProcedureIfWithParenthesisStart() {
         parser.parse(readFile("ddl/mysql-dbz-415b.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0);
@@ -2591,7 +2509,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionWithDefiner() {
+    void shouldParseButIgnoreCreateFunctionWithDefiner() {
         parser.parse(readFile("ddl/mysql-dbz-198a.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2601,7 +2519,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionC() {
+    void shouldParseButIgnoreCreateFunctionC() {
         parser.parse(readFile("ddl/mysql-dbz-198c.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2611,7 +2529,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionD() {
+    void shouldParseButIgnoreCreateFunctionD() {
         parser.parse(readFile("ddl/mysql-dbz-198d.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2621,7 +2539,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionE() {
+    void shouldParseButIgnoreCreateFunctionE() {
         parser.parse(readFile("ddl/mysql-dbz-198e.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2631,7 +2549,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionF() {
+    void shouldParseButIgnoreCreateFunctionF() {
         parser.parse(readFile("ddl/mysql-dbz-198f.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2641,7 +2559,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionG() {
+    void shouldParseButIgnoreCreateFunctionG() {
         parser.parse(readFile("ddl/mysql-dbz-198g.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2651,7 +2569,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseButIgnoreCreateFunctionH() {
+    void shouldParseButIgnoreCreateFunctionH() {
         parser.parse(readFile("ddl/mysql-dbz-198h.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(0); // 0 table
@@ -2661,7 +2579,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-198")
     @Test
-    public void shouldParseAlterTableWithDropIndex() {
+    void shouldParseAlterTableWithDropIndex() {
         parser.parse(readFile("ddl/mysql-dbz-198i.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(3);
@@ -2675,7 +2593,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         final String ddl = "USE db;"
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));"
                 + "ALTER TABLE db.t1 RENAME INDEX myidx to myidx2;";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t1"));
@@ -2683,27 +2601,9 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columns()).hasSize(2);
     }
 
-    @Test
-    @FixFor("DBZ-3067")
-    public void shouldParseIndex() {
-        final String ddl1 = "USE db;"
-                + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));";
-        final String ddl2 = "USE db;"
-                + "CREATE OR REPLACE INDEX myidx on db.t1(val);";
-        parser = getParser(listener, converters, true);
-        parser.parse(ddl1, tables);
-        assertThat(tables.size()).isEqualTo(1);
-        final Table table = tables.forTable(new TableId(null, "db", "t1"));
-        assertThat(table).isNotNull();
-        assertThat(table.columns()).hasSize(2);
-        parser.parse(ddl2, tables);
-        assertThat(tables.size()).isEqualTo(1);
-        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
-    }
-
     @FixFor("DBZ-437")
     @Test
-    public void shouldParseStringSameAsKeyword() {
+    void shouldParseStringSameAsKeyword() {
         parser.parse(readFile("ddl/mysql-dbz-437.ddl"), tables);
         // Testing.Print.enable();
         listener.forEach(this::printEvent);
@@ -2713,7 +2613,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-200")
     @Test
-    public void shouldParseStatementForDbz200() {
+    void shouldParseStatementForDbz200() {
         parser.parse(readFile("ddl/mysql-dbz-200.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2758,7 +2658,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-204")
     @Test
-    public void shouldParseAlterTableThatChangesMultipleColumns() {
+    void shouldParseAlterTableThatChangesMultipleColumns() {
         String ddl = "CREATE TABLE `s`.`test` (a INT(11) NULL, b INT NULL, c INT NULL, INDEX i1(b));";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2787,7 +2687,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseTicketMonsterLiquibaseStatements() {
+    void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
         assertThat(tables.size()).isEqualTo(7);
         assertThat(listener.total()).isEqualTo(17);
@@ -2796,7 +2696,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-160")
     @Test
-    public void shouldParseCreateTableWithEnumDefault() {
+    void shouldParseCreateTableWithEnumDefault() {
         String ddl = "CREATE TABLE t ( c1 ENUM('a','b','c') NOT NULL DEFAULT 'b', c2 ENUM('a', 'b', 'c') NOT NULL DEFAULT 'a');";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2810,7 +2710,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-160")
     @Test
-    public void shouldParseCreateTableWithBitDefault() {
+    void shouldParseCreateTableWithBitDefault() {
         String ddl = "CREATE TABLE t ( c1 Bit(2) NOT NULL DEFAULT b'1', c2 Bit(2) NOT NULL);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2824,7 +2724,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-253")
     @Test
-    public void shouldParseTableMaintenanceStatements() {
+    void shouldParseTableMaintenanceStatements() {
         String ddl = "create table `db1`.`table1` ( `id` int not null, `other` int );";
         ddl += "analyze table `db1`.`table1`;";
         ddl += "optimize table `db1`.`table1`;";
@@ -2837,7 +2737,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseCreateTableUnionStatement() {
+    void shouldParseCreateTableUnionStatement() {
         final String ddl = "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) UNION = (`table1`,`table2`) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;";
 
         parser.parse(ddl, tables);
@@ -2848,7 +2748,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-346")
     @Test
-    public void shouldParseAlterTableUnionStatement() {
+    void shouldParseAlterTableUnionStatement() {
         final String ddl = "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;"
                 +
                 "ALTER TABLE `merge_table` UNION = (`table1`,`table2`)";
@@ -2861,7 +2761,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-419")
     @Test
-    public void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
+    void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
         final String ddl = "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
 
         parser.parse(ddl, tables);
@@ -2874,7 +2774,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void shouldParseStatementForDbz142() {
+    void shouldParseStatementForDbz142() {
         parser.parse(readFile("ddl/mysql-dbz-142.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -3075,7 +2975,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void parseDdlForDecAndFixed() {
+    void parseDdlForDecAndFixed() {
         String ddl = "CREATE TABLE t ( c1 DEC(2) NOT NULL, c2 FIXED(1,0) NOT NULL, c3 NUMERIC(3) NOT NULL);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -3104,7 +3004,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void parseTableWithPageChecksum() {
+    void parseTableWithPageChecksum() {
         String ddl = "CREATE TABLE t (id INT NOT NULL, PRIMARY KEY (`id`)) PAGE_CHECKSUM=1;" +
                 "ALTER TABLE t PAGE_CHECKSUM=0;";
         parser.parse(ddl, tables);
@@ -3221,7 +3121,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    public void parseDefaultValue() {
+    void parseDefaultValue() {
         String ddl = "CREATE TABLE tmp (id INT NOT NULL, " +
                 "columnA CHAR(60) NOT NULL DEFAULT 'A'," +
                 "columnB INT NOT NULL DEFAULT 1," +
@@ -3244,7 +3144,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-6824")
     @Test
-    public void parseDefaultValueWhichNeedTrim() {
+    void parseDefaultValueWhichNeedTrim() {
         String ddl = " CREATE TABLE default_value_test (" +
                 "id INTEGER NOT NULL PRIMARY KEY," +
                 "boolean_c BOOLEAN DEFAULT ' 0 '," +
@@ -3500,21 +3400,6 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    @FixFor("DBZ-5201")
-    public void shouldSupportMariaDbCurrentTimestamp() {
-        String ddl = "CREATE TABLE data(id INT, bi BIGINT(20) NOT NULL DEFAULT unix_timestamp(), PRIMARY KEY (id))";
-        parser.parse(ddl, tables);
-
-        Table table = tables.forTable(new TableId(null, null, "data"));
-        assertThat(table.columnWithName("id").isOptional()).isFalse();
-        assertThat(table.columnWithName("id").hasDefaultValue()).isFalse();
-
-        assertThat(table.columnWithName("bi").isOptional()).isFalse();
-        assertThat(table.columnWithName("bi").hasDefaultValue()).isTrue();
-        assertThat(getColumnSchema(table, "bi").defaultValue()).isNull();
-    }
-
-    @Test
     @FixFor("DBZ-6357")
     public void shouldSupportNationalChar() {
         String ddl = "CREATE TABLE ttt(c NATIONAL CHAR)";
@@ -3529,7 +3414,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @FixFor("DBZ-7230")
     @Test
-    public void shouldParseCreateTableWithBitDefaultLength() {
+    void shouldParseCreateTableWithBitDefaultLength() {
         String ddl = "CREATE TABLE t ( c1 BIT NULL );";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -3538,6 +3423,25 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(t.retrieveColumnNames()).containsExactly("c1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "BIT", Types.BIT, 1, -1, true, false, false);
+    }
+
+    @FixFor("DBZ-9479")
+    @Test
+    void shouldParseColumnContainsBacktick() {
+        String ddlWithoutKey = "CREATE TABLE t ( `count(``c1``)` int(10));";
+        parser.parse(ddlWithoutKey, tables);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertColumn(t, "count(`c1`)", "INT", Types.INTEGER, 10, -1, true, false, false);
+
+        String ddlWithUk = "CREATE TABLE t1 (`COUNT(````id````)` int(10) NOT NULL, UNIQUE KEY `idx_id`(`COUNT(````id````)`));";
+        parser.parse(ddlWithUk, tables);
+        t = tables.forTable(new TableId(null, null, "t1"));
+        assertColumn(t, "COUNT(``id``)", "INT", Types.INTEGER, 10, -1, false, false, false);
+
+        String ddlWithPk = "CREATE TABLE t2 (`COUNT(````id````)` int(10) PRIMARY key);";
+        parser.parse(ddlWithPk, tables);
+        t = tables.forTable(new TableId(null, null, "t2"));
+        assertColumn(t, "COUNT(``id``)", "INT", Types.INTEGER, 10, -1, false, false, false);
     }
 
     private String toIsoString(String timestamp) {

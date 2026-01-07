@@ -15,14 +15,14 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Testing;
 
@@ -32,7 +32,7 @@ import io.debezium.util.Testing;
  * @author Pradeep Mamillapalli
  *
  */
-public class SQLServerNumericColumnIT extends AbstractConnectorTest {
+public class SQLServerNumericColumnIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     /**
@@ -43,8 +43,8 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      *
      * @throws SQLException
      */
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -61,8 +61,8 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
@@ -77,7 +77,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * @throws Exception
      */
     @Test
-    public void decimalModeConfigString() throws Exception {
+    void decimalModeConfigString() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenuma")
@@ -109,7 +109,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * @throws Exception
      */
     @Test
-    public void decimalModeConfigDouble() throws Exception {
+    void decimalModeConfigDouble() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumb")
@@ -140,7 +140,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * @throws Exception
      */
     @Test
-    public void decimalModeConfigPrecise() throws Exception {
+    void decimalModeConfigPrecise() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumc")

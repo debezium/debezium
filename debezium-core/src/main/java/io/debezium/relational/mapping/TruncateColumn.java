@@ -6,6 +6,7 @@
 package io.debezium.relational.mapping;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -72,8 +73,7 @@ public class TruncateColumn implements ColumnMapper {
             else if (value instanceof ByteBuffer) {
                 ByteBuffer buffer = (ByteBuffer) value;
                 if (buffer.limit() > maxLength) {
-                    buffer.limit(maxLength);
-                    return buffer.slice();
+                    return ByteBuffer.wrap(Arrays.copyOfRange(buffer.array(), 0, maxLength));
                 }
             }
             return value;

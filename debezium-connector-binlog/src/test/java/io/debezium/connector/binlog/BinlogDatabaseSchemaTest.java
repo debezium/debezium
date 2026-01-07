@@ -6,6 +6,7 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -14,9 +15,9 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
@@ -46,12 +47,17 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
             .withDbHistoryPath(TEST_FILE_PATH);
 
     private static final String SERVER_NAME = "testServer";
+    private final String ddlStatements;
 
     protected S schema;
     protected C connectorConfig;
 
-    @Before
-    public void beforeEach() {
+    protected BinlogDatabaseSchemaTest(String ddlStatements) {
+        this.ddlStatements = ddlStatements;
+    }
+
+    @BeforeEach
+    void beforeEach() {
         Testing.Files.delete(TEST_FILE_PATH);
     }
 
@@ -59,8 +65,8 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     protected abstract S getSchema(Configuration config);
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         if (schema != null) {
             try {
                 schema.close();
@@ -72,7 +78,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
+    void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig().build();
         schema = getSchema(config);
@@ -84,7 +90,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         offset.setBinlogStartPoint("binlog.001", 400);
         schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -97,7 +103,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
+    void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -112,9 +118,9 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         offset.setBinlogStartPoint("binlog.001", 400);
         schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -126,26 +132,28 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertHistoryRecorded(config, partition, offset);
     }
 
-    @Test(expected = ParsingException.class)
-    public void shouldFailOnUnparseableDdl() throws InterruptedException {
-        // Testing.Print.enable();
-        final Configuration config = DATABASE.defaultConfig()
-                .build();
-        schema = getSchema(config);
-        schema.initializeStorage();
-        final P partition = initializePartition(connectorConfig, config);
-        final O offset = initializeOffset(connectorConfig);
+    @Test
+    void shouldFailOnUnparseableDdl() throws InterruptedException {
+        assertThrows(ParsingException.class, () -> {
+            // Testing.Print.enable();
+            final Configuration config = DATABASE.defaultConfig()
+                    .build();
+            schema = getSchema(config);
+            schema.initializeStorage();
+            final P partition = initializePartition(connectorConfig, config);
+            final O offset = initializeOffset(connectorConfig);
 
-        // Set up the server ...
-        offset.setBinlogStartPoint("binlog.001", 400);
-        schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
-                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
-                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+            // Set up the server ...
+            offset.setBinlogStartPoint("binlog.001", 400);
+            schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
+                    offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+            schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
+                    offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+        });
     }
 
     @Test
-    public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
+    void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -163,7 +171,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog.001", 1000);
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -178,7 +186,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
+    void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
@@ -197,7 +205,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog.001", 1000);
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -212,7 +220,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldAllowDecimalPrecision() {
+    void shouldAllowDecimalPrecision() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -235,7 +243,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedDatabase() {
+    public void shouldStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -267,7 +275,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedDatabase() {
+    public void shouldNotStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -300,7 +308,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedTable() {
+    public void shouldStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -332,7 +340,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedTable() {
+    public void shouldNotStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -364,14 +372,13 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void addCommentToSchemaTest() {
+    void addCommentToSchemaTest() {
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
                 .build();
-
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -441,7 +448,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertThat(schema.tableIds().stream().filter(id -> id.catalog().equals(dbName)).count()).isGreaterThan(0);
     }
 
-    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) {
+    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) throws InterruptedException {
         try (S duplicate = getSchema(config)) {
             duplicate.recover(Offsets.of(partition, offset));
 

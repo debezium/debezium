@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,7 +47,7 @@ public class CreateTableParserListener extends BaseParserListener {
         if (ctx.relational_table() == null) {
             throw new ParsingException(null, "Only relational tables are supported");
         }
-        TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
+        TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.table_name()));
         if (parser.getTableFilter().isIncluded(tableId)) {
             if (parser.databaseTables().forTable(tableId) == null) {
                 tableEditor = parser.databaseTables().editOrCreateTable(tableId);
@@ -65,7 +66,7 @@ public class CreateTableParserListener extends BaseParserListener {
                 if (!tableEditor.primaryKeyColumnNames().isEmpty()) {
                     throw new ParsingException(null, "Can only specify in-line or out-of-line primary keys but not both");
                 }
-                tableEditor.setPrimaryKeyNames(inlinePrimaryKey);
+                parser.setTablePrimaryKeyColumns(tableEditor, Collections.singletonList(inlinePrimaryKey));
             }
 
             Table table = getTable();
@@ -127,7 +128,7 @@ public class CreateTableParserListener extends BaseParserListener {
                         .map(this::getColumnName)
                         .collect(Collectors.toList());
 
-                tableEditor.setPrimaryKeyNames(pkColumnNames);
+                parser.setTablePrimaryKeyColumns(tableEditor, pkColumnNames);
             }
         }, tableEditor);
         super.exitOut_of_line_constraint(ctx);

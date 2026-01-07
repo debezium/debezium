@@ -106,6 +106,16 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
         }
     }
 
+    public Connection getConnection() throws SQLException {
+        if (!isInitialized()) {
+            connection = container.createConnection("");
+            if (initializer != null) {
+                initializer.initialize(connection);
+            }
+        }
+        return connection;
+    }
+
     protected void queryContainer(String header, List<String> commands) throws Exception {
         // CHECKSTYLE:OFF
         System.out.println(header);
@@ -129,16 +139,6 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
 
     protected JdbcDatabaseContainer<?> getContainer() {
         return container;
-    }
-
-    protected Connection getConnection() throws SQLException {
-        if (!isInitialized()) {
-            connection = container.createConnection("");
-            if (initializer != null) {
-                initializer.initialize(connection);
-            }
-        }
-        return connection;
     }
 
     protected boolean isInitialized() throws SQLException {

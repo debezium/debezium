@@ -13,9 +13,9 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -26,7 +26,7 @@ import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 
-public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresConnector> {
 
     private static final String TOPIC_NAME = "test_server.s1.a";
 
@@ -39,23 +39,22 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     protected final Path signalsFile = Paths.get("src", "test", "resources")
             .resolve("debezium_signaling_blocking_file.txt");
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
 
         TestHelper.dropAllSchemas();
         TestHelper.dropDefaultReplicationSlot();
-        initializeConnectorTestFramework();
+        TestHelper.dropPublication();
 
         TestHelper.createDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.createPublicationForAllTables();
+        initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
     }
 
     protected Configuration.Builder config() {
@@ -135,7 +134,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @FixFor("DBZ-7311")
     @Test
-    public void executeBlockingSnapshotWhenSnapshotModeIsNever() throws Exception {
+    void executeBlockingSnapshotWhenSnapshotModeIsNever() throws Exception {
         // Testing.Print.enable();
 
         // Avoid to start the streaming from data inserted before the connector start
@@ -162,7 +161,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @FixFor("DBZ-7312")
     @Test
-    public void executeBlockingSnapshotWhenASnapshotAlreadyExecuted() throws Exception {
+    void executeBlockingSnapshotWhenASnapshotAlreadyExecuted() throws Exception {
         // Testing.Print.enable();
 
         // Avoid to start the streaming from data inserted before the connector start
@@ -192,7 +191,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Test
-    public void executeBlockingSnapshotJustAfterInitialSnapshotAndNoEventStreamedYet() throws Exception {
+    void executeBlockingSnapshotJustAfterInitialSnapshotAndNoEventStreamedYet() throws Exception {
         // Testing.Print.enable();
 
         populateTable();

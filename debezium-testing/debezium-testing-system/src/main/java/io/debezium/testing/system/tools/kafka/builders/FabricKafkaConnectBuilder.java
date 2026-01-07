@@ -40,7 +40,7 @@ import io.strimzi.api.kafka.model.connect.build.Plugin;
  */
 public class FabricKafkaConnectBuilder extends
         FabricBuilderWrapper<FabricKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
-    public static String DEFAULT_KC_NAME = "debezium-kafka-connect-cluster";
+    public static String DEFAULT_KC_NAME = "connect-cluster";
     public static String KAFKA_CERT_SECRET = DEFAULT_KAFKA_NAME + "-cluster-ca-cert";
 
     public static String KAFKA_CLIENT_CERT_SECRET = DEFAULT_KAFKA_NAME + "-clients-ca-cert";
@@ -91,6 +91,7 @@ public class FabricKafkaConnectBuilder extends
     public FabricKafkaConnectBuilder withBuild(OcpArtifactServerController artifactServer) {
         List<Plugin> plugins = new ArrayList<>(List.of(
                 artifactServer.createDebeziumPlugin("mysql"),
+                artifactServer.createDebeziumPlugin("mariadb"),
                 artifactServer.createDebeziumPlugin("postgres"),
                 artifactServer.createDebeziumPlugin("mongodb"),
                 artifactServer.createDebeziumPlugin("sqlserver"),
@@ -100,7 +101,7 @@ public class FabricKafkaConnectBuilder extends
 
         if (ConfigProperties.DATABASE_ORACLE) {
             plugins.add(
-                    artifactServer.createDebeziumPlugin("oracle", List.of("jdbc/ojdbc8")));
+                    artifactServer.createDebeziumPlugin("oracle", List.of("jdbc/ojdbc11")));
         }
 
         return withBuild(plugins);

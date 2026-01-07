@@ -23,20 +23,17 @@ import javax.xml.transform.stream.StreamSource;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -50,7 +47,7 @@ import oracle.xml.parser.v2.XMLDocument;
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support XML")
-public class OracleXmlDataTypesIT extends AbstractConnectorTest {
+public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     // Short XML files
     private static final String XML_DATA = Testing.Files.readResourceAsString("data/test_xml_data_short.xml");
@@ -60,21 +57,18 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
     private static final String XML_LONG_DATA = Testing.Files.readResourceAsString("data/test_xml_data_long.xml");
     private static final String XML_LONG_DATA2 = Testing.Files.readResourceAsString("data/test_xml_data_long2.xml");
 
-    @Rule
-    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
-
     private OracleConnection connection;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null) {
             connection.close();
         }

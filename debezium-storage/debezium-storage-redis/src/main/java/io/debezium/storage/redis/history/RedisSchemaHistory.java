@@ -55,8 +55,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     private RedisSchemaHistoryConfig config;
 
     void connect() {
-        RedisConnection redisConnection = new RedisConnection(config.getAddress(), config.getDbIndex(), config.getUser(), config.getPassword(),
-                config.getConnectionTimeout(), config.getSocketTimeout(), config.isSslEnabled());
+        RedisConnection redisConnection = RedisConnection.getInstance(config);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_SCHEMA_HISTORY, config.isWaitEnabled(), config.getWaitTimeout(),
                 config.isWaitRetryEnabled(), config.getWaitRetryDelay());
     }

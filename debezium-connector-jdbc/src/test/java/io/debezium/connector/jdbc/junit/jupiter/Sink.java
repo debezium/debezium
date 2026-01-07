@@ -5,20 +5,25 @@
  */
 package io.debezium.connector.jdbc.junit.jupiter;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.assertj.db.api.AbstractColumnAssert;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
+import org.hibernate.dialect.DatabaseVersion;
+import org.hibernate.dialect.SimpleDatabaseVersion;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.utility.ThrowingFunction;
 
@@ -30,6 +35,7 @@ import org.testcontainers.utility.ThrowingFunction;
 public class Sink extends JdbcConnectionProvider {
 
     private final SinkType type;
+    private DatabaseVersion version;
 
     public Sink(SinkType sinkType, JdbcDatabaseContainer<?> database) {
         super(database, new SinkConnectionInitializer(sinkType));
@@ -40,11 +46,29 @@ public class Sink extends JdbcConnectionProvider {
         return type;
     }
 
-    public String getJdbcUrl() {
-        if (SinkType.SQLSERVER == type) {
-            return getContainer().getJdbcUrl() + ";databaseName=testDB";
+    public DatabaseVersion getVersion() throws SQLException {
+        if (version == null) {
+            try (Connection connection = getConnection()) {
+                final DatabaseMetaData metadata = connection.getMetaData();
+                version = new SimpleDatabaseVersion(
+                        metadata.getDatabaseMajorVersion(),
+                        metadata.getDatabaseMinorVersion());
+            }
         }
-        return getContainer().getJdbcUrl();
+        return version;
+    }
+
+    public String getJdbcUrl() {
+        return getJdbcUrl(Collections.emptyMap());
+    }
+
+    public String getJdbcUrl(Map<String, String> urlParameters) {
+        final JdbcDatabaseContainer<?> container = getContainer();
+        urlParameters.forEach(container::withUrlParam);
+        if (SinkType.SQLSERVER == type) {
+            return container.getJdbcUrl() + ";databaseName=testDB";
+        }
+        return container.getJdbcUrl();
     }
 
     public String formatTableName(String tableName) {
@@ -62,7 +86,6 @@ public class Sink extends JdbcConnectionProvider {
     }
 
     public AbstractColumnAssert assertColumnType(TableAssert table, String columnName, ValueType type, boolean lenient) {
-
         return table.column(columnName).isOfType(type, lenient);
     }
 

@@ -8,8 +8,6 @@ package io.debezium.connector.jdbc.junit.jupiter.e2e.source;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,15 +33,14 @@ import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
@@ -61,6 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
  * The JDBC sink end to end pipeline context provider.
@@ -75,15 +73,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourcePipelineInvocationContextProvider.class);
 
-    private static final String KAFKA_IMAGE_NAME = "confluentinc/cp-kafka";
-
-    private static final String CONNECT_IMAGE_NAME = "debezium/connect-with-oracle";
-
-    private static final String MYSQL_IMAGE_NAME = "debezium/example-mysql";
+    private static final String MYSQL_IMAGE_NAME = "container-registry.oracle.com/mysql/community-server:9.0";
     private static final String MYSQL_USERNAME = "mysqluser";
     private static final String MYSQL_PASSWORD = "debezium";
 
-    private static final String POSTGRES_IMAGE_NAME = "debezium/example-postgres";
+    private static final String POSTGRES_IMAGE_NAME = "quay.io/debezium/example-postgres";
     private static final String POSTGRES_USERNAME = "postgres";
     private static final String POSTGRES_PASSWORD = "postgres";
 
@@ -94,27 +88,26 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
 
-    private static final String DB2_IMAGE_NAME = "ibmcom/db2:11.5.0.0a";
-
-    private static final Network network = Network.newNetwork();
+    private static final Network network = Network.SHARED;
 
     private final RandomTableNameGenerator tableNameGenerator;
-    private final KafkaContainer kafkaContainer;
+    private final StrimziKafkaCluster kafkaCluster;
     private final DebeziumContainer connectContainer;
     private final Map<SourceType, JdbcDatabaseContainer<?>> sourceContainers;
 
     public SourcePipelineInvocationContextProvider() {
         this.tableNameGenerator = new RandomTableNameGenerator();
-        this.kafkaContainer = getKafkaContainer();
-        this.connectContainer = getKafkaConnectContainer(this.kafkaContainer);
+        this.kafkaCluster = getKafkaCluster();
+        this.connectContainer = getKafkaConnectContainer(this.kafkaCluster);
         this.sourceContainers = getSourceContainers();
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
+    public void beforeAll(ExtensionContext context) {
+        this.kafkaCluster.start();
+
         // Create a stream of all containers to be started
         final Stream.Builder<Startable> startables = Stream.builder();
-        startables.add(this.kafkaContainer);
         startables.add(this.connectContainer);
         sourceContainers.values().forEach(startables::add);
 
@@ -123,11 +116,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     }
 
     @Override
-    public void afterAll(ExtensionContext context) throws Exception {
+    public void afterAll(ExtensionContext context) {
         // Stop containers
         this.sourceContainers.values().forEach(GenericContainer::stop);
         this.connectContainer.stop();
-        this.kafkaContainer.stop();
+        this.kafkaCluster.stop();
     }
 
     @Override
@@ -229,10 +222,23 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private List<TemporalPrecisionMode> getTemporalPrecisionModes(Method method, SourceType sourceType) {
         if (isAnyAnnotationPresent(method, WithTemporalPrecisionMode.class)) {
+            final WithTemporalPrecisionMode annotation = method.getAnnotation(WithTemporalPrecisionMode.class);
+            final TemporalPrecisionMode[] includeList = annotation.include();
+            final TemporalPrecisionMode[] excludeList = annotation.exclude();
+            if (includeList.length > 0 && excludeList.length > 0) {
+                throw new IllegalStateException("Test '" + method.getName() +
+                        "' should only specify precision mode include or exclude but not both.");
+            }
             final List<TemporalPrecisionMode> result = new ArrayList<>();
             for (TemporalPrecisionMode temporalPrecisionMode : TemporalPrecisionMode.values()) {
                 if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
                     // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
+                    continue;
+                }
+                if (includeList.length > 0 && Arrays.stream(includeList).noneMatch(p -> p == temporalPrecisionMode)) {
+                    continue;
+                }
+                else if (excludeList.length > 0 && Arrays.stream(excludeList).anyMatch(p -> p == temporalPrecisionMode)) {
                     continue;
                 }
                 result.add(temporalPrecisionMode);
@@ -283,7 +289,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
 
         final JdbcDatabaseContainer<?> sourceContainer = sourceContainers.get(sourceType);
-        final Source source = new Source(sourceType, sourceContainer, kafkaContainer, connectContainer, sourceOptions, tableNameGenerator);
+        final Source source = new Source(sourceType, sourceContainer, kafkaCluster, connectContainer, sourceOptions, tableNameGenerator);
 
         return new TestTemplateInvocationContext() {
             @Override
@@ -341,24 +347,27 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
     }
 
-    @SuppressWarnings("resource")
-    private KafkaContainer getKafkaContainer() {
-        return new KafkaContainer(DockerImageName.parse(KAFKA_IMAGE_NAME))
-                .withNetwork(network)
-                .withNetworkAliases("kafka");
+    private StrimziKafkaCluster getKafkaCluster() {
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .build();
+
+        // update all nodes in kafkaCluster with proper setting
+        for (GenericContainer<?> kafkaNode : kafkaCluster.getNodes()) {
+            kafkaNode.withNetwork(network)
+                    .withNetworkAliases("kafka");
+        }
+
+        return kafkaCluster;
     }
 
     @SuppressWarnings("resource")
-    private DebeziumContainer getKafkaConnectContainer(KafkaContainer kafkaContainer) {
-        final Path dockerFile = Paths.get("src", "test", "docker", "debezium-connect-with-oracle-driver")
-                .toFile()
-                .getAbsoluteFile()
-                .toPath();
-
-        return new DebeziumContainer(new ImageFromDockerfile().withFileFromPath(".", dockerFile))
-                .withKafka(kafkaContainer)
+    private DebeziumContainer getKafkaConnectContainer(StrimziKafkaCluster kafkaCluster) {
+        return DebeziumContainer.nightly()
+                .withKafka(kafkaCluster)
                 .withNetwork(network)
-                .withNetworkAliases("connect");
+                .withNetworkAliases("connect")
+                .dependsOn(kafkaCluster);
     }
 
     @SuppressWarnings("resource")
@@ -372,7 +381,13 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withUsername(MYSQL_USERNAME)
                         .withPassword(MYSQL_PASSWORD)
                         .withNetworkAliases(sourceType.getValue())
-                        .withEnv("TZ", TestHelper.getSourceTimeZone());
+                        .withEnv("TZ", TestHelper.getSourceTimeZone())
+                        .withEnv("MYSQL_ROOT_PASSWORD", "debezium-rocks")
+                        .withClasspathResourceMapping(
+                                "database-init-scripts/mysql-source-init.sql",
+                                "docker-entrypoint-initdb.d/init.sql",
+                                BindMode.READ_ONLY)
+                        .withConfigurationOverride("mysql-conf");
                 if (TestHelper.isConnectionTimeZoneUsed()) {
                     container.withUrlParam("connectionTimeZone", TestHelper.getSourceTimeZone());
                 }
@@ -436,6 +451,9 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             return List.of(SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER);
         }
         else {
+            if (sourceConnectors.equalsIgnoreCase("all")) {
+                return Arrays.stream(SourceType.values()).collect(Collectors.toList());
+            }
             return Arrays.stream(sourceConnectors.split(",")).map(SourceType::parse).collect(Collectors.toList());
         }
     }

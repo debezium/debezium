@@ -5,9 +5,9 @@
  */
 package io.debezium.config;
 
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.HOSTNAME;
@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.function.Predicates;
@@ -37,7 +37,7 @@ public class ConfigurationTest {
 
     private Configuration config;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         config = Configuration.create().with("A", "a")
                 .with("B", "b")
@@ -57,6 +57,14 @@ public class ConfigurationTest {
         assertThat(config.getString("1")).isEqualTo("1");
         assertThat(config.getInteger("1")).isEqualTo(1); // converts
         assertThat(config.getBoolean("1")).isNull(); // not a boolean
+    }
+
+    @Test
+    public void shouldTrimWhenConvertingFromProperties() {
+        Properties props = new Properties();
+        props.setProperty("A ", "a");
+        config = Configuration.from(props);
+        assertThat(config.getString("A")).isEqualTo("a");
     }
 
     /**

@@ -12,7 +12,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.SQLServerDialect;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -49,7 +49,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getInsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getInsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         String insertStatement = super.getInsertStatement(table, record);
         return wrapWithIdentityInsert(table, insertStatement);
     }
@@ -89,9 +89,11 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         super.registerTypes();
 
         registerType(BitType.INSTANCE);
+        registerType(BytesType.INSTANCE);
         registerType(XmlType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override
@@ -125,32 +127,32 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("MERGE INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" WITH (HOLDLOCK) AS TARGET USING (SELECT ");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(),
                 (name) -> columnNameFromField(name, columnQueryBindingFromField(name, table, record) + " AS ", record));
         builder.append(") AS INCOMING ON (");
-        builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> {
+        builder.appendList(" AND ", record.keyFieldNames(), (name) -> {
             final String columnName = columnNameFromField(name, record);
             return "TARGET." + columnName + "=INCOMING." + columnName;
         });
         builder.append(")");
 
-        if (!record.getNonKeyFieldNames().isEmpty()) {
+        if (!record.nonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
-            builder.appendList(",", record.getNonKeyFieldNames(), (name) -> {
+            builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
                 final String columnName = columnNameFromField(name, record);
                 return columnName + "=INCOMING." + columnName;
             });
         }
 
         builder.append(" WHEN NOT MATCHED THEN INSERT (");
-        builder.appendLists(", ", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
         builder.append(")");
         builder.append(";"); // SQL server requires this to be terminated this way.
 

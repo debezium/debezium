@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
@@ -81,8 +80,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                 LOGGER.info("Table '{}' primary key changed from '{}' to '{}' via an UPDATE, re-selecting LOB columns {} out of bands.",
                         table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
-                final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-                try (OracleConnection connection = new OracleConnection(jdbcConfig, false)) {
+                try (OracleConnection connection = new OracleConnection(connectorConfig)) {
                     final String query = getReselectQuery(reselectColumns, table, connection);
                     if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                         connection.setSessionToPdb(connectorConfig.getPdbName());
@@ -147,7 +145,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     private String getReselectQuery(List<Column> reselectColumns, Table table, OracleConnection connection) {
         final TableId id = new TableId(null, table.id().schema(), table.id().table());
         final StringBuilder query = new StringBuilder("SELECT ")
-                .append(reselectColumns.stream().map(c -> connection.quotedColumnIdString(c.name())).collect(Collectors.joining(", ")))
+                .append(reselectColumns.stream().map(c -> connection.quoteIdentifier(c.name())).collect(Collectors.joining(", ")))
                 .append(" FROM ")
                 .append(id.toDoubleQuotedString())
                 .append(" WHERE ");
@@ -156,7 +154,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
             if (i > 0) {
                 query.append(" AND ");
             }
-            query.append(connection.quotedColumnIdString(table.primaryKeyColumnNames().get(i))).append("=?");
+            query.append(connection.quoteIdentifier(table.primaryKeyColumnNames().get(i))).append("=?");
         }
 
         return query.toString();

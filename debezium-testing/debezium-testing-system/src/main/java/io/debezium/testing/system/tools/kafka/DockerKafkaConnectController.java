@@ -105,6 +105,7 @@ public class DockerKafkaConnectController implements KafkaConnectController {
                 .scheme("http")
                 .host(container.getHost())
                 .port(container.getMappedPort(KafkaConnectConainer.PROMETHEUS_METRICS_PORT))
+                .addPathSegment("metrics")
                 .build();
     }
 

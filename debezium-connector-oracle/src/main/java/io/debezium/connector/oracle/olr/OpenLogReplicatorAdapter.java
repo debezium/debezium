@@ -26,6 +26,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -96,8 +97,9 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     public OpenLogReplicatorStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                   EventMetadataProvider metadataProvider,
-                                                                                  OracleConnectorConfig connectorConfig) {
-        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
+                                                                                  OracleConnectorConfig connectorConfig,
+                                                                                  CapturedTablesSupplier capturedTablesSupplier) {
+        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier);
     }
 
     @Override

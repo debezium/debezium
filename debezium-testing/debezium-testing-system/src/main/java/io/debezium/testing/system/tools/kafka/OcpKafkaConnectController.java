@@ -259,6 +259,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
         return new HttpUrl.Builder()
                 .scheme("http")
                 .host(metricsRoute.getSpec().getHost())
+                .addPathSegment("metrics")
                 .build();
     }
 

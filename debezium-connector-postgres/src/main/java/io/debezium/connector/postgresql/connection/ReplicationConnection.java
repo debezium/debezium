@@ -104,6 +104,7 @@ public interface ReplicationConnection extends AutoCloseable {
         String DEFAULT_SLOT_NAME = "debezium";
         String DEFAULT_PUBLICATION_NAME = "dbz_publication";
         boolean DEFAULT_DROP_SLOT_ON_CLOSE = true;
+        boolean DEFAULT_CREATE_FAIL_OVER_SLOT = false;
 
         /**
          * Sets the name for the PG logical replication slot
@@ -158,6 +159,15 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #DEFAULT_DROP_SLOT_ON_CLOSE
          */
         Builder dropSlotOnClose(boolean dropSlotOnClose);
+
+        /**
+         * Whether or not to create a failover slot (on PG 17+ primary)
+         *
+         * @param createFailOverSlot true if the slot should be created as failover slot, false otherwise
+         * @return this instance
+         * @see #DEFAULT_CREATE_FAIL_OVER_SLOT
+         */
+        Builder createFailOverSlot(boolean createFailOverSlot);
 
         /**
          * The number of milli-seconds the replication connection should periodically send updates to the server.

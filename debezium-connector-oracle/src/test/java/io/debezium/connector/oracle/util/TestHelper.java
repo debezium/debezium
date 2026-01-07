@@ -5,13 +5,10 @@
  */
 package io.debezium.connector.oracle.util;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,9 +20,9 @@ import org.infinispan.client.hotrod.impl.ConfigurationProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -33,22 +30,27 @@ import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.processor.CacheProvider;
-import io.debezium.connector.oracle.rest.DebeziumOracleConnectorResourceIT;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
+import io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.olr.OpenLogReplicatorStreamingChangeEventSource;
 import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 public class TestHelper {
 
     private static final String PDB_NAME = "pdb.name";
-    private static final String DATABASE_PREFIX = CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+    private static final String DATABASE_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
     public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
@@ -151,17 +153,30 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
-        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
+        if (isXStream()) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
         }
-        else if (adapter().equals(ConnectorAdapter.OLR)) {
+        else if (isOpenLogReplicator()) {
             builder.withDefault(OracleConnectorConfig.OLR_SOURCE, OPENLOGREPLICATOR_SOURCE);
             builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
             builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
+        else if (isUnbufferedLogMiner()) {
+            // Speeds up tests
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
+        }
         else {
+            // Speeds up tests
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
+
             final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
             if (readOnly) {
                 builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);
@@ -179,13 +194,13 @@ public class TestHelper {
                 }
             }
             else if (bufferType.isEhcache()) {
-                final long cacheSize = 1024 * 1024 * 10; // 10Mb each
+                final int cacheSize = 1024000000; // 1GB for default
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferTypeName);
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
@@ -202,17 +217,18 @@ public class TestHelper {
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000);
+                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000)
+                .with(OracleConnectorConfig.SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES, 3);
     }
 
-    private static String getEhcacheGlobalCacheConfig() {
+    public static String getEhcacheGlobalCacheConfig() {
         return "<persistence directory=\"./target/data\"/>";
     }
 
-    private static String getEhcacheBasicCacheConfig() {
+    public static String getEhcacheBasicCacheConfig(int sizeBytes) {
         return "<resources>" +
-                "<heap unit=\"entries\">50</heap>" +
-                "<disk unit=\"B\">10485760</disk>" +
+                "<heap unit=\"entries\">512</heap>" +
+                "<disk unit=\"B\">" + sizeBytes + "</disk>" +
                 "</resources>";
     }
 
@@ -278,7 +294,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -292,7 +308,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -436,11 +452,32 @@ public class TestHelper {
     }
 
     public static void dropTable(OracleConnection connection, String table) {
-        try {
-            connection.execute("DROP TABLE " + table);
-        }
-        catch (SQLException e) {
-            if (!e.getMessage().contains("ORA-00942") || 942 != e.getErrorCode()) {
+        final DelayStrategy strategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofSeconds(30));
+        final int maxAttempts = 10;
+
+        int attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                connection.execute("DROP TABLE " + table);
+                return;
+            }
+            catch (SQLException e) {
+                // ORA-00054 - Resource is busy
+                if (e.getErrorCode() == 54 || e.getMessage().startsWith("ORA-00054")) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                        LOGGER.warn("ORA-00054 table '{}' is busy, drop table will be retried ({} / {}).", table, attempt + 1, maxAttempts);
+                        strategy.sleepWhen(true);
+                        continue;
+                    }
+                    LOGGER.error("ORA-00054 table '{}' is busy, drop table failed.", table);
+                }
+                // ORA-00942 - table or view does not exist
+                else if (e.getErrorCode() == 942 || e.getMessage().startsWith("ORA-00942")) {
+                    LOGGER.warn("ORA-00942 table '{}' does not exist, drop table skipped.", table);
+                    return;
+                }
+
                 throw new RuntimeException(e);
             }
         }
@@ -557,7 +594,18 @@ public class TestHelper {
     }
 
     public static int defaultMessageConsumerPollTimeout() {
-        return 120;
+        final String messageConsumerPollTimeout = System.getProperty("test.message.consumer.poll.timeout");
+        if (!Strings.isNullOrEmpty(messageConsumerPollTimeout)) {
+            try {
+                return Integer.parseInt(messageConsumerPollTimeout);
+            }
+            catch (Exception e) {
+                LOGGER.warn("The provided 'test.message.consumer.poll.timeout' is invalid, using defaults", e);
+            }
+        }
+
+        // Speeds up tests for LogMiner and OLR
+        return isXStream() ? 120 : 20;
     }
 
     public static ConnectorAdapter adapter() {
@@ -565,8 +613,28 @@ public class TestHelper {
         return (s == null || s.length() == 0) ? ConnectorAdapter.LOG_MINER : ConnectorAdapter.parse(s);
     }
 
+    public static boolean isAnyLogMiner() {
+        return isBufferedLogMiner() || isUnbufferedLogMiner();
+    }
+
+    public static boolean isBufferedLogMiner() {
+        return ConnectorAdapter.LOG_MINER.equals(adapter());
+    }
+
+    public static boolean isUnbufferedLogMiner() {
+        return ConnectorAdapter.LOG_MINER_UNBUFFERED.equals(adapter());
+    }
+
+    public static boolean isXStream() {
+        return ConnectorAdapter.XSTREAM.equals(adapter());
+    }
+
+    public static boolean isOpenLogReplicator() {
+        return ConnectorAdapter.OLR.equals(adapter());
+    }
+
     public static LogMiningStrategy logMiningStrategy() {
-        if (ConnectorAdapter.LOG_MINER.equals(adapter())) {
+        if (isAnyLogMiner()) {
             // This won't catch all use cases where the user overrides the default configuration in the test
             // itself but generally this should be satisfactory for marker annotations based on static or
             // CLI provided configurations.
@@ -728,7 +796,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig())) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();
@@ -740,7 +808,7 @@ public class TestHelper {
     // Below are test helper methods for integration tests using the Testcointainers based OracleContainer instance:
 
     private static Configuration getTestConnectionConfiguration(ConnectorConfiguration config) {
-        var connectionConfiguration = Configuration.from(config.asProperties()).subset(CommonConnectorConfig.DATABASE_CONFIG_PREFIX, true);
+        var connectionConfiguration = Configuration.from(config.asProperties()).subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true);
         var dbName = Strings.isNullOrEmpty(connectionConfiguration.getString(PDB_NAME))
                 ? connectionConfiguration.getString(JdbcConfiguration.DATABASE)
                 : connectionConfiguration.getString(PDB_NAME);
@@ -749,58 +817,6 @@ public class TestHelper {
                 .with(JdbcConfiguration.PORT, TestInfrastructureHelper.getOracleContainer().getMappedPort(OracleContainer.ORACLE_PORT))
                 .with(JdbcConfiguration.DATABASE, dbName)
                 .build();
-    }
-
-    // expects user passed in the config to be any local user account on the Oracle DB instance
-    private static OracleConnection createConnection(ConnectorConfiguration config, boolean autoCommit) {
-        Configuration connectionConfiguration = getTestConnectionConfiguration(config);
-        OracleConnection connection = new OracleConnection(JdbcConfiguration.adapt(connectionConfiguration));
-        try {
-            connection.setAutoCommit(autoCommit);
-            return connection;
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Failed to create connection", e);
-        }
-    }
-
-    // Will only work for SQL files that use ";" as ending of an SQL statement, other ";" can't be used in the SQL code
-    private static String[] getResourceSqlFileContent(String file) {
-        try (var is = DebeziumOracleConnectorResourceIT.class.getClassLoader().getResourceAsStream(file)) {
-            if (null == is) {
-                throw new IllegalArgumentException("File not found. (" + file + ")");
-            }
-            try (
-                    var streamReader = new InputStreamReader(is, StandardCharsets.UTF_8);
-                    var reader = new BufferedReader(streamReader)) {
-                List<String> sqlStatements = new ArrayList<>();
-                var sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.endsWith(";")) {
-                        sb.append(line, 0, line.length() - 1);
-                        sqlStatements.add(sb.toString());
-                        sb = new StringBuilder();
-                    }
-                    else {
-                        sb.append(line).append(" ");
-                    }
-                }
-                return sqlStatements.toArray(new String[0]);
-            }
-        }
-        catch (IOException e) {
-            throw new DebeziumException(e);
-        }
-    }
-
-    public static void loadTestData(ConnectorConfiguration config, String sqlFile) {
-        try (var conn = TestHelper.createConnection(config, false)) {
-            conn.execute(getResourceSqlFileContent(sqlFile));
-        }
-        catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static void patchConnectorConfigurationForContainer(ConnectorConfiguration connectorConfiguration, OracleContainer oracleContainer) {
@@ -832,22 +848,37 @@ public class TestHelper {
         }
     }
 
-    public static ConnectorConfiguration getOracleConnectorConfiguration(int id, String... options) {
-        OracleContainer oracleContainer = TestInfrastructureHelper.getOracleContainer();
-        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(oracleContainer)
-                .with(OracleConnectorConfig.PDB_NAME.name(), oracleContainer.ORACLE_PDB_NAME)
-                .with(OracleConnectorConfig.DATABASE_NAME.name(), oracleContainer.ORACLE_DBNAME)
-                .with(OracleConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")
-                .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.oracle");
-
-        if (options != null && options.length > 0) {
-            for (int i = 0; i < options.length; i += 2) {
-                config.with(options[i], options[i + 1]);
-            }
+    public static long getUndoRetentionSeconds() throws SQLException {
+        try (OracleConnection admin = adminConnection(false)) {
+            return admin.queryAndMap(
+                    "SELECT VALUE from V$PARAMETER WHERE NAME = 'undo_retention'",
+                    admin.singleResultMapper(rs -> rs.getLong(1), "Failed to get undo retention parameter"));
         }
-
-        patchConnectorConfigurationForContainer(config, oracleContainer);
-        return config;
     }
+
+    public static LogInterceptor getEventProcessorLogInterceptor() {
+        return switch (adapter()) {
+            case LOG_MINER -> new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            case LOG_MINER_UNBUFFERED -> new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
+            case XSTREAM -> new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+            case OLR -> new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
+        };
+    }
+
+    public static LogInterceptor getAbstractEventProcessorLogInterceptor() {
+        return switch (adapter()) {
+            case LOG_MINER, LOG_MINER_UNBUFFERED -> new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+            case XSTREAM -> new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+            case OLR -> new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
+        };
+    }
+
+    public static LogInterceptor getEventCommitHandler() {
+        return switch (adapter()) {
+            case LOG_MINER, LOG_MINER_UNBUFFERED -> new LogInterceptor(TransactionCommitConsumer.class);
+            case XSTREAM -> new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+            case OLR -> new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
+        };
+    }
+
 }

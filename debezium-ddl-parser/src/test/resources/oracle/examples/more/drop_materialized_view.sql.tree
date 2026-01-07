@@ -1,0 +1,1 @@
+(sql_script (unit_statement (drop_materialized_view DROP MATERIALIZED VIEW (tableview_name (identifier (id_expression (regular_id mv1)))))) ; (unit_statement (drop_materialized_view DROP MATERIALIZED VIEW (tableview_name (identifier (id_expression (regular_id mv2)))) PRESERVE TABLE)) ; <EOF>)

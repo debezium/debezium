@@ -55,6 +55,12 @@ public class LogMinerEventRow {
     private static final int OBJECT_ID = 18;
     private static final int OBJECT_VERSION = 19;
     private static final int OBJECT_DATA_ID = 20;
+    private static final int CLIENT_ID = 21;
+    private static final int START_SCN = 22;
+    private static final int COMMIT_SCN = 23;
+    private static final int START_TIMESTAMP = 24;
+    private static final int COMMIT_TIMESTAMP = 25;
+    private static final int SEQUENCE = 26;
 
     private Scn scn;
     private TableId tableId;
@@ -76,6 +82,12 @@ public class LogMinerEventRow {
     private long objectId;
     private long objectVersion;
     private long dataObjectId;
+    private String clientId;
+    private Scn startScn;
+    private Scn commitScn;
+    private Instant startTime;
+    private Instant commitTime;
+    private Long transactionSequence;
 
     public Scn getScn() {
         return scn;
@@ -107,6 +119,10 @@ public class LogMinerEventRow {
 
     public String getTransactionId() {
         return transactionId;
+    }
+
+    public Long getTransactionSequence() {
+        return transactionSequence;
     }
 
     public String getOperation() {
@@ -161,6 +177,30 @@ public class LogMinerEventRow {
         return dataObjectId;
     }
 
+    public String getClientId() {
+        return clientId;
+    }
+
+    public Scn getStartScn() {
+        return startScn;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public Scn getCommitScn() {
+        return commitScn;
+    }
+
+    public Instant getCommitTime() {
+        return commitTime;
+    }
+
+    public boolean hasErrorStatus() {
+        return status == 2;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -170,13 +210,12 @@ public class LogMinerEventRow {
      *
      * @param resultSet the result set to be read, should never be {@code null}
      * @param catalogName the catalog name, should never be {@code null}
-     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
      * @return a populated instance of a LogMinerEventRow object.
      * @throws SQLException if there was a problem reading the result set
      */
-    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName) throws SQLException {
         LogMinerEventRow row = new LogMinerEventRow();
-        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
+        row.initializeFromResultSet(resultSet, catalogName);
         return row;
     }
 
@@ -185,17 +224,16 @@ public class LogMinerEventRow {
      *
      * @param resultSet the result set to be read, should never be {@code null}
      * @param catalogName the catalog name, should never be {@code null}
-     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
      * @throws SQLException if there was a problem reading the result set
      */
-    private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    private void initializeFromResultSet(ResultSet resultSet, String catalogName) throws SQLException {
         // Initialize the state from the result set
-        this.scn = getScn(resultSet);
+        this.scn = getScn(resultSet, SCN);
         this.tableName = resultSet.getString(TABLE_NAME);
         this.tablespaceName = resultSet.getString(TABLESPACE_NAME);
         this.eventType = EventType.from(resultSet.getInt(OPERATION_CODE));
-        this.changeTime = getChangeTime(resultSet);
-        this.transactionId = getTransactionId(resultSet, isTxIdRawValue);
+        this.changeTime = getTime(resultSet, CHANGE_TIME);
+        this.transactionId = getTransactionId(resultSet);
         this.operation = resultSet.getString(OPERATION);
         this.userName = resultSet.getString(USERNAME);
         this.rowId = resultSet.getString(ROW_ID);
@@ -209,26 +247,29 @@ public class LogMinerEventRow {
         this.objectId = resultSet.getLong(OBJECT_ID);
         this.objectVersion = resultSet.getLong(OBJECT_VERSION);
         this.dataObjectId = resultSet.getLong(OBJECT_DATA_ID);
+        this.clientId = resultSet.getString(CLIENT_ID);
+        this.startScn = getScn(resultSet, START_SCN);
+        this.commitScn = getScn(resultSet, COMMIT_SCN);
+        this.startTime = getTime(resultSet, START_TIMESTAMP);
+        this.commitTime = getTime(resultSet, COMMIT_TIMESTAMP);
+        this.transactionSequence = resultSet.getLong(SEQUENCE);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
     }
 
-    private String getTransactionId(ResultSet rs, boolean asRawValue) throws SQLException {
-        if (asRawValue) {
-            byte[] result = rs.getBytes(TX_ID);
-            return result != null ? HexConverter.convertToHexString(result) : null;
-        }
-        return rs.getString(TX_ID);
+    private String getTransactionId(ResultSet rs) throws SQLException {
+        byte[] result = rs.getBytes(TX_ID);
+        return result != null ? HexConverter.convertToHexString(result) : null;
     }
 
-    private Instant getChangeTime(ResultSet rs) throws SQLException {
-        final Timestamp result = rs.getTimestamp(CHANGE_TIME, UTC_CALENDAR);
+    private Instant getTime(ResultSet rs, int columnIndex) throws SQLException {
+        final Timestamp result = rs.getTimestamp(columnIndex, UTC_CALENDAR);
         return result != null ? result.toInstant() : null;
     }
 
-    private Scn getScn(ResultSet rs) throws SQLException {
-        final String scn = rs.getString(SCN);
+    private Scn getScn(ResultSet rs, int columnIndex) throws SQLException {
+        final String scn = rs.getString(columnIndex);
         return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
     }
 
@@ -295,18 +336,30 @@ public class LogMinerEventRow {
                 ", objectId=" + objectId +
                 ", objectVersion=" + objectVersion +
                 ", dataObjectId=" + dataObjectId +
+                ", startScn=" + startScn +
+                ", commitScn=" + commitScn +
+                ", operation='" + operation + '\'' +
                 ", tableId='" + tableId + '\'' +
                 ", tableName='" + tableName + '\'' +
                 ", tablespaceName='" + tablespaceName + '\'' +
                 ", eventType=" + eventType +
                 ", changeTime=" + changeTime +
+                ", startTime=" + startTime +
+                ", commitTime=" + commitTime +
                 ", transactionId='" + transactionId + '\'' +
                 ", operation='" + operation + '\'' +
+                ", transactionSequence=" + transactionSequence +
+                ", objectId=" + objectId +
+                ", objectVersion=" + objectVersion +
+                ", dataObjectId=" + dataObjectId +
+                ", eventType=" + eventType +
                 ", userName='" + userName + '\'' +
                 ", rowId='" + rowId + '\'' +
                 ", rollbackFlag=" + rollbackFlag +
                 ", rsId=" + rsId +
                 ", ssn=" + ssn +
+                ", thread=" + thread +
+                ", clientId=" + clientId +
                 // Specifically log SQL only if TRACE is enabled; otherwise omit for others
                 ", redoSql='" + (LOGGER.isTraceEnabled() ? redoSql : "<omitted>") + '\'' +
                 '}';

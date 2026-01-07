@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -31,7 +31,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMinerStreamingChangeEventSourceMetrics> {
 
     @Override
@@ -40,11 +40,11 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
                                                                       EventMetadataProvider metadataProvider,
                                                                       OracleConnectorConfig connectorConfig,
                                                                       Clock clock) {
-        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig, clock);
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig, clock, java.util.Collections::emptyList);
     }
 
     @Test
-    public void testMetrics() {
+    void testMetrics() {
         metrics.setLastCapturedDmlCount(1);
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
@@ -56,22 +56,33 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.setLastDurationOfFetchQuery(Duration.ofMillis(200));
         assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
         assertThat(metrics.getMaxDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
-        assertThat(metrics.getFetchingQueryCount()).isEqualTo(2);
+        assertThat(metrics.getFetchQueryCount()).isEqualTo(2);
 
         metrics.setCurrentLogFileNames(new HashSet<>(Arrays.asList("name", "name1")));
-        assertThat(metrics.getCurrentRedoLogFileName()[0].equals("name")).isTrue();
-        assertThat(metrics.getCurrentRedoLogFileName()[1].equals("name1")).isTrue();
+        assertThat(metrics.getCurrentLogFileNames()[0].equals("name")).isTrue();
+        assertThat(metrics.getCurrentLogFileNames()[1].equals("name1")).isTrue();
+
+        metrics.setMinedLogFileNames(new HashSet<>(Arrays.asList("arc1", "arc2", "online1")));
+        assertThat(metrics.getMinedLogFileNames()).contains("arc1", "arc2", "online1");
+        assertThat(metrics.getMinimumMinedLogCount()).isEqualTo(3);
+        assertThat(metrics.getMaximumMinedLogCount()).isEqualTo(3);
+
+        metrics.setMinedLogFileNames(new HashSet<>(Arrays.asList("arc2", "online1")));
+        assertThat(metrics.getMinedLogFileNames()).contains("arc2", "online1");
+        assertThat(metrics.getMinimumMinedLogCount()).isEqualTo(2);
+        assertThat(metrics.getMaximumMinedLogCount()).isEqualTo(3);
 
         metrics.setSwitchCount(5);
-        assertThat(metrics.getSwitchCounter() == 5).isTrue();
+        assertThat(metrics.getLogSwitchCount() == 5).isTrue();
 
         metrics.reset();
         metrics.setLastDurationOfFetchQuery(Duration.ofMillis(1000));
         assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(1000);
-        assertThat(metrics.getFetchingQueryCount()).isEqualTo(1);
+        assertThat(metrics.getFetchQueryCount()).isEqualTo(1);
 
         metrics.reset();
         metrics.setLastCapturedDmlCount(300);
+        metrics.setLastBatchJdbcRows(300);
         metrics.setLastBatchProcessingDuration(Duration.ofMillis(1000));
         assertThat(metrics.getLastCapturedDmlCount()).isEqualTo(300);
         assertThat(metrics.getLastBatchProcessingTimeInMilliseconds()).isEqualTo(1000);
@@ -80,6 +91,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(300);
 
         metrics.setLastCapturedDmlCount(500);
+        metrics.setLastBatchJdbcRows(500);
         metrics.setLastBatchProcessingDuration(Duration.ofMillis(1000));
         assertThat(metrics.getAverageBatchProcessingThroughput()).isEqualTo(400);
         assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(500);
@@ -92,17 +104,16 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.setLastBatchProcessingDuration(Duration.ZERO);
         assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(0);
 
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(0);
         assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(0L);
 
         metrics.setRedoLogStatuses(Collections.singletonMap("name", "current"));
-        assertThat(metrics.getRedoLogStatus()[0].equals("name | current")).isTrue();
+        assertThat(metrics.getRedoLogStatuses()[0].equals("name | current")).isTrue();
 
         assertThat(metrics.toString().contains("logMinerQueryCount"));
     }
 
     @Test
-    public void testLagMetrics() {
+    void testLagMetrics() {
         // no time difference between connector and database
         long lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(0);
@@ -224,7 +235,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
-    public void testOtherMetrics() {
+    void testOtherMetrics() {
         metrics.incrementScnFreezeCount();
         assertThat(metrics.getScnFreezeCount()).isEqualTo(1);
 
@@ -238,7 +249,9 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
             metrics.incrementTotalChangesCount();
             metrics.incrementCommittedTransactionCount();
         }
-        assertThat(metrics.getRegisteredDmlCount()).isEqualTo(1000);
+        metrics.setLastCommitEventCount(1000);
+        metrics.setLastCommitDuration(Duration.ofSeconds(1));
+        assertThat(metrics.getTotalChangesCount()).isEqualTo(1000);
         assertThat(metrics.getNumberOfCommittedTransactions()).isEqualTo(1000);
         assertThat(metrics.getCommitThroughput()).isGreaterThanOrEqualTo(1_000);
 
@@ -250,6 +263,9 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
 
         metrics.setActiveTransactionCount(5);
         assertThat(metrics.getNumberOfActiveTransactions()).isEqualTo(5);
+
+        metrics.setBufferedEventCount(2);
+        assertThat(metrics.getNumberOfEventsInBuffer()).isEqualTo(2);
 
         metrics.addRolledBackTransactionId("rolledback id");
         assertThat(metrics.getNumberOfRolledBackTransactions()).isEqualTo(1);
@@ -267,11 +283,13 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
 
         assertThat(metrics.toString().contains("changesCount=1000")).isTrue();
 
-        metrics.setLastCommitDuration(Duration.ofMillis(100L));
-        assertThat(metrics.getLastCommitDurationInMilliseconds()).isEqualTo(100L);
+        metrics.setLastCommitDuration(Duration.ofMillis(2000L));
+        assertThat(metrics.getLastCommitDurationInMilliseconds()).isEqualTo(2000L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(3000L);
 
         metrics.setLastCommitDuration(Duration.ofMillis(50L));
-        assertThat(metrics.getMaxCommitDurationInMilliseconds()).isEqualTo(100L);
+        assertThat(metrics.getMaxCommitDurationInMilliseconds()).isEqualTo(2000L);
+        assertThat(metrics.getTotalCommitTimeInMilliseconds()).isEqualTo(3050L);
 
         metrics.setOffsetScn(Scn.valueOf(10L));
         assertThat(metrics.getOldestScn()).isEqualTo("10");
@@ -280,15 +298,14 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @Test
     @FixFor("DBZ-2754")
     public void testCustomTransactionRetention() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
         assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(3 * 3600000);
     }
 
     @Test
     @FixFor("DBZ-5179")
     public void testRollbackTransactionIdSetSizeLimit() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
 
         // Check state up to maximum size
         for (int i = 1; i <= 10; ++i) {
@@ -309,7 +326,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @Test
     @FixFor("DBZ-5179")
     public void testAbandonedTransactionIdSetSizeLimit() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
 
         // Check state up to maximum size
         for (int i = 1; i <= 10; ++i) {
@@ -325,6 +342,39 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         // Set should be unchanged.
         metrics.addAbandonedTransactionId("11");
         assertThat(metrics.getAbandonedTransactionIds()).containsOnly("2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+    }
+
+    @Test
+    @FixFor("DBZ-9545")
+    public void testMiningSessionAndFetchScnRanges() throws Exception {
+        init(TestHelper.defaultConfig());
+
+        // Starts set to Scn.NULL
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+
+        // Set the mining session range, no effect on fetch range
+        metrics.setLastMiningSessionRange(Scn.valueOf(1), Scn.valueOf(1000));
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+
+        // Set the mining fetch range, no effect on session range
+        metrics.setLastMiningFetchRange(Scn.valueOf(100), Scn.valueOf(500));
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.valueOf(100).asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.valueOf(500).asBigInteger());
+
+        // These metrics are not reset
+        metrics.reset();
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.valueOf(100).asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.valueOf(500).asBigInteger());
     }
 
 }

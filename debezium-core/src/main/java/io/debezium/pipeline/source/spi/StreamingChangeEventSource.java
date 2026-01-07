@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.io.Closeable;
 import java.util.Map;
 
 import io.debezium.pipeline.spi.OffsetContext;
@@ -15,7 +16,8 @@ import io.debezium.pipeline.spi.Partition;
  *
  * @author Gunnar Morling
  */
-public interface StreamingChangeEventSource<P extends Partition, O extends OffsetContext> extends ChangeEventSource {
+public interface StreamingChangeEventSource<P extends Partition, O extends OffsetContext>
+        extends ChangeEventSource, Closeable {
 
     /**
      * Initializes the streaming source.
@@ -72,5 +74,9 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
 
     default O getOffsetContext() {
         return null;
+    }
+
+    @Override
+    default void close() {
     }
 }

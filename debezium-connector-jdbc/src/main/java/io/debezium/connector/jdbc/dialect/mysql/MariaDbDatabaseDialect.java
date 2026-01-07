@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
-import java.util.List;
+import java.util.Set;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
@@ -14,10 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.maria.DoubleVectorType;
+import io.debezium.connector.jdbc.dialect.maria.FloatVectorType;
+import io.debezium.connector.jdbc.dialect.maria.JsonType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**
@@ -50,24 +53,33 @@ public class MariaDbDatabaseDialect extends MySqlDatabaseDialect {
         super(config, sessionFactory);
     }
 
+    @Override
+    protected void registerTypes() {
+        super.registerTypes();
+
+        registerType(FloatVectorType.INSTANCE);
+        registerType(DoubleVectorType.INSTANCE);
+        registerType(JsonType.INSTANCE);
+    }
+
     /*
      * The use of VALUES() to refer to the new row and columns is deprecated in recent versions of MySQL,
      * but not followed by MariaDB yet.
      */
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), name -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), name -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
-        final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
-                ? record.getKeyFieldNames()
-                : record.getNonKeyFieldNames();
+        final Set<String> updateColumnNames = record.nonKeyFieldNames().isEmpty()
+                ? record.keyFieldNames()
+                : record.nonKeyFieldNames();
 
         builder.append("ON DUPLICATE KEY UPDATE ");
         builder.appendList(",", updateColumnNames, name -> {

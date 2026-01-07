@@ -37,9 +37,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Percentage;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,16 +67,16 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     private static final String COLLECTION_NAME = "c1";
     private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + COLLECTION_NAME;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config().build());
 
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
@@ -110,7 +110,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void notificationCorrectlySentOnItsTopic() {
+    void notificationCorrectlySentOnItsTopic() {
         // Testing.Print.enable();
 
         storeDocuments("dbA", "c1", "simple_objects.json");
@@ -154,7 +154,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void notificationNotSentIfNoChannelIsConfigured() {
+    void notificationNotSentIfNoChannelIsConfigured() {
         // Testing.Print.enable();
 
         startConnector(config -> config.with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"));
@@ -167,7 +167,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void reportErrorWhenSinkChannelIsEnabledAndNoTopicConfigurationProvided() {
+    void reportErrorWhenSinkChannelIsEnabledAndNoTopicConfigurationProvided() {
         // Testing.Print.enable();
 
         LogInterceptor logInterceptor = new LogInterceptor("io.debezium.connector");
@@ -180,7 +180,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void notificationCorrectlySentOnJmx()
+    void notificationCorrectlySentOnJmx()
             throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException,
             MBeanException {
 
@@ -227,7 +227,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void emittingDebeziumNotificationWillGenerateAJmxNotification()
+    void emittingDebeziumNotificationWillGenerateAJmxNotification()
             throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException,
             MBeanException, InterruptedException, JsonProcessingException {
 

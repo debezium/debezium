@@ -17,8 +17,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -49,20 +49,18 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
     private static final String SETUP_OUTBOX_SCHEMA = "DROP SCHEMA IF EXISTS outboxsmtit CASCADE;" +
             "CREATE SCHEMA outboxsmtit;";
 
-    private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outboxsmtit.outbox " +
-            "(" +
-            "  id            uuid         not null" +
-            "    constraint outbox_pk primary key," +
-            "  aggregatetype varchar(255) not null," +
-            "  aggregateid   varchar(255) not null," +
-            "  event_type    varchar(255) not null," +
-            "  payload       jsonb" +
+    private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outboxsmtit.outbox (" +
+            "  id                   uuid         not null   constraint outbox_pk primary key," +
+            "  aggregatetype        varchar(255) not null," +
+            "  aggregateid          varchar(255) not null," +
+            "  event_type           varchar(255) not null," +
+            "  tracingspancontext   varchar(255)," +
+            "  payload              jsonb" +
             ");";
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
 
-    @Before
-    @Override
+    @BeforeEach
     public void beforeEach() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -134,6 +132,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
                                           String eventType,
                                           String aggregateType,
                                           String aggregateId,
+                                          String tracingSpanContext,
                                           String payloadJson,
                                           String additional) {
         StringBuilder insert = new StringBuilder();
@@ -143,6 +142,12 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
         insert.append(", '").append(aggregateId).append("'");
         insert.append(", '").append(eventType).append("'");
 
+        if (tracingSpanContext == null) {
+            insert.append(", null");
+        }
+        else {
+            insert.append(", '").append(tracingSpanContext).append("'");
+        }
         if (payloadJson == null) {
             insert.append(", null::jsonb");
         }

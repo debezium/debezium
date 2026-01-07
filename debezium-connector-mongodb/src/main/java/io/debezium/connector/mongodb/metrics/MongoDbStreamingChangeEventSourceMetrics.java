@@ -18,6 +18,7 @@ import io.debezium.connector.mongodb.DisconnectEvent;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.PrimaryElectionEvent;
 import io.debezium.pipeline.ConnectorEvent;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.Clock;
@@ -28,7 +29,7 @@ import io.debezium.util.Collect;
  */
 @ThreadSafe
 public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics<MongoDbPartition>
-        implements MongoDbStreamingChangeEventSourceMetricsMBean {
+        implements MongoDbStreamingChangeEventSourceMetricsMXBean {
 
     private final AtomicLong numberOfPrimaryElections = new AtomicLong();
     private final AtomicLong numberOfDisconnects = new AtomicLong();
@@ -38,11 +39,12 @@ public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingCh
     private final AtomicLong numberOfEmptyPolls = new AtomicLong();
 
     public <T extends CdcSourceTaskContext> MongoDbStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                     EventMetadataProvider eventMetadataProvider) {
+                                                                                     EventMetadataProvider eventMetadataProvider,
+                                                                                     CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider, Collect.linkMapOf(
                 "context", "streaming",
-                "server", taskContext.getConnectorName(),
-                "task", taskContext.getTaskId()));
+                "server", taskContext.getConnectorLogicalName(),
+                "task", taskContext.getTaskId()), capturedTablesSupplier);
     }
 
     @Override

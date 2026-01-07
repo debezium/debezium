@@ -14,15 +14,16 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -33,12 +34,12 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SchemaHistoryTopicIT extends AbstractConnectorTest {
+public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.dropTable(connection, "debezium.tablea");
         TestHelper.dropTable(connection, "debezium.tableb");
@@ -59,8 +60,8 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.tablea");
             TestHelper.dropTable(connection, "debezium.tableb");
@@ -102,7 +103,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");

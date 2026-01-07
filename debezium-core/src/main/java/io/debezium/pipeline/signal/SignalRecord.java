@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 
 /**
@@ -36,6 +37,10 @@ public class SignalRecord {
         this.type = type;
         this.data = data;
         this.additionalData = additionalData;
+    }
+
+    public SignalRecord(DebeziumEngine.Signal signal) {
+        this(signal.id(), signal.type(), signal.data(), signal.additionalData());
     }
 
     public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {

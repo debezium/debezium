@@ -22,14 +22,14 @@ import io.debezium.util.Collect;
  */
 @ThreadSafe
 public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics<MongoDbPartition>
-        implements MongoDbSnapshotChangeEventSourceMetricsMBean {
+        implements MongoDbSnapshotChangeEventSourceMetricsMXBean {
 
     private final AtomicLong numberOfDisconnects = new AtomicLong();
 
     public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                     EventMetadataProvider metadataProvider) {
         super(taskContext, changeEventQueueMetrics, metadataProvider,
-                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId()));
+                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorLogicalName(), "task", taskContext.getTaskId()));
     }
 
     @Override

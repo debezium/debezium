@@ -15,15 +15,16 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
-    public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
 
@@ -47,32 +48,21 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     private Map<String, Scn> snapshotPendingTransactions;
 
-    /**
-     * Whether a snapshot has been completed or not.
-     */
-    private boolean snapshotCompleted;
-
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
-                               Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
-                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        this(connectorConfig, scn, scnIndex, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
-                incrementalSnapshotContext);
-        sourceInfo.setCommitScn(commitScn);
-    }
-
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, String lcrPosition,
-                               Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
-                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        super(new SourceInfo(connectorConfig));
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
+                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions, SnapshotType snapshot,
+                                boolean snapshotCompleted, TransactionContext transactionContext,
+                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
+                                String transactionId, Long transactionSequence) {
+        super(new SourceInfo(connectorConfig), snapshotCompleted);
         sourceInfo.setScn(scn);
         sourceInfo.setScnIndex(scnIndex);
+        sourceInfo.setTransactionId(transactionId);
+        sourceInfo.setTransactionSequence(transactionSequence);
         // It is safe to set this value to the supplied SCN, specifically for snapshots.
         // During streaming this value will be updated by the current event handler.
         sourceInfo.setEventScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
-        sourceInfo.setCommitScn(CommitScn.valueOf((String) null));
+        sourceInfo.setCommitScn(commitScn);
         sourceInfoSchema = sourceInfo.schema();
 
         // Snapshot SCN is a new field and may be null in cases where the offsets are being read from
@@ -84,12 +74,12 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
 
-        this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
+            setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot != null ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
     }
 
@@ -99,12 +89,15 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         private Scn scn;
         private Long scnIndex;
         private String lcrPosition;
-        private boolean snapshot;
+        private SnapshotType snapshot;
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
         private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
         private Map<String, Scn> snapshotPendingTransactions;
         private Scn snapshotScn;
+        private String transactionId;
+        private Long transactionSequence;
+        private CommitScn commitScn = CommitScn.empty();
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -126,7 +119,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
-        public Builder snapshot(boolean snapshot) {
+        public Builder snapshot(SnapshotType snapshot) {
             this.snapshot = snapshot;
             return this;
         }
@@ -156,10 +149,25 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
+        public Builder transactionId(String transactionId) {
+            this.transactionId = transactionId;
+            return this;
+        }
+
+        public Builder transactionSequence(Long transactionSequence) {
+            this.transactionSequence = transactionSequence;
+            return this;
+        }
+
+        public Builder commitScn(CommitScn commitScn) {
+            this.commitScn = commitScn;
+            return this;
+        }
+
         public OracleOffsetContext build() {
-            return new OracleOffsetContext(connectorConfig, scn, scnIndex, lcrPosition, snapshotScn,
+            return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, lcrPosition, snapshotScn,
                     snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
-                    incrementalSnapshotContext);
+                    incrementalSnapshotContext, transactionId, transactionSequence);
         }
     }
 
@@ -169,47 +177,48 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     @Override
     public Map<String, ?> getOffset() {
-        if (sourceInfo.isSnapshot()) {
-            Map<String, Object> offset = new HashMap<>();
+        final Map<String, Object> result = new HashMap<>();
 
-            final Scn scn = sourceInfo.getScn();
-            offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : scn);
-            offset.put(SourceInfo.SNAPSHOT_KEY, true);
-            offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
+        if (getSnapshot().isPresent()) {
+            result.put(SourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
+            result.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
-            if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
-                String encoded = snapshotPendingTransactions.entrySet().stream()
-                        .map(e -> e.getKey() + ":" + e.getValue().toString())
-                        .collect(Collectors.joining(","));
-                offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
+            final String encodedPendingTransactions = getEncodedSnapshotPendingTransactions();
+            if (!Strings.isNullOrEmpty(encodedPendingTransactions)) {
+                result.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encodedPendingTransactions);
             }
-            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.isNull() ? null : snapshotScn.toString() : null);
+        }
 
-            return offset;
+        if (sourceInfo.getLcrPosition() != null) {
+            // XStream
+            result.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
         }
         else {
-            final Map<String, Object> offset = new HashMap<>();
-            if (sourceInfo.getLcrPosition() != null) {
-                offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
+            // Non-XStream
+            if (sourceInfo.getScn() != null) {
+                result.put(SourceInfo.SCN_KEY, sourceInfo.getScn().toString());
             }
-            else {
-                final Scn scn = sourceInfo.getScn();
-                offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
-                if (sourceInfo.getScnIndex() != null) {
-                    offset.put(SourceInfo.SCN_INDEX_KEY, sourceInfo.getScnIndex());
-                }
-                sourceInfo.getCommitScn().store(offset);
+            if (sourceInfo.getScnIndex() != null) {
+                result.put(SourceInfo.SCN_INDEX_KEY, sourceInfo.getScnIndex());
             }
-            if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
-                String encoded = snapshotPendingTransactions.entrySet().stream()
-                        .map(e -> e.getKey() + ":" + e.getValue().toString())
-                        .collect(Collectors.joining(","));
-                offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
-            }
-            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.isNull() ? null : snapshotScn.toString() : null);
-
-            return incrementalSnapshotContext.store(transactionContext.store(offset));
         }
+
+        if (snapshotScn != null && !snapshotScn.isNull()) {
+            result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
+        }
+
+        if (sourceInfo.getCommitScn() != null) {
+            sourceInfo.getCommitScn().store(result);
+        }
+
+        if (sourceInfo.getTransactionId() != null) {
+            result.put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId());
+            if (sourceInfo.getTransactionSequence() != null) {
+                result.put(SourceInfo.TXSEQ_KEY, sourceInfo.getTransactionSequence());
+            }
+        }
+
+        return sourceInfo.isSnapshot() ? result : incrementalSnapshotContext.store(transactionContext.store(result));
     }
 
     @Override
@@ -229,6 +238,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setEventScn(eventScn);
     }
 
+    public void setEventCommitScn(Scn eventCommitScn) {
+        sourceInfo.setEventCommitScn(eventCommitScn);
+    }
+
     public Scn getScn() {
         return sourceInfo.getScn();
     }
@@ -241,8 +254,16 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.getCommitScn();
     }
 
+    public Instant getCommitTime() {
+        return sourceInfo.getCommitTime();
+    }
+
     public Scn getEventScn() {
         return sourceInfo.getEventScn();
+    }
+
+    public Scn getEventCommitScn() {
+        return sourceInfo.getEventCommitScn();
     }
 
     public void setLcrPosition(String lcrPosition) {
@@ -261,12 +282,24 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return snapshotPendingTransactions;
     }
 
+    public String getTransactionId() {
+        return sourceInfo.getTransactionId();
+    }
+
+    public Long getTransactionSequence() {
+        return sourceInfo.getTransactionSequence();
+    }
+
     public void setSnapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
         this.snapshotPendingTransactions = snapshotPendingTransactions;
     }
 
     public void setTransactionId(String transactionId) {
         sourceInfo.setTransactionId(transactionId);
+    }
+
+    public void setTransactionSequence(Long transactionSequence) {
+        sourceInfo.setTransactionSequence(transactionSequence);
     }
 
     public void setUserName(String userName) {
@@ -297,6 +330,18 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setSsn(ssn);
     }
 
+    public void setStartScn(Scn startScn) {
+        sourceInfo.setStartScn(startScn);
+    }
+
+    public void setStartTime(Instant startTime) {
+        sourceInfo.setStartTime(startTime);
+    }
+
+    public void setCommitTime(Instant commitTime) {
+        sourceInfo.setCommitTime(commitTime);
+    }
+
     public String getRedoSql() {
         return sourceInfo.getRedoSql();
     }
@@ -314,31 +359,22 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     @Override
-    public boolean isSnapshotRunning() {
-        return sourceInfo.isSnapshot() && !snapshotCompleted;
-    }
-
-    @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-        snapshotCompleted = false;
-    }
-
-    @Override
-    public void preSnapshotCompletion() {
-        snapshotCompleted = true;
-    }
-
-    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("OracleOffsetContext [scn=").append(getScn());
 
-        if (sourceInfo.isSnapshot()) {
-            sb.append(", snapshot=").append(sourceInfo.isSnapshot());
+        if (getSnapshot().isPresent()) {
+            sb.append(", snapshot=").append(getSnapshot().get());
             sb.append(", snapshot_completed=").append(snapshotCompleted);
         }
         else if (getScnIndex() != null) {
             sb.append(", scnIndex=").append(getScnIndex());
+        }
+
+        if (getTransactionId() != null) {
+            sb.append(", txId=").append(getTransactionId());
+            if (getTransactionSequence() != null) {
+                sb.append(", txSeq=").append(getTransactionSequence());
+            }
         }
 
         sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toLoggableFormat());
@@ -375,6 +411,17 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return incrementalSnapshotContext;
     }
 
+    private String getEncodedSnapshotPendingTransactions() {
+        if (snapshotPendingTransactions == null || snapshotPendingTransactions.isEmpty()) {
+            return null;
+        }
+
+        return snapshotPendingTransactions.entrySet()
+                .stream()
+                .map(e -> e.getKey() + ":" + e.getValue().toString())
+                .collect(Collectors.joining(","));
+    }
+
     /**
      * Helper method to resolve a {@link Scn} by key from the offset map.
      *
@@ -401,7 +448,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     public static Map<String, Scn> loadSnapshotPendingTransactions(Map<String, ?> offset) {
         Map<String, Scn> snapshotPendingTransactions = new HashMap<>();
-        String encoded = (String) offset.get(SNAPSHOT_PENDING_TRANSACTIONS_KEY);
+        final String encoded = readOffsetValue(offset, SNAPSHOT_PENDING_TRANSACTIONS_KEY, String.class);
         if (encoded != null) {
             Arrays.stream(encoded.split(","))
                     .map(String::trim)
@@ -424,5 +471,30 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     public static Scn loadSnapshotScn(Map<String, ?> offset) {
         return getScnFromOffsetMapByKey(offset, SNAPSHOT_SCN_KEY);
+    }
+
+    /**
+     * Helper method to read the transaction id from the offset map.
+     *
+     * @param offset the offset map
+     * @return the transaction identifier, may be {@code null}
+     */
+    public static String loadTransactionId(Map<String, ?> offset) {
+        return readOffsetValue(offset, SourceInfo.TXID_KEY, String.class);
+    }
+
+    /**
+     * Helper method to read the transaction sequence from the offset map.
+     *
+     * @param offset the offset map
+     * @return the transaction sequence, may be {@code null}
+     */
+    public static Long loadTransactionSequence(Map<String, ?> offset) {
+        return readOffsetValue(offset, SourceInfo.TXSEQ_KEY, Long.class);
+    }
+
+    private static <T> T readOffsetValue(Map<String, ?> offsets, String key, Class<T> valueType) {
+        final Object value = offsets.get(key);
+        return valueType.isInstance(value) ? valueType.cast(value) : null;
     }
 }

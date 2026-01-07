@@ -5,10 +5,11 @@
  */
 package io.debezium.embedded.async;
 
+import org.apache.kafka.connect.source.SourceRecord;
+
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.TestingDebeziumEngine;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.pipeline.signal.SignalRecord;
 
 /**
  * Base class for testing connectors using {@link AsyncEmbeddedEngine}.
@@ -17,18 +18,17 @@ import io.debezium.pipeline.signal.SignalRecord;
  */
 public class AbstractAsyncEngineConnectorTest extends AbstractConnectorTest {
 
-    protected DebeziumEngine.Signaler<SignalRecord> signaler;
-
     @Override
-    protected DebeziumEngine.Builder createEngineBuilder() {
-        this.signaler = new AsyncEngineSignaler();
-
-        return new AsyncEmbeddedEngine.AsyncEngineBuilder()
-                .using(signaler);
+    protected DebeziumEngine.Builder<SourceRecord> createEngineBuilder() {
+        return new AsyncEmbeddedEngine.AsyncEngineBuilder();
     }
 
     @Override
-    protected TestingDebeziumEngine createEngine(DebeziumEngine.Builder builder) {
-        return new TestingAsyncEmbeddedEngine((AsyncEmbeddedEngine) builder.build());
+    protected TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder) {
+        return new TestingAsyncEmbeddedEngine<SourceRecord>((AsyncEmbeddedEngine<SourceRecord>) builder.build());
+    }
+
+    protected DebeziumEngine.Signaler getSignaler() {
+        return engine.getSignaler();
     }
 }

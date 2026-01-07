@@ -171,14 +171,13 @@ As with any Kafka Connect connector configuration, you can set `transforms=` to 
 Kafka Connect applies the transformations that you specify in the order in which they are listed.
 
 You can set multiple options for a connector that uses the MongoDB event flattening SMT.
-The following example shows a configuration that sets the xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`], xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`], and xref:mongodb-extract-new-record-state-add-headers[`add.headers`] options for a connector:
+The following example shows a configuration that sets the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`], and xref:mongodb-extract-new-record-state-add-headers[`add.headers`] options for a connector:
 
 [source]
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
-transforms.unwrap.drop.tombstones=false
-transforms.unwrap.delete.handling.mode=drop
+transforms.unwrap.delete.tombstone.handling.mode=drop
 transforms.unwrap.add.headers=op
 ----
 
@@ -389,7 +388,7 @@ For connectors that are not configured to capture full documents, when the SMT r
 
 After the SMT flattens an event message, the resulting message no longer indicates whether the operation that generated the event was of type `create`, `update` or initial snapshot `read`.
 Typically, you can identify `delete` operations by configuring the connectors to expose information about the tombstone or rewrite events that accompany a deletion.
-For more information about configuring the connector to expose information about tombstones and rewrites in event messages, see the xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`] and xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] properties.
+For more information about configuring the connector to expose information about tombstones and rewrites in event messages, see the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] property.
 
 To report the type of a database operation in an event message, the SMT can add an `op` field to one of the following elements:
 
@@ -434,7 +433,7 @@ The preceding configuration results in the following content being added to the 
 { "__rs" : "rs0", "__collection" : "my-collection", ... }
 ----
 
-If you want the SMT to add metadata fields to `delete` events, set the value of the xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] option to `rewrite`.
+If you want the SMT to add metadata fields to `delete` events, set the value of the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option to `rewrite`.
 
 // Type: concept
 // Title: Options for applying the MongoDB extract new document state transformation selectively
@@ -486,44 +485,10 @@ For more information about the `array.coding` option, see the xref:mongodb-event
 |`_`
 |When `flatten.struct` is set to `true`, specifies the delimiter that the transformation inserts between field names that it concatenates from the input record to generate field names in the output record.
 
-|[[mongodb-extract-new-record-state-drop-tombstones]]<<mongodb-extract-new-record-state-drop-tombstones, `drop.tombstones`>>
-|`true`
-|{prodname} generates a tombstone record for each `delete` operation.
-The default behavior is that event flattening SMT removes tombstone records from the stream.
-To retain tombstone records in the stream, specify `drop.tombstones=false`.
-[NOTE]
-====
-This option is scheduled for removal in a future release.
-In its place, use the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
-====
-
-|[[mongodb-extract-new-record-state-delete-handling-mode]]<<mongodb-extract-new-record-state-delete-handling-mode, `delete.handling.mode`>>
-|`drop`
-|Specifies how the SMT handles the change event records that {prodname} generates for `delete` operations.
-Set one of the following options:
-
-`drop`:: The SMT removes records for `delete` operations from the event stream.
-`none`:: The SMT retains the original change event record from the event stream.
-The record contains only `"value": "null"`.
-`rewrite`:: The SMT retains a modified version of the change event record from the stream.
-To provide another way to indicate that the record was deleted, the modified record includes a `value` field that contains the key/value pairs that were from the original record, and adds `+__deleted: true+` to the `value`. +
- +
-If you set the `rewrite` option, you might find that the updated, simplified records for `DELETE` operations are sufficient for tracking deleted records.
-In such a case, you might want the SMT to xref:mongodb-extract-new-record-state-drop-tombstones[drop tombstone records].
-[NOTE]
-====
-This option is scheduled for removal in a future release.
-In its place, use the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
-====
-
 |[[mongodb-extract-new-record-state-delete-tombstone-handling-mode]]xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`]
-|No default
+|`tombstone`
 |{prodname} generates a change event record for each `DELETE` operation.
 This setting determines how the MongoDB event flattening SMT handles `DELETE` events in the stream.
-[NOTE]
-====
-The setting for this option takes precedence over any conflicting settings that you might configure for the deprecated xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`] or xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] options.
-====
 Set one of the following options:
 
 `drop`:: The SMT removes both `DELETE` events and `TOMBSTONE`records from the stream.

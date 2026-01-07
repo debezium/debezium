@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -136,6 +137,29 @@ public final class Strings {
      */
     public static <T> List<T> listOfTrimmed(String input, Function<String, String[]> splitter, Function<String, T> factory) {
         return listOf(input, splitter, factory, true);
+    }
+
+    /**
+     * Generate the list of values that are included in the list separated by commas, with each element trimmed.
+     *
+     * @param input the input string
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOfTrimmed(String input, Function<String, T> factory) {
+        return listOfTrimmed(input, ',', factory);
+    }
+
+    /**
+     * Generate the list of values that are included in the list delimited by the given delimiter.
+     *
+     * @param input the input string
+     * @param delimiter the character used to delimit the items in the input
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOfTrimmed(String input, char delimiter, Function<String, T> factory) {
+        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory, true);
     }
 
     /**
@@ -1253,4 +1277,79 @@ public final class Strings {
             tokens.addToken(input.position(tokenStart), tokenStart, input.index() + 1);
         }
     }
+
+    /**
+     * Converts a string with separators (e.g., dots, underscores) into camelCase format using Stream API.
+     *
+     * @param input the input string containing separators such as dots or underscores
+     * @return the converted string in camelCase format, or an empty string if the input is null or empty
+     */
+    public static String convertDotAndUnderscoreStringToCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        String[] words = input.split("[._]+");
+        if (words.length == 0) {
+            return ""; // Handle edge case where input contains only separators
+        }
+
+        return java.util.stream.IntStream.range(0, words.length)
+                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
+                .mapToObj(i -> i == 0
+                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
+                .collect(java.util.stream.Collectors.joining());
+    }
+
+    /**
+     * Capitalizes the first letter of a word and converts the rest to lowercase.
+     *
+     * @param word the word to capitalize
+     * @return the word with the first letter capitalized
+     */
+    private static String capitalizeFirstLetter(String word) {
+        if (word.isEmpty()) {
+            return "";
+        }
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
+    }
+
+    /**
+     * Converts a given string to snake_case format.
+     * <p>
+     * This method handles several common cases of transformations:
+     * <ul>
+     *     <li>Converts camelCase to snake_case (e.g., "camelCaseName" -> "camel_case_name").</li>
+     *     <li>Inserts underscores between letters and numbers (e.g., "name123" -> "name_123").</li>
+     *     <li>Inserts underscores between numbers and letters (e.g., "123name" -> "123_name").</li>
+     *     <li>Replaces dots (.) with underscores (_).</li>
+     * </ul>
+     * <p>
+     * The resulting string is converted to lowercase.
+     * </p>
+     *
+     * <h3>Examples:</h3>
+     * <pre>
+     * {@code
+     * toSnakeCase("camelCaseName");       // Returns "camel_case_name"
+     * toSnakeCase("NameWith123Numbers"); // Returns "name_with_123_numbers"
+     * toSnakeCase("123NumbersExample");  // Returns "123_numbers_example"
+     * toSnakeCase("dotted.name");        // Returns "dotted_name"
+     * toSnakeCase(null);                 // Returns null
+     * }
+     * </pre>
+     *
+     * @param name the original string to be converted; may be {@code null}
+     * @return the string transformed to snake_case, or {@code null} if the input was {@code null}
+     */
+    public static String toSnakeCase(String name) {
+        if (name == null) {
+            return null;
+        }
+        // Combine all rules into a single regular expression
+        return name.replaceAll("([a-z])([A-Z])|([a-zA-Z])([0-9])|([0-9])([a-zA-Z])|\\.", "$1$3$5_$2$4$6")
+                .toLowerCase(Locale.ROOT);
+    }
+
 }

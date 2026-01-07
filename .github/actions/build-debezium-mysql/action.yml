@@ -8,7 +8,7 @@ inputs:
   version-mysql-server:
     description: "The MySQL server version to use"
     required: false
-    default: "8.2"
+    default: "8.4"
   profile:
     description: "The MySQL build profile to use"
     required: false

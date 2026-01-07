@@ -31,23 +31,23 @@ public class MySqlAntlrDdlParserTest
         extends BinlogAntlrDdlParserTest<MySqlValueConverters, MySqlDefaultValueConverter, MySqlAntlrDdlParser>
         implements MySqlCommon {
     @Override
-    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, MySqlValueConverters converters) {
-        return new MySqlDdlParserWithSimpleTestListener(listener, converters);
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener) {
+        return new MySqlDdlParserWithSimpleTestListener(listener);
     }
 
     @Override
-    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, MySqlValueConverters converters, boolean includeViews) {
-        return new MySqlDdlParserWithSimpleTestListener(listener, includeViews, converters);
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, boolean includeViews) {
+        return new MySqlDdlParserWithSimpleTestListener(listener, includeViews);
     }
 
     @Override
-    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, MySqlValueConverters converters, TableFilter tableFilter) {
-        return new MySqlDdlParserWithSimpleTestListener(listener, tableFilter, converters);
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, TableFilter tableFilter) {
+        return new MySqlDdlParserWithSimpleTestListener(listener, tableFilter);
     }
 
     @Override
-    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, MySqlValueConverters converters, boolean includeViews, boolean includeComments) {
-        return new MySqlDdlParserWithSimpleTestListener(listener, includeViews, includeComments, converters);
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments) {
+        return new MySqlDdlParserWithSimpleTestListener(listener, includeViews, includeComments);
     }
 
     @Override
@@ -71,25 +71,24 @@ public class MySqlAntlrDdlParserTest
     }
 
     public static class MySqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
-        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, MySqlValueConverters converters) {
-            this(changesListener, false, converters);
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+            this(changesListener, false);
         }
 
-        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter, MySqlValueConverters converters) {
-            this(changesListener, false, false, tableFilter, converters);
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+            this(changesListener, false, false, tableFilter);
         }
 
-        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, MySqlValueConverters converters) {
-            this(changesListener, includeViews, false, TableFilter.includeAll(), converters);
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+            this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, MySqlValueConverters converters) {
-            this(changesListener, includeViews, includeComments, TableFilter.includeAll(), converters);
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+            this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 
-        private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter,
-                                                     MySqlValueConverters converters) {
-            super(false, includeViews, includeComments, converters, tableFilter, new MySqlCharsetRegistry());
+        private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter) {
+            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry());
             this.ddlChanges = changesListener;
         }
     }

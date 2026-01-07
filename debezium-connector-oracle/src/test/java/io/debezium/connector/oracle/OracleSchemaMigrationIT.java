@@ -18,21 +18,20 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.antlr.listener.AlterTableParserListener;
 import io.debezium.connector.oracle.antlr.listener.CreateTableParserListener;
-import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
-import io.debezium.connector.oracle.olr.OpenLogReplicatorStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -40,19 +39,17 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
-import ch.qos.logback.classic.Level;
-
 /**
  * Integration tests for the Oracle DDL and schema migration.
  *
  * @author Chris Cranford
  */
-public class OracleSchemaMigrationIT extends AbstractConnectorTest {
+public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -62,8 +59,8 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         TestHelper.dropAllTables();
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         if (connection != null) {
             TestHelper.dropAllTables();
             connection.close();
@@ -1050,14 +1047,11 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2916")
-    @Ignore("Test can be flaky and cannot reproduce locally, ignoring to stablize test suite")
+    @Disabled("Test can be flaky and cannot reproduce locally, ignoring to stablize test suite")
     public void shouldNotEmitDdlEventsForNonTableObjects() throws Exception {
         try {
-            final LogInterceptor logminerlogInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();
             final LogInterceptor errorLogInterceptor = new LogInterceptor(ErrorHandler.class);
-            final LogInterceptor xstreamLogInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
-            final LogInterceptor olrLogInterceptor = new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
-            olrLogInterceptor.setLoggerLevel(OpenLogReplicatorStreamingChangeEventSource.class, Level.TRACE);
 
             // These roles are needed in order to perform certain DDL operations below.
             // Any roles granted here should be revoked in the finally block.
@@ -1085,19 +1079,15 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
             // Resolve what text to look for depending on connector implementation
             final String logText;
-            final LogInterceptor interceptor;
             switch (TestHelper.adapter()) {
                 case LOG_MINER:
                     logText = "DDL: ";
-                    interceptor = logminerlogInterceptor;
                     break;
                 case XSTREAM:
                     logText = "Processing DDL event ";
-                    interceptor = xstreamLogInterceptor;
                     break;
                 case OLR:
                     logText = "Cannot process DDL";
-                    interceptor = olrLogInterceptor;
                     break;
                 default:
                     throw new IllegalStateException("Unexpected adapter: " + TestHelper.adapter());
@@ -1646,7 +1636,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
     private static void assertSnapshotSchemaChange(SourceRecord record) {
         assertThat(record.topic()).isEqualTo(TestHelper.SERVER_NAME);
         assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
-        assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+        assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(((Struct) record.value()).getStruct("source").getString("snapshot")).isEqualTo("true");
     }
 

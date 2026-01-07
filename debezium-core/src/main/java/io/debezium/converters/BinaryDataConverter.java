@@ -65,7 +65,7 @@ public class BinaryDataConverter implements Converter, HeaderConverter, Versione
     public void configure(Map<String, ?> configs, boolean isKey) {
         final String converterTypeName = (String) configs.get(DELEGATE_CONVERTER_TYPE);
         if (converterTypeName != null) {
-            delegateConverter = Instantiator.getInstance(converterTypeName, null);
+            delegateConverter = Instantiator.getInstance(converterTypeName);
             delegateConverter.configure(Configuration.from(configs).subset(DELEGATE_CONVERTER_TYPE, true).asMap(), isKey);
         }
     }

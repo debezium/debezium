@@ -114,7 +114,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         final Map<Integer, DefaultValueMapper> result = new HashMap<>();
 
         // Numeric types
-        result.put(OracleTypes.NUMERIC, nullableDefaultValueMapper());
+        result.put(OracleTypes.NUMERIC, nullableDefaultValueMapper(enforceParenthesisUnwrap()));
 
         // Approximate numerics
         result.put(OracleTypes.BINARY_FLOAT, nullableDefaultValueMapper());
@@ -137,6 +137,11 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         // Unicode character strings
         result.put(OracleTypes.NCHAR, nullableDefaultValueMapper(enforceCharFieldPadding()));
         result.put(OracleTypes.NVARCHAR, nullableDefaultValueMapper(enforceStringUnquote()));
+
+        // LOBs
+        result.put(OracleTypes.CLOB, nullableDefaultValueMapper(skipEmptyClobFunction()));
+        result.put(OracleTypes.NCLOB, nullableDefaultValueMapper(skipEmptyClobFunction()));
+        result.put(OracleTypes.BLOB, nullableDefaultValueMapper(skipEmptyBlobFunction()));
 
         // Other data types have been omitted.
         return result;
@@ -184,6 +189,30 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
 
     private static DefaultValueMapper enforceStringUnquote() {
         return (column, value) -> value != null ? unquote(value) : null;
+    }
+
+    private static DefaultValueMapper enforceParenthesisUnwrap() {
+        return (column, value) -> value != null ? unwrapParenthesis(value) : null;
+    }
+
+    private static DefaultValueMapper skipEmptyClobFunction() {
+        return (column, value) -> {
+            // For EMPTY_CLOB(), treat this as having a zero-length default value
+            if (OracleValueConverters.EMPTY_CLOB_FUNCTION.equalsIgnoreCase(value)) {
+                return "";
+            }
+            return value;
+        };
+    }
+
+    private static DefaultValueMapper skipEmptyBlobFunction() {
+        return (column, value) -> {
+            // For EMPTY_BLOB(), treat this as an empty byte array
+            if (OracleValueConverters.EMPTY_BLOB_FUNCTION.equalsIgnoreCase(value)) {
+                return new byte[0];
+            }
+            return value;
+        };
     }
 
     private static DefaultValueMapper castTemporalFunctionCall(OracleConnection jdbcConnection) {
@@ -235,6 +264,13 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
             }
             return value;
         };
+    }
+
+    private static String unwrapParenthesis(String value) {
+        while (value.startsWith("(") && value.endsWith(")")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     private static String unquote(String value) {

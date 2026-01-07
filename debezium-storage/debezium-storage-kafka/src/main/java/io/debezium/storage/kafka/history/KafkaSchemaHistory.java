@@ -220,26 +220,30 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
                 .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
-                .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
+                .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even the smallest message
                 .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                 .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) // readjusted since 0.10.1.0
                 .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                        OffsetResetStrategy.EARLIEST.toString().toLowerCase())
+                        OffsetResetStrategy.EARLIEST.toString().toLowerCase()) // consume from the beginning
                 .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .build();
         this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
-                .withDefault(ProducerConfig.ACKS_CONFIG, 1)
-                .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
-                                                               // okay
+                .withDefault(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1) // to prevent message re-ordering
+                // in case of failed sends with retries
+                .withDefault(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false) // By default, Connect disables idempotent
+                // behavior for all producers, even though idempotence became default for Kafka producers. This is
+                // to ensure Connect continues to work with many Kafka broker versions, including older brokers that
+                // do not support idempotent producers or require explicit steps to enable them (e.g. adding the
+                // IDEMPOTENT_WRITE ACL to brokers older than 2.8).
+
                 .withDefault(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 32) // 32KB
-                .withDefault(ProducerConfig.LINGER_MS_CONFIG, 0)
-                .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
+                .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB - reduced buffer memory as
+                // schema changes are small and infrequent
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-                .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                 .build();
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("KafkaSchemaHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
@@ -293,8 +297,14 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         }
     }
 
+    private void checkForInterruption() throws InterruptedException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Thread was interrupted during schema history recovery");
+        }
+    }
+
     @Override
-    protected void recoverRecords(Consumer<HistoryRecord> records) {
+    protected void recoverRecords(Consumer<HistoryRecord> records) throws InterruptedException {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
             LOGGER.debug("Subscribing to database schema history topic '{}'", topicName);
@@ -305,6 +315,9 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             Long endOffset = null;
             int recoveryAttempts = 0;
 
+            endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
+            LOGGER.debug("End offset of database schema history topic is {}", endOffset);
+
             // read the topic until the end
             do {
                 if (recoveryAttempts > maxRecoveryAttempts) {
@@ -312,14 +325,12 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                             "The database schema history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
                 }
 
-                endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
-                LOGGER.debug("End offset of database schema history topic is {}", endOffset);
-
-                // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
-                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval.toMillis());
+                checkForInterruption();
+                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval);
                 int numRecordsProcessed = 0;
 
                 for (ConsumerRecord<String, String> record : recoveredRecords) {
+                    checkForInterruption();
                     try {
                         if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
@@ -354,12 +365,19 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 if (numRecordsProcessed == 0) {
                     LOGGER.debug("No new records found in the database schema history; will retry");
                     recoveryAttempts++;
+                    endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
                 }
                 else {
                     LOGGER.debug("Processed {} records from database schema history", numRecordsProcessed);
                     recoveryAttempts = 0;
                 }
             } while (lastProcessedOffset < endOffset - 1);
+            // Check if the end offset has changed during the recovery process
+            getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         }
     }
 
@@ -391,7 +409,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         boolean exists = false;
         if (storageExists()) {
             try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
-                checkTopicSettings(topicName);
+                checkStorageSettings();
                 // check if the topic is empty
                 Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
 
@@ -407,7 +425,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         return exists;
     }
 
-    private void checkTopicSettings(String topicName) {
+    @Override
+    public void checkStorageSettings() {
         if (checkTopicSettingsExecutor == null || checkTopicSettingsExecutor.isShutdown()) {
             return;
         }
@@ -454,11 +473,11 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 }
 
                 final DescribeTopicsResult result = admin.describeTopics(Collections.singleton(topicName));
-                if (result.values().size() != 1) {
-                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, result.values().size());
+                if (result.topicNameValues().size() != 1) {
+                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, result.topicNameValues().size());
                     return;
                 }
-                final TopicDescription topicDesc = result.values().values().iterator().next().get();
+                final TopicDescription topicDesc = result.topicNameValues().values().iterator().next().get();
                 if (topicDesc == null) {
                     LOGGER.info("Could not get description for topic '{}'", topicName);
                     return;

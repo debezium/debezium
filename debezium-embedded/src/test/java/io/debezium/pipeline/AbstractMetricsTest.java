@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
@@ -23,16 +24,16 @@ import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.util.Testing;
 
-public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> getConnectorClass();
 
@@ -71,7 +72,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testLifecycle() throws Exception {
+    void testLifecycle() throws Exception {
 
         start();
 
@@ -88,7 +89,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
             mBeanServer.getMBeanInfo(getSnapshotMetricsObjectName());
-            Assert.fail("Expected Snapshot Metrics no longer to exist");
+            fail("Expected Snapshot Metrics no longer to exist");
         }
         catch (InstanceNotFoundException e) {
             // expected
@@ -97,7 +98,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Verify streaming metrics no longer exist
         try {
             mBeanServer.getMBeanInfo(getStreamingMetricsObjectName());
-            Assert.fail("Expected Streaming Metrics no longer to exist");
+            fail("Expected Streaming Metrics no longer to exist");
         }
         catch (InstanceNotFoundException e) {
             // expected
@@ -105,7 +106,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testSnapshotOnlyMetrics() throws Exception {
+    void testSnapshotOnlyMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -116,7 +117,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testSnapshotAndStreamingMetrics() throws Exception {
+    void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -132,7 +133,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     @Test
     @FixFor("DBZ-6603")
-    public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
+    void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -147,7 +148,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testStreamingOnlyMetrics() throws Exception {
+    void testStreamingOnlyMetrics() throws Exception {
 
         // start connector
         start(this::noSnapshot);
@@ -158,7 +159,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testAdvancedStreamingMetrics() throws Exception {
+    void testAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)
@@ -170,7 +171,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
+    void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)
@@ -217,7 +218,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     protected void assertSnapshotWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        final ObjectName objectName = getSnapshotMetricsObjectName(connector(), server(), task(), database(), customMetricTags);
+        final ObjectName objectName = MetricsHelper.getSnapshotMetricsObjectName(connector(), server(), task(), database(), customMetricTags);
 
         // Wait for the snapshot to complete to verify metrics
         waitForSnapshotWithCustomMetricsToBeCompleted(connector(), server(), task(), database(), customMetricTags);
@@ -267,18 +268,16 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         Testing.print("****ASSERTIONS****");
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "Connected")).isEqualTo(true);
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "TotalNumberOfCreateEventsSeen")).isEqualTo(expectedEvents);
+        assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[]{ tableName() });
 
         if (checkAdvancedMetrics) {
             assertAdvancedMetrics(2L);
         }
     }
 
-    public void assertAdvancedMetrics(long expectedInsert) throws Exception {
-
-        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        TabularDataSupport numberOfCreateEventsSeen = (TabularDataSupport) mBeanServer
-                .getAttribute(getStreamingMetricsObjectName(connector(), server(), getStreamingNamespace(), task(), database()), "NumberOfCreateEventsSeen");
+    public void assertAdvancedMetrics(long expectedInsert) {
+        final TabularDataSupport numberOfCreateEventsSeen = MetricsHelper.getStreamingMetric(
+                connector(), server(), getStreamingNamespace(), task(), database(), "NumberOfCreateEventsSeen");
 
         String values = numberOfCreateEventsSeen.values().stream()
                 .limit(1)
@@ -312,26 +311,27 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         // Check streaming metrics
         Testing.print("****ASSERTIONS****");
-        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(connector(), server(), task(), null, customMetricTags), "Connected")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(MetricsHelper.getStreamingMetricsObjectName(connector(), server(), task(), null, customMetricTags), "Connected"))
+                .isEqualTo(true);
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectNameCustomTags(customMetricTags), "TotalNumberOfCreateEventsSeen"))
                 .isEqualTo(expectedEvents);
     }
 
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {
-        return getSnapshotMetricsObjectName(connector(), server());
+        return MetricsHelper.getSnapshotMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector(), server());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getMultiplePartitionStreamingMetricsObjectName() throws MalformedObjectNameException {
         // Only SQL Server manage partition scoped metrics
-        return getStreamingMetricsObjectName(connector(), server());
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server());
     }
 
     protected ObjectName getMultiplePartitionStreamingMetricsObjectNameCustomTags(Map<String, String> customTags) throws MalformedObjectNameException {
         // Only SQL Server manage partition scoped metrics
-        return getStreamingMetricsObjectName(connector(), server(), customTags);
+        return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), customTags);
     }
 }

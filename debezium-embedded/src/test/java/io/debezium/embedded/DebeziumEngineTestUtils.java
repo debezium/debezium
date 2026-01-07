@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +33,7 @@ import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 
 import io.debezium.connector.simple.SimpleSourceConnector;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.util.Collect;
 
 /**
@@ -105,6 +107,112 @@ public class DebeziumEngineTestUtils {
 
         @Override
         public void configure(Map<String, ?> map) {
+        }
+    }
+
+    /**
+     * A callback function to be notified when the connector completes.
+     */
+    public static class CompletionResult implements DebeziumEngine.CompletionCallback {
+        private final DebeziumEngine.CompletionCallback delegate;
+        private final CountDownLatch completed = new CountDownLatch(1);
+        private boolean success;
+        private String message;
+        private Throwable error;
+
+        public CompletionResult() {
+            this(null);
+        }
+
+        public CompletionResult(DebeziumEngine.CompletionCallback delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void handle(boolean success, String message, Throwable error) {
+            this.success = success;
+            this.message = message;
+            this.error = error;
+            this.completed.countDown();
+            if (delegate != null) {
+                delegate.handle(success, message, error);
+            }
+        }
+
+        /**
+         * Causes the current thread to wait until the {@link #handle(boolean, String, Throwable) completion occurs}
+         * or until the thread is {@linkplain Thread#interrupt interrupted}.
+         * <p>
+         * This method returns immediately if the connector has completed already.
+         *
+         * @throws InterruptedException if the current thread is interrupted while waiting
+         */
+        public void await() throws InterruptedException {
+            this.completed.await();
+        }
+
+        /**
+         * Causes the current thread to wait until the {@link #handle(boolean, String, Throwable) completion occurs},
+         * unless the thread is {@linkplain Thread#interrupt interrupted}, or the specified waiting time elapses.
+         * <p>
+         * This method returns immediately if the connector has completed already.
+         *
+         * @param timeout the maximum time to wait
+         * @param unit the time unit of the {@code timeout} argument
+         * @return {@code true} if the completion was received, or {@code false} if the waiting time elapsed before the completion
+         *         was received.
+         * @throws InterruptedException if the current thread is interrupted while waiting
+         */
+        public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+            return this.completed.await(timeout, unit);
+        }
+
+        /**
+         * Determine if the connector has completed.
+         *
+         * @return {@code true} if the connector has completed, or {@code false} if the connector is still running and this
+         *         callback has not yet been {@link #handle(boolean, String, Throwable) notified}
+         */
+        public boolean hasCompleted() {
+            return completed.getCount() == 0;
+        }
+
+        /**
+         * Get whether the connector completed normally.
+         *
+         * @return {@code true} if the connector completed normally, or {@code false} if the connector produced an error that
+         *         prevented startup or premature termination (or the connector has not yet {@link #hasCompleted() completed})
+         */
+        public boolean success() {
+            return success;
+        }
+
+        /**
+         * Get the completion message.
+         *
+         * @return the completion message, or null if the connector has not yet {@link #hasCompleted() completed}
+         */
+        public String message() {
+            return message;
+        }
+
+        /**
+         * Get the completion error, if there is one.
+         *
+         * @return the completion error, or null if there is no error or connector has not yet {@link #hasCompleted() completed}
+         */
+        public Throwable error() {
+            return error;
+        }
+
+        /**
+         * Determine if there is a completion error.
+         *
+         * @return {@code true} if there is a {@link #error completion error}, or {@code false} if there is no error or
+         *         the connector has not yet {@link #hasCompleted() completed}
+         */
+        public boolean hasError() {
+            return error != null;
         }
     }
 }

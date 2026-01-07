@@ -26,23 +26,23 @@ import io.debezium.relational.ddl.SimpleDdlParserListener;
  */
 public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbValueConverters, MariaDbDefaultValueConverter, MariaDbAntlrDdlParser> {
     @Override
-    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, MariaDbValueConverters converters) {
-        return new MariaDbDdlParserWithSimpleTestListener(listener, converters);
+    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener) {
+        return new MariaDbDdlParserWithSimpleTestListener(listener);
     }
 
     @Override
-    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, MariaDbValueConverters converters, boolean includeViews) {
-        return new MariaDbDdlParserWithSimpleTestListener(listener, includeViews, converters);
+    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, boolean includeViews) {
+        return new MariaDbDdlParserWithSimpleTestListener(listener, includeViews);
     }
 
     @Override
-    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, MariaDbValueConverters converters, Tables.TableFilter tableFilter) {
-        return new MariaDbDdlParserWithSimpleTestListener(listener, tableFilter, converters);
+    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, Tables.TableFilter tableFilter) {
+        return new MariaDbDdlParserWithSimpleTestListener(listener, tableFilter);
     }
 
     @Override
-    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, MariaDbValueConverters converters, boolean includeViews, boolean includeComments) {
-        return new MariaDbDdlParserWithSimpleTestListener(listener, includeViews, includeComments, converters);
+    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments) {
+        return new MariaDbDdlParserWithSimpleTestListener(listener, includeViews, includeComments);
     }
 
     @Override
@@ -66,25 +66,24 @@ public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbV
     }
 
     public static class MariaDbDdlParserWithSimpleTestListener extends MariaDbAntlrDdlParser {
-        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, MariaDbValueConverters converters) {
-            this(listener, false, converters);
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener) {
+            this(listener, false);
         }
 
-        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, Tables.TableFilter tableFilter, MariaDbValueConverters converters) {
-            this(listener, false, false, tableFilter, converters);
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, Tables.TableFilter tableFilter) {
+            this(listener, false, false, tableFilter);
         }
 
-        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, MariaDbValueConverters converters) {
-            this(listener, includeViews, false, Tables.TableFilter.includeAll(), converters);
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews) {
+            this(listener, includeViews, false, Tables.TableFilter.includeAll());
         }
 
-        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, MariaDbValueConverters converters) {
-            this(listener, includeViews, includeComments, Tables.TableFilter.includeAll(), converters);
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments) {
+            this(listener, includeViews, includeComments, Tables.TableFilter.includeAll());
         }
 
-        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, Tables.TableFilter tableFilter,
-                                                      MariaDbValueConverters converters) {
-            super(false, includeViews, includeComments, converters, tableFilter, new MariaDbCharsetRegistry());
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, Tables.TableFilter tableFilter) {
+            super(false, includeViews, includeComments, tableFilter, new MariaDbCharsetRegistry());
             this.ddlChanges = listener;
         }
     }

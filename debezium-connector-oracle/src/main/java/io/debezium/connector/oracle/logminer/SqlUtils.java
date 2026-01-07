@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import java.time.Duration;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.Strings;
 
@@ -41,33 +40,33 @@ public class SqlUtils {
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
-    static String redoLogStatusQuery() {
+    public static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
-    static String switchHistoryQuery(String archiveDestinationName) {
+    public static String switchHistoryQuery(String archiveDestinationName) {
         return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
                 " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName) + ")",
                 ARCHIVED_LOG_VIEW);
     }
 
-    static String currentRedoNameQuery() {
+    public static String currentRedoNameQuery() {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
     }
 
-    static String currentRedoLogSequenceQuery() {
+    public static String currentRedoLogSequenceQuery() {
         return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT' ORDER BY SEQUENCE#", LOG_VIEW);
     }
 
-    static String databaseSupplementalLoggingAllCheckQuery() {
+    public static String databaseSupplementalLoggingAllCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
     }
 
-    static String databaseSupplementalLoggingMinCheckQuery() {
+    public static String databaseSupplementalLoggingMinCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
     }
 
-    static String tableSupplementalLoggingCheckQuery() {
+    public static String tableSupplementalLoggingCheckQuery() {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER=? AND TABLE_NAME=?", ALL_LOG_GROUPS);
     }
 
@@ -75,16 +74,31 @@ public class SqlUtils {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
-        sb.append("UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
-        sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
-        sb.append("AND STATUS='A'");
+        sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
+        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND A.STATUS='A' ");
+        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
+            sb.append(" AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
         }
 
         return sb.append(")").toString();
+    }
+
+    public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
+        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND A.STATUS='A' ");
+        sb.append("AND A.THREAD#=").append(threadId).append(" ");
+        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
+        sb.append("ORDER BY A.SEQUENCE# DESC");
+        return sb.toString();
     }
 
     /**
@@ -105,9 +119,8 @@ public class SqlUtils {
         // SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED,
         // L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD
         // FROM V$LOGFILE F, V$LOG L
-        // LEFT JOIN V$ARCHIVED_LOG A
-        // ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE#
-        // WHERE (A.FIRST_CHANGE# IS NULL OR A.STATUS <> 'A')
+        // WHERE
+        // AND L.STATUS = 'CURRENT'
         // AND F.GROUP# = L.GROUP#
         // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#
         //
@@ -145,23 +158,25 @@ public class SqlUtils {
         if (!archiveLogOnlyMode) {
             sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
             sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD ");
-            sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
-            sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
-            sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
-            sb.append("WHERE (A.STATUS <> 'A' OR A.FIRST_CHANGE# IS NULL) ");
-            sb.append("AND L.STATUS != 'UNUSED' ");
+            sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(LOG_VIEW).append(" L ");
+            sb.append("WHERE ");
+            sb.append("L.STATUS = 'CURRENT' ");
             sb.append("AND F.GROUP# = L.GROUP# ");
             sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# ");
             sb.append("UNION ");
         }
         sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
         sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
         sb.append("WHERE A.NAME IS NOT NULL ");
         sb.append("AND A.ARCHIVED = 'YES' ");
         sb.append("AND A.STATUS = 'A' ");
         sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
         sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             sb.append("AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
@@ -191,41 +206,6 @@ public class SqlUtils {
     }
 
     // ***** LogMiner methods ***
-    /**
-     * This returns statement to build LogMiner view for online redo log files
-     * @param startScn mine from
-     * @param endScn mine till
-     * @param strategy Log Mining strategy
-     * @param continuousMining whether to use continuous mining
-     * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
-     */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
-        String miningStrategy;
-        if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
-        }
-        else {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
-        }
-        if (continuousMining) {
-            miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
-        }
-        return "BEGIN sys.dbms_logmnr.start_logmnr(" +
-                "startScn => '" + startScn + "', " +
-                "endScn => '" + endScn + "', " +
-                "OPTIONS => " + miningStrategy +
-                " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
-                "END;";
-    }
-
-    static String addLogFileStatement(String option, String fileName) {
-        return "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" + fileName + "', OPTIONS => " + option + ");END;";
-    }
-
-    static String deleteLogFileStatement(String fileName) {
-        return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
-    }
-
     public static String getScnByTimeDeltaQuery(Scn scn, Duration duration) {
         if (scn == null) {
             return null;

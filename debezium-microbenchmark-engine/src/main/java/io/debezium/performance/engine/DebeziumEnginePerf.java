@@ -20,7 +20,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.Configuration;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
 import io.debezium.engine.DebeziumEngine;
@@ -34,45 +34,29 @@ public class DebeziumEnginePerf {
 
     @State(Scope.Thread)
     public static class AsyncEnginePerfTest extends AbstractDebeziumEnginePerf {
-        @Param({ "1", "2", "4", "8", "16" })
+        @Param({ "0", "1", "2", "4", "8", "16" })
         public int threadCount;
 
         @Param({ "ORDERED", "UNORDERED" })
         public String processingOrder;
 
         public DebeziumEngine createEngine() {
-            Configuration config = Configuration.create()
-                    .with(EmbeddedEngine.ENGINE_NAME, "async-engine")
-                    .with(EmbeddedEngine.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
+            Configuration.Builder confBuilder = Configuration.create()
+                    .with(EmbeddedEngineConfig.ENGINE_NAME, "async-engine")
+                    .with(EmbeddedEngineConfig.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
                     .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, getPath(OFFSET_FILE_NAME).toAbsolutePath())
-                    .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
+                    .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
                     .with(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS, 100)
                     .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 100)
-                    .with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount)
-                    .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, processingOrder)
-                    .build();
+                    .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, processingOrder);
+            // threadCount == 0 stands for the default configuration, when RECORD_PROCESSING_THREADS is not specified.
+            if (threadCount > 0) {
+                confBuilder.with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount);
+            }
+            Configuration config = confBuilder.build();
 
             return new ConvertingAsyncEngineBuilderFactory()
                     .builder((KeyValueHeaderChangeEventFormat) null)
-                    .using(config.asProperties())
-                    .notifying(getRecordConsumer())
-                    .using(this.getClass().getClassLoader())
-                    .build();
-        }
-    }
-
-    @State(Scope.Thread)
-    public static class EmbeddedEnginePerfTest extends AbstractDebeziumEnginePerf {
-
-        public DebeziumEngine createEngine() {
-            Configuration config = Configuration.create()
-                    .with(EmbeddedEngine.ENGINE_NAME, "embedded-engine")
-                    .with(EmbeddedEngine.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
-                    .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, getPath(OFFSET_FILE_NAME).toAbsolutePath())
-                    .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
-                    .build();
-
-            return new EmbeddedEngine.EngineBuilder()
                     .using(config.asProperties())
                     .notifying(getRecordConsumer())
                     .using(this.getClass().getClassLoader())
@@ -87,16 +71,6 @@ public class DebeziumEnginePerf {
     @Warmup(iterations = 1)
     @Measurement(iterations = 1, time = 1)
     public void processRecordsAsyncEngine(AsyncEnginePerfTest test) throws InterruptedException {
-        test.finishLatch.await();
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.SingleShotTime)
-    @OutputTimeUnit(TimeUnit.SECONDS)
-    @Fork(value = 1)
-    @Warmup(iterations = 1)
-    @Measurement(iterations = 1, time = 1)
-    public void processRecordsEmbeddedEngine(EmbeddedEnginePerfTest test) throws InterruptedException {
         test.finishLatch.await();
     }
 }

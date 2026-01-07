@@ -19,15 +19,11 @@ See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
-Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+Specify {data-collection} names by using the format `{collection-container}.{data-collection}`.
 
 |===
 
 The following example shows a typical `stop-snapshot` Kafka message:
 
-----
-Key = `test_connector`
-
-Value = `{"type":"stop-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
-----
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=stopping-incremental-snapshot-kafka-example]

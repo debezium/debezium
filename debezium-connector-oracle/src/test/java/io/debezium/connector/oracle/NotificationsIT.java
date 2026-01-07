@@ -9,8 +9,8 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -21,11 +21,12 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         connection = TestHelper.testConnection();
 
-        TestHelper.dropTable(connection, "a");
+        TestHelper.dropAllTables();
+
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
         TestHelper.streamTable(connection, "a");
 
@@ -33,9 +34,11 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
+
+        TestHelper.dropAllTables();
     }
 
     protected List<String> collections() {

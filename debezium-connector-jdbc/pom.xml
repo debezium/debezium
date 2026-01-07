@@ -4,21 +4,21 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.5.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-jdbc</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.5.0-SNAPSHOT</version>
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
     <properties>
         <!-- Other artifact versions -->
-        <version.hibernate>6.4.8.Final</version.hibernate>
+        <version.hibernate>7.1.0.Final</version.hibernate>
         <version.c3p0>0.9.5.5</version.c3p0>
-        <version.assertjdb>2.0.2</version.assertjdb>
+        <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
         Other tags include it-db2 and it-oracle for the DB2 and Oracle integration tests.
@@ -32,6 +32,8 @@
             all - runs all integration and end to end tests
         -->
         <test.tags>it-mysql,it-postgresql,it-sqlserver</test.tags>
+
+        <connector.assembly.ref>connector-distribution</connector.assembly.ref>
     </properties>
 
     <dependencies>
@@ -39,6 +41,14 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-sink</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-api</artifactId>
         </dependency>
 
         <!-- Kafka-->
@@ -55,6 +65,15 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
+                <!--
+                    As this is provided at runtime and tests need a later version,
+                    this specifies to allow tests to use the later version supplied
+                    by testcontainers.
+                -->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -102,11 +121,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.easytesting</groupId>
-            <artifactId>fest-assert</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
@@ -124,28 +138,37 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mysql</artifactId>
+            <artifactId>testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-mysql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mssqlserver</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>db2</artifactId>
+            <artifactId>testcontainers-mssqlserver</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>oracle-xe</artifactId>
+            <artifactId>testcontainers-db2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-oracle-xe</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -162,6 +185,17 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-core</artifactId>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 
@@ -195,7 +229,7 @@
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
+            <artifactId>ojdbc11</artifactId>
         </dependency>
     </dependencies>
 
@@ -299,7 +333,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>

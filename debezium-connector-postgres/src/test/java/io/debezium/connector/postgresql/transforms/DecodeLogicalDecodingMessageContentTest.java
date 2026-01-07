@@ -7,12 +7,12 @@ package io.debezium.connector.postgresql.transforms;
 
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,22 +22,19 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.SourceInfo;
 import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -45,15 +42,13 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  *
  * @author Roman Kudryashov
  */
-public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTest {
-
-    @Rule
-    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
+public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngineConnectorTest {
 
     private DecodeLogicalDecodingMessageContent<SourceRecord> decodeLogicalDecodingMessageContent;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
+        TestHelper.dropAllSchemas();
         Configuration.Builder configBuilder = TestHelper.defaultConfig();
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -63,18 +58,11 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTe
         decodeLogicalDecodingMessageContent.configure(Collections.emptyMap());
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         decodeLogicalDecodingMessageContent.close();
-    }
-
-    @After
-    public void after() {
-        stopConnector();
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
     }
 
     @Test

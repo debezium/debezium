@@ -19,16 +19,16 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
  *
  * @author vjuranek
  */
-public class OracleNumberNegativeScaleIT extends AbstractConnectorTest {
+public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
     private static final Schema NUMBER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
@@ -63,8 +63,8 @@ public class OracleNumberNegativeScaleIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.number_negative_scale");
@@ -77,8 +77,8 @@ public class OracleNumberNegativeScaleIT extends AbstractConnectorTest {
         TestHelper.streamTable(connection, "debezium.number_negative_scale");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "debezium.number_negative_scale");
             connection.close();

@@ -53,8 +53,8 @@ public class JmxUtils {
                 catch (InstanceAlreadyExistsException e) {
                     if (attempt < REGISTRATION_RETRIES) {
                         LOGGER.warn(
-                                "Unable to register metrics as an old set with the same name exists, retrying in {} (attempt {} out of {})",
-                                REGISTRATION_RETRY_DELAY, attempt, REGISTRATION_RETRIES);
+                                "Unable to register metrics as an old set with the same name: '{}' exists, retrying in {} (attempt {} out of {})",
+                                objectName, REGISTRATION_RETRY_DELAY, attempt, REGISTRATION_RETRIES);
                         final Metronome metronome = Metronome.sleeper(REGISTRATION_RETRY_DELAY, Clock.system());
                         metronome.pause();
                     }
@@ -116,7 +116,10 @@ public class JmxUtils {
 
     private static String getManagementJmxObjectName(String type, String context, CommonConnectorConfig connectorConfig) {
         String tags = String.format(JMX_OBJECT_NAME_FORMAT, connectorConfig.getContextName().toLowerCase(), type, context, connectorConfig.getLogicalName());
-        if (connectorConfig.getCustomMetricTags().size() > 0) {
+        if (connectorConfig.getTaskId() != null) {
+            tags += ",task=" + connectorConfig.getTaskId();
+        }
+        if (!connectorConfig.getCustomMetricTags().isEmpty()) {
             String customTags = connectorConfig.getCustomMetricTags().entrySet().stream()
                     .map(e -> e.getKey() + "=" + Sanitizer.jmxSanitize(e.getValue()))
                     .collect(Collectors.joining(","));

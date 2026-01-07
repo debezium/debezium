@@ -19,6 +19,7 @@ import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpApicurioOperator;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.fixtures.registry.OcpApicurio;
+import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -45,7 +46,8 @@ public class OcpAvroMySqlConnectorIT extends MySqlTests {
     public OcpAvroMySqlConnectorIT(KafkaController kafkaController,
                                    KafkaConnectController connectController,
                                    ConnectorConfigBuilder connectorConfig,
-                                   KafkaAssertions<?, ?> assertions) {
-        super(kafkaController, connectController, connectorConfig, assertions);
+                                   KafkaAssertions<?, ?> assertions,
+                                   MySqlController dbController) {
+        super(kafkaController, connectController, connectorConfig, assertions, dbController);
     }
 }

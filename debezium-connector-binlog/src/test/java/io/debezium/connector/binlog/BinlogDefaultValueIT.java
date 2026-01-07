@@ -7,7 +7,7 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -33,9 +33,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -43,7 +43,6 @@ import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
-import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -73,36 +72,21 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
-        }
-    }
-
-    @Override
-    protected void validate(SourceRecord record) {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            VerifyRecord.isValid(record, true);
-        }
-        else {
-            super.validate(record);
         }
     }
 
@@ -618,7 +602,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    public void numericAndDecimalToDoubleTest() throws InterruptedException {
+    void numericAndDecimalToDoubleTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.DecimalHandlingMode.DOUBLE)
@@ -664,7 +648,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    public void dateAndTimeTest() throws InterruptedException {
+    void dateAndTimeTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
@@ -1063,19 +1047,6 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     }
 
     private String getZonedDateTimeIsoString(ZonedDateTime zdt) {
-        if (isMariaDb()) {
-            // MariaDB applies the time-zone shift to the SHOW CREATE TABLE response when generating
-            // the SQL for the default value resolution which MySQL does not. This is because MariaDB
-            // pushes the "timezone=auto" connection argument to the server level whereas the MySQL
-            // "connectionTimeZone" is managed at the driver level on data responses only. In this
-            // case, MariaDB's default value resolution will always account for the current host
-            // time-zone difference with the host-system's time-zone.
-            long serverOffsetSecs = UniqueDatabase.TIMEZONE.getRules().getOffset(zdt.toInstant()).getTotalSeconds();
-            long hostOffsetSecs = ZoneOffset.systemDefault().getRules().getOffset(zdt.toInstant()).getTotalSeconds();
-            long timeDelta = serverOffsetSecs - hostOffsetSecs;
-            zdt = zdt.minusSeconds(timeDelta);
-            return ZonedTimestamp.toIsoString(zdt, UniqueDatabase.TIMEZONE, BinlogValueConverters::adjustTemporal, null);
-        }
         return ZonedTimestamp.toIsoString(zdt, ZoneId.systemDefault(), BinlogValueConverters::adjustTemporal, null);
     }
 

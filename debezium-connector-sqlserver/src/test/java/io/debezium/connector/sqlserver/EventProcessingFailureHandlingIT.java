@@ -11,15 +11,15 @@ import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -32,12 +32,12 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
+public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -51,15 +51,15 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void warn() throws Exception {
+    void warn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -102,7 +102,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void ignore() throws Exception {
+    void ignore() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -138,7 +138,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void fail() throws Exception {
+    void fail() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()

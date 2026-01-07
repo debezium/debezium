@@ -6,7 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
@@ -18,8 +18,8 @@ import javax.management.ObjectName;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Chris Cranford
@@ -27,7 +27,7 @@ import org.junit.Test;
 public class MongoMetricsIT extends AbstractMongoConnectorIT {
 
     @Test
-    public void testLifecycle() throws Exception {
+    void testLifecycle() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -68,7 +68,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void testSnapshotOnlyMetrics() throws Exception {
+    void testSnapshotOnlyMetrics() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -110,7 +110,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void testStreamingOnlyMetrics() throws Exception {
+    void testStreamingOnlyMetrics() throws Exception {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
@@ -150,7 +150,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void testPauseResumeSnapshotMetrics() throws Exception {
+    void testPauseResumeSnapshotMetrics() throws Exception {
         final String DOCUMENT_ID = "_id";
         final int NUM_RECORDS = 1_000;
 
@@ -197,11 +197,11 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         consumeRecords(NUM_RECORDS, record -> {
             records.add(record);
         });
-        Assert.assertTrue(records.size() >= NUM_RECORDS);
+        Assertions.assertTrue(records.size() >= NUM_RECORDS);
 
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         final ObjectName objectName = getSnapshotMetricsObjectName("mongodb", "mongo1");
         final long snapshotPauseDuration = (Long) mBeanServer.getAttribute(objectName, "SnapshotPausedDurationInSeconds");
-        Assert.assertTrue(snapshotPauseDuration > 0);
+        Assertions.assertTrue(snapshotPauseDuration > 0);
     }
 }

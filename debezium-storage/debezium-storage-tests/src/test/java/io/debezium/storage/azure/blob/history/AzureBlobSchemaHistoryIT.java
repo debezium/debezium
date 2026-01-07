@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.azure.blob.history;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -17,9 +17,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 
 import com.azure.storage.blob.BlobClient;
@@ -53,7 +54,7 @@ public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     private static BlobServiceClient blobServiceClient;
 
-    @BeforeClass
+    @BeforeAll
     public static void startAzurite() {
         container.start();
         blobServiceClient = new BlobServiceClientBuilder()
@@ -61,9 +62,22 @@ public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
                 .buildClient();
     }
 
-    @AfterClass()
+    @AfterAll()
     public static void stopAzurite() {
         container.stop();
+    }
+
+    @AfterEach
+    public void cleanupBlobStorage() {
+        // Clean up the blob storage after each test to ensure test isolation
+        try {
+            if (blobServiceClient.getBlobContainerClient(CONTAINER_NAME).exists()) {
+                blobServiceClient.deleteBlobContainer(CONTAINER_NAME);
+            }
+        }
+        catch (Exception e) {
+            // Ignore cleanup errors
+        }
     }
 
     @Override

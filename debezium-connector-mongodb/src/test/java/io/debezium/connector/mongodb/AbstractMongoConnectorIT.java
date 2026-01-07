@@ -6,7 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,8 +14,11 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -24,10 +27,10 @@ import javax.management.ObjectName;
 
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -39,20 +42,22 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.openlineage.DebeziumTestTransport;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
+import io.openlineage.client.transports.TransportBuilder;
 
 /**
  * A common abstract base class for the Mongodb connector integration testing.
  *
  * @author Chris Cranford
  */
-public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
+public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     // the one and only task we start in the test suite
     private static final int TASK_ID = 0;
@@ -63,7 +68,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     protected MongoDbTaskContext context;
     protected LogInterceptor logInterceptor;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Debug.disable();
         Print.disable();
@@ -71,21 +76,21 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         initializeConnectorTestFramework();
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
         TestHelper.cleanDatabases(mongo);
     }
 
-    @BeforeClass
-    public static void beforeAll() {
+    @BeforeAll
+    static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
         mongo.start();
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
@@ -291,6 +296,16 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             }
         }
         return false;
+    }
+
+    protected static DebeziumTestTransport getDebeziumTestTransport() {
+        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
+        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
+                .filter(b -> b.getType().equals("debezium"))
+                .findFirst();
+
+        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
+                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {

@@ -18,13 +18,15 @@ import io.debezium.connector.Nullable;
  */
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
-    public static final TxLogPosition NULL = new TxLogPosition(null, null);
+    public static final TxLogPosition NULL = new TxLogPosition(null, null, 0);
     private final Lsn commitLsn;
     private final Lsn inTxLsn;
+    private int operation;
 
-    private TxLogPosition(Lsn commitLsn, Lsn inTxLsn) {
+    private TxLogPosition(Lsn commitLsn, Lsn inTxLsn, int operation) {
         this.commitLsn = commitLsn;
         this.inTxLsn = inTxLsn;
+        this.operation = operation;
     }
 
     public Lsn getCommitLsn() {
@@ -35,9 +37,13 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         return inTxLsn;
     }
 
+    public int getOperation() {
+        return operation;
+    }
+
     @Override
     public String toString() {
-        return this == NULL ? "NULL" : commitLsn + "(" + inTxLsn + ")";
+        return this == NULL ? "NULL" : commitLsn + "(" + inTxLsn + "," + operation + ")";
     }
 
     @Override
@@ -46,6 +52,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         int result = 1;
         result = prime * result + ((commitLsn == null) ? 0 : commitLsn.hashCode());
         result = prime * result + ((inTxLsn == null) ? 0 : inTxLsn.hashCode());
+        result = prime * result + operation;
         return result;
     }
 
@@ -86,15 +93,20 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         return comparison == 0 ? inTxLsn.compareTo(o.inTxLsn) : comparison;
     }
 
-    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn) {
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn, int operation) {
         return commitLsn == null && inTxLsn == null ? NULL
                 : new TxLogPosition(
                         commitLsn == null ? Lsn.NULL : commitLsn,
-                        inTxLsn == null ? Lsn.NULL : inTxLsn);
+                        inTxLsn == null ? Lsn.NULL : inTxLsn,
+                        operation);
+    }
+
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn) {
+        return valueOf(commitLsn, inTxLsn, 0);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn) {
-        return valueOf(commitLsn, Lsn.NULL);
+        return valueOf(commitLsn, Lsn.NULL, 0);
     }
 
     @Override

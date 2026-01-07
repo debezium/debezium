@@ -51,31 +51,16 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         resolveColumnDataType(ctx);
         if (ctx.DEFAULT() != null) {
-            columnEditor.defaultValueExpression(ctx.column_default_value().getText());
+            columnEditor.defaultValueExpression(ctx.expression().getText());
         }
         super.enterColumn_definition(ctx);
     }
 
     @Override
-    public void enterPrimary_key_clause(PlSqlParser.Primary_key_clauseContext ctx) {
-        // this rule will be parsed only if no primary key is set in a table
-        // otherwise the statement can't be executed due to multiple primary key error
-        columnEditor.optional(false);
-        tableEditor.addColumn(columnEditor.create());
-        tableEditor.setPrimaryKeyNames(columnEditor.name());
-        super.enterPrimary_key_clause(ctx);
-    }
-
-    @Override
     public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
-        // Scale should always get unset
-        // It should be parsed by the data type resolver, if its applicable
-        // This standardizes the handling of scale when data types shift from one to another
-        columnEditor.unsetScale();
-
         resolveColumnDataType(ctx);
         if (ctx.DEFAULT() != null) {
-            columnEditor.defaultValueExpression(ctx.column_default_value().getText());
+            columnEditor.defaultValueExpression(ctx.expression().getText());
         }
         super.enterModify_col_properties(ctx);
     }
@@ -117,6 +102,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         if (ctx == null) {
             return;
         }
+
+        // Scale should always get unset
+        // It should be parsed by the data type resolver, if its applicable
+        // This standardizes the handling of scale when data types shift from one to another
+        columnEditor.unsetScale();
 
         if (ctx.native_datatype_element() != null) {
             PlSqlParser.Precision_partContext precisionPart = ctx.precision_part();

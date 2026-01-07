@@ -28,6 +28,8 @@ public interface SnapshotProgressListener<P extends Partition> {
 
     void snapshotAborted(P partition);
 
+    void snapshotSkipped(P partition);
+
     void dataCollectionSnapshotCompleted(P partition, DataCollectionId dataCollectionId, long numRows);
 
     void rowsScanned(P partition, TableId tableId, long numRows);
@@ -69,6 +71,10 @@ public interface SnapshotProgressListener<P extends Partition> {
 
             @Override
             public void snapshotAborted(P partition) {
+            }
+
+            @Override
+            public void snapshotSkipped(P partition) {
             }
 
             @Override

@@ -22,16 +22,16 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
@@ -39,7 +39,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractEventRouterTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractEventRouterTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected EventRouter<SourceRecord> outboxEventRouter;
 
@@ -76,15 +76,15 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    protected void beforeEach() throws Exception {
         createTable();
         outboxEventRouter = new EventRouter<>();
         outboxEventRouter.configure(Collections.emptyMap()); // configure with defaults
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         assertNoRecordsToConsume();
         outboxEventRouter.close();
@@ -92,7 +92,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1169", "DBZ-3940" })
-    public void shouldConsumeRecordsFromInsert() throws Exception {
+    void shouldConsumeRecordsFromInsert() throws Exception {
         startConnectorWithInitialSnapshotRecord();
         databaseConnection().execute(createInsert(
                 "59a42efd-b015-44a9-9dde-cb36d9002425",
@@ -121,7 +121,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1385", "DBZ-3940" })
-    public void shouldSendEventTypeAsHeader() throws Exception {
+    void shouldSendEventTypeAsHeader() throws Exception {
         startConnectorWithInitialSnapshotRecord();
         databaseConnection().execute(createInsert(
                 "59a42efd-b015-44a9-9dde-cb36d9002425",
@@ -155,7 +155,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-2014", "DBZ-3940" })
-    public void shouldSendEventTypeAsValue() throws Exception {
+    void shouldSendEventTypeAsValue() throws Exception {
         startConnectorWithInitialSnapshotRecord();
         databaseConnection().execute(createInsert(
                 "d4da2428-8b19-11ea-bc55-0242ac130003",
@@ -187,7 +187,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-2014", "DBZ-3940" })
-    public void shouldRespectJsonFormatAsString() throws Exception {
+    void shouldRespectJsonFormatAsString() throws Exception {
         startConnectorWithInitialSnapshotRecord();
         databaseConnection().execute(createInsert(
                 "f9171eb6-19f3-4579-9206-0e179d2ebad7",
@@ -210,7 +210,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1169", "DBZ-3940" })
-    public void shouldSupportAllFeatures() throws Exception {
+    void shouldSupportAllFeatures() throws Exception {
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -260,7 +260,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers).hasSize(2);
+        assertThat(headers).hasSize(6);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("f9171eb6-19f3-4579-9206-0e179d2ebad7"));
@@ -282,7 +282,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1707", "DBZ-3940" })
-    public void shouldConvertMicrosecondsTimestampToMilliseconds() throws Exception {
+    void shouldConvertMicrosecondsTimestampToMilliseconds() throws Exception {
 
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
@@ -315,7 +315,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
-    public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
+    void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -356,7 +356,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.size()).isEqualTo(6);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));
@@ -376,7 +376,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
-    public void shouldProduceTombstoneEventForNullPayload() throws Exception {
+    void shouldProduceTombstoneEventForNullPayload() throws Exception {
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -418,7 +418,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.size()).isEqualTo(6);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));
@@ -436,7 +436,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
-    public void shouldProduceTombstoneEventForEmptyPayload() throws Exception {
+    void shouldProduceTombstoneEventForEmptyPayload() throws Exception {
 
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
@@ -467,7 +467,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(1);
+        assertThat(headers.size()).isEqualTo(5);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));

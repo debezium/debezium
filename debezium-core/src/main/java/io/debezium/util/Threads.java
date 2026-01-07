@@ -7,11 +7,15 @@ package io.debezium.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
@@ -266,6 +270,26 @@ public class Threads {
      */
     public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
                                               Consumer<Thread> callback) {
+
+        return threadFactory(component, componentId, name, indexed, daemon, callback, Optional.empty());
+    }
+
+    /**
+     * Returns a thread factory that creates threads conforming to Debezium thread naming
+     * pattern {@code debezium-<component class>-<component-id>-<thread-name>}.
+     *
+     * @param component - the source or sink component class
+     * @param componentId - the identifier to differentiate between componentId instances
+     * @param name - the name of the thread
+     * @param indexed - true if the thread name should be appended with an index
+     * @param daemon - true if the thread should be a daemon thread
+     * @param callback - a callback called on every thread created
+     * @param preHook - a hook called beforehand the execution of every thread
+     * @return the thread factory setting the correct name
+     */
+    public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
+                                              Consumer<Thread> callback, Optional<Runnable> preHook) {
+
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Requested thread factory for component {}, id = {} named = {}", component.getSimpleName(), componentId, name);
         }
@@ -285,7 +309,10 @@ public class Threads {
                     threadName.append('-').append(index.getAndIncrement());
                 }
                 LOGGER.info("Creating thread {}", threadName);
-                final Thread t = new Thread(r, threadName.toString());
+                final Thread t = new Thread(() -> {
+                    preHook.ifPresent(Runnable::run);
+                    r.run();
+                }, threadName.toString());
                 t.setDaemon(daemon);
                 if (callback != null) {
                     callback.accept(t);
@@ -309,5 +336,35 @@ public class Threads {
 
     public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<?> component, String componentId, String name, boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(threadFactory(component, componentId, name, false, daemon));
+    }
+
+    /**
+     * Runs an operation with a timeout using a single-threaded executor.
+     *
+     * @param componentClass the class of the component using this method
+     * @param operation the operation to run
+     * @param timeout the timeout duration
+     * @param componentName the name of the component
+     * @param operationName the name of the operation being executed with timeout
+     * @throws Exception if the operation fails or times out
+     */
+    public static void runWithTimeout(Class<?> componentClass, Runnable operation, Duration timeout, String componentName, String operationName) throws Exception {
+        ExecutorService executor = newSingleThreadExecutor(componentClass, componentName, operationName);
+        Future<?> future = executor.submit(operation);
+        try {
+            future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        }
+        catch (TimeoutException e) {
+            LOGGER.error("Operation {} timed out after {} ms", operationName, timeout.toMillis());
+            future.cancel(true);
+            throw e;
+        }
+        catch (ExecutionException e) {
+            LOGGER.error("Operation {} failed", operationName, e);
+            throw (e.getCause() != null) ? new Exception(e.getCause()) : e;
+        }
+        finally {
+            executor.shutdownNow();
+        }
     }
 }

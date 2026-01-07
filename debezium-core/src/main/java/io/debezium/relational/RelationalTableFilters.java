@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 
+import java.util.List;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
@@ -15,6 +16,7 @@ import io.debezium.relational.Selectors.TableSelectionPredicateBuilder;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DataCollectionFilters;
+import io.debezium.util.Strings;
 
 public class RelationalTableFilters implements DataCollectionFilters {
 
@@ -62,16 +64,20 @@ public class RelationalTableFilters implements DataCollectionFilters {
         Predicate<TableId> finalTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? tablePredicate.and(systemTablesFilter::isIncluded)
                 : tablePredicate;
-        String signalDataCollection = config.getString(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION);
-        if (signalDataCollection != null) {
-            TableId signalDataCollectionTableId = TableId.parse(signalDataCollection, useCatalogBeforeSchema);
-            if (!finalTablePredicate.test(signalDataCollectionTableId)) {
-                final Predicate<TableId> signalDataCollectionPredicate = Selectors.tableSelector()
-                        .includeTables(tableIdMapper.toString(signalDataCollectionTableId), tableIdMapper).build();
-                finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
+
+        // Add signal data collection tables to the filter
+        List<String> signalDataCollections = config.getList(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION);
+        for (String signalDataCollection : signalDataCollections) {
+            if (!Strings.isNullOrBlank(signalDataCollection)) {
+                TableId signalDataCollectionTableId = TableId.parse(signalDataCollection.trim(), useCatalogBeforeSchema);
+                if (!finalTablePredicate.test(signalDataCollectionTableId)) {
+                    final Predicate<TableId> signalDataCollectionPredicate = Selectors.tableSelector()
+                            .includeTables(tableIdMapper.toString(signalDataCollectionTableId), tableIdMapper).build();
+                    finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
+                }
             }
         }
-        this.tableFilter = finalTablePredicate::test;
+        this.tableFilter = TableFilter.cached(finalTablePredicate::test);
 
         // Define the database filter using the include and exclude lists for database names ...
         this.databaseFilter = Selectors.databaseSelector()

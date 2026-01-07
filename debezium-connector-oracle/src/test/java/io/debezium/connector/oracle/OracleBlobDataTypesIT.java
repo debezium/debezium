@@ -23,24 +23,19 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
-import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -53,19 +48,14 @@ import ch.qos.logback.classic.Level;
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "BLOB not supported by this mine mode")
-public class OracleBlobDataTypesIT extends AbstractConnectorTest {
+public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     private static final byte[] BIN_DATA = readBinaryData("data/test_lob_data.json");
 
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-    @Rule
-    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
-
     private OracleConnection connection;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         connection = TestHelper.testConnection();
         TestHelper.dropTable(connection, "BLOB_TEST");
 
@@ -74,8 +64,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null) {
             TestHelper.dropTable(connection, "BLOB_TEST");
             connection.close();
@@ -924,8 +914,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.LOB_ENABLED, true)
                 .build();
 
-        LogInterceptor logminerLogInterceptor = new LogInterceptor(TransactionCommitConsumer.class);
-        final LogInterceptor xstreamLogInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+        final LogInterceptor logInterceptor = TestHelper.getEventCommitHandler();
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
@@ -953,9 +942,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
                 + "dbms_lob.erase(loc_b, amount, 1); end;");
 
         // Wait until the log has recorded the message.
-        Awaitility.await().atMost(Duration.ofMinutes(1))
-                .until(() -> logminerLogInterceptor.containsWarnMessage("LOB_ERASE for table")
-                        || xstreamLogInterceptor.containsWarnMessage("LOB_ERASE for table"));
+        Awaitility.await().atMost(Duration.ofMinutes(1)).until(() -> logInterceptor.containsWarnMessage("LOB_ERASE for table"));
         assertNoRecordsToConsume();
     }
 
@@ -1147,7 +1134,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3645")
     public void shouldNotEmitBlobFieldValuesWhenLobSupportIsNotEnabled() throws Exception {
-        boolean logMinerAdapter = TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER);
+        final boolean logMinerAdapter = TestHelper.isAnyLogMiner();
         TestHelper.dropTable(connection, "dbz3645");
         try {
             connection.execute("CREATE TABLE dbz3645 (id numeric(9,0), data blob, primary key(id))");
@@ -1181,12 +1168,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             SourceRecord record = table.get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob1));
 
             record = table.get(1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob2));
 
             // Small data and large data
             connection.prepareQuery("INSERT INTO dbz3645 (id,data) values (3,?)", ps -> ps.setBlob(1, blob1), null);
@@ -1517,7 +1506,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1568,7 +1557,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1630,7 +1619,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode2() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1691,7 +1680,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode3() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {

@@ -7,8 +7,8 @@ package io.debezium.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.util.Testing;
 
@@ -20,7 +20,7 @@ public class PathsTest implements Testing {
 
     private Path path;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         this.path = null;
     }

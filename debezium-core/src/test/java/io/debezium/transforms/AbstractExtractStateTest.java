@@ -21,6 +21,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.Collect;
@@ -33,8 +34,6 @@ import io.debezium.util.Collect;
 public abstract class AbstractExtractStateTest {
 
     // for ExtractNewRecordState
-    protected static final String DROP_TOMBSTONES = "drop.tombstones";
-    protected static final String HANDLE_DELETES = "delete.handling.mode";
     protected static final String HANDLE_TOMBSTONE_DELETES = "delete.tombstone.handling.mode";
     protected static final String ROUTE_BY_FIELD = "route.by.field";
     protected static final String ADD_FIELDS = "add.fields";
@@ -44,6 +43,7 @@ public abstract class AbstractExtractStateTest {
     protected static final String DROP_FIELDS_HEADER_NAME = "drop.fields.header.name";
     protected static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
     protected static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
+    protected static final String REPLACE_NULL_WITH_DEFAULT = "replace.null.with.default";
 
     Schema idSchema = SchemaBuilder
             .int8()
@@ -150,6 +150,31 @@ public abstract class AbstractExtractStateTest {
                 .build();
         final Struct payload = envelope.create(after, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    protected SourceRecord createHeartbeatRecord() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", "123");
+
+        return new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value);
     }
 
     protected SourceRecord createCreateRecordWithOptionalNull() {

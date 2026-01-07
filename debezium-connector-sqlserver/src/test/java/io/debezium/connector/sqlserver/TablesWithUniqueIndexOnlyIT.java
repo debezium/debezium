@@ -10,13 +10,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -25,7 +25,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec (jpechane@redhat.com)
  */
-public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
+public class TablesWithUniqueIndexOnlyIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String DDL_STATEMENTS = "CREATE TABLE t1 (key1 INT NOT NULL, key2 INT NOT NULL, data VARCHAR(255) NOT NULL, col4 INT NOT NULL);" +
             "CREATE UNIQUE NONCLUSTERED INDEX indexa ON t1 (col4)" +
@@ -39,23 +39,23 @@ public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void shouldProcessFromSnapshot() throws Exception {
+    void shouldProcessFromSnapshot() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
 
@@ -76,7 +76,7 @@ public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldProcessFromStreaming() throws Exception {
+    void shouldProcessFromStreaming() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
 

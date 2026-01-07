@@ -10,6 +10,7 @@ import java.util.Collection;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.sqlserver.SqlServerPartition;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
@@ -34,8 +35,9 @@ public class SqlServerMetricsFactory implements ChangeEventSourceMetricsFactory<
     @Override
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<SqlServerPartition> getStreamingMetrics(T taskContext,
                                                                                                                       ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                                      EventMetadataProvider eventMetadataProvider) {
+                                                                                                                      EventMetadataProvider eventMetadataProvider,
+                                                                                                                      CapturedTablesSupplier capturedTablesSupplier) {
         return new SqlServerStreamingTaskMetrics(taskContext, changeEventQueueMetrics,
-                eventMetadataProvider, partitions);
+                eventMetadataProvider, partitions, capturedTablesSupplier);
     }
 }

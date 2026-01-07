@@ -25,6 +25,26 @@ For example:
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
 The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+ifdef::community[]
+Support for using Go to write SMTs is currently incubating (https://tinygo.org/[TinyGo] and https://webassembly.org/[WebAssembly]).
+endif::community[]
+
+ifdef::product[]
+[IMPORTANT]
+====
+Using Go to write SMT filters is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+
+== JSR 223
 
 {prodname} does not come with any implementations of the JSR 223 API.
 To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language.
@@ -37,6 +57,52 @@ ifdef::product[]
 Depending on the method that you use to deploy {prodname}, you can automatically download the required artifacts from Maven Central,
 or you can manually download the artifacts, and then add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
 endif::product[]
+
+== Go
+
+{prodname} offers a community-maintained helper PDK(Plugin Development Kit) to facilitate use with Go.
+
+ifdef::community[]
+You can obtain the {prodname} SMT Go PDK by entering the following command:
+
+[source]
+----
+go get github.com/debezium/debezium-smt-go-pdk
+----
+endif::community[]
+The following example shows how you might use Go to implement minimal filtering logic:
+
+[source,go]
+----
+package main
+
+import (
+	"github.com/debezium/debezium-smt-go-pdk"
+)
+
+//export process
+func process(proxyPtr uint32) uint32 {
+	...
+}
+
+func main() {}
+----
+
+In the preceding example, the `main` function is required by the Wasm compilation target.
+The `process` function is the entry point for executing the actual filtering logic.
+
+To compile the filter code to Wasm, use a recent version of TinyGo, as in the following example:
+
+[source,bash]
+----
+docker run --rm \
+    -v ./:/src \
+    -w /src tinygo/tinygo:0.34.0 bash \
+    -c "tinygo build --no-debug -target=wasm-unknown -o /tmp/tmp.wasm myfilter.go && cat /tmp/tmp.wasm" > \
+    myfilter.wasm
+----
+
+For more information about using Go to develop {prodname} single message transformations, see the PDK repository: https://github.com/debezium/debezium-smt-go-pdk[Debezium SMT Go PDK].
 
 // Type: procedure
 // Title: Setting up the {prodname} filter SMT
@@ -58,12 +124,14 @@ IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user
 To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
 
 ifdef::community[]
-With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
+With http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect] and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
-. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
-. Restart your Kafka Connect process to pick up the new JAR files.
+. Either:
+    .. obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+    .. make available on disk the compiled `.wasm` file
+. Restart your Kafka Connect process to pick up the new configuration.
 endif::community[]
 
 ifdef::product[]
@@ -116,6 +184,18 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 
 The preceding example specifies the use of the `Groovy` expression language.
 The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
+
+When using Go:
+
+[source]
+----
+...
+transforms=filter
+transforms.filter.type=io.debezium.transforms.Filter
+transforms.filter.language=wasm.chicory
+transforms.filter.expression=file://myfilter.wasm
+...
+----
 
 .Customizing the configuration
 The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
@@ -217,6 +297,19 @@ For example:
 value.op == 'u' && value.before.id == 2
 ----
 
+.Go with TinyGo
+If you use Go with the TinyGo compiler to define filtering conditions, you can leverage a fully typed API for lazy access to the fields.
+For example:
+
+[source,go]
+----
+var op = debezium.GetString(debezium.Get(proxyPtr, "value.op"))
+var beforeId = debezium.GetInt8(debezium.Get(proxyPtr, "value.before.id"))
+
+return debezium.SetBool(op != "d" || beforeId != 2)
+----
+
+
 // Type: reference
 // ModuleID: options-for-configuring-filter-transformation
 // Title: Options for configuring filter transformation
@@ -240,12 +333,17 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[filter-language]]<<filter-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
-{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+|The language in which the expression is written. For JSR223 must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+It should be either `wasm.chicory` or `wasm.chicory-interpreter` for Go based filters.
 
 |[[filter-condition]]<<filter-condition, `condition`>>
 |
 |The expression to be evaluated for every message. Must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
+
+|[[filter-expression]]<<filter-expression, `expression`>>
+|
+|The filesystem location where the `wasm` expression is available to be evaluated for every message. The Go function must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
 
 |[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
 |`keep`

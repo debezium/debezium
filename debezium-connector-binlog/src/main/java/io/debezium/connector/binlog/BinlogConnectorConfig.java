@@ -121,6 +121,28 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
+     * Set of predefined SnapshotLockingMode options or aliases.
+     */
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * the connector holds the global read lock but does not set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
+         * that the snapshot process will have a view from the mvcc. This mode is valid for myRocks engine that doesn't provide mvcc support
+         */
+        MINIMAL_AT_LEAST_ONCE("minimal_at_least_once");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /**
      * Set of predefined SnapshotMode options or aliases.
      */
     public enum SnapshotMode implements EnumeratedValue {
@@ -136,29 +158,14 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * Perform a snapshot only upon initial startup of a connector.
          */
         INITIAL("initial"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
-         * This should be used with care, but it is very useful when the change event consumers need only the changes
-         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        SCHEMA_ONLY("schema_only"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
         NO_DATA("no_data"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
-         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
-         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
-         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #RECOVERY}}
-         */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
          * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
@@ -231,79 +238,11 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
-     * The set of predefined SecureConnectionMode options or aliases.
+     * Parent interface for MySQL/MariDB enumerations with predefined SecureConnectionMode options or aliases.
      */
-    public enum SecureConnectionMode implements EnumeratedValue {
-        /**
-         * Establish an unencrypted connection.
-         */
-        DISABLED("disabled"),
-        /**
-         * Establish a secure (encrypted) connection if the server supports secure connections.
-         * Fall back to an unencrypted connection otherwise.
-         */
-        PREFERRED("preferred"),
-        /**
-         * Establish a secure connection if the server supports secure connections.
-         * The connection attempt fails if a secure connection cannot be established.
-         */
-        REQUIRED("required"),
-        /**
-         * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
-         * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
-         */
-        VERIFY_CA("verify_ca"),
-        /**
-         * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
-         * attempted.
-         */
-        VERIFY_IDENTITY("verify_identity");
-
-        private final String value;
-
-        SecureConnectionMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static SecureConnectionMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (SecureConnectionMode option : SecureConnectionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SecureConnectionMode parse(String value, String defaultValue) {
-            SecureConnectionMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
+    public interface SecureConnectionMode {
+        String getValue();
+    };
 
     /**
      * A common strategy across binlog-based connectors to express snapshot locking requirements.
@@ -323,6 +262,17 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * @return whether the isolation level should be reset on flushes
          */
         boolean isIsolationLevelResetOnFlush(); // flushXXX
+
+        /**
+         * @return whether table locks should be prevented
+         */
+        default boolean preventsTableLocks() {
+            return false;
+        }
+
+        default boolean useConsistentSnapshotTransaction() {
+            return false;
+        }
     }
 
     /**
@@ -348,9 +298,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
 
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
-
-    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
-            .withDefault(true);
 
     public static final Field ON_CONNECT_STATEMENTS = Field.create("database.initial.statements")
             .withDisplayName("Initial statements")
@@ -386,22 +333,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Only relevant if parallel snapshotting is configured. During parallel snapshotting, "
                     + "multiple (4) connections open to the database client, and they each need their own unique "
                     + "connection ID. This offset is used to generate those IDs from the base configured cluster ID.");
-
-    public static final Field SSL_MODE = Field.create("database.ssl.mode")
-            .withDisplayName("SSL mode")
-            .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFERRED)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
-            .withDescription("Whether to use an encrypted connection to the database. Options include: "
-                    + "'disabled' to use an unencrypted connection; "
-                    + "'preferred' (the default) to establish a secure (encrypted) connection if the server supports "
-                    + "secure connections, but fall back to an unencrypted connection otherwise; "
-                    + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
-                    + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the "
-                    + "configured Certificate Authority (CA) certificates, or fail if no valid matching CA certificates are found; or "
-                    + "'verify_identity' like 'verify_ca' but additionally verify that the server certificate matches "
-                    + "the host to which the connection is attempted.");
 
     public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
             .withDisplayName("SSL Keystore")
@@ -667,8 +598,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
                     HOSTNAME,
                     PORT,
@@ -678,7 +608,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     ON_CONNECT_STATEMENTS,
                     SERVER_ID,
                     SERVER_ID_OFFSET,
-                    SSL_MODE,
                     SSL_KEYSTORE,
                     SSL_KEYSTORE_PASSWORD,
                     SSL_TRUSTSTORE,
@@ -697,8 +626,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLES_IGNORE_BUILTIN,
@@ -717,7 +645,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final Duration connectionTimeout;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
-    private final SecureConnectionMode secureConnectionMode;
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
 
@@ -744,7 +671,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
         this.connectionTimeout = Duration.ofMillis(config.getLong(CONNECTION_TIMEOUT_MS));
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
-        this.secureConnectionMode = SecureConnectionMode.parse(config.getString(SSL_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
     }
 
@@ -836,20 +762,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
-     * @return the SSL connection mode to use
-     */
-    public SecureConnectionMode getSslMode() {
-        return secureConnectionMode;
-    }
-
-    /**
-     * @return true if the connection should use SSL; false otherwise
-     */
-    public boolean isSslModeEnabled() {
-        return secureConnectionMode != SecureConnectionMode.DISABLED;
-    }
-
-    /**
      * @return the buffer size for streaming change events
      */
     public int getBufferSizeForStreamingChangeEventSource() {
@@ -893,6 +805,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * @return the global transaction identifier set ({@link GtidSet} factory.
      */
     public abstract GtidSetFactory getGtidSetFactory();
+
+    /**
+     * @return the SSL connection mode to use
+     */
+    public abstract SecureConnectionMode getSslMode();
+
+    /**
+     * @return true if the connection should use SSL; false otherwise
+     */
+    public abstract boolean isSslModeEnabled();
 
     /**
      * Check whether tests request global lock usage.

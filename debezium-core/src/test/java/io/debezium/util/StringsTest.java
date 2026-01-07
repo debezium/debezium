@@ -6,8 +6,9 @@
 package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -16,10 +17,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.text.ParsingException;
@@ -330,9 +332,11 @@ public class StringsTest {
         assertThat(Strings.join(",", Arrays.asList("a", "b", "c"), s -> "_" + s)).isEqualTo("_a,_b,_c");
     }
 
-    @Test(expected = ParsingException.class)
-    public void regexSplitWrongEscape() {
-        Strings.setOfRegex("a,b\\,c\\");
+    @Test
+    void regexSplitWrongEscape() {
+        assertThrows(ParsingException.class, () -> {
+            Strings.setOfRegex("a,b\\,c\\");
+        });
     }
 
     @Test
@@ -425,5 +429,97 @@ public class StringsTest {
         assertThat(regexList.stream()
                 .map(Pattern::pattern)
                 .collect(Collectors.toList())).isEqualTo(Arrays.asList((Object[]) matches));
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldReturnEmptyForNullInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(null))
+                .isEqualTo("");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldReturnEmptyForEmptyInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(""))
+                .isEqualTo("");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleNoSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello"))
+                .isEqualTo("hello");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleUnderscores() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello_world"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleDots() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello.world"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleDotsAndUnderscores() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello.world_and_universe"))
+                .isEqualTo("helloWorldAndUniverse");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldConvertUpperCaseInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("HELLO_WORLD"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleMultipleConsecutiveSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello__world..universe"))
+                .isEqualTo("helloWorldUniverse");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldTrimWhitespace() {
+        // Test with spaces after commas (like multiline YAML)
+        List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3", Function.identity());
+        assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldHandleLeadingWhitespace() {
+        List<String> result = Strings.listOfTrimmed(" db1, db2, db3", Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldHandleTrailingWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1 , db2 , db3 ", Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldReturnEmptyListForNull() {
+        List<String> result = Strings.listOfTrimmed((String) null, Function.identity());
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    public void listOfTrimmedWithCommaDelimiterShouldFilterNullResults() {
+        List<String> result = Strings.listOfTrimmed("db1, , db3", s -> s.isEmpty() ? null : s);
+        assertThat(result).containsExactly("db1", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCustomDelimiterShouldTrimWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1| db2 | db3", '|', Function.identity());
+        assertThat(result).containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    public void listOfTrimmedWithCustomSplitterShouldTrimWhitespace() {
+        List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3",
+                s -> s.split(","), Function.identity());
+        assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
     }
 }

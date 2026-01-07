@@ -20,6 +20,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.relational.Column;
@@ -48,7 +50,7 @@ public class LogMinerDmlParserPerf {
 
         @Setup(Level.Trial)
         public void doSetup() {
-            dmlParser = new LogMinerDmlParser();
+            dmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
             this.table = createTable();
             this.insertDml = insertStatement();
             this.updateDml = updateStatement();
@@ -129,7 +131,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testUpdates(ParserState state) {
-        state.dmlParser.parse(state.deleteDml, state.table);
+        state.dmlParser.parse(state.updateDml, state.table);
     }
 
     @Benchmark

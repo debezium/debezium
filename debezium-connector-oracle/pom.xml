@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.5.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
+            <artifactId>ojdbc11</artifactId>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -58,6 +58,10 @@
             <groupId>org.infinispan.protostream</groupId>
             <artifactId>protostream-processor</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-component-annotations</artifactId>
+        </dependency>
         <!-- Dependencies for NLS for Internationalization support -->
         <dependency>
             <groupId>com.oracle.database.nls</groupId>
@@ -67,12 +71,10 @@
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xdb</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xmlparserv2</artifactId>
-            <scope>provided</scope>
         </dependency>
         <!-- Dependencies for OpenLogReplicator -->
         <dependency>
@@ -91,21 +93,35 @@
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>${version.ehcache}</version>
+            <!-- These dependencies are pulled in from old maven.java.net only supports HTTP -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.istack</groupId>
+                    <artifactId>istack-commons-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.xml.fastinfoset</groupId>
+                    <artifactId>FastInfoset</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Ehcache JAXB implementation dependency -->
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>${version.jaxb.implementation}</version>
+        </dependency>
+
+        <!-- Introduce ehcache dependencies on Maven Central -->
+        <dependency>
+            <groupId>com.sun.istack</groupId>
+            <artifactId>istack-commons-runtime</artifactId>
+            <version>${version.istack}</version>
         </dependency>
         <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>${version.jaxb}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-core</artifactId>
-            <version>${version.jaxb}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-impl</artifactId>
-            <version>${version.jaxb}</version>
+            <groupId>com.sun.xml.fastinfoset</groupId>
+            <artifactId>FastInfoset</artifactId>
+            <version>${version.fastinfoset}</version>
         </dependency>
 
         <!-- Testing -->
@@ -132,10 +148,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
@@ -155,21 +172,20 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.platform</groupId>
-                    <artifactId>junit-platform-launcher</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
         </dependency>
 
         <!-- Required by VerifyRecord -->
@@ -203,9 +219,14 @@
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
-        <version.jaxb>2.3.0</version.jaxb>
-        <version.ehcache>3.9.6</version.ehcache>
         <version.oracle.server>19.3.0</version.oracle.server>
+
+        <!--
+        Ehcache-specific dependency version overrides.
+        These can be removed when ehcache distribution refers to versions published to maven central.
+        -->
+        <version.istack>3.0.7</version.istack>
+        <version.fastinfoset>1.2.15</version.fastinfoset>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
@@ -223,7 +244,7 @@
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
         <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
-        <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
+        <oracle.infinispan.image>quay.io/infinispan/server:${version.infinispan}</oracle.infinispan.image>
         <oracle.infinispan.port>11222</oracle.infinispan.port>
         <oracle.infinispan.user>admin</oracle.infinispan.user>
         <oracle.infinispan.password>admin</oracle.infinispan.password>
@@ -273,6 +294,14 @@
                     <testExcludes>
                         <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                     </testExcludes>
+                    <!-- necessary for compilers > 22 -->
+                    <annotationProcessorPaths combine.children="append">
+                        <annotationProcessorPath>
+                            <groupId>org.infinispan.protostream</groupId>
+                            <artifactId>protostream-processor</artifactId>
+                            <version>${version.infinispan.protostream}</version>
+                        </annotationProcessorPath>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -332,6 +361,24 @@
                         <phase>prepare-package</phase>
                         <configuration>
                             <outputDirectory>${project.build.outputDirectory}/META-INF/resources/</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${protobuf.output.directory}</source>
+                            </sources>
                         </configuration>
                     </execution>
                 </executions>
@@ -405,18 +452,27 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- Point (2) add the Xstream sources back into the module -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
-                            <testIncludes>
-                                <include>**</include>
-                            </testIncludes>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!--
+            Profile: oracle-logminer-unbuffered
+            This profile should be used to run the connector with the LogMiner unbuffered adapter.
+        -->
+        <profile>
+            <id>oracle-logminer-unbuffered</id>
+            <properties>
+                <adapter.name>logminer_unbuffered</adapter.name>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
         </profile>
         <!--
         Profile: oracle-olr
@@ -449,10 +505,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
@@ -475,11 +530,10 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- include xstream back into the module on assembly builds -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                     <plugin>
@@ -534,16 +588,13 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override">
                                 <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                             </excludes>
-                            <testExcludes>
+                            <testExcludes combine.self="override">
                                 <exclude>**/*IT</exclude>
                             </testExcludes>
-                            <testIncludes>
-                                <include>**/io/debezium/connector/oracle/rest/**</include>
-                            </testIncludes>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -673,7 +724,7 @@
         </profile>
         <!-- This profile should be used for testing connector with Infinispan only -->
         <profile>
-            <id>infinispan-buffer</id>
+            <id>oracle-infinispan-buffer</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -683,7 +734,7 @@
             <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
         </profile>
         <profile>
-            <id>infinispan-buffer-remote</id>
+            <id>oracle-infinispan-buffer-remote</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -795,7 +846,7 @@
                             <images>
                                 <!-- A container for the data server replica set -->
                                 <image>
-                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>

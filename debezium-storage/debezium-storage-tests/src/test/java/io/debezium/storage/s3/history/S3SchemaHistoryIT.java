@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.s3.history;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,9 +20,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.http.entity.ContentType;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
@@ -42,7 +43,6 @@ import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
@@ -54,27 +54,41 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
     final private static S3MockContainer container = new S3MockContainer(IMAGE_TAG);
     private static S3Client client;
 
-    @BeforeClass
+    @BeforeAll
     public static void startS3() {
         container.start();
         client = S3Client.builder()
                 .credentialsProvider(AnonymousCredentialsProvider.create())
                 .region(Region.AWS_GLOBAL)
-                .endpointOverride(URI.create(container.getHttpEndpoint())).build();
+                .endpointOverride(URI.create(container.getHttpEndpoint()))
+                .forcePathStyle(true).build();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopS3() {
         container.stop();
     }
 
-    @Override
-    public void afterEach() {
+    @AfterEach
+    public void cleanupS3Storage() {
+        // Clean up the S3 storage after each test to ensure test isolation
         if (client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET)) {
-            client.deleteObject(DeleteObjectRequest.builder().bucket(BUCKET).key(OBJECT_NAME).build());
-            client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+            try {
+                // Delete all objects in the bucket
+                client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                        .contents()
+                        .forEach(s3Object -> {
+                            client.deleteObject(DeleteObjectRequest.builder()
+                                    .bucket(BUCKET)
+                                    .key(s3Object.key())
+                                    .build());
+                        });
+                client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+            }
+            catch (Exception e) {
+                // Ignore cleanup errors
+            }
         }
-        super.afterEach();
     }
 
     @Override
@@ -87,6 +101,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
                 .with(S3SchemaHistory.OBJECT_NAME, OBJECT_NAME)
                 .with(S3SchemaHistory.REGION_CONFIG, Region.AWS_GLOBAL.id())
                 .with(S3SchemaHistory.ENDPOINT_CONFIG, container.getHttpEndpoint())
+                .with(S3SchemaHistory.FORCE_PATH_STYLE_CONFIG, true)
                 .build();
         history.configure(config, null, SchemaHistoryListener.NOOP, true);
         history.start();
@@ -95,11 +110,22 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     public void initializeStorageShouldCreateBucket() {
+        // Delete bucket for this test since it tests initialization
         try {
+            client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                    .contents()
+                    .forEach(s3Object -> {
+                        client.deleteObject(DeleteObjectRequest.builder()
+                                .bucket(BUCKET)
+                                .key(s3Object.key())
+                                .build());
+                    });
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
         }
-        catch (NoSuchBucketException e) {
+        catch (Exception e) {
+            // Ignore if bucket doesn't exist
         }
+
         history.initializeStorage();
 
         assertTrue(client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET));
@@ -107,10 +133,20 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     public void shouldDetectExistingBucket() {
+        // Delete bucket for this test since it tests detection
         try {
+            client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build())
+                    .contents()
+                    .forEach(s3Object -> {
+                        client.deleteObject(DeleteObjectRequest.builder()
+                                .bucket(BUCKET)
+                                .key(s3Object.key())
+                                .build());
+                    });
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
         }
-        catch (NoSuchBucketException e) {
+        catch (Exception e) {
+            // Ignore if bucket doesn't exist
         }
 
         assertFalse(history.storageExists());

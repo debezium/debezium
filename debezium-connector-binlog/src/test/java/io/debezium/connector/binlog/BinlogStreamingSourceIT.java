@@ -6,12 +6,11 @@
 package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static io.debezium.junit.EqualityCheck.LESS_THAN_OR_EQUAL;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -22,30 +21,21 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
-import javax.management.MBeanServer;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -57,6 +47,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -75,21 +66,16 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
 public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
-    private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
+    protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    private static final String SET_TLS_PROTOCOLS = "database.enabledTLSProtocols";
-
-    private Configuration config;
+    protected Configuration config;
     private KeyValueStore store;
     private SchemaChangeHistory schemaChanges;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
-
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
@@ -99,8 +85,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         this.schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -136,27 +122,11 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     private long getNumberOfEventsFiltered() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(
-                    getStreamingMetricsObjectName(getConnectorName(), DATABASE.getServerName(), "streaming"),
-                    "NumberOfEventsFiltered");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), "streaming", "NumberOfEventsFiltered");
     }
 
     private long getNumberOfSkippedEvents() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(
-                    getStreamingMetricsObjectName(getConnectorName(), DATABASE.getServerName(), "streaming"),
-                    "NumberOfSkippedEvents");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), "streaming", "NumberOfSkippedEvents");
     }
 
     protected Configuration.Builder simpleConfig() {
@@ -169,7 +139,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
+    void shouldCreateSnapshotOfSingleDatabase() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = simpleConfig()
                 .build();
@@ -226,7 +196,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
+    void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = simpleConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -362,7 +332,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
         ZonedDateTime expectedTimestamp = ZonedDateTime.of(
                 LocalDateTime.parse(dateTime),
-                UniqueDatabase.TIMEZONE)
+                REGRESSION_DATABASE.getTimezone())
                 .withZoneSameInstant(ZoneOffset.UTC);
 
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
@@ -521,68 +491,21 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         assertThat(c11Time).isEqualTo(Duration.ofHours(0).minusMinutes(0).minusSeconds(0).minusNanos(0));
     }
 
-    @Test(expected = ConnectException.class)
-    public void shouldFailOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(null);
+    @Test
+    void shouldFailOnSchemaInconsistency() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            inconsistentSchema(null);
+        });
     }
 
     @Test
-    public void shouldWarnOnSchemaInconsistency() throws Exception {
+    void shouldWarnOnSchemaInconsistency() throws Exception {
         inconsistentSchema(EventProcessingFailureHandlingMode.WARN);
     }
 
     @Test
-    public void shouldIgnoreOnSchemaInconsistency() throws Exception {
+    void shouldIgnoreOnSchemaInconsistency() throws Exception {
         inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
-    }
-
-    @Test
-    @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldFailOnUnknownTlsProtocol() {
-        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        config = simpleConfig()
-                .with(BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-                .with(SET_TLS_PROTOCOLS, "TLSv1.7")
-                .build();
-
-        // Start the connector ...
-        Map<String, Object> result = new HashMap<>();
-        start(getConnectorClass(), config, (success, message, error) -> {
-            result.put("success", success);
-            result.put("message", message);
-        });
-
-        assertEquals(false, result.get("success"));
-        assertEquals(
-                "Connector configuration is not valid. Unable to connect: Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3.",
-                result.get("message").toString());
-    }
-
-    @Test
-    @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldAcceptTls12() throws Exception {
-        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        config = simpleConfig()
-                .with(BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-                .with(SET_TLS_PROTOCOLS, "TLSv1.2")
-                .build();
-
-        // Start the connector ...
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
-
-        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
-        assertThat(exception.get()).isNull();
     }
 
     @Test()

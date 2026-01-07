@@ -47,6 +47,7 @@ public class NamespacePreparationListener implements TestExecutionListener {
                     ConfigProperties.OCP_PROJECT_MONGO,
                     ConfigProperties.OCP_PROJECT_DB2,
                     ConfigProperties.OCP_PROJECT_MYSQL,
+                    ConfigProperties.OCP_PROJECT_MARIADB,
                     ConfigProperties.OCP_PROJECT_POSTGRESQL,
                     ConfigProperties.OCP_PROJECT_REGISTRY,
                     ConfigProperties.OCP_PROJECT_SQLSERVER);
