@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
@@ -103,7 +102,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.commit();
 
         // Give connector time to process binlog events
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         // Consume the insert events (account for heartbeat messages)
         SourceRecords records = consumeRecordsByTopic(4);
@@ -119,7 +118,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for connector to process id=3,4 and consume them to ensure
         // they are fully processed before we capture the binlog position
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
         consumeAvailableRecords(record -> {
         });
 
@@ -144,7 +143,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for the signal to be processed and offset to be committed
         // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
         consumeAvailableRecords(record -> {
@@ -221,7 +220,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.commit();
 
         // Give connector time to process binlog events
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         // Consume the insert events (account for heartbeat messages)
         SourceRecords records = consumeRecordsByTopic(4);
@@ -237,7 +236,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for connector to process id=3,4 and consume them to ensure
         // they are fully processed before we capture the GTID set
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
         consumeAvailableRecords(record -> {
         });
 
@@ -257,7 +256,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for the signal to be processed and offset to be committed
         // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, java.util.concurrent.TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
         consumeAvailableRecords(record -> {
