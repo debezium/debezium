@@ -7,20 +7,15 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -160,9 +155,6 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // the engine's connectorStopped callback, so we use stopConnector() directly
         stopConnector();
 
-        // Wait for JMX metrics to be cleaned up before restarting
-        waitForJmxCleanup();
-
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -276,9 +268,6 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // the engine's connectorStopped callback, so we use stopConnector() directly
         stopConnector();
 
-        // Wait for JMX metrics to be cleaned up before restarting
-        waitForJmxCleanup();
-
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
@@ -347,31 +336,5 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         }
     }
 
-    /**
-     * Wait for JMX metrics to be cleaned up after connector stop.
-     * This is necessary because the signal triggers an async stop via changeEventSourceCoordinator.stop()
-     * which may not complete immediately, causing JMX bean registration conflicts on restart.
-     */
-    private void waitForJmxCleanup() {
-        MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        Awaitility.await()
-                .atMost(30, TimeUnit.SECONDS)
-                .pollInterval(500, TimeUnit.MILLISECONDS)
-                .until(() -> {
-                    try {
-                        ObjectName schemaHistoryBean = new ObjectName(
-                                "debezium.mysql:type=connector-metrics,context=schema-history,server=" + SERVER_NAME);
-                        mBeanServer.getAttribute(schemaHistoryBean, "Status");
-                        return false; // Bean still exists
-                    }
-                    catch (InstanceNotFoundException e) {
-                        return true; // Bean is gone, cleanup complete
-                    }
-                    catch (Exception e) {
-                        // Other exceptions (like AttributeNotFoundException) mean bean exists
-                        return false;
-                    }
-                });
-    }
 
 }
