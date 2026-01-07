@@ -25,11 +25,12 @@ Implementing the platform represents a natural evolution from {prodname} Server.
 == Basic concepts
 In {prodname} Management Platform there are four main concepts:
 
-Source:: Defines the source of your data.
-Destination:: Defines the destination of your data.
-Connection:: Defines the connection for your source and destination.
-Transform:: Defines how a single data event is transformed as it flows through the pipeline.
-Pipeline:: Defines how data flows from a source to a destination while being transformed along the way.
+Source:: Specifies from which you want {prodname} to read data.
+Destination:: Specifies the sink destination where you want {prodname} to send data.
+Connection:: Specifies the connection details that {prodname} needs to communicate with a data source or destination.
+Transform:: Specifies how {prodname} transforms a data event as it flows through the pipeline.
+Pipeline:: Specifies how data flows from a source to a destination while being transformed along the way.
+Each pipeline consists of a source, one or more transforms, and a destination.
 
 After you define a pipeline, it is deployed based on how you configure the platform.
 
@@ -229,27 +230,24 @@ You can use the platform UI to perform a number of different tasks.
 === Defining connections
 
 Use the **Connection** section of the UI to define the connection for both the database that hosts your data and your data sink.
-You can configure any connection for your database that {prodname} supports as a source or any {prodname} Server sinks are that available as a destination.
-The connection that you create can be shared among multiple sources and destinations.
+You can configure a connection for any database that {prodname} supports as a data source, or as a destination sink.
+The connections that you create can be shared by multiple sources and destinations.
 
 [id="debezium-platform-creating-a-connection"]
 ==== Creating a connection
 
-You can create any source or destination connection provided in the connection catalog list.
-The catalog lists all the databases that {prodname} supports as a source and {prodname} Server sinks that are available as destinations.
+You can create a connection for any source or destination that is available in the connection catalog.
+The connection catalog lists the source databases that {prodname} can read from, and the sink destinations that {prodname} Server can write to.
 
-You can filter the catalog list based on type i.e **Source** or **Destination**.
-Once you select a connection type you can configure the connection in the next step. 
-In the configuration form you can specify the connection name and predefined properties. 
-There is another section called **Additional properties** where you can add any custom properties.
-
-[.responsive]
-video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a connection"]
-
-
-After you have filled the configured properties, you have to **Verify** the connection configuration it validate that a 
-a proper connections is established with database source or sink.
-Once the connection is successfully verified you can click on **Create connection** .
+.Procedure
+	
+. From the platform UI, open the **Connection** menu.
+. Click **Add connection** to get to **Connection catalog** page.
+. Click **Source** or **Destination** to filter the list by connection type then select the required connection card.
+. In the configuration form, specify the connection name and predefined properties.
+In the **Additional properties** section, specify any custom properties.
+. Click **Verify** to validate the configuration and ensure that {prodname} can establish a connections with the database source or sink.
+. After you verify the connection, click **Create connection** .
 
 ==== Deleting a connection
 
@@ -266,7 +264,7 @@ If the operation returns an error, verify that the connection is no longer used 
 
 ==== Editing a connection
 
-To edit a connection, from the platform UI, open to the **Connection** menu, click the **Action** menu of the connection that you want to edit, and then click **Edit**.
+To edit a connection, from the platform UI, open the **Connection** menu, click the **Action** menu for the connection that you want to edit, and then click **Edit**.
 
 === Defining sources
 
@@ -279,9 +277,10 @@ Changes to a source are reflected in every pipeline that uses it.
 
 You can use either of the following editors to configure a source:
 
-Form Editor:: Enables you to specify the name, description and connection of the source, along with a list of properties. 
-For connection you can select the predefined source connection or can create a new by one clicking **Create connection** 
-which will open the **Create connection** modal. For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. +
+Form Editor:: Enables you to specify the name, description, and connection of the source, along with a list of properties.
+For a connection, you can select the predefined source connection, or click **Create connection** 
+to create a new connection. 
+For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. +
 For a complete list of the properties that are available for a connector, see the connector documentation.
 
 Smart Editor:: Provides a way to define the source configuration in JSON format. 
@@ -392,22 +391,26 @@ image::edit-confirmation.png[Edit source confirmation modal]
 ====
 
 [id="debezium-platform-enable-signalling"]
-==== Enable signalling
-The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action. 
-In {prodname} management platform to use signal to perform a specified action we use the **SourceSignalChannel** configuration in the source connector.
+==== Enabling signaling
+.Prerequisites
 
-To enable the signalling capability for the data pipeline you need to **Setup signalling** in the source connector configuration. 
+* You have sufficient access privileges to create a table on the source database.
+
+The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action. 
+In the {prodname} management platform, signaling actions are performed via the source connector's **SourceSignalChannel**.
+
+To enable the signaling for a data pipeline, you must set up signaling in the source connector configuration.
 
 image::Debezium-platform-signalling.png[Edit source confirmation modal]
 
-Here you issue a SQL command to add a signal message to a specialized signaling data collection.
-The signaling data collection, which you create on the source database, is designated exclusively for communicating with Debezium. 
+The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
 The signaling data collection must be unique to each connector instance. 
 
 image::Debezium-platform-signalling-modal.png[Edit source confirmation modal]
 
-In the modal you have to provide the **Signaling collection name** and run the provided DDL query to create the signaling data collection on the source database. 
-Before saving the **signalling collection name** in the source configuration you can verify it in the UI. Once verification is successful click *Done* to save the signalling.
+. In the dialog box, provide the *Signaling collection name* and run the provided DDL query to create a signaling data collection in your source database.
+. Click *Verify* to check if signaling data collection is correctly setup.
+. Click *Done* to save the signaling collection.
 
 image::Debezium-platform-signalling-done.png[Signalling setup done]
 
@@ -425,9 +428,10 @@ video::vijxIYwOR4k[youtube, title="Create, edit and remove a destination"]
 Use the **Destination** section of the UI to configure the sink destinations to which the platform sends data. 
 You can use either of the following editors to configure a destination:
 
-Form Editor:: Enables you to specify the name, description and connection of the destination, along with a list of properties. 
-For connection you can select the predefined destination connection or can create a new by one clicking **Create connection** 
-which will open the **Create connection** modal. For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. +
+Form Editor:: Enables you to specify the name, description, and connection of the destination, along with a list of properties.
+For a connection, you can select the predefined source connection, or click **Create connection** 
+to create a new connection. 
+For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. 
 For a complete list of the properties that are available for a sink connector, see the connector documentation.
 Smart Editor:: Enables you to define the sink configuration in JSON. 
 Alternately, you can extract a {prodname} Server sink configuration and automatically reformat it for use in the platform.
@@ -701,30 +705,42 @@ The first transformation in the list processes the message first.
 ==== Monitoring the pipeline
 
 The {prodname} platform provides easy access to the pipeline logs.
-From the platform UI, click **Pipeline**, click the name of the pipeline you want to monitor, and then click **Pipeline logs**.
 
-image::debezium-platform-pipeline-logs.png[{prodname} platform pipeline server modal]
+.Procedure
+	
+. From the platform UI, click **Pipeline**, click the name of the pipeline you want to monitor, and then click **Pipeline logs**.
 
-In the pipeline logs you can download the logs, toggle to full screen view, search the log for a relevant section or look for the notifications i.e [Notification Service] using **Grep notifications** button 
+  image::debezium-platform-pipeline-logs.png[{prodname} platform pipeline server modal]
+
+. Download the logs, toggle to full screen view, search the log for a relevant section, or click **Grep notifications** to search for the [Notification Service].
 
 ==== Pipeline actions
 
+.Prerequisites
+	
+	* Signaling is enabled for the source connector. For more information see xref:debezium-platform-enable-signalling[Enabling signaling].
+
 The {prodname} platform provides an easy way to perform any action on the data pipeline.
-To use signals to trigger a connector to perform a specified action, 
-From the UI, go to the pipeline overview page, then click **Pipeline actions** tab.
+You can use signals to trigger a connector to perform specified actions. 
+	
+.Procedure
+. From the Platform UI, open the pipeline overview page, and click the **Pipeline actions** tab.
 
 image::Debezium-platform-action-list.png[{prodname} platform - Pipeline action list]
 
-In the UI, select any action from the dropdown, once you select an action relevant form with required fields will appear.
-**Action Id** field will be prefilled with UUID string, but its editable field so that if needed you can update the **Action Id** 
-just to keep in mind that **Action Id** need to be unique for each action. 
-After filling all the required fields click **Submit** to trigger an action.
+.Select an action from the dropdown list. 
+A form appears that shows fields that are relevant to the selected action.
 
+. Edit the fields as needed.
++
 [NOTE]
 ====
-In order to be able to perform action on the pipeline, you need to enable the Signaling for the source connector. 
-For more information see xref:debezium-platform-enable-signalling[Enable signalling].
+The *Action Id* field is prefilled with a UUID string. 
+You can update the default value, but always ensure that the value is unique for each action. 
 ====
+. Complete the required fields, and then click **Submit** to trigger an action.
+
+
 
 
 
