@@ -107,7 +107,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         try {
             this.partition = partition;
             this.offsetContext = offsetContext;
-            this.jdbcConnection.setAutoCommit(false);
 
             final Scn startScn = connectorConfig.getAdapter().getOffsetScn(offsetContext);
             final Long startScnIndex = offsetContext.getScnIndex();
@@ -421,7 +420,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             // The JDBC connection may have been re-established (e.g., due to timeout),
             // and new connections default to autoCommit=true.
             // See: https://issues.redhat.com/browse/DBZ-1480
-            jdbcConnection.setAutoCommit(false);
             tableDdl = jdbcConnection.getTableMetadataDdl(tableId);
         }
         catch (NonRelationalTableException e) {

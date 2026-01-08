@@ -89,32 +89,36 @@ public class OracleConnection extends JdbcConnection {
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
 
-    public OracleConnection(OracleConnectorConfig connectorConfig) {
-        this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize());
+    public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
+        this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
     }
 
-    public OracleConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
-        this(jdbcConfig, connectorConfig.getQueryFetchSize());
-    }
-
-    @VisibleForTesting
-    public OracleConnection(JdbcConfiguration config) {
-        this(config, 10);
-    }
-
-    private OracleConnection(JdbcConfiguration config, int queryFetchSize) {
-        this(config, resolveConnectionFactory(config), queryFetchSize);
+    public OracleConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig, boolean autoCommit) {
+        this(jdbcConfig, connectorConfig.getQueryFetchSize(), autoCommit);
     }
 
     @VisibleForTesting
-    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
-        this(config, connectionFactory, 10);
+    public OracleConnection(JdbcConfiguration config, boolean autoCommit) {
+        this(config, 10, autoCommit);
     }
 
-    private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize) {
-        super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+    private OracleConnection(JdbcConfiguration config, int queryFetchSize, boolean autoCommit) {
+        this(config, resolveConnectionFactory(config), queryFetchSize, autoCommit);
+    }
+
+    @VisibleForTesting
+    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean autoCommit) {
+        this(config, connectionFactory, 10, autoCommit);
+    }
+
+    private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize, boolean autoCommit) {
+        super(config, connectionFactory, initialOperations(autoCommit), QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
         this.queryFetchSize = queryFetchSize;
+    }
+
+    private static Operations initialOperations(boolean autoCommit) {
+        return statement -> statement.getConnection().setAutoCommit(autoCommit);
     }
 
     public void setSessionToPdb(String pdbName) {
@@ -308,7 +312,14 @@ public class OracleConnection extends JdbcConnection {
      * @throws NonRelationalTableException the table is not a relational table
      */
     public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
+        boolean currentAutoCommit = false;
         try {
+            // Check the current auto-commit mode and if set, record and temporarily disable
+            currentAutoCommit = connection().getAutoCommit();
+            if (currentAutoCommit) {
+                setAutoCommit(false);
+            }
+
             // This table contains all available objects that are considered relational & object based.
             // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
             // that the table is in-fact a relational table and if the result set is empty, the object
@@ -347,6 +358,11 @@ public class OracleConnection extends JdbcConnection {
         }
         finally {
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
+
+            // Restore previous auto-commit mode, if set.
+            if (currentAutoCommit) {
+                setAutoCommit(true);
+            }
         }
     }
 

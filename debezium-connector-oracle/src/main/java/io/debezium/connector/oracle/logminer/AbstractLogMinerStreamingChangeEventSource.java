@@ -1030,9 +1030,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
 
-        // Explicitly set auto-commit as disabled
-        jdbcConnection.setAutoCommit(false);
-
         // Prepare the session's NLS configuration for streaming
         // This makes sure that specific LogMiner attributes are serialized in a consistent format
         // to minimize the various permutations needed in the value converters.
@@ -1555,7 +1552,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (tableId != null && isUsingHybridStrategy()) {
             if (tableId.table().startsWith("BIN$")) {
                 // Object was dropped but has not been purged.
-                try (OracleConnection connection = new OracleConnection(getConfig())) {
+                try (OracleConnection connection = new OracleConnection(getConfig(), true)) {
                     return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
                             ps -> ps.setString(1, tableId.table()),
                             rs -> {
@@ -1699,8 +1696,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
         LOGGER.warn("Obtaining schema for table {}, which should already be loaded.", tableId);
         // Given that the current connection is used for processing the event data, a separate connection is needed
-        try (OracleConnection connection = new OracleConnection(getConfig())) {
-            connection.setAutoCommit(false);
+        try (OracleConnection connection = new OracleConnection(getConfig(), false)) {
             if (isUsingPluggableDatabase()) {
                 connection.setSessionToPdb(getConfig().getPdbName());
             }

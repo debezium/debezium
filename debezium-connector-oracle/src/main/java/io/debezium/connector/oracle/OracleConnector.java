@@ -83,7 +83,7 @@ public class OracleConnector extends RelationalBaseSourceConnector {
 
         try {
             Threads.runWithTimeout(OracleConnector.class, () -> {
-                try (OracleConnection connection = new OracleConnection(connectorConfig)) {
+                try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
                     // Force a connection call to the database.
                     connection.getOracleVersion();
 
@@ -115,7 +115,7 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final String databaseName = connectorConfig.getCatalogName();
 
-        try (OracleConnection connection = new OracleConnection(connectorConfig)) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
             if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                 connection.setSessionToPdb(connectorConfig.getPdbName());
             }

@@ -102,8 +102,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
         // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
         // point as well. A separate connection is necessary to preserve the save point.
-        try (OracleConnection conn = new OracleConnection(connectorConfig, connection.config())) {
-            conn.setAutoCommit(false);
+        try (OracleConnection conn = new OracleConnection(connectorConfig, connection.config(), false)) {
             if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();

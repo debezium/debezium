@@ -80,7 +80,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                 LOGGER.info("Table '{}' primary key changed from '{}' to '{}' via an UPDATE, re-selecting LOB columns {} out of bands.",
                         table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
-                try (OracleConnection connection = new OracleConnection(connectorConfig)) {
+                try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
                     final String query = getReselectQuery(reselectColumns, table, connection);
                     if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                         connection.setSessionToPdb(connectorConfig.getPdbName());

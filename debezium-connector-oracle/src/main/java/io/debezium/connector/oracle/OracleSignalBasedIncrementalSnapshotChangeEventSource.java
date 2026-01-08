@@ -79,9 +79,6 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
 
     @Override
     protected String getTableDDL(TableId dataCollectionId) throws SQLException {
-        this.connection.setAutoCommit(false);
-        String ddlString = this.connection.getTableMetadataDdl(dataCollectionId);
-        this.connection.setAutoCommit(true);
-        return ddlString;
+        return connection.getTableMetadataDdl(dataCollectionId);
     }
 }

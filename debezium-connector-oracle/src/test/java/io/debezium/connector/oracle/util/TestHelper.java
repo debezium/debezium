@@ -395,7 +395,10 @@ public class TestHelper {
      * @return the connection
      */
     private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
-        OracleConnection connection = new OracleConnection(jdbcConfig);
+        // Setting this to true at least keeps existing behavior, expecting tests to set this to false
+        // as needed since this connection is not used in the connector but as part of the test, to
+        // perform required database SQL operations.
+        OracleConnection connection = new OracleConnection(jdbcConfig, true);
         try {
             connection.setAutoCommit(autoCommit);
 
@@ -415,7 +418,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
             if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -430,7 +433,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
             if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -796,7 +799,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig())) {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), true)) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();
