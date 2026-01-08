@@ -233,7 +233,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     }
 
     private OracleConnection getHeartbeatConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
-        final OracleConnection connection = new OracleConnection(connectorConfig, jdbcConfig);
+        final OracleConnection connection = new OracleConnection(connectorConfig, jdbcConfig, true);
         if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             connection.setSessionToPdb(connectorConfig.getPdbName());
         }

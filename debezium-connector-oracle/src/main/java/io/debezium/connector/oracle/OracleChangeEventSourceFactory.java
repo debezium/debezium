@@ -90,7 +90,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(configuration, connectionFactory.mainConnection().config()),
+                new OracleConnection(configuration, connectionFactory.mainConnection().config(), true),
                 dispatcher,
                 schema,
                 clock,
