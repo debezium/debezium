@@ -163,8 +163,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
+        assertConnectorIsRunning();
 
         // Verify we only get record 5 (skipped 3 and 4)
         // Account for heartbeat messages during streaming
@@ -276,8 +276,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
         waitForStreamingRunning("mysql", SERVER_NAME);
+        assertConnectorIsRunning();
 
         // Verify we only get record 5 (skipped 3 and 4)
         // Account for heartbeat messages during streaming
