@@ -7,6 +7,8 @@ package io.debezium.connector.oracle;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -36,8 +38,10 @@ public class OracleConnectionTest {
         when(jdbcConfiguration.getQueryTimeout()).thenReturn(Duration.ZERO);
         connectionFactory = mock(JdbcConnection.ConnectionFactory.class);
         Connection connection = mock(Connection.class);
+        doNothing().when(connection).setAutoCommit(anyBoolean());
         statement = mock(Statement.class);
         when(connection.createStatement()).thenReturn(statement);
+        when(statement.getConnection()).thenReturn(connection);
         when(connectionFactory.connect(jdbcConfiguration)).thenReturn(connection);
 
     }
