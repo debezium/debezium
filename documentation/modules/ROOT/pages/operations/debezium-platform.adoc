@@ -79,21 +79,21 @@ Installation is provided through a https://helm.sh/[Helm] chart.
 helm repo add debezium https://charts.debezium.io
 ----
 
-2.  Enter one of the following commands to install the version of the platform that you want:
+2.  Enter one of the following commands to install the latest stable version of the platform that you want:
 +
 [source, bash]
 ----
-helm install debezium-platform debezium/debezium-platform --version 3.1.0-beta1 --set database.enabled=true --set domain.url=platform.debezium.io
+helm install debezium-platform debezium/debezium-platform --set database.enabled=true --set domain.name=platform.debezium.io
 ----
 +
 Or, to use an OCI artifact to install the platform, enter the following command:
 +
 [source, bash]
 ----
-helm install debezium-platform --set database.enabled=true --set domain.url=platform.debezium.io --version 3.1.0-beta1 oci://quay.io/debezium-charts/debezium-platform
+helm install debezium-platform --set database.enabled=true --set domain.name=platform.debezium.io oci://quay.io/debezium-charts/debezium-platform
 ----
 +
-The `domain.url` is the only required property; it is used as `host` in the `Ingress` definition.
+The `domain.name` is the only required property; it is used as `host` in the `Ingress` definition.
 +
 [NOTE]
 ====
@@ -111,7 +111,11 @@ The following tables lists all the chart's properties:
 |Name |Description |Default
 
 |domain.url
-|Domain used as the ingress host
+|Domain used as the ingress host (DEPRECATED). Use `domain.name` instead.
+|""
+
+|domain.name
+|Domain used as the ingress host.
 |""
 
 |stage.image
@@ -218,6 +222,26 @@ If you provide the name of a secret, do not set the `schemaHistory.database.auth
 |schemaHistory.database.auth.password
 |Password for the schema history database user specified by `schemaHistory.database.auth.username` property.
 |password
+
+|ingress.enabled
+|Enable ingress resource for conductor/stage
+|true
+
+|ingress.className
+|Optional ingress class name
+|""
+
+|ingress.annotations
+|Extra ingress annotations
+|{}
+
+|ingress.tls.enabled
+|Enable TLS section on ingress
+|false
+
+|ingress.tls.secretName
+|Secret name used when TLS is enabled
+|""
 
 |env
 |List of environment variables to pass to the conductor.
