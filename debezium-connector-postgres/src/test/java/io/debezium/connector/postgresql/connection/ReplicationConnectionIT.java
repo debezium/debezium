@@ -309,7 +309,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    @FixFor("DBZ-1489")
+    @FixFor("debezium/dbz#1489")
     void shouldNotMoveFlushLsnBackwardsWhenFlushingOlderLsn() throws Exception {
         TestHelper.create().dropReplicationSlot("test");
 
@@ -353,7 +353,7 @@ public class ReplicationConnectionIT {
                     .until(() -> getFlushLsnFromStatReplication(connection), lsn -> lsn != null);
 
             if (flushAfterOlder.compareTo(newerLsn) < 0) {
-                fail(String.format("DBZ-1489: flush_lsn moved BACKWARDS from %s to %s (-%d bytes)",
+                fail(String.format("debezium/dbz#1489: flush_lsn moved BACKWARDS from %s to %s (-%d bytes)",
                         newerLsn, flushAfterOlder, newerLsn.asLong() - flushAfterOlder.asLong()));
             }
 
