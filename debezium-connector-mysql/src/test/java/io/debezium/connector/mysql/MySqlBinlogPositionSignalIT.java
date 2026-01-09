@@ -160,11 +160,14 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.commit();
 
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", SERVER_NAME);
         assertConnectorIsRunning();
 
+        // Wait for records to be available after restart
+        // Don't use waitForStreamingRunning() here as JMX metrics may not be properly
+        // re-registered after stop/restart cycle
+        waitForAvailableRecords(30, TimeUnit.SECONDS);
+
         // Verify we only get record 5 (skipped 3 and 4)
-        // Account for heartbeat messages during streaming
         records = consumeRecordsByTopic(2);
         List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
@@ -270,11 +273,14 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         connection.commit();
 
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", SERVER_NAME);
         assertConnectorIsRunning();
 
+        // Wait for records to be available after restart
+        // Don't use waitForStreamingRunning() here as JMX metrics may not be properly
+        // re-registered after stop/restart cycle
+        waitForAvailableRecords(30, TimeUnit.SECONDS);
+
         // Verify we only get record 5 (skipped 3 and 4)
-        // Account for heartbeat messages during streaming
         records = consumeRecordsByTopic(2);
         List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
         assertThat(tableRecords).hasSize(1);
