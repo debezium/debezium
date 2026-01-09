@@ -3762,8 +3762,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(key.validator)
                     .withFailMessage("Validator should be instance of ConfigDef.Validator for field: %s", expected.name())
                     .isInstanceOf(ConfigDef.Validator.class);
-        }
-        else {
+        } else {
             assertThat(key.validator).isNull();
         }
         assertThat(key.recommender).isNull();
