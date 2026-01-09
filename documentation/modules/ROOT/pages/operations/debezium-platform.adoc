@@ -23,6 +23,7 @@ To achieve this goal, the platform uses a data-centric view of {prodname} compon
 Implementing the platform represents a natural evolution from {prodname} Server. Past releases provided the {prodname} operator to simplify operation in Kubernetes environments. With the introduction of the platform, {prodname} now provides a high-level abstraction to deploy your data pipelines in different environments while leveraging {prodname} Server.
 
 == Basic concepts
+
 You can use the {prodname} Management Platform to configure and manage the following components in your environment:
 
 Source:: Specifies the database from which you want {prodname} to read data.
@@ -242,10 +243,9 @@ The connection catalog lists the source databases that {prodname} can read from,
 .Procedure
 	
 . From the platform UI, open the **Connection** menu.
-. Click **Add connection** to get to **Connection catalog** page.
-. Click **Source** or **Destination** to filter the list by connection type then select the required connection card.
-. In the configuration form, specify the connection name and predefined properties.
-In the **Additional properties** section, specify any custom properties.
+. Click **Add connection** to open the **Connection catalog** page.
+. Click **Source** or **Destination** to filter the list by connection type, and then select the required connection card.
+. In the configuration form, specify the connection name and predefined properties, and specify any custom properties in the **Additional properties** section.
 . Click **Verify** to validate the configuration and ensure that {prodname} can establish a connections with the database source or sink.
 . After you verify the connection, click **Create connection** .
 
@@ -279,7 +279,7 @@ You can use either of the following editors to configure a source:
 
 Form Editor:: Enables you to specify the name, description, and connection of the source, along with a list of properties.
 For a connection, you can select the predefined source connection, or click **Create connection**  to create a new connection. 
-For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. +
+For more information, see xref:debezium-platform-creating-a-connection[Creating a connection]. 
 For a complete list of the properties that are available for a connector, see the connector documentation.
 
 Smart Editor:: Provides a way to define the source configuration in JSON format. 
@@ -716,12 +716,12 @@ image::debezium-platform-pipeline-logs.png[{prodname} platform pipeline server m
 
 ==== Pipeline actions
 
+To modify data pipeline components, you can use {prodname} signaling to trigger specific actions. 
+
 .Prerequisites
 	
-	* Signaling is enabled for the source connector. For more information see xref:debezium-platform-enable-signalling[Enabling signaling].
-
-The {prodname} platform provides an easy way to perform any action on the data pipeline.
-You can use signals to trigger a connector to perform specified actions. 
+* Signaling is enabled for the source connector. 
+For more information see xref:debezium-platform-enable-signalling[Enabling signaling].
 	
 .Procedure
 . From the Platform UI, open the pipeline overview page, and click the **Pipeline actions** tab.
