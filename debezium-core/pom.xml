@@ -65,6 +65,11 @@
             <artifactId>debezium-openlineage-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.datadoghq</groupId>
+            <artifactId>sketches-java</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
