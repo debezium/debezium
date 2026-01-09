@@ -376,7 +376,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void dispatchTransactionCommittedEvent(P partition, OffsetContext offset, Instant timestamp) throws InterruptedException {
-        transactionMonitor.transactionComittedEvent(partition, offset, timestamp);
+        transactionMonitor.transactionCommittedEvent(partition, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionCommittedEvent(partition, offset);
         }

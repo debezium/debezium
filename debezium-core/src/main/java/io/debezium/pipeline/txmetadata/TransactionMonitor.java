@@ -107,7 +107,7 @@ public class TransactionMonitor {
         transactionEvent(offset, source, value);
     }
 
-    public void transactionComittedEvent(Partition partition, OffsetContext offset, Instant timestamp) throws InterruptedException {
+    public void transactionCommittedEvent(Partition partition, OffsetContext offset, Instant timestamp) throws InterruptedException {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
