@@ -149,21 +149,15 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for engine shutdown (signal triggers async stop via changeEventSourceCoordinator.stop())
-        // This follows the pattern from BinlogRestartIT for handling connector restarts
-        // Note: We only call waitForEngineShutdown() and NOT stopConnector() because the signal's
-        // background thread has already triggered the stop. Calling stopConnector() again would
-        // cause a RejectedExecutionException when SignalProcessor.stop() tries to submit a task
-        // to an already-terminated executor.
-        waitForEngineShutdown();
+        // Stop the connector to ensure a clean shutdown
+        // The signal's async stop via changeEventSourceCoordinator.stop() initiates shutdown,
+        // but stopConnector() ensures proper cleanup and waits for completion
+        stopConnector();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
-
-        // Reinitialize test framework before starting new connector
-        initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
         waitForStreamingRunning("mysql", SERVER_NAME);
@@ -265,21 +259,15 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         consumeAvailableRecords(record -> {
         });
 
-        // Wait for engine shutdown (signal triggers async stop via changeEventSourceCoordinator.stop())
-        // This follows the pattern from BinlogRestartIT for handling connector restarts
-        // Note: We only call waitForEngineShutdown() and NOT stopConnector() because the signal's
-        // background thread has already triggered the stop. Calling stopConnector() again would
-        // cause a RejectedExecutionException when SignalProcessor.stop() tries to submit a task
-        // to an already-terminated executor.
-        waitForEngineShutdown();
+        // Stop the connector to ensure a clean shutdown
+        // The signal's async stop via changeEventSourceCoordinator.stop() initiates shutdown,
+        // but stopConnector() ensures proper cleanup and waits for completion
+        stopConnector();
 
         // Insert data we want to capture after the skip
         // This is done AFTER stopping to ensure id=5 is not consumed before restart
         connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
         connection.commit();
-
-        // Reinitialize test framework before starting new connector
-        initializeConnectorTestFramework();
 
         start(MySqlConnector.class, config);
         waitForStreamingRunning("mysql", SERVER_NAME);
