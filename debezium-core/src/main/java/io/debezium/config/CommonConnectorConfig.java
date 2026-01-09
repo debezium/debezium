@@ -1396,6 +1396,7 @@ public abstract class CommonConnectorConfig {
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
         this.logicalName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.streamingDelay = Duration.ofMillis(config.getLong(STREAMING_DELAY_MS));
