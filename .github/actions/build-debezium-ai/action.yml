@@ -22,4 +22,4 @@ runs:
     - name: Build Debezium AI module
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :debezium-ai -am -amd
+        ./mvnw clean install -B -pl :debezium-ai -am -amd -DskipLongRunningTests=true
