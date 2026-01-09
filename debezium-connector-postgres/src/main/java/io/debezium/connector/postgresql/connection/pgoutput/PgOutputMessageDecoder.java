@@ -66,6 +66,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(PgOutputMessageDecoder.class);
     private static final Instant PG_EPOCH = LocalDate.of(2000, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
     private static final byte SPACE = 32;
+    private static final byte PRIMARY_KEY_COLUMN_FLAG = 0x01;
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
@@ -299,7 +300,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         // Perform several out-of-bands database metadata queries
         Map<String, Optional<String>> columnDefaults;
         Map<String, Boolean> columnOptionality;
-        List<String> primaryKeyColumns;
+        List<String> primaryKeyColumns = new ArrayList<>();
 
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
         final TableId tableId = new TableId(null, schemaName, tableName);
@@ -311,17 +312,12 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
-        primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
-        if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
-            LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
-            primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
-        }
 
         List<ColumnMetaData> columns = new ArrayList<>();
         Set<String> columnNames = new HashSet<>();
         Set<String> seenLowercaseColumnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
-            byte flags = buffer.get();
+            byte flags = buffer.get(); // Flags for the column. Currently, can be either 0 for no flags or 1 which marks the column as part of the key.
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
@@ -337,7 +333,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
 
             final PostgresType postgresType = typeRegistry.get(columnType);
-            boolean key = isColumnInPrimaryKey(schemaName, tableName, columnName, primaryKeyColumns);
+            boolean key = (flags & PRIMARY_KEY_COLUMN_FLAG) != 0;
+
+            if (key) {
+                primaryKeyColumns.add(columnName);
+            }
 
             Boolean optional = columnOptionality.get(columnName);
             if (optional == null) {
@@ -354,50 +354,18 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             columnNames.add(columnName);
         }
 
-        // Remove any PKs that do not exist as part of this this relation message. This can occur when issuing
-        // multiple schema changes in sequence since the lookup of primary keys is an out-of-band procedure, without
-        // any logical linkage or context to the point in time the relation message was emitted.
-        //
-        // Example DDL:
-        // ALTER TABLE changepk.test_table DROP COLUMN pk2; -- <- relation message #1
-        // ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL; -- <- relation message #2
-        // ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3); -- <- relation message #3
-        //
-        // Consider the above schema changes. There's a possible temporal ordering where the messages arrive
-        // in the replication slot data stream at time `t0`, `t1`, and `t2`. It then takes until `t10` for _this_ method
-        // to start processing message #1. At `t10` invoking `connection.readPrimaryKeyNames()` returns the new
-        // primary key column, 'pk3', defined by message #3. We must remove this primary key column that came
-        // "from the future" (with temporal respect to the current relate message #1) as a best effort attempt
-        // to reflect the actual primary key state at time `t0`.
+        if (primaryKeyColumns.isEmpty()) {
+            LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
+            primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
+        }
+
+        // Remove any uniquely indexed column that do not exist as part of this relation message. This can since
+        // the lookup of unique index is an out-of-band procedure, without any logical linkage or context to the point
+        // in time the relation message was emitted.
         primaryKeyColumns.retainAll(columnNames);
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
-    }
-
-    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {
-        // todo (DBZ-766) - Discuss this logic with team as there may be a better way to handle this
-        // Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
-        // and should any test fail due to this it should be rewritten or excluded from the pgoutput
-        // scope.
-        //
-        // In RecordsStreamProducerIT#shouldReceiveChangesForInsertsIndependentOfReplicaIdentity, we have
-        // a situation where the table is replica identity full, the primary key is dropped but the replica
-        // identity is kept and later the replica identity is changed to default. In order to support this
-        // use case, the following abides by these rules:
-        //
-        if (!primaryKeyColumns.isEmpty() && primaryKeyColumns.contains(columnName)) {
-            return true;
-        }
-        else if (primaryKeyColumns.isEmpty()) {
-            // The table's metadata was either not fetched or table no longer has a primary key
-            // Lets attempt to use the known schema primary key configuration as a fallback
-            Table existingTable = decoderContext.getSchema().tableFor(new TableId(null, schemaName, tableName));
-            if (existingTable != null && existingTable.primaryKeyColumnNames().contains(columnName)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
