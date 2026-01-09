@@ -44,4 +44,12 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      */
     List<Column> getQueryColumns(IncrementalSnapshotContext<T> context, Table table);
 
+    /**
+     * Allows builders to adjust the {@link Table} metadata before it is used for chunking.
+     * <p>
+     * Default implementation is a no-op, returning the provided table instance.
+     */
+    default Table prepareTable(IncrementalSnapshotContext<T> context, Table table) {
+        return table;
+    }
 }
