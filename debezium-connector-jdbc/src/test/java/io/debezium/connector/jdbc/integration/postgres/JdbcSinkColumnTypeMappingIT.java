@@ -454,4 +454,80 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         });
     }
 
+    @FixFor("dbz#1490")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testShouldCoerceStringTypeToEnumColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        // Create a record first to get the destination table name
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                Schema.OPTIONAL_STRING_SCHEMA,
+                "value1");
+
+        // Create enum type and table with enum column using the correct destination table name
+        final String destinationTable = destinationTableName(createRecord);
+        final String enumTypeName = "test_enum_type_" + tableName;
+        getSink().execute(String.format("CREATE TYPE %s AS ENUM ('value1', 'value2', 'value3')", enumTypeName));
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))", destinationTable, enumTypeName));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2)).isEqualTo("value1");
+            return null;
+        });
+    }
+
+    @FixFor("dbz#1490")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testShouldCoerceNullStringTypeToEnumColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        // Create a record with null value for the enum column
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 42,
+                "data",
+                Schema.OPTIONAL_STRING_SCHEMA,
+                null);
+
+        // Create enum type and table with enum column using the correct destination table name
+        final String destinationTable = destinationTableName(createRecord);
+        final String enumTypeName = "test_enum_type_" + tableName;
+        getSink().execute(String.format("CREATE TYPE %s AS ENUM ('value1', 'value2', 'value3')", enumTypeName));
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))", destinationTable, enumTypeName));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(42);
+            assertThat(rs.getString(2)).isNull();
+            return null;
+        });
+    }
+
 }
