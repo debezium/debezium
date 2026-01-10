@@ -26,8 +26,8 @@ public class XmlBeginEvent extends DmlEvent {
     }
 
     public XmlBeginEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime,
-                         LogMinerDmlEntry dmlEntry, String columnName) {
-        super(eventType, scn, tableId, rowId, rsId, changeTime, dmlEntry);
+                         Object[] oldValues, Object[] newValues, String columnName) {
+        super(eventType, scn, tableId, rowId, rsId, changeTime, oldValues, newValues);
         this.columnName = columnName;
     }
 
