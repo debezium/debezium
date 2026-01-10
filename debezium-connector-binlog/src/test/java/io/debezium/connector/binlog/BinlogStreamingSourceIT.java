@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
@@ -617,5 +618,101 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
+    }
+
+    /**
+     * Test that verifies DML statements like REPLACE INTO (used by pt-table-checksum) are properly
+     * filtered out and not processed as DDL statements. This prevents schema history corruption
+     * when using tools like Percona's pt-table-checksum which generates STATEMENT-based binlog
+     * entries with REPLACE INTO queries.
+     */
+    @Test
+    @FixFor("DBZ-9428")
+    public void shouldFilterDmlStatementsFromDdlProcessing() throws Exception {
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
+
+        // Create a test table that simulates pt-table-checksum's checksums table
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // Create checksums table similar to pt-table-checksum
+                connection.execute(
+                        "CREATE TABLE IF NOT EXISTS checksums (" +
+                                "db VARCHAR(64) NOT NULL, " +
+                                "tbl VARCHAR(64) NOT NULL, " +
+                                "chunk INT NOT NULL, " +
+                                "chunk_time FLOAT NULL, " +
+                                "chunk_index VARCHAR(200) NULL, " +
+                                "lower_boundary TEXT NULL, " +
+                                "upper_boundary TEXT NULL, " +
+                                "this_crc CHAR(40) NOT NULL, " +
+                                "this_cnt INT NOT NULL, " +
+                                "master_crc CHAR(40) NULL, " +
+                                "master_cnt INT NULL, " +
+                                "ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+                                "PRIMARY KEY (db, tbl, chunk)" +
+                                ")");
+
+                // Execute REPLACE INTO statement similar to what pt-table-checksum does
+                // In ROW format, REPLACE INTO becomes INSERT (or DELETE+INSERT if key exists)
+                connection.execute(
+                        "REPLACE INTO checksums (db, tbl, chunk, this_crc, this_cnt) " +
+                                "VALUES ('" + DATABASE.getDatabaseName() + "', 'products', 1, 'abc123', 10)");
+
+                // Also test INSERT, UPDATE, DELETE to ensure they're all handled correctly
+                connection.execute(
+                        "INSERT INTO checksums (db, tbl, chunk, this_crc, this_cnt) " +
+                                "VALUES ('" + DATABASE.getDatabaseName() + "', 'customers', 1, 'def456', 5)");
+
+                connection.execute(
+                        "UPDATE checksums SET this_cnt = 11 WHERE db = '" + DATABASE.getDatabaseName() + "' AND tbl = 'products'");
+
+                connection.execute(
+                        "DELETE FROM checksums WHERE db = '" + DATABASE.getDatabaseName() + "' AND tbl = 'customers'");
+            }
+        }
+
+        // With SNAPSHOT_MODE.NEVER and INCLUDE_SCHEMA_CHANGES=true, the connector replays
+        // the full binlog from the beginning, producing initial events from createAndInitialize():
+        // 28 DML (9 products + 9 products_on_hand + 4 customers + 5 orders + 1 timetest)
+        // + 7 DDL (1 create db + 5 create table + 1 alter table) = 35 initial events
+        // Plus our test events: 1 DDL (CREATE TABLE checksums) + 4 DML = 5 test events
+        final int initialExpected = (9 + 9 + 4 + 5 + 1) + (5 + 2);
+        final int testExpected = 5; // 1 DDL (CREATE TABLE) + 4 DML (REPLACE, INSERT, UPDATE, DELETE)
+        int consumed = consumeAtLeast(initialExpected + testExpected);
+        assertThat(consumed).isGreaterThanOrEqualTo(initialExpected + testExpected);
+
+        // Verify DDL event: CREATE TABLE checksums should be in schema changes
+        assertThat(schemaChanges.recordCount()).isGreaterThanOrEqualTo(1);
+        AtomicBoolean foundChecksumsTableDdl = new AtomicBoolean(false);
+        schemaChanges.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (value != null) {
+                Struct source = value.getStruct("source");
+                if (source != null && "checksums".equals(source.getString("table"))) {
+                    foundChecksumsTableDdl.set(true);
+                }
+            }
+        });
+        assertThat(foundChecksumsTableDdl.get()).as("Expected CREATE TABLE checksums DDL event").isTrue();
+
+        // Verify DML events were processed: checksums table should have data events
+        Collection checksums = store.collection(DATABASE.getDatabaseName(), "checksums");
+        assertThat(checksums).as("Expected checksums collection in store").isNotNull();
+        // Exactly 4 DML events: 2 creates (REPLACE + INSERT), 1 update, 1 delete
+        assertThat(checksums.numberOfCreates()).as("Expected 2 creates (REPLACE + INSERT)").isEqualTo(2);
+        assertThat(checksums.numberOfUpdates()).as("Expected 1 update").isEqualTo(1);
+        assertThat(checksums.numberOfDeletes()).as("Expected 1 delete").isEqualTo(1);
+
+        // The primary verification: connector is still running without schema parsing errors
+        // If DML was incorrectly processed as DDL, the connector would have failed
+        assertConnectorIsRunning();
+
+        stopConnector();
     }
 }
