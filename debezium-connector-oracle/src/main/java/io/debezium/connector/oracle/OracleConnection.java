@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -888,6 +889,20 @@ public class OracleConnection extends JdbcConnection {
         }
         catch (Exception e) {
             LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
+            return false;
+        }
+    }
+
+    public boolean isConnectedToInstanceHostname(String hostName) {
+        Objects.requireNonNull(hostName);
+        try {
+            final String instanceHostName = queryAndMap(
+                    "SELECT HOST_NAME FROM V$INSTANCE",
+                    singleResultMapper(rs -> rs.getString(1), "Failed to read instance hostname"));
+            return hostName.equalsIgnoreCase(instanceHostName);
+        }
+        catch (SQLException e) {
+            LOGGER.error(e.getMessage());
             return false;
         }
     }
