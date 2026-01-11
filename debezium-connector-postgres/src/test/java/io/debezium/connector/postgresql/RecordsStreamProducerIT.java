@@ -46,7 +46,6 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import io.debezium.pipeline.ErrorHandler;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -95,6 +94,7 @@ import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
@@ -3915,6 +3915,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(0, consumeAvailableRecords(record -> {
         }));
 
+        // fails here io.debezium.jdbc.JdbcConnection.getColumnsDetails(java.lang.String, java.lang.String, java.lang.String, io.debezium.relational.Tables.TableFilter,
+        // io.debezium.relational.Tables.ColumnNameFilter, java.sql.DatabaseMetaData, java.util.Set<io.debezium.relational.TableId>, boolean)
         assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_snapshot_case_dup' has columns that differ only by case.")).isTrue();
     }
 
@@ -3948,6 +3950,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // With Layer 1: Fails during schema read, before any data is snapshotted
         waitForEngineShutdown();
 
+        // fails here io.debezium.jdbc.JdbcConnection.getColumnsDetails(java.lang.String, java.lang.String, java.lang.String, io.debezium.relational.Tables.TableFilter,
+        // io.debezium.relational.Tables.ColumnNameFilter, java.sql.DatabaseMetaData, java.util.Set<io.debezium.relational.TableId>, boolean)
         assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_case_columns' has columns that differ only by case.")).isTrue();
     }
 
@@ -3968,12 +3972,33 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Step 3: Start connector - should succeed (no duplicates yet)
         startConnector(config -> config
-                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_alter_case")
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_alter_case")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
                 true); // Wait for snapshot to complete
 
-        // Step 4: Wait for streaming to start
-        waitForStreamingToStart();
+        // Step 4
+        // Wait for streaming to fully initialize (including initSchema())
+        // by inserting a record and waiting for it to be consumed
+        // without this insert, there is an interesting race wherein
+        // initSchema within io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.execute
+        // gets executed right after the alter statement
+        // the initSchema method refreshes the entire schema and the connector fails with a different error
+        // at io.debezium.jdbc.JdbcConnection.getColumnsDetails(JdbcConnecti
+        // on.java:1336)
+        // at io.debezium.connector.postgresql.PostgresSchema.refresh(Postgr
+        // esSchema.java:87)
+        // at io.debezium.connector.postgresql.PostgresStreamingChangeEventS
+        // ource.initSchema(...)
+        // instead of
+        // Caused by: io.debezium.DebeziumException: Table 'public.test_rename'
+        // has columns that differ only by case...
+        // at io.debezium.connector.postgresql.connection.pgoutput.PgOutputM
+        // essageDecoder.handleRelationMessage(PgOutputMessageDecoder.java:368)
+        // at io.debezium.connector.postgresql.connection.pgoutput.PgOutputM
+        // essageDecoder.processNotEmptyMessage(...)
+        TestHelper.execute("INSERT INTO test_alter_case (duration) VALUES (50);");
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("test_server.public.test_alter_case")).hasSize(1);
 
         // Step 5: NOW ALTER TABLE to add duplicate column during streaming
         // This is the key - the duplicate is added AFTER startup, so Layer 1 can't catch it
@@ -3990,6 +4015,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Step 8: Connector should fail due to Layer 2 validation in handleRelationMessage()
         waitForEngineShutdown();
 
+        // fails here io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder.handleRelationMessage
         assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_alter_case' has columns that differ only by case.")).isTrue();
     }
 
@@ -4006,18 +4032,189 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         ");");
 
         startConnector(config -> config
-                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_rename")
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_rename")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL),
                 false);
 
-        // Rename status to "Duration" (now conflicts with "duration")
+        // Wait for streaming to fully initialize (including initSchema())
+        // by inserting a record and waiting for it to be consumed
+        // without this insert, there is an interesting race wherein
+        // initSchema within io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.execute
+        // gets executed right after the alter statement
+        // the initSchema method refreshes the entire schema and the connector fails with a different error
+        // at io.debezium.jdbc.JdbcConnection.getColumnsDetails(JdbcConnecti
+        // on.java:1336)
+        // at io.debezium.connector.postgresql.PostgresSchema.refresh(Postgr
+        // esSchema.java:87)
+        // at io.debezium.connector.postgresql.PostgresStreamingChangeEventS
+        // ource.initSchema(...)
+        // instead of
+        // Caused by: io.debezium.DebeziumException: Table 'public.test_rename'
+        // has columns that differ only by case...
+        // at io.debezium.connector.postgresql.connection.pgoutput.PgOutputM
+        // essageDecoder.handleRelationMessage(PgOutputMessageDecoder.java:368)
+        // at io.debezium.connector.postgresql.connection.pgoutput.PgOutputM
+        // essageDecoder.processNotEmptyMessage(...)
+        TestHelper.execute("INSERT INTO test_rename (duration, status) VALUES (50, 'init');");
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("test_server.public.test_rename")).hasSize(1);
+
+        // NOW rename status to "Duration" (now conflicts with "duration")
+        // This ALTER TABLE happens AFTER initSchema() has completed, so that
+        // handleRelationMessage() validation should catch it
         TestHelper.execute("ALTER TABLE test_rename RENAME COLUMN status TO \"Duration\";");
         TestHelper.execute("INSERT INTO test_rename (duration, \"Duration\") VALUES (100, 'test');");
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
         waitForEngineShutdown();
 
+        // fails here io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder.handleRelationMessage
         assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_rename' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldNotFailWhenExcludedTableHasCaseSensitiveDuplicateColumns() throws Exception {
+        // Create an excluded table WITH duplicate columns (should be ignored)
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS excluded_table_with_duplicates;" +
+                        "CREATE TABLE excluded_table_with_duplicates (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT" +
+                        ");");
+
+        // Create an included table WITHOUT duplicate columns (should work normally)
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS included_clean_table;" +
+                        "CREATE TABLE included_clean_table (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  name TEXT" +
+                        ");");
+
+        // Insert data into both tables
+        TestHelper.execute("INSERT INTO excluded_table_with_duplicates (duration, \"Duration\") VALUES (100, 'excluded');");
+        TestHelper.execute("INSERT INTO included_clean_table (name) VALUES ('test1');");
+
+        // Start connector with table filtering - exclude the problematic table
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.included_clean_table")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+        start(PostgresConnector.class, config);
+
+        // Wait for streaming to start
+        waitForStreamingToStart();
+
+        // Verify snapshot record from included table was captured
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("test_server.public.included_clean_table")).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic("test_server.public.included_clean_table").get(0);
+        Struct value = (Struct) record.value();
+        assertThat(((Struct) value.get("after")).getString("name")).isEqualTo("test1");
+
+        // Insert more data into both tables during streaming
+        TestHelper.execute("INSERT INTO excluded_table_with_duplicates (duration, \"Duration\") VALUES (200, 'excluded2');");
+        TestHelper.execute("INSERT INTO included_clean_table (name) VALUES ('test2');");
+
+        // Verify only the included table's data is captured
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("test_server.public.included_clean_table")).hasSize(1);
+
+        record = records.recordsForTopic("test_server.public.included_clean_table").get(0);
+        value = (Struct) record.value();
+        assertThat(((Struct) value.get("after")).getString("name")).isEqualTo("test2");
+
+        // Verify connector is still running (didn't crash)
+        assertConnectorIsRunning();
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldFailEvenWhenDuplicateColumnsAreExcludedDuringSnapshot() {
+        LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        // Create table with duplicate columns that will be excluded
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_excluded_dup_cols;" +
+                        "CREATE TABLE test_excluded_dup_cols (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  \"Duration\" TEXT, " + // Case-sensitive duplicate
+                        "  name TEXT" +
+                        ");");
+
+        // Insert initial data
+        TestHelper.execute("INSERT INTO test_excluded_dup_cols (duration, \"Duration\", name) VALUES (100, '100ms', 'test');");
+
+        // Start connector with column filter that EXCLUDES both duplicate columns
+        // This tests that validation happens on ALL columns, not just included ones
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, "public.test_excluded_dup_cols.(pk|name)")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_excluded_dup_cols")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector - it will fail during schema read (Layer 1 validation)
+        start(PostgresConnector.class, config);
+
+        // Wait for connector to fail during snapshot
+        // Even though duration and "Duration" are excluded from capture,
+        // they still cause internal Table corruption and must be validated
+        waitForEngineShutdown();
+
+        // Verify no data was emitted (connector failed during snapshot)
+        assertEquals(0, consumeAvailableRecords(record -> {
+        }));
+
+        // Verify the error message indicates duplicate columns were detected
+        // This proves that validation checks ALL columns, not just included ones
+        // fails here io.debezium.jdbc.JdbcConnection.getColumnsDetails
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_excluded_dup_cols' has columns that differ only by case.")).isTrue();
+    }
+
+    @Test
+    public void shouldFailEvenWhenDuplicateColumnsAreExcludedDuringStreaming() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        // Create table with duplicate columns that will be excluded
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_excluded_dup_cols;" +
+                        "CREATE TABLE test_excluded_dup_cols (" +
+                        "  pk SERIAL PRIMARY KEY, " +
+                        "  duration INTEGER, " +
+                        "  name TEXT" +
+                        ");");
+
+        // Start connector with column filter that EXCLUDES both duplicate columns
+        // This tests that validation happens on ALL columns, not just included ones
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_excluded_dup_cols")
+                .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, "public.test_excluded_dup_cols.(pk|name)")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        waitForStreamingToStart();
+
+        // Insert initial data
+        TestHelper.execute("INSERT INTO test_excluded_dup_cols (duration, name) VALUES (100, 'test');");
+
+        TestHelper.execute("ALTER TABLE test_excluded_dup_cols ADD COLUMN \"Duration\" TEXT;");
+        // Trigger the streaming validation
+        TestHelper.execute("INSERT INTO test_excluded_dup_cols (duration, \"Duration\", name) VALUES (100, '100ms', 'test');");
+
+        // Wait for connector to fail during snapshot
+        // Even though duration and "Duration" are excluded from capture,
+        // they still cause internal Table corruption and must be validated
+        waitForEngineShutdown();
+
+        // fails here io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder.handleRelationMessage
+        assertThat(logInterceptor.containsStacktraceElement("Table 'public.test_excluded_dup_cols' has columns that differ only by case.")).isTrue();
     }
 
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
