@@ -231,7 +231,7 @@ You can use the platform UI to perform a number of different tasks.
 === Defining connections
 
 Use the **Connection** section of the UI to define the connections to the database that hosts your source data and to your data sink.
-You can configure a connection for any database that {prodname} supports as a data source, or as a destination sink.
+You can configure connections to any database that {prodname} supports as either a data source or destination sink.
 The connections that you create can be shared by multiple sources and destinations.
 
 [id="debezium-platform-creating-a-connection"]
