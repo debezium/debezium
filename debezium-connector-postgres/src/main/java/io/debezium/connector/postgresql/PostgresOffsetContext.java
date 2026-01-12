@@ -138,6 +138,20 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.updateLastCommit(lsn);
     }
 
+    /**
+     * Updates the origin information in the source info.
+     *
+     * @param originName the name of the origin server
+     * @param originLsn the LSN on the origin server
+     */
+    public void updateOrigin(String originName, Lsn originLsn) {
+        sourceInfo.updateOrigin(originName, originLsn);
+    }
+
+    public void clearOrigin() {
+        sourceInfo.clearOrigin();
+    }
+
     boolean hasLastKnownPosition() {
         return sourceInfo.lsn() != null;
     }

@@ -46,7 +46,8 @@ public interface ReplicationMessage {
         TRUNCATE,
         MESSAGE,
         BEGIN,
-        COMMIT
+        COMMIT,
+        ORIGIN
     }
 
     /**
