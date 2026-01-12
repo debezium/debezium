@@ -315,7 +315,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         List<ColumnMetaData> columns = new ArrayList<>();
         Set<String> columnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
-            byte flags = buffer.get(); // Flags for the column. Currently, can be either 0 for no flags or 1 which marks the column as part of the key.
+            // Flags for the column. Currently, can be either 0 for no flags or 1 which marks the column as part of the replica identity.
+            // For tables with a primary key, only PK columns are flagged.
+            // For tables without a PK using REPLICA IDENTITY FULL, all columns are flagged.
+            byte flags = buffer.get();
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
@@ -342,8 +345,18 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             columnNames.add(columnName);
         }
 
+        // If all columns are flagged, this indicates a table without a primary key using REPLICA IDENTITY FULL.
+        // In this case, the flags don't represent an actual primary key, so we clear the list and fall back
+        // to using unique indices for the record key.
+        if (primaryKeyColumns.size() == columnCount && columnCount > 1) {
+            LOGGER.debug(
+                    "All {} columns flagged in replica identity for table '{}' - table has no primary key and uses REPLICA IDENTITY FULL, falling back to unique indices",
+                    columnCount, tableName);
+            primaryKeyColumns.clear();
+        }
+
         if (primaryKeyColumns.isEmpty()) {
-            LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
+            LOGGER.warn("No primary key columns identified from replica identity for table '{}', using unique indices as record key", tableName);
             primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
         }
 
