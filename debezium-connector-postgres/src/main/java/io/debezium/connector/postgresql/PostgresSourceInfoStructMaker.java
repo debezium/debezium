@@ -26,6 +26,8 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.XMIN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.ORIGIN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.ORIGIN_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
@@ -53,6 +55,13 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
             if (sourceInfo.xmin() != null) {
                 result.put(SourceInfo.XMIN_KEY, sourceInfo.xmin());
             }
+        }
+
+        if (sourceInfo.originName() != null) {
+            result.put(SourceInfo.ORIGIN_KEY, sourceInfo.originName());
+        }
+        if (sourceInfo.originLsn() != null) {
+            result.put(SourceInfo.ORIGIN_LSN_KEY, sourceInfo.originLsn().asLong());
         }
         return result;
     }

@@ -4100,6 +4100,138 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         throw new UnsupportedOperationException("Test must be updated for new logical decoder type.");
     }
 
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "ORIGIN messages are only supported by pgoutput decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Replication origins require PostgreSQL 11+")
+    public void shouldIncludeOriginInfoInSourceMetadataWhenOriginIsSet() throws Exception {
+        // This test verifies that when a transaction has an associated replication origin,
+        // the origin name and LSN are included in the source metadata of change events.
+        // It tests both pg_replication_origin_session_setup (default LSN 0) and
+        // pg_replication_origin_xact_setup (explicit LSN).
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_origin;",
+                "CREATE TABLE test_origin (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        String originName = "test_origin_dc1";
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_create('" + originName + "');");
+        }
+        catch (Exception e) {
+            if (!e.getMessage().contains("already exists")) {
+                throw e;
+            }
+        }
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_origin")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        consumer = testConsumer(2);
+
+        // Transaction 1: Using pg_replication_origin_session_setup only (LSN defaults to 0)
+        TestHelper.execute(
+                "SELECT pg_replication_origin_session_setup('" + originName + "');" +
+                        "INSERT INTO test_origin (data) VALUES ('test with session setup only');");
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_session_reset();");
+        }
+        catch (Exception e) {
+            // Ignore
+        }
+
+        // Transaction 2: Using pg_replication_origin_xact_setup with explicit LSN (0/12345 = 74565)
+        TestHelper.execute(
+                "SELECT pg_replication_origin_session_setup('" + originName + "');" +
+                        "SELECT pg_replication_origin_xact_setup('0/12345', now());" +
+                        "INSERT INTO test_origin (data) VALUES ('test with explicit LSN');");
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_session_reset();");
+        }
+        catch (Exception e) {
+            // Ignore
+        }
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        // Verify first record (session_setup only, LSN defaults to 0)
+        assertFalse(consumer.isEmpty(), "Expected at least one record");
+        SourceRecord record1 = consumer.remove();
+        Struct source1 = ((Struct) record1.value()).getStruct("source");
+        assertNotNull(source1, "Source struct should not be null");
+
+        String origin1 = source1.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn1 = source1.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 1 (session_setup): origin={}, origin_lsn={}", origin1, originLsn1);
+
+        assertNotNull(origin1, "Origin should not be null when replication origin is set");
+        assertThat(origin1).isEqualTo(originName);
+        assertNotNull(originLsn1, "Origin LSN should not be null");
+        assertThat(originLsn1).isEqualTo(0L); // Default LSN when using session_setup only
+
+        // Verify second record (xact_setup with explicit LSN)
+        assertFalse(consumer.isEmpty(), "Expected second record");
+        SourceRecord record2 = consumer.remove();
+        Struct source2 = ((Struct) record2.value()).getStruct("source");
+        assertNotNull(source2, "Source struct should not be null");
+
+        String origin2 = source2.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn2 = source2.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 2 (xact_setup): origin={}, origin_lsn={}", origin2, originLsn2);
+
+        assertNotNull(origin2, "Origin should not be null when replication origin is set");
+        assertThat(origin2).isEqualTo(originName);
+        assertNotNull(originLsn2, "Origin LSN should not be null");
+        assertThat(originLsn2).isEqualTo(74565L); // 0x12345 in decimal
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_drop('" + originName + "');");
+        }
+        catch (Exception e) {
+            // Ignore cleanup errors
+        }
+    }
+
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "ORIGIN messages are only supported by pgoutput decoder")
+    public void shouldHaveNullOriginInfoWhenNoOriginIsSet() throws Exception {
+        // This test verifies that when no replication origin is set,
+        // the origin fields in source metadata are null.
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_no_origin;",
+                "CREATE TABLE test_no_origin (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        // Use waitForSnapshot=false since we're using NO_DATA snapshot mode
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_no_origin")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        consumer = testConsumer(1);
+
+        // Insert without any origin set - this is the normal case
+        TestHelper.execute("INSERT INTO test_no_origin (data) VALUES ('test without origin');");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        assertFalse(consumer.isEmpty(), "Expected at least one record");
+        SourceRecord record = consumer.remove();
+
+        // Verify the source metadata exists but origin fields are null
+        Struct source = ((Struct) record.value()).getStruct("source");
+        assertNotNull(source, "Source struct should not be null");
+
+        // Origin fields should be null when no origin is set
+        assertThat(source.getString(SourceInfo.ORIGIN_KEY)).isNull();
+        assertThat(source.getInt64(SourceInfo.ORIGIN_LSN_KEY)).isNull();
+
+        // But the schema should still have the fields defined (as optional)
+        assertThat(source.schema().field(SourceInfo.ORIGIN_KEY)).isNotNull();
+        assertThat(source.schema().field(SourceInfo.ORIGIN_LSN_KEY)).isNotNull();
+    }
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         assertInsert(statement, null, expectedSchemaAndValuesByColumn);
     }

@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.OriginMessage;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
@@ -367,6 +368,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     (LogicalDecodingMessage) message);
 
             maybeWarnAboutGrowingWalBacklog(true);
+        }
+        // ORIGIN message - update origin state in offset context
+        else if (message.getOperation() == Operation.ORIGIN) {
+            OriginMessage originMessage = (OriginMessage) message;
+            offsetContext.updateOrigin(originMessage.getOriginName(), originMessage.getOriginLsn());
+            LOGGER.trace("Updated origin information: name={}, lsn={}", originMessage.getOriginName(), originMessage.getOriginLsn());
         }
         // DML event
         else {
