@@ -418,14 +418,14 @@ public class OracleConnection extends JdbcConnection {
      * Gets the first system change number in both archive and redo logs.
      *
      * @param archiveLogRetention retention of the archive log
-     * @param archiveDestinationName name of the archive log destination to be used for reading archive logs
+     * @param archiveDestinationNames name of the archive log destinations to be used for reading archive logs
      * @return the oldest system change number
      * @throws SQLException      if a database exception occurred
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
-    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames) throws SQLException {
 
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames);
         final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
 
         if (oldestScn == null) {
@@ -439,11 +439,11 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
-        final String archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(this);
+        final List<String> archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
-            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames);
             return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
         }
         catch (SQLException e) {

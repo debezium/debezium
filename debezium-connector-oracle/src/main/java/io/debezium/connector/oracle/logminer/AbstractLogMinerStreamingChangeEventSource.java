@@ -114,7 +114,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
-    private final String archiveDestinationName;
+    private final List<String> archiveDestinationNames;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -152,7 +152,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
-        this.archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(jdbcConnection);
+        this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(jdbcConnection);
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -1126,7 +1126,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(jdbcConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(archiveDestinationName),
+                    SqlUtils.switchHistoryQuery(archiveDestinationNames),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -2009,7 +2009,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if no system change number was found
      */
     private Scn getFirstScnAvailableInLogs() throws SQLException {
-        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName)
+        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationNames)
                 .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
     }
 

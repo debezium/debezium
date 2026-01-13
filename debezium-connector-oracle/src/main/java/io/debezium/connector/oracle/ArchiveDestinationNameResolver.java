@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -13,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.util.Collect;
-import io.debezium.util.Strings;
 
 /**
  * A resolver that takes a collection of configured archive destination names and determines
@@ -23,14 +23,18 @@ import io.debezium.util.Strings;
  */
 public class ArchiveDestinationNameResolver {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(ArchiveDestinationNameResolver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ArchiveDestinationNameResolver.class);
 
-    private final List<String> destinationNames;
-    private ResolvedDestinationName destinationName;
+    private static final String ARCHIVE_DEST_NAME_FORMAT = "LOG_ARCHIVE_DEST_%d";
+    private static final int ARCHIVE_DEST_FIRST_ID = 1;
+    private static final int ARCHIVE_DEST_LAST_ID = 31;
+
+    private final List<String> configuredDestinationNames;
+    private final List<String> resolvedDestinationNames;
 
     public ArchiveDestinationNameResolver(List<String> destinationNames) {
-        this.destinationNames = destinationNames;
-        this.destinationName = ResolvedDestinationName.unresolved();
+        this.configuredDestinationNames = destinationNames;
+        this.resolvedDestinationNames = new ArrayList<>();
     }
 
     /**
@@ -39,69 +43,91 @@ public class ArchiveDestinationNameResolver {
      * @param connection the database connection, should not be {@code null}
      */
     public void validate(OracleConnection connection) {
-        if (!destinationName.resolved()) {
-            destinationName = resolveDestinationName(connection);
+        if (resolvedDestinationNames.isEmpty()) {
+            resolveDestinations(connection);
         }
 
-        try {
-            if (!Strings.isNullOrEmpty(destinationName.value())) {
-                if (!connection.isArchiveLogDestinationValid(destinationName.value())) {
-                    LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName.value());
-                }
+        if (resolvedDestinationNames.isEmpty()) {
+            if (configuredDestinationNames.isEmpty()) {
+                throw new DebeziumException("Failed to locate a local and valid archive destination in Oracle.");
             }
-            else if (!connection.isOnlyOneArchiveLogDestinationValid()) {
-                LOGGER.warn("There are multiple valid archive log destinations. " +
-                        "Please add '{}' to the connector configuration to avoid log availability problems.",
-                        OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
-            }
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Error while checking validity of archive log configuration", e);
+            throw new DebeziumException("None of the supplied archive destinations are local and valid: " + configuredDestinationNames);
         }
     }
 
     /**
-     * Gets the destination name to be used.
+     * Gets the destination names to be used in priority order.
      *
      * @param connection the database connection, should not be {@code null}
-     * @return the destination name to be used, may be {@code null}
+     * @return the destination names to be used, will never be {@code null} nor empty.
      */
-    public String getDestinationName(OracleConnection connection) {
-        if (!destinationName.resolved()) {
-            destinationName = resolveDestinationName(connection);
-        }
-        return destinationName.value();
+    public List<String> getDestinationNames(OracleConnection connection) {
+        validate(connection);
+
+        return resolvedDestinationNames;
     }
 
-    private ResolvedDestinationName resolveDestinationName(OracleConnection connection) {
+    private void resolveDestinations(OracleConnection connection) {
         try {
-            if (!Collect.isNullOrEmpty(destinationNames)) {
-                for (String destinationName : destinationNames) {
-                    if (connection.isArchiveLogDestinationValid(destinationName)) {
-                        LOGGER.info("Using archive destination {}", destinationName);
-                        return ResolvedDestinationName.resolved(destinationName);
-                    }
-                }
-
-                LOGGER.warn("No valid archive destination detected in '{}'", destinationNames);
-                return ResolvedDestinationName.resolved(destinationNames.stream().findFirst().get());
+            if (!Collect.isNullOrEmpty(configuredDestinationNames)) {
+                resolvedDestinationNames.addAll(resolveDestinationsFromConfiguration(connection));
+            }
+            else {
+                resolvedDestinationNames.addAll(resolveDestinationFromFallback(connection));
             }
 
-            // Fallback to using default behavior
-            return ResolvedDestinationName.resolved(null);
+            if (resolvedDestinationNames.size() > 1) {
+                LOGGER.info("Using priority order archive destination names: {}", resolvedDestinationNames);
+            }
+            else if (resolvedDestinationNames.size() == 1) {
+                LOGGER.info("Using archive destination name: {}", resolvedDestinationNames.get(0));
+            }
+            else {
+                LOGGER.error("Failed to locate a valid archive destination.");
+            }
         }
         catch (SQLException e) {
             throw new DebeziumException("Error while checking validity of archive destination configuration", e);
         }
     }
 
-    private record ResolvedDestinationName(boolean resolved, String value) {
-        public static ResolvedDestinationName unresolved() {
-            return new ResolvedDestinationName(false, null);
+    /**
+     * Uses the provided archive destination name configuration to locate valid destinations, retaining all
+     * configured destinations in user-supplied order that are valid, e.g. both local and valid.
+     *
+     * @param connection database connection, should never be {@code null}
+     * @return the list of matched destination names
+     * @throws SQLException thrown if a database error occurs
+     */
+    private List<String> resolveDestinationsFromConfiguration(OracleConnection connection) throws SQLException {
+        final List<String> destinationNames = new ArrayList<>();
+        for (String destinationName : configuredDestinationNames) {
+            if (connection.isArchiveLogDestinationValid(destinationName)) {
+                destinationNames.add(destinationName);
+            }
         }
-
-        public static ResolvedDestinationName resolved(String value) {
-            return new ResolvedDestinationName(true, value);
-        }
+        return destinationNames;
     }
+
+    /**
+     * Uses the fallback behavior, which scans all entries in {@code V$ARCHIVE_DEST_STATUS}, locating the
+     * first entry that is considered valid, e.g. both local and valid.
+     *
+     * @param connection database connection, should never be {@code null}
+     * @return the list of matched destination names, which is always either empty or a max size of 1.
+     * @throws SQLException thrown if a database error occurs
+     */
+    private List<String> resolveDestinationFromFallback(OracleConnection connection) throws SQLException {
+        final List<String> destinationNames = new ArrayList<>();
+        for (int i = ARCHIVE_DEST_FIRST_ID; i <= ARCHIVE_DEST_LAST_ID; i++) {
+            final String destinationName = ARCHIVE_DEST_NAME_FORMAT.formatted(i);
+            LOGGER.info("Attempting to locate valid archive destination at {}", destinationName);
+            if (connection.isArchiveLogDestinationValid(destinationName)) {
+                destinationNames.add(destinationName);
+                break;
+            }
+        }
+        return destinationNames;
+    }
+
 }

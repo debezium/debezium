@@ -7,7 +7,10 @@ package io.debezium.connector.oracle;
 
 import static io.debezium.connector.oracle.OracleConnectorConfig.ARCHIVE_DESTINATION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -35,10 +38,10 @@ public class ArchiveDestinationResolverTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         connectorConfig.getArchiveDestinationNameResolver().validate(connection);
 
-        assertThat(logInterceptor.containsMessage("Using archive destination LOG_ARCHIVE_DEST_1")).isTrue();
+        assertThat(logInterceptor.containsMessage("Using archive destination name: LOG_ARCHIVE_DEST_1")).isTrue();
 
-        final String name = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
-        assertThat(name).isEqualTo("LOG_ARCHIVE_DEST_1");
+        final List<String> names = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
+        assertThat(names).containsExactly("LOG_ARCHIVE_DEST_1");
     }
 
     @FixFor("DBZ-9041")
@@ -50,12 +53,10 @@ public class ArchiveDestinationResolverTest {
         final LogInterceptor logInterceptor = new LogInterceptor(ArchiveDestinationNameResolver.class);
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        connectorConfig.getArchiveDestinationNameResolver().validate(connection);
+        assertThatThrownBy(() -> connectorConfig.getArchiveDestinationNameResolver().validate(connection))
+                .hasMessage("None of the supplied archive destinations are local and valid: [D1, D2]");
 
-        assertThat(logInterceptor.containsMessage("No valid archive destination detected in '[D1, D2]'")).isTrue();
-
-        final String name = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
-        assertThat(name).isEqualTo("D1");
+        assertThat(logInterceptor.containsMessage("Failed to locate a valid archive destination.")).isTrue();
     }
 
     @FixFor("DBZ-9041")
@@ -64,7 +65,9 @@ public class ArchiveDestinationResolverTest {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(Configuration.empty());
-        assertThat(connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection)).isNull();
+        assertThatThrownBy(() -> {
+            connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
+        }).hasMessage("Failed to locate a local and valid archive destination in Oracle.");
     }
 
     @FixFor("DBZ-9041")
@@ -79,9 +82,9 @@ public class ArchiveDestinationResolverTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         connectorConfig.getArchiveDestinationNameResolver().validate(connection);
 
-        assertThat(logInterceptor.containsMessage("Using archive destination LOG_ARCHIVE_DEST_1")).isTrue();
+        assertThat(logInterceptor.containsMessage("Using archive destination name: LOG_ARCHIVE_DEST_1")).isTrue();
 
-        final String name = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
-        assertThat(name).isEqualTo("LOG_ARCHIVE_DEST_1");
+        final List<String> names = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
+        assertThat(names).containsExactly("LOG_ARCHIVE_DEST_1");
     }
 }
