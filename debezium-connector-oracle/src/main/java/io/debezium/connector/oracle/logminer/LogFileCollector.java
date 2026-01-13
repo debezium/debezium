@@ -12,6 +12,8 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +54,7 @@ public class LogFileCollector {
     private final int maxAttempts;
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
-    private final String archiveLogDestinationName;
+    private final List<String> archiveLogDestinationNames;
     private final OracleConnection connection;
 
     public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
@@ -61,7 +63,7 @@ public class LogFileCollector {
         this.maxAttempts = connectorConfig.getMaximumNumberOfLogQueryRetries();
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
-        this.archiveLogDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
+        this.archiveLogDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
         this.connection = connection;
     }
 
@@ -98,10 +100,10 @@ public class LogFileCollector {
 
     @VisibleForTesting
     public List<LogFile> getLogsForOffsetScn(Scn offsetScn) throws SQLException {
-        final Set<LogFile> onlineRedoLogs = new LinkedHashSet<>();
-        final Set<LogFile> archiveLogs = new LinkedHashSet<>();
+        return connection.queryAndMap(getLogsQuery(offsetScn), rs -> {
+            final Set<LogFile> onlineRedoLogs = new LinkedHashSet<>();
+            final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
 
-        connection.query(getLogsQuery(offsetScn), rs -> {
             while (rs.next()) {
                 final String fileName = rs.getString(1);
                 final Scn firstScn = getScnFromString(rs.getString(2));
@@ -110,12 +112,13 @@ public class LogFileCollector {
                 final String type = rs.getString(6);
                 final BigInteger sequence = new BigInteger(rs.getString(7));
                 final int thread = rs.getInt(10);
+                final String destinationName = rs.getString(11);
                 if (ARCHIVE_LOG_TYPE.equals(type)) {
                     final LogFile log = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
                     if (log.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} to be added.",
-                                fileName, firstScn, nextScn, sequence);
-                        archiveLogs.add(log);
+                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} in {} to be added.",
+                                fileName, firstScn, nextScn, sequence, destinationName);
+                        archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>()).add(log);
                     }
                 }
                 else if (ONLINE_LOG_TYPE.equals(type)) {
@@ -132,9 +135,11 @@ public class LogFileCollector {
                     }
                 }
             }
-        });
 
-        return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
+            final Set<LogFile> archiveLogs = new LinkedHashSet<>();
+            archiveLogs.addAll(mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames));
+            return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
+        });
     }
 
     @VisibleForTesting
@@ -218,6 +223,36 @@ public class LogFileCollector {
                 .forEach(this::logThreadCheckSkippedNotInDatabase);
 
         return true;
+    }
+
+    /**
+     * Given a list of logs by archive destination names and a list of destinations in precedence order, the map
+     * is filtered and converted into a list of logs, favoring logs in earlier destinations.
+     *
+     * @param logs map of logs by destination name
+     * @param destinationNames destination names in priority order
+     * @return merged list of logs based on precedence order
+     */
+    @VisibleForTesting
+    public static List<LogFile> mergeLogsByPrecedence(Map<String, List<LogFile>> logs, List<String> destinationNames) {
+        final List<LogFile> result = new ArrayList<>();
+        final Set<BigInteger> sequencesSeen = new HashSet<>();
+
+        for (String destinationName : destinationNames) {
+            final List<LogFile> destinationLogs = logs.get(destinationName);
+            if (destinationLogs == null) {
+                continue;
+            }
+
+            for (LogFile logFile : destinationLogs) {
+                if (!sequencesSeen.contains(logFile.getSequence())) {
+                    result.add(logFile);
+                    sequencesSeen.add(logFile.getSequence());
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -478,19 +513,21 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames),
                 rs -> {
-                    final List<LogFile> logs = new ArrayList<>();
+                    final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
                     while (rs.next()) {
-                        logs.add(new LogFile(
-                                rs.getString(1),
-                                Scn.valueOf(rs.getString(3)),
-                                Scn.valueOf(rs.getString(4)),
-                                BigInteger.valueOf(rs.getLong(2)),
-                                LogFile.Type.ARCHIVE,
-                                threadId));
+                        String destinationName = rs.getString(5);
+                        archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>())
+                                .add(new LogFile(
+                                        rs.getString(1),
+                                        Scn.valueOf(rs.getString(3)),
+                                        Scn.valueOf(rs.getString(4)),
+                                        BigInteger.valueOf(rs.getLong(2)),
+                                        LogFile.Type.ARCHIVE,
+                                        threadId));
                     }
-                    return logs;
+                    return mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames);
                 });
     }
 
@@ -510,7 +547,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames);
     }
 
     /**
