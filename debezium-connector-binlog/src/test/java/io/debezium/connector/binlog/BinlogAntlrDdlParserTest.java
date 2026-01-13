@@ -3453,6 +3453,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
         assertThat(table.defaultCharsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("id").charsetName()).isNull();
         assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
         assertThat(table.columnWithName("string1").length()).isEqualTo(255);
         assertThat(table.columnWithName("string2").charsetName()).isEqualTo("latin1");
@@ -3463,6 +3464,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
         table = tables.forTable(new TableId(null, null, "my_table"));
         assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("id").charsetName()).isNull();
         assertThat(table.columnWithName("string1").charsetName()).isEqualTo("utf8mb4");
         assertThat(table.columnWithName("string1").length()).isEqualTo(255);
         assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
