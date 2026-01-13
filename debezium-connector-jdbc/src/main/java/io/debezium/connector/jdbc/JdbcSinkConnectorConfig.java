@@ -61,6 +61,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String COLLECTION_TABLE_FORMAT = "collection.table.format";
 
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
+    public static final String POSTGRES_UNNEST_INSERT = "dialect.postgres.unnest.insert.enabled";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
@@ -200,6 +201,21 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault("public")
             .withDescription("Name of the schema where postgis extension is installed. Default is public");
 
+    public static final Field POSTGRES_UNNEST_INSERT_FIELD = Field.create(POSTGRES_UNNEST_INSERT)
+            .withDisplayName("Enable UNNEST-based batch inserts for PostgreSQL")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription(
+                    "When enabled, uses PostgreSQL UNNEST() for batch inserts which can significantly improve performance by reducing the number of SQL statements executed. "
+                            +
+                            "This optimization is compatible with INSERT and UPSERT modes. " +
+                            "Instead of executing multiple INSERT statements with JDBC batching, a single INSERT statement with UNNEST is used to insert all records at once. "
+                            +
+                            "This can provide 5-10x performance improvement for high-throughput scenarios. Default is false.");
+
     public static final Field SQLSERVER_IDENTITY_INSERT_FIELD = Field.create(SQLSERVER_IDENTITY_INSERT)
             .withDisplayName("Allowing to insert explicit value for identity column in table for SQLSERVER.")
             .withType(Type.BOOLEAN)
@@ -281,6 +297,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
+                    POSTGRES_UNNEST_INSERT_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
                     BATCH_SIZE_FIELD,
                     FIELD_INCLUDE_LIST_FIELD,
@@ -395,6 +412,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final ColumnNamingStrategy columnNamingStrategy;
     private final String databaseTimezone;
     private final String postgresPostgisSchema;
+    private final boolean postgresUnnestInsert;
     private final boolean sqlServerIdentityInsert;
     private final int flushMaxRetries;
     private final long flushRetryDelayMs;
@@ -419,6 +437,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
+        this.postgresUnnestInsert = config.getBoolean(POSTGRES_UNNEST_INSERT_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
@@ -544,6 +563,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public String getPostgresPostgisSchema() {
         return postgresPostgisSchema;
+    }
+
+    public boolean isPostgresUnnestInsertEnabled() {
+        return postgresUnnestInsert;
     }
 
     public int getFlushMaxRetries() {

@@ -5,148 +5,28 @@
  */
 package io.debezium.connector.jdbc;
 
-import java.sql.BatchUpdateException;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.List;
-import java.util.Set;
-
-import org.apache.kafka.connect.data.Struct;
-import org.hibernate.SharedSessionContract;
-import org.hibernate.Transaction;
-import org.hibernate.jdbc.Work;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
-import io.debezium.sink.valuebinding.ValueBindDescriptor;
-import io.debezium.util.Stopwatch;
 
 /**
- * Effectively writes the batches using Hibernate {@link Work}
+ * Interface for writing batches of records to the database.
+ * Implementations may use different strategies (standard JDBC batching, UNNEST, etc.)
  *
  * @author Mario Fiore Vitale
+ * @author Gaurav Miglani
  */
-public class RecordWriter {
+public interface RecordWriter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RecordWriter.class);
-    private final SharedSessionContract session;
-    private final QueryBinderResolver queryBinderResolver;
-    private final JdbcSinkConnectorConfig config;
-    private final DatabaseDialect dialect;
+    /**
+     * Write a list of records to the database using the provided SQL statement information.
+     *
+     * @param records the list of records to write
+     * @param sqlStatementInfo the SQL statement and metadata about the statement
+     */
+    void write(List<JdbcSinkRecord> records, SqlStatementInfo sqlStatementInfo);
 
-    public RecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver, JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
-        this.session = session;
-        this.queryBinderResolver = queryBinderResolver;
-        this.config = config;
-        this.dialect = dialect;
-    }
-
-    public void write(List<JdbcSinkRecord> records, String sqlStatement) {
-        Stopwatch writeStopwatch = Stopwatch.reusable();
-        writeStopwatch.start();
-        final Transaction transaction = session.beginTransaction();
-
-        try {
-            session.doWork(processBatch(records, sqlStatement));
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-        writeStopwatch.stop();
-        LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
-    }
-
-    private Work processBatch(List<JdbcSinkRecord> records, String sqlStatement) {
-        return conn -> {
-            try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
-
-                QueryBinder queryBinder = queryBinderResolver.resolve(prepareStatement);
-                Stopwatch allbindStopwatch = Stopwatch.reusable();
-                allbindStopwatch.start();
-                for (JdbcSinkRecord record : records) {
-
-                    Stopwatch singlebindStopwatch = Stopwatch.reusable();
-                    singlebindStopwatch.start();
-                    bindValues(record, queryBinder);
-                    singlebindStopwatch.stop();
-
-                    Stopwatch addBatchStopwatch = Stopwatch.reusable();
-                    addBatchStopwatch.start();
-                    prepareStatement.addBatch();
-                    addBatchStopwatch.stop();
-
-                    LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
-                    LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
-                }
-                allbindStopwatch.stop();
-                LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
-
-                Stopwatch executeStopwatch = Stopwatch.reusable();
-                executeStopwatch.start();
-                int[] batchResult = prepareStatement.executeBatch();
-                executeStopwatch.stop();
-                for (int updateCount : batchResult) {
-                    if (updateCount == Statement.EXECUTE_FAILED) {
-                        throw new BatchUpdateException("Execution failed for part of the batch", batchResult);
-                    }
-                }
-                LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
-            }
-        };
-    }
-
-    private void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
-        int index;
-        if (record.isDelete()) {
-            bindKeyValuesToQuery(record, queryBinder, 1);
-            return;
-        }
-
-        switch (config.getInsertMode()) {
-            case INSERT:
-            case UPSERT:
-                index = bindKeyValuesToQuery(record, queryBinder, 1);
-                bindNonKeyValuesToQuery(record, queryBinder, index);
-                break;
-            case UPDATE:
-                index = bindNonKeyValuesToQuery(record, queryBinder, 1);
-                bindKeyValuesToQuery(record, queryBinder, index);
-                break;
-        }
-    }
-
-    private int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        final Struct keySource = record.filteredKey();
-        if (keySource != null) {
-            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
-        }
-        return index;
-    }
-
-    private int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
-    }
-
-    private int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
-        for (String fieldName : fieldNames) {
-            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
-
-            Object value;
-            if (field.getSchema().isOptional()) {
-                value = source.getWithoutDefault(fieldName);
-            }
-            else {
-                value = source.get(fieldName);
-            }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
-
-            boundValues.forEach(query::bind);
-            index += boundValues.size();
-        }
-        return index;
+    /**
+     * Record containing SQL statement and metadata.
+     */
+    record SqlStatementInfo(String statement, boolean isBatchStatement) {
     }
 }

@@ -249,12 +249,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         Stopwatch flushBufferStopwatch = Stopwatch.reusable();
         Stopwatch tableChangesStopwatch = Stopwatch.reusable();
         if (!toFlush.isEmpty()) {
-            LOGGER.debug("Flushing records in JDBC Writer for table: {}", collectionId.name());
+            LOGGER.debug("Flushing {} records in JDBC Writer for table: {}", toFlush.size(), collectionId.name());
             tableChangesStopwatch.start();
             tableChangesStopwatch.stop();
-            String sqlStatement = getSqlStatement(table, toFlush.get(0));
+            RecordWriter.SqlStatementInfo sqlInfo = getSqlStatementInfo(table, toFlush);
             flushBufferStopwatch.start();
-            recordWriter.write(toFlush, sqlStatement);
+            recordWriter.write(toFlush, sqlInfo);
             flushBufferStopwatch.stop();
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
@@ -400,25 +400,53 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return readTable(collectionId);
     }
 
-    private String getSqlStatement(TableDescriptor table, JdbcSinkRecord record) {
-        if (!record.isDelete()) {
+    /**
+     * Get SQL statement for a list of records.
+     * Tries to use batch operations (like UNNEST for PostgreSQL) if available and enabled,
+     * otherwise falls back to standard single-record statement with JDBC batching.
+     */
+    private RecordWriter.SqlStatementInfo getSqlStatementInfo(TableDescriptor table, List<JdbcSinkRecord> records) {
+        if (records.isEmpty()) {
+            throw new DataException("Cannot generate SQL statement for empty record list");
+        }
+
+        // Get first record for basic checks and fallback
+        JdbcSinkRecord firstRecord = records.get(0);
+
+        if (!firstRecord.isDelete()) {
             switch (config.getInsertMode()) {
                 case INSERT:
-                    return dialect.getInsertStatement(table, record);
+                    // Try batch insert first (e.g., UNNEST for PostgreSQL)
+                    Optional<String> batchInsert = dialect.getBatchInsertStatement(table, records);
+                    if (batchInsert.isPresent()) {
+                        LOGGER.debug("Using batch INSERT statement with {} records", records.size());
+                        return new RecordWriter.SqlStatementInfo(batchInsert.get(), true);
+                    }
+                    return new RecordWriter.SqlStatementInfo(dialect.getInsertStatement(table, firstRecord), false);
+
                 case UPSERT:
-                    if (record.keyFieldNames().isEmpty()) {
+                    if (firstRecord.keyFieldNames().isEmpty()) {
                         throw new ConnectException("Cannot write to table " + table.getId().name() + " with no key fields defined.");
                     }
-                    return dialect.getUpsertStatement(table, record);
+                    // Try batch upsert first (e.g., UNNEST with ON CONFLICT for PostgreSQL)
+                    Optional<String> batchUpsert = dialect.getBatchUpsertStatement(table, records);
+                    if (batchUpsert.isPresent()) {
+                        LOGGER.debug("Using batch UPSERT statement with {} records", records.size());
+                        return new RecordWriter.SqlStatementInfo(batchUpsert.get(), true);
+                    }
+                    return new RecordWriter.SqlStatementInfo(dialect.getUpsertStatement(table, firstRecord), false);
+
                 case UPDATE:
-                    return dialect.getUpdateStatement(table, record);
+                    // UPDATE doesn't have batch optimization yet
+                    return new RecordWriter.SqlStatementInfo(dialect.getUpdateStatement(table, firstRecord), false);
             }
         }
         else {
-            return dialect.getDeleteStatement(table, record);
+            // DELETE doesn't have batch optimization yet
+            return new RecordWriter.SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false);
         }
 
-        throw new DataException(String.format("Unable to get SQL statement for %s", record));
+        throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
     }
 
     private void writeTruncate(String sql) throws SQLException {

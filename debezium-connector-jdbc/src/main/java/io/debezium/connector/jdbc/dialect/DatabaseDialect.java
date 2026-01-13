@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
@@ -141,6 +142,18 @@ public interface DatabaseDialect {
     String getInsertStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
+     * Construct a batch {@code INSERT INTO} statement for multiple records specific for this dialect.
+     * This method is used to generate optimized batch insert statements, such as using UNNEST for PostgreSQL.
+     *
+     * @param table the current relational table model, should not be {@code null}
+     * @param records the list of sink records to be inserted, should not be {@code null} or empty
+     * @return an optional containing the batch insert SQL statement if supported, or empty if not supported
+     */
+    default Optional<String> getBatchInsertStatement(TableDescriptor table, List<JdbcSinkRecord> records) {
+        return Optional.empty();
+    }
+
+    /**
      * Construct a {@code UPSERT} statement specific for this dialect.
      *
      * @param table the current relational table model, should not be {@code null}
@@ -148,6 +161,18 @@ public interface DatabaseDialect {
      * @return the upsert SQL statement to be executed, never {@code null}
      */
     String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record);
+
+    /**
+     * Construct a batch {@code UPSERT} statement for multiple records specific for this dialect.
+     * This method is used to generate optimized batch upsert statements, such as using UNNEST with ON CONFLICT for PostgreSQL.
+     *
+     * @param table the current relational table model, should not be {@code null}
+     * @param records the list of sink records to be upserted, should not be {@code null} or empty
+     * @return an optional containing the batch upsert SQL statement if supported, or empty if not supported
+     */
+    default Optional<String> getBatchUpsertStatement(TableDescriptor table, List<JdbcSinkRecord> records) {
+        return Optional.empty();
+    }
 
     /**
      * Construct a {@code UPDATE} statement specific for this dialect.

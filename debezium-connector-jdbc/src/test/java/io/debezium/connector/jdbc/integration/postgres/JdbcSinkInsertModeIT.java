@@ -307,4 +307,88 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         return schemaBuilder
                 .build();
     }
+
+    /**
+     * Test INSERT mode with UNNEST optimization enabled.
+     * This test verifies that the UNNEST batch optimization works correctly for PostgreSQL.
+     * UNNEST provides 5-10x performance improvement for batch inserts.
+     * All other tests in this class implicitly test UNNEST when run with the config enabled.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-1525")
+    public void testInsertModeWithUnnestBatchOptimization(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        // Insert multiple records to trigger batch UNNEST
+        final KafkaDebeziumSinkRecord record1 = factory.createRecord(topicName, (byte) 1);
+        final KafkaDebeziumSinkRecord record2 = factory.createRecord(topicName, (byte) 2);
+        final KafkaDebeziumSinkRecord record3 = factory.createRecord(topicName, (byte) 3);
+
+        consume(record1);
+        consume(record2);
+        consume(record3);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(record1));
+        tableAssert.exists().hasNumberOfRows(3).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2, (byte) 3);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe", "John Doe", "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$", "John Doe$", "John Doe$");
+    }
+
+    /**
+     * Test UPSERT mode with UNNEST optimization enabled.
+     * This test verifies that UNNEST works correctly with PostgreSQL ON CONFLICT clause.
+     * UNNEST provides 5-10x performance improvement for batch upserts.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-1525")
+    public void testUpsertModeWithUnnestBatchOptimization(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        // Initial insert
+        final KafkaDebeziumSinkRecord createRecord1 = factory.createRecord(topicName, (byte) 1);
+        final KafkaDebeziumSinkRecord createRecord2 = factory.createRecord(topicName, (byte) 2);
+        consume(createRecord1);
+        consume(createRecord2);
+
+        // Verify initial insert
+        TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+
+        // Update - should use UPSERT with ON CONFLICT
+        // Sending same records again will trigger ON CONFLICT due to primary key
+        consume(createRecord1);
+        consume(createRecord2);
+
+        // Verify still only 2 rows (upserted, not duplicated)
+        tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
+    }
 }

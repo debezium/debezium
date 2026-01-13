@@ -131,7 +131,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
             StatelessSession session = sessionFactory.openStatelessSession();
             DatabaseDialect databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
-            RecordWriter recordWriter = new RecordWriter(session, queryBinderResolver, config, databaseDialect);
+
+            // Instantiate the appropriate RecordWriter based on dialect and configuration
+            RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, databaseDialect);
 
             changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
@@ -182,6 +184,24 @@ public class JdbcSinkConnectorTask extends SinkTask {
         LOGGER.trace("[PERF] Total put execution time {}", putStopWatch.durations());
         LOGGER.trace("[PERF] Sink execute execution time {}", executeStopWatch.durations());
         LOGGER.trace("[PERF] Mark processed execution time {}", markProcessedStopWatch.durations());
+    }
+
+    /**
+     * Creates the appropriate RecordWriter based on dialect and configuration.
+     * If PostgreSQL UNNEST optimization is enabled, returns UnnestRecordWriter;
+     * otherwise returns StandardRecordWriter.
+     */
+    private RecordWriter createRecordWriter(StatelessSession session, QueryBinderResolver queryBinderResolver,
+                                            JdbcSinkConnectorConfig config, DatabaseDialect databaseDialect) {
+        // Use UNNEST writer when explicitly enabled (opt-in)
+        // This allows any PostgreSQL-compatible dialect to use UNNEST without code changes
+        if (config.isPostgresUnnestInsertEnabled()) {
+            LOGGER.info("Using UnnestRecordWriter for UNNEST optimization");
+            return new UnnestRecordWriter(session, queryBinderResolver, config, databaseDialect);
+        }
+
+        LOGGER.info("Using DefaultRecordWriter for standard JDBC batching");
+        return new DefaultRecordWriter(session, queryBinderResolver, config, databaseDialect);
     }
 
     @Override
