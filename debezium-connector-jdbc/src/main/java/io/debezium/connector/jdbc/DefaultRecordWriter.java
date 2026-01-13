@@ -1,0 +1,148 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.jdbc;
+
+import java.sql.BatchUpdateException;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.kafka.connect.data.Struct;
+import org.hibernate.SharedSessionContract;
+import org.hibernate.Transaction;
+import org.hibernate.jdbc.Work;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.util.Stopwatch;
+
+/**
+ * Default implementation that writes batches using standard JDBC batching (row-wise).
+ * Each record is bound individually and added to the JDBC batch.
+ *
+ * @author Mario Fiore Vitale
+ */
+public class DefaultRecordWriter extends AbstractRecordWriter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRecordWriter.class);
+
+    public DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
+                               JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+        super(session, queryBinderResolver, config, dialect);
+    }
+
+    @Override
+    public void write(List<JdbcSinkRecord> records, SqlStatementInfo sqlStatementInfo) {
+        Stopwatch writeStopwatch = Stopwatch.reusable();
+        writeStopwatch.start();
+        final Transaction transaction = getSession().beginTransaction();
+
+        try {
+            getSession().doWork(processBatch(records, sqlStatementInfo.statement()));
+            transaction.commit();
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+        writeStopwatch.stop();
+        LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
+    }
+
+    protected Work processBatch(List<JdbcSinkRecord> records, String sqlStatement) {
+        return conn -> {
+            try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
+
+                QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
+                Stopwatch allbindStopwatch = Stopwatch.reusable();
+                allbindStopwatch.start();
+                for (JdbcSinkRecord record : records) {
+
+                    Stopwatch singlebindStopwatch = Stopwatch.reusable();
+                    singlebindStopwatch.start();
+                    bindValues(record, queryBinder);
+                    singlebindStopwatch.stop();
+
+                    Stopwatch addBatchStopwatch = Stopwatch.reusable();
+                    addBatchStopwatch.start();
+                    prepareStatement.addBatch();
+                    addBatchStopwatch.stop();
+
+                    LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
+                    LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
+                }
+                allbindStopwatch.stop();
+                LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
+
+                Stopwatch executeStopwatch = Stopwatch.reusable();
+                executeStopwatch.start();
+                int[] batchResult = prepareStatement.executeBatch();
+                executeStopwatch.stop();
+                for (int updateCount : batchResult) {
+                    if (updateCount == Statement.EXECUTE_FAILED) {
+                        throw new BatchUpdateException("Execution failed for part of the batch", batchResult);
+                    }
+                }
+                LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
+            }
+        };
+    }
+
+    protected void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
+        int index;
+        if (record.isDelete()) {
+            bindKeyValuesToQuery(record, queryBinder, 1);
+            return;
+        }
+
+        switch (getConfig().getInsertMode()) {
+            case INSERT:
+            case UPSERT:
+                index = bindKeyValuesToQuery(record, queryBinder, 1);
+                bindNonKeyValuesToQuery(record, queryBinder, index);
+                break;
+            case UPDATE:
+                index = bindNonKeyValuesToQuery(record, queryBinder, 1);
+                bindKeyValuesToQuery(record, queryBinder, index);
+                break;
+        }
+    }
+
+    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+        final Struct keySource = record.filteredKey();
+        if (keySource != null) {
+            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
+        }
+        return index;
+    }
+
+    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
+    }
+
+    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
+        for (String fieldName : fieldNames) {
+            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
+
+            Object value;
+            if (field.getSchema().isOptional()) {
+                value = source.getWithoutDefault(fieldName);
+            }
+            else {
+                value = source.get(fieldName);
+            }
+            List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, index, value);
+
+            boundValues.forEach(query::bind);
+            index += boundValues.size();
+        }
+        return index;
+    }
+}
