@@ -11,6 +11,7 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -595,6 +596,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(connection.singleOptionalValue(anyString(), any()))
                     .thenThrow(new SQLException("ORA-01555 Snapshot too old", null, 1555));
         }
+        Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
         return connection;
     }
 

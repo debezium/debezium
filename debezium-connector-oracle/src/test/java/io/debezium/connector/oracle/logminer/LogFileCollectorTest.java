@@ -6,7 +6,9 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -2098,6 +2100,97 @@ public class LogFileCollectorTest {
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642815621860L), files, redoThreadState)).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithOneArchiveDestination() throws Exception {
+        final String destinationName = "LOG_ARCHIVE_DEST_1";
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>());
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        files.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, List.of(destinationName));
+        assertThat(results).hasSize(3);
+        assertThat(results).containsAll(files);
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestination() throws Exception {
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+            files.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+            files.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        });
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(3);
+        assertThat(results).containsAll(archiveLogsByDestination.get(destinationNames.get(0)));
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestinationWithLogMixtures() throws Exception {
+        final List<LogFile> expected = new ArrayList<>();
+        expected.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        expected.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        expected.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        expected.add(createArchiveLog("thread_2_seq_14690.24371.1193544929", 6642813831998L, 6642813832998L, 14690, 2));
+
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            if (!name.equals("LOG_ARCHIVE_DEST_3")) {
+                files.addAll(expected.subList(0, expected.size() - 1));
+            }
+            else {
+                files.addAll(expected);
+            }
+        });
+
+        // Expects first 3 archive logs from DEST 1 and last one from DEST 3
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(4);
+        assertThat(results).containsAll(expected);
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestinationWithLogMixturesAndDuplicates() throws Exception {
+        final List<LogFile> logs = new ArrayList<>();
+        logs.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        logs.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        logs.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        logs.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        logs.add(createArchiveLog("thread_2_seq_14690.24371.1193544929", 6642813831998L, 6642813832998L, 14690, 2));
+
+        final List<LogFile> expected = new ArrayList<>(logs.subList(0, 3));
+        expected.add(logs.get(logs.size() - 1));
+
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            if (!name.equals("LOG_ARCHIVE_DEST_3")) {
+                files.addAll(logs.subList(0, logs.size() - 2));
+            }
+            else {
+                files.addAll(logs);
+            }
+        });
+
+        // Expects first 3 archive logs from DEST 1 and last one from DEST 3
+        // The duplicate sequence 14691 in DEST 3 is ignored
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(4);
+        assertThat(results).containsAll(expected);
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }
@@ -2139,10 +2232,15 @@ public class LogFileCollectorTest {
     private OracleConnection getOracleConnectionMock(RedoThreadState state) throws SQLException {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.getRedoThreadState()).thenReturn(state);
+        Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
         return connection;
     }
 
     private OracleConnection getOracleConnectionMock(RedoThreadState state, List<LogFile> logFileQueryResult) throws SQLException {
+        return getOracleConnectionMock(state, logFileQueryResult, Collections.singletonList("LOG_ARCHIVE_DEST_1"));
+    }
+
+    private OracleConnection getOracleConnectionMock(RedoThreadState state, List<LogFile> logFileQueryResult, List<String> destinationNames) throws SQLException {
         final OracleConnection connection = getOracleConnectionMock(state);
 
         ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -2177,12 +2275,21 @@ public class LogFileCollectorTest {
         });
         Mockito.when(resultSet.getString(7)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getSequence().toString());
         Mockito.when(resultSet.getInt(10)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getThread());
+        Mockito.when(resultSet.getString(11)).thenAnswer(it -> destinationNames.get(0));
 
         Mockito.doAnswer(a -> {
             JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);
             consumer.accept(resultSet);
             return null;
         }).when(connection).query(anyString(), Mockito.any(JdbcConnection.ResultSetConsumer.class));
+
+        Mockito.doAnswer(a -> {
+            JdbcConnection.ResultSetMapper<?> consumer = a.getArgument(1);
+            return consumer.apply(resultSet);
+        }).when(connection).queryAndMap(anyString(), any(JdbcConnection.ResultSetMapper.class));
+
+        Mockito.when(connection.isArchiveLogDestinationValid(anyString())).thenAnswer(
+                invocation -> destinationNames.contains((String) invocation.getArgument(0)));
 
         return connection;
     }
