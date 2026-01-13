@@ -372,8 +372,10 @@ public class AlterTableParserListener extends TableCommonParserListener {
                         .map(
                                 column -> {
                                     final ColumnEditor columnEditor = column.edit();
-                                    columnEditor.charsetNameOfTable(charsetName);
-                                    columnEditor.charsetName(charsetName);
+                                    if (columnEditor.charsetName() != null) {
+                                        columnEditor.charsetNameOfTable(charsetName);
+                                        columnEditor.charsetName(charsetName);
+                                    }
                                     return columnEditor;
                                 })
                         .map(ColumnEditor::create)
