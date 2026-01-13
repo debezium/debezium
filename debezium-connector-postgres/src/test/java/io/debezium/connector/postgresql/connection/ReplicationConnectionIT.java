@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -629,5 +630,176 @@ public class ReplicationConnectionIT {
                 });
         connection.rollback();
         return lsnStr != null ? Lsn.valueOf(lsnStr) : null;
+    }
+
+    /**
+     * Tests that when a zombie connector acquires a replication slot after retries,
+     * and the slot's confirmed_flush_lsn has advanced beyond the connector's starting LSN,
+     * the connector detects this stale offset and throws an exception.
+     *
+     * This prevents split-brain scenarios where a zombie task processes events
+     * from a position that's behind what another task has already processed.
+     *
+     * Timeline:
+     * 1. Master acquires slot, processes events, advances LSN to X
+     * 2. Zombie reads offset (gets stale LSN = 1, which is behind X)
+     * 3. Zombie tries to acquire slot but master still has it → retries
+     * 4. Master releases slot
+     * 5. Zombie acquires slot after retry
+     * 6. Zombie's validateOffsetNotStale() detects LSN 1 < X → throws DebeziumException
+     */
+    @Test
+    @FixFor("debezium/dbz#1523")
+    public void shouldDetectStaleOffsetAfterSlotAcquisitionWithRetries() throws Exception {
+        final String slotName = "test_stale_offset";
+        TestHelper.create().dropReplicationSlot(slotName);
+
+        // Step 1: Master creates slot and processes events
+        Lsn slotLsnAfterMaster;
+        try (ReplicationConnection masterConn = TestHelper.createForReplication(slotName, false)) {
+            ReplicationStream masterStream = masterConn.startStreaming(new WalPositionLocator());
+
+            // Insert data and let master process it
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('master-event-1', now());");
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('master-event-2', now());");
+            expectedMessagesFromStream(masterStream, 2);
+
+            // Flush the LSN so confirmed_flush_lsn advances
+            masterStream.flushLsn(masterStream.lastReceivedLsn());
+            logger.info("Master processed events, flushed LSN: {}", masterStream.lastReceivedLsn());
+        }
+
+        // Step 2: Get slot's confirmed_flush_lsn after master released it
+        try (PostgresConnection conn = TestHelper.create()) {
+            var slotState = conn.getReplicationSlotState(slotName, TestHelper.decoderPlugin().getPostgresPluginName());
+            slotLsnAfterMaster = slotState.slotLastFlushedLsn();
+            logger.info("Slot confirmed_flush_lsn after master: {}", slotLsnAfterMaster);
+        }
+
+        // Step 3: Zombie has a STALE LSN (simulates reading old offset before master advanced it)
+        // This LSN is intentionally BEHIND the slot's confirmed_flush_lsn
+        Lsn staleZombieLsn = Lsn.valueOf(1L);
+        assertTrue(staleZombieLsn.compareTo(slotLsnAfterMaster) < 0,
+                "Stale LSN should be behind slot's position");
+        logger.info("Zombie will try to start from STALE LSN: {} (slot is at: {})",
+                staleZombieLsn, slotLsnAfterMaster);
+
+        // Step 4: Simulate the retry scenario
+        // First, occupy the slot temporarily so zombie has to retry
+        final AtomicReference<ReplicationConnection> occupyingConnRef = new AtomicReference<>();
+        final AtomicReference<DebeziumException> caughtException = new AtomicReference<>();
+
+        // Start occupying connection in background
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<?> occupyingTask = executor.submit(() -> {
+            try {
+                ReplicationConnection occupyingConn = TestHelper.createForReplication(slotName, false);
+                occupyingConnRef.set(occupyingConn);
+                occupyingConn.startStreaming(new WalPositionLocator());
+                // Hold slot for a bit, then release
+                Thread.sleep(500);
+                occupyingConn.close();
+                logger.info("Occupying connection released slot");
+            }
+            catch (Exception e) {
+                logger.error("Occupying connection error", e);
+            }
+        });
+
+        // Wait for occupying connection to acquire slot
+        Thread.sleep(200);
+
+        // Step 5: Zombie tries to connect with retries
+        // After retries succeed, it should detect stale offset
+        try (ReplicationConnection zombieConn = TestHelper.createForReplication(slotName, true,
+                new PostgresConnectorConfig(TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.MAX_RETRIES, 5)
+                        .with(PostgresConnectorConfig.RETRY_DELAY_MS, 200)
+                        .build()))) {
+
+            zombieConn.startStreaming(staleZombieLsn, new WalPositionLocator());
+            fail("Should have thrown DebeziumException for stale offset");
+        }
+        catch (DebeziumException e) {
+            caughtException.set(e);
+            logger.info("Caught expected exception: {}", e.getMessage());
+        }
+        finally {
+            occupyingTask.cancel(true);
+            executor.shutdownNow();
+            if (occupyingConnRef.get() != null) {
+                try {
+                    occupyingConnRef.get().close();
+                }
+                catch (Exception ignored) {
+                }
+            }
+        }
+
+        // Step 6: Verify the exception is about stale offset
+        assertNotNull(caughtException.get());
+        String errorMessage = caughtException.get().getMessage();
+        assertTrue(errorMessage.contains("Stale offset detected") ||
+                                errorMessage.contains("confirmed_flush_lsn") ||
+                                errorMessage.contains("split-brain"),
+                "Exception should mention stale offset detection. Actual: " + errorMessage);
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.dropReplicationSlot(slotName);
+        }
+    }
+
+    /**
+     * Tests that when a connector successfully acquires a slot on the first try
+     * (no retries), the offset validation is skipped and streaming proceeds normally.
+     */
+    @Test
+    @FixFor("debezium/dbz#1523")
+    public void shouldSucceedWithoutRetriesWhenSlotIsAvailable() throws Exception {
+        final String slotName = "test_no_retry";
+        TestHelper.create().dropReplicationSlot(slotName);
+
+        try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
+            // This should succeed on first try - no retries, no stale offset check
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
+
+            // Insert and verify we receive messages
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('no-retry-test', now());");
+            expectedMessagesFromStream(stream, 1);
+
+            logger.info("Successfully started streaming without retries");
+        }
+    }
+
+    /**
+     * Tests that the stale offset detection works correctly when the zombie's
+     * starting LSN matches the slot's confirmed_flush_lsn (not stale).
+     */
+    @Test
+    @FixFor("debezium/dbz#1523")
+    public void shouldSucceedWhenOffsetMatchesSlotPosition() throws Exception {
+        final String slotName = "test_matching_offset";
+        TestHelper.create().dropReplicationSlot(slotName);
+
+        // Start connection, process some events, then restart from the last known position
+        Lsn lastLsn;
+        try (ReplicationConnection conn1 = TestHelper.createForReplication(slotName, false)) {
+            ReplicationStream stream1 = conn1.startStreaming(new WalPositionLocator());
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('matching-offset-test', now());");
+            expectedMessagesFromStream(stream1, 1);
+            stream1.flushLsn(stream1.lastReceivedLsn());
+            lastLsn = stream1.lastReceivedLsn();
+            logger.info("First connection processed events, last LSN: {}", lastLsn);
+        }
+
+        // Second connection starts from the exact same LSN - should succeed
+        try (ReplicationConnection conn2 = TestHelper.createForReplication(slotName, true)) {
+            ReplicationStream stream2 = conn2.startStreaming(lastLsn, new WalPositionLocator());
+            logger.info("Second connection successfully started from LSN: {}", lastLsn);
+
+            // Should be able to receive new events
+            TestHelper.execute("INSERT INTO table_with_pk (b, c) VALUES('new-event', now());");
+            expectedMessagesFromStream(stream2, 1);
+        }
     }
 }

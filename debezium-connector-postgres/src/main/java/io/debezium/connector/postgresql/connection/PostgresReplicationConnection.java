@@ -28,6 +28,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.postgresql.spi.SlotState;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.ServerVersion;
@@ -694,7 +695,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
                     validateSlotIsInExpectedState(walPosition);
                 }
-                return createReplicationStream(lsn, walPosition);
+                ReplicationStream stream = createReplicationStream(lsn, walPosition);
+
+                if (tryCount > 0) {
+                    validateOffsetNotStale(lsn, tryCount);
+                }
+
+                return stream;
+
             }
             catch (Exception e) {
                 String message = "Failed to start replication stream at " + lsn;
@@ -871,6 +879,50 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             return Optional.ofNullable(slotCreationInfo);
+        }
+    }
+
+    /**
+     * Validates that the offset we're starting from hasn't been advanced by another task
+     * while we were retrying to acquire the replication slot. This prevents split-brain
+     * scenarios debezium/dbz#1523 where a zombie task starts streaming from a stale offset.
+     *
+     * @param startingLsn the LSN we intend to start streaming from
+     * @param retryCount the number of retries that occurred before acquiring the slot
+     * @throws DebeziumException if the slot's confirmed_flush_lsn is ahead of our starting position
+     */
+    private void validateOffsetNotStale(Lsn startingLsn, int retryCount) throws SQLException {
+        if (startingLsn == null || !startingLsn.isValid()) {
+            LOGGER.debug("No starting LSN to validate, skipping stale offset check");
+            return;
+        }
+
+        SlotState slotState = jdbcConnection.getReplicationSlotState(slotName, connectorConfig.plugin().getPostgresPluginName());
+        if (slotState == null) {
+            LOGGER.warn("Could not retrieve slot state for stale offset validation");
+            return;
+        }
+
+        Lsn confirmedFlushLsn = slotState.slotLastFlushedLsn();
+        if (confirmedFlushLsn == null || !confirmedFlushLsn.isValid()) {
+            LOGGER.debug("No confirmed_flush_lsn available for slot, skipping stale offset check");
+            return;
+        }
+
+        // If the slot's confirmed position is ahead of where we're starting,
+        // it means another task advanced the offset while we were retrying
+        if (confirmedFlushLsn.compareTo(startingLsn) > 0) {
+            throw new DebeziumException(
+                    String.format("Stale offset detected after %d retry attempt(s) to acquire replication slot '%s'. " +
+                                    "Our starting LSN is %s but the slot's confirmed_flush_lsn is %s. " +
+                                    "This indicates another connector task advanced the offset while we were waiting. " +
+                                    "This is a split-brain scenario (DBZ-3068) that could lead to data inconsistency. " +
+                                    "Please ensure only one connector task is using this replication slot.",
+                            retryCount, slotName, startingLsn, confirmedFlushLsn));
+        }
+        else {
+            LOGGER.info("Offset validation passed after {} retry attempt(s). Starting LSN: {}, Slot confirmed_flush_lsn: {}",
+                    retryCount, startingLsn, confirmedFlushLsn);
         }
     }
 

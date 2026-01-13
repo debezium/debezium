@@ -889,6 +889,13 @@ public class PostgresConnection extends JdbcConnection {
             if (slotState == null) {
                 return false;
             }
+            if (slotState.slotIsActive()) {
+                throw new DebeziumException(
+                    "The replication slot '" +  slotName  + "' is already active. "
+                        + "This means that another Postgres connector is using this slot. "
+                        + "Each Postgres connector must use its own unique replication slot.");
+
+            }
             LOGGER.info("Slot '{}' has restart LSN '{}'", slotName, slotState.slotRestartLsn());
             return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) <= 0;
         }
