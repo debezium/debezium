@@ -228,7 +228,7 @@ jobs:
         with:
           repository: debezium/debezium-server
           path: server
-          ref: ${{ github.event.pull_request.base.ref }} 
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -627,3 +627,11 @@ jobs:
       - uses: ./.github/actions/build-debezium-testing
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+  build_platform_conductor:
+    name: "Debezium Platform - conductor"
+    needs: [ check_style, file_changes ]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    uses: ./.github/workflows/platform-conductor-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-build
