@@ -1,0 +1,32 @@
+name: "Build Platform Conductor"
+description: "Builds the Debezium Platform backend"
+
+inputs:
+  path-conductor:
+    description: "Debezium Platform conductor repository checkout path"
+    required: true
+  maven-cache-key:
+    description: "Maven cache key from debezium CI build_cache job"
+    required: false
+    default: ''
+
+outputs:
+  cache_key:
+    description: "The cache key for the Maven repository"
+    value: ${{ steps.build-cache.outputs.cache_key }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build and cache dependencies
+      id: build-cache
+      uses: debezium/debezium-platform/.github/actions/build-cache@main
+      with:
+        working-directory: ${{ inputs.path-conductor }}
+        maven-cache-key: ${{ inputs.maven-cache-key }}
+
+    - name: Run tests
+      uses: debezium/debezium-platform/.github/actions/tests@main
+      with:
+        working-directory: ${{ inputs.path-conductor }}
+        cache-key: ${{ steps.build-cache.outputs.cache_key }}
