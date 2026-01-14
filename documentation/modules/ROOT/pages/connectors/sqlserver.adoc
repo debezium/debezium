@@ -1998,7 +1998,8 @@ SQL Server CDC must be enabled for every table that you want to capture.
 . From the *View* menu in SQL Server Management Studio, click *Template Explorer*.
 . In the *Template Browser*, expand *SQL Server Templates*.
 . Expand *Change Data Capture > Configuration*, and then click *Enable Table Specifying Filegroup Option*.
-. In the template, replace the table name in the `USE` statement with the name of the table that you want to capture.
+. In the template, replace the database name in the `USE` statement with the name of the database that you want to capture.
+. Replace the `source_schema`, the `source_name`, the `role_name` and the `filegroup_name` parameters with the table's schema name, the table name, the database user or role name used by {prodname}, and the filegroup name. You can use `CTRL+SHIFT+M` to open a parameters' replacement dialog box.
 . Run the stored procedure `sys.sp_cdc_enable_table`.
 +
 The following example shows how to enable CDC for the table `MyTable`:
