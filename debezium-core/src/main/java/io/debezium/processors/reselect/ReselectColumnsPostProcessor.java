@@ -38,12 +38,15 @@ import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.util.ByteBuffers;
 import io.debezium.util.Strings;
 
@@ -55,7 +58,7 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 @Incubating
-public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistryAware {
+public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistryAware, ServiceRegistryAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
 
@@ -79,6 +82,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private List<Long> unavailablePlaceholderLongArray;
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
+    private CustomConverterRegistry customConverterRegistry;
 
     public static final Field ERROR_HANDLING_MODE = Field.create("reselect.error.handling.mode")
             .withDisplayName("Error Handling")
@@ -228,7 +232,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                     final Column column = table.columnWithName(columnName);
                     final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
 
-                    final Object convertedValue = getConvertedValue(column, field, rs.getObject(columnName));
+                    final Object convertedValue = getConvertedValue(tableId, column, field, rs.getObject(columnName));
                     if (LOGGER.isTraceEnabled()) {
                         LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
                     }
@@ -271,6 +275,11 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
         this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
         this.schema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, RelationalDatabaseSchema.class);
+    }
+
+    @Override
+    public void injectServiceRegistry(ServiceRegistry serviceRegistry) {
+        this.customConverterRegistry = serviceRegistry.tryGetService(CustomConverterRegistry.class);
     }
 
     private Object resolveKeyFieldValue(Struct key, org.apache.kafka.connect.data.Field field) {
@@ -364,8 +373,9 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         }
     }
 
-    private Object getConvertedValue(Column column, org.apache.kafka.connect.data.Field field, Object value) {
-        final ValueConverter converter = valueConverterProvider.converter(column, field);
+    private Object getConvertedValue(TableId tableId, Column column, org.apache.kafka.connect.data.Field field, Object value) {
+        final ValueConverter converter = customConverterRegistry.getValueConverter(tableId, column)
+                .orElse(valueConverterProvider.converter(column, field));
         if (converter != null) {
             return converter.convert(value);
         }
