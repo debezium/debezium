@@ -16,6 +16,8 @@ import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.service.Service;
 import io.debezium.service.spi.InjectService;
+import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.service.spi.Startable;
 
 /**
@@ -24,11 +26,12 @@ import io.debezium.service.spi.Startable;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class PostProcessorRegistry implements Service, Startable, Closeable {
+public class PostProcessorRegistry implements Service, Startable, Closeable, ServiceRegistryAware {
 
     @Immutable
     private final List<PostProcessor> processors;
     private BeanRegistry beanRegistry;
+    private ServiceRegistry serviceRegistry;
 
     public PostProcessorRegistry(List<PostProcessor> processors) {
         if (processors == null) {
@@ -45,10 +48,18 @@ public class PostProcessorRegistry implements Service, Startable, Closeable {
     }
 
     @Override
+    public void injectServiceRegistry(ServiceRegistry serviceRegistry) {
+        this.serviceRegistry = serviceRegistry;
+    }
+
+    @Override
     public void start() {
         for (PostProcessor postProcessor : processors) {
             if (postProcessor instanceof BeanRegistryAware) {
                 ((BeanRegistryAware) postProcessor).injectBeanRegistry(beanRegistry);
+            }
+            if (postProcessor instanceof ServiceRegistryAware) {
+                ((ServiceRegistryAware) postProcessor).injectServiceRegistry(serviceRegistry);
             }
         }
     }

@@ -11,12 +11,15 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -35,6 +39,8 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.AbstractReselectProcessorTest;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
+import io.debezium.spi.converter.CustomConverter;
+import io.debezium.spi.converter.RelationalColumn;
 
 /**
  * Oracle's integration tests for {@link ReselectColumnsPostProcessor}.
@@ -415,6 +421,88 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
         }
         finally {
             TestHelper.dropTable(connection, "dbz4321");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1527")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with hybrid")
+    public void testReselectWithCustomConverter() throws Exception {
+        TestHelper.dropTable(connection, "dbz4321");
+        try {
+            connection.execute("CREATE TABLE dbz4321 (id number primary key, data2 numeric(9,0), data clob)");
+            TestHelper.streamTable(connection, "dbz4321");
+
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
+                    .with("converters", "clobcustom")
+                    .with("clobcustom.type", ClobValueToBoolean.class)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingStarted();
+
+            // Insert will always include the data
+            final String clobData = RandomStringUtils.randomAlphanumeric(10000);
+            final Clob clob = connection.connection().createClob();
+            clob.setString(1, clobData);
+            connection.prepareQuery("INSERT INTO dbz4321 (id,data,data2) values (1,?,1)", ps -> ps.setClob(1, clob), null);
+            connection.commit();
+
+            // Update row without changing clob
+            connection.execute("UPDATE dbz4321 set data2=10 where id = 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+
+            final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ4321");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update = tableRecords.get(1);
+
+            Struct after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("DATA")).isEqualTo(true);
+            assertThat(after.get("DATA2")).isEqualTo(10);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4321");
+        }
+    }
+
+    // Converts a clob column to true if not empty, otherwise to false if NOT NULL or null if nullable
+    public static class ClobValueToBoolean implements CustomConverter<SchemaBuilder, RelationalColumn> {
+        @Override
+        public void configure(Properties props) {
+        }
+
+        @Override
+        public void converterFor(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
+            if (!"CLOB".equalsIgnoreCase(field.typeName())) {
+                return;
+            }
+
+            registration.register(SchemaBuilder.bool(), x -> {
+                if (x == null) {
+                    if (field.isOptional()) {
+                        return null;
+                    }
+                    return false;
+                }
+                if (x instanceof String data) {
+                    return !data.isEmpty();
+                }
+                else if (x instanceof Clob clob) {
+                    try {
+                        return clob.length() > 0;
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException("Failed to get clob length", e);
+                    }
+                }
+                return null;
+            });
         }
     }
 }
