@@ -339,7 +339,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
-
                 if (resolvedType.isEnumType()) {
                     return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
@@ -553,6 +552,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
                 if (resolvedType.isArrayType()) {
                     return createArrayConverter(column, fieldDefn);
+                }
+
+                // Enum types don't have a JDBC converter, but we need to return a converter that passes through the string value
+                if (resolvedType.isEnumType()) {
+                    return data -> convertString(column, fieldDefn, data);
                 }
 
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
