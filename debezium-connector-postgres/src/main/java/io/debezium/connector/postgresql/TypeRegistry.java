@@ -70,7 +70,7 @@ public class TypeRegistry {
     private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel) as values "
             + "FROM pg_catalog.pg_enum t GROUP BY id";
 
-    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
+    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, n.nspname AS schema_name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
@@ -138,13 +138,19 @@ public class TypeRegistry {
         }
     }
 
-    private void addType(PostgresType type) {
+    private void addType(PostgresType type, String schemaName) {
         oidToType.put(type.getOid(), type);
-        if (!nameToType.containsKey(type.getName())) {
-            nameToType.put(type.getName(), type);
+
+        // Use schema-qualified name as primary key to avoid collisions across schemas
+        String qualifiedName = schemaName != null
+                ? schemaName + "." + type.getName()
+                : type.getName();
+
+        if (!nameToType.containsKey(qualifiedName)) {
+            nameToType.put(qualifiedName, type);
         }
         else {
-            LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), type.getName());
+            LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
         }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
@@ -213,6 +219,27 @@ public class TypeRegistry {
 
     /**
      *
+     * @param schemaName - PostgreSQL schema name
+     * @param typeName - PostgreSQL type name
+     * @return type associated with the given type name
+     */
+    public PostgresType get(String schemaName, String typeName) {
+        String qualifiedName = schemaName + "." + typeName;
+        PostgresType r = nameToType.get(qualifiedName);
+        if (r != null) {
+            return r;
+        }
+        String cleanName = stripQuotes(typeName);
+        r = resolveUnknownType(cleanName);
+        if (r == null) {
+            LOGGER.warn("Unknown type named {} in schema {} requested", cleanName, schemaName);
+            r = PostgresType.UNKNOWN;
+        }
+        return r;
+    }
+
+    /**
+     *
      * @param name - PostgreSQL type name
      * @return type associated with the given type name
      */
@@ -228,22 +255,64 @@ public class TypeRegistry {
                 name = "int8";
                 break;
         }
-        String[] parts = name.split("\\.");
-        if (parts.length > 1) {
-            name = parts[1];
-        }
-        if (name.charAt(0) == '"') {
-            name = name.substring(1, name.length() - 1);
-        }
+
+        // First, try the name as-is
         PostgresType r = nameToType.get(name);
-        if (r == null) {
-            r = resolveUnknownType(name);
-            if (r == null) {
-                LOGGER.warn("Unknown type named {} requested", name);
-                r = PostgresType.UNKNOWN;
+        if (r != null) {
+            return r;
+        }
+
+        // Handle quoted identifiers like "compassus"."note_type"
+        // Split by '.', strip quotes from each part, and reconstruct
+        String[] parts = name.split("\\.");
+        String[] cleanParts = new String[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            cleanParts[i] = stripQuotes(parts[i]);
+        }
+
+        // Try schema-qualified name (schema.typename)
+        if (cleanParts.length > 1) {
+            String qualifiedName = String.join(".", cleanParts);
+            r = nameToType.get(qualifiedName);
+            if (r != null) {
+                return r;
+            }
+
+            // Try just the unqualified type name (last part)
+            String unqualifiedName = cleanParts[cleanParts.length - 1];
+            r = nameToType.get(unqualifiedName);
+            if (r != null) {
+                return r;
             }
         }
+        else {
+            // Single part name, try without quotes
+            String unquotedName = cleanParts[0];
+            r = nameToType.get(unquotedName);
+            if (r != null) {
+                return r;
+            }
+        }
+
+        // Try to resolve from database using the cleaned name
+        String cleanName = cleanParts.length > 1
+                ? cleanParts[cleanParts.length - 1] // Use unqualified for DB lookup
+                : cleanParts[0];
+        r = resolveUnknownType(cleanName);
+        if (r == null) {
+            LOGGER.warn("Unknown type named {} requested", name);
+            r = PostgresType.UNKNOWN;
+        }
         return r;
+    }
+
+    private static String stripQuotes(String identifier) {
+        if (identifier != null && identifier.length() >= 2
+                && identifier.charAt(0) == '"'
+                && identifier.charAt(identifier.length() - 1) == '"') {
+            return identifier.substring(1, identifier.length() - 1);
+        }
+        return identifier;
     }
 
     public Map<String, PostgresType> getRegisteredTypes() {
@@ -383,34 +452,38 @@ public class TypeRegistry {
     private void prime() throws SQLException {
         try (Statement statement = connection.connection().createStatement();
                 ResultSet rs = statement.executeQuery(SQL_TYPES)) {
-            final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
+            final List<TypeBuilderWithSchema> delayResolvedBuilders = new ArrayList<>();
             while (rs.next()) {
-                PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
+                TypeBuilderWithSchema builderWithSchema = createTypeBuilderFromResultSet(rs);
 
                 // If the type does have a base type, we can build/add immediately.
-                if (!builder.hasParentType()) {
-                    addType(builder.build());
+                if (!builderWithSchema.builder().hasParentType()) {
+                    addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
                     continue;
                 }
 
                 // For types with base type mappings, they need to be delayed.
-                delayResolvedBuilders.add(builder);
+                delayResolvedBuilders.add(builderWithSchema);
             }
 
             // Resolve delayed builders
-            for (PostgresType.Builder builder : delayResolvedBuilders) {
-                addType(builder.build());
+            for (TypeBuilderWithSchema builderWithSchema : delayResolvedBuilders) {
+                addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
             }
         }
     }
 
-    private PostgresType.Builder createTypeBuilderFromResultSet(ResultSet rs) throws SQLException {
+    private record TypeBuilderWithSchema(PostgresType.Builder builder, String schemaName) {
+    }
+
+    private TypeBuilderWithSchema createTypeBuilderFromResultSet(ResultSet rs) throws SQLException {
         // Coerce long to int so large unsigned values are represented as signed
         // Same technique is used in TypeInfoCache
         final int oid = (int) rs.getLong("oid");
         final int parentTypeOid = (int) rs.getLong("parentoid");
         final int modifiers = (int) rs.getLong("modifiers");
         String typeName = rs.getString("name");
+        String schemaName = rs.getString("schema_name");
         String category = rs.getString("category");
 
         PostgresType.Builder builder = new PostgresType.Builder(
@@ -428,7 +501,7 @@ public class TypeRegistry {
         else if (CATEGORY_ARRAY.equals(category)) {
             builder = builder.elementType((int) rs.getLong("element"));
         }
-        return builder.parentType(parentTypeOid);
+        return new TypeBuilderWithSchema(builder.parentType(parentTypeOid), schemaName);
     }
 
     private PostgresType resolveUnknownType(String name) {
@@ -462,8 +535,9 @@ public class TypeRegistry {
     private PostgresType loadType(PreparedStatement statement) throws SQLException {
         try (ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
-                PostgresType result = createTypeBuilderFromResultSet(rs).build();
-                addType(result);
+                TypeBuilderWithSchema builderWithSchema = createTypeBuilderFromResultSet(rs);
+                PostgresType result = builderWithSchema.builder().build();
+                addType(result, builderWithSchema.schemaName());
                 return result;
             }
         }
