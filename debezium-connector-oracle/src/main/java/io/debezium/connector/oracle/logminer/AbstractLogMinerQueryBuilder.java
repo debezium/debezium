@@ -94,7 +94,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      */
     protected String getMultiTenantPredicate() {
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-            return "SRC_CON_NAME = '" + connectorConfig.getPdbName() + "'";
+            if (pdbName.startsWith("\"") && pdbName.endsWith("\"") && pdbName.length() > 2) {
+                pdbName = pdbName.substring(1, pdbName.length() - 1);
+            }
+            return "SRC_CON_NAME = '" + pdbName + "'";
         }
         return EMPTY;
     }
