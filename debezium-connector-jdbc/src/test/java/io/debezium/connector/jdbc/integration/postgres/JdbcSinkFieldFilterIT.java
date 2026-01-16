@@ -18,9 +18,10 @@ import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
 
@@ -40,9 +41,9 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testFieldIncludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldIncludeListWithInsertMode(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
@@ -50,6 +51,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.FIELD_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -64,9 +66,9 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testFieldExcludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldExcludeListWithInsertMode(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
@@ -74,6 +76,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.FIELD_EXCLUDE_LIST, topicName + ":name");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -89,9 +92,9 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testFieldIncludeListWithUpsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldIncludeListWithUpsertMode(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
@@ -101,6 +104,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.FIELD_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();

@@ -35,6 +35,8 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
@@ -65,9 +67,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     @WithPostgresExtension("postgis")
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6637")
-    public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory) throws SQLException {
+    public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
@@ -75,6 +77,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -134,14 +137,16 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     @WithPostgresExtension("postgis")
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-8221")
-    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory) throws SQLException {
+    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+        properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "true");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -190,9 +195,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6682")
-    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithQuotedIdentifiers(SinkRecordFactory factory) {
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithQuotedIdentifiers(SinkRecordFactory factory, PostgresInsertMode insertMode) {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
@@ -200,6 +205,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
         properties.put(JdbcSinkConnectorConfig.QUOTE_IDENTIFIERS, "true");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -222,15 +228,16 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6682")
-    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithoutQuotedIdentifiers(SinkRecordFactory factory) {
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithoutQuotedIdentifiers(SinkRecordFactory factory, PostgresInsertMode insertMode) {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -253,15 +260,16 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7920")
-    public void testInsertModeInsertInfinityValues(SinkRecordFactory factory) throws SQLException {
+    public void testInsertModeInsertInfinityValues(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
