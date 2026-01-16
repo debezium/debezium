@@ -702,13 +702,10 @@ public class PostgresConnection extends JdbcConnection {
             // For all types, we need to set the Native and Jdbc types by using the root-type
             String typeName = column.typeName();
             PostgresType nativeType;
-            if (typeName.contains(".")) {
-                // Type name is already schema-qualified, use it directly
+            // First try schema-qualified lookup (most common case)
+            nativeType = getTypeRegistry().get(tableId.schema(), typeName);
+            if (nativeType == PostgresType.UNKNOWN) {
                 nativeType = getTypeRegistry().get(typeName);
-            }
-            else {
-                // Type name is unqualified, use schema-qualified lookup
-                nativeType = getTypeRegistry().get(tableId.schema(), typeName);
             }
             column.nativeType(nativeType.getRootType().getOid());
             column.jdbcType(nativeType.getRootType().getJdbcId());
