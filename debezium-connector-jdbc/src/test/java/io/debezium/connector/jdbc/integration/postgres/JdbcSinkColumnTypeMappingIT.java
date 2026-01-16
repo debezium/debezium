@@ -24,9 +24,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
@@ -47,27 +48,27 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6589")
-    public void testShouldCoerceStringTypeToUuidColumnType(SinkRecordFactory factory) throws Exception {
-        shouldCoerceStringTypeToColumnType(factory, "uuid", "9bc6a215-84b5-4865-a058-9156427c887a", "f54c2926-076a-4db0-846f-14cad99a8307");
+    public void testShouldCoerceStringTypeToUuidColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        shouldCoerceStringTypeToColumnType(factory, insertMode, "uuid", "9bc6a215-84b5-4865-a058-9156427c887a", "f54c2926-076a-4db0-846f-14cad99a8307");
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6589")
-    public void testShouldCoerceStringTypeToJsonColumnType(SinkRecordFactory factory) throws Exception {
-        shouldCoerceStringTypeToColumnType(factory, "json", "{\"id\": 12345}", "{\"id\": 67890}");
+    public void testShouldCoerceStringTypeToJsonColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        shouldCoerceStringTypeToColumnType(factory, insertMode, "json", "{\"id\": 12345}", "{\"id\": 67890}");
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6589")
-    public void testShouldCoerceStringTypeToJsonbColumnType(SinkRecordFactory factory) throws Exception {
-        shouldCoerceStringTypeToColumnType(factory, "jsonb", "{\"id\": 12345}", "{\"id\": 67890}");
+    public void testShouldCoerceStringTypeToJsonbColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        shouldCoerceStringTypeToColumnType(factory, insertMode, "jsonb", "{\"id\": 12345}", "{\"id\": 67890}");
     }
 
-    private void shouldCoerceStringTypeToColumnType(SinkRecordFactory factory, String columnType, String insertValue,
+    private void shouldCoerceStringTypeToColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode, String columnType, String insertValue,
                                                     String updateValue)
             throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
@@ -75,6 +76,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "false");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -107,13 +109,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6967")
-    public void testShouldCoerceNioByteBufferTypeToByteArrayColumnType(SinkRecordFactory factory) throws Exception {
+    public void testShouldCoerceNioByteBufferTypeToByteArrayColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -146,13 +149,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithTextArrayWithASingleValue(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithTextArrayWithASingleValue(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -180,13 +184,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithTextArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithTextArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -214,13 +219,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithTextArrayWithNullValues(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithTextArrayWithNullValues(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -248,13 +254,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithNullTextArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithNullTextArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -283,13 +290,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithEmptyArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithEmptyArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -317,13 +325,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithCharacterVaryingArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithCharacterVaryingArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -351,13 +360,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithIntArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithIntArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -385,13 +395,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7752")
-    public void testShouldWorkWithBoolArray(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithBoolArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -419,13 +430,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7938")
-    public void testShouldWorkWithMultipleArraysWithDifferentTypes(SinkRecordFactory factory) throws Exception {
+    public void testShouldWorkWithMultipleArraysWithDifferentTypes(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
