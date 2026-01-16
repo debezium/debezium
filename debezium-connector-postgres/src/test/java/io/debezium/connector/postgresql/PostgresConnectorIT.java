@@ -78,6 +78,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.PostgresDatabaseVersionResolver;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
@@ -3879,5 +3880,59 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(records.topics()).hasSize(3);
 
         stopConnector();
+    }
+
+    @Test
+    public void shouldFailWithCorrectErrorMessageWhenSlotIsActive() throws Exception {
+        // Start with a clean slate
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+
+        // Create the s1 schema and s1.a table
+        TestHelper.execute(CREATE_TABLES_STMT);
+
+        final String slotName = "error_message_test_slot";
+        TestHelper.create().dropReplicationSlot(slotName);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .build();
+
+        // Step 1: Start connector to establish a previous offset
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for connector to be ready then insert data
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Insert some data so the connector processes events and has a valid offset
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (1);");
+        consumeRecordsByTopic(1);
+
+        // Stop the connector (but keep the slot)
+        stopConnector();
+
+        // Step 2: Occupy the slot with another connection
+        try (ReplicationConnection activeConnection = TestHelper.createForReplication(slotName, false)) {
+            activeConnection.startStreaming(new WalPositionLocator());
+
+            // Step 3: Try to restart connector - now it has a previous offset
+            // and validateLogPosition will be called, triggering the fail-fast check
+            start(PostgresConnector.class, config, (success, msg, error) -> {
+                assertThat(success).isFalse();
+                assertThat(error).isInstanceOf(DebeziumException.class);
+                String errorMessage = error.getMessage();
+                assertThat(errorMessage).contains("replication slot '" + slotName + "' is already active");
+                assertThat(errorMessage).contains("another Postgres connector is using this slot");
+                assertThat(errorMessage).contains("Each Postgres connector must use its own unique replication slot");
+            });
+            assertConnectorNotRunning();
+        }
+        finally {
+            TestHelper.create().dropReplicationSlot(slotName);
+        }
     }
 }
