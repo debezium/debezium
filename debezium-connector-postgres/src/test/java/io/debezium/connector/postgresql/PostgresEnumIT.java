@@ -1,3 +1,9 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.topicName;
@@ -49,12 +55,14 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
                 "DROP TABLE IF EXISTS test.int_test CASCADE;",
                 "DROP TYPE IF EXISTS public.test_type CASCADE;",
                 "DROP TYPE IF EXISTS test.test_type CASCADE;",
+                "DROP TYPE IF EXISTS \"bug.status\" CASCADE;",
                 "DROP DOMAIN IF EXISTS public.test_type CASCADE;",
                 "DROP DOMAIN IF EXISTS test.test_type CASCADE;",
                 "CREATE SCHEMA IF NOT EXISTS test;",
                 "CREATE TYPE public.test_type AS ENUM ('X', 'Y');",
                 "CREATE DOMAIN test.test_type AS INTEGER;",
-                "CREATE TABLE public.enum_test (id int4 NOT NULL, value public.test_type DEFAULT 'X'::public.test_type, CONSTRAINT enum_test_pkey PRIMARY KEY (id));",
+                "CREATE TYPE \"bug.status\" AS ENUM ('new', 'open', 'closed');",
+                "CREATE TABLE public.enum_test (id int4 NOT NULL, value public.test_type DEFAULT 'X'::public.test_type, status \"bug.status\" DEFAULT 'new'::\"bug.status\", CONSTRAINT enum_test_pkey PRIMARY KEY (id));",
                 "CREATE TABLE test.int_test (id int4 NOT NULL, value test.test_type DEFAULT 42, CONSTRAINT int_test_pkey PRIMARY KEY (id));",
                 "CREATE TYPE test.test_type2 AS ENUM ('A', 'B');",
                 "CREATE DOMAIN public.test_type2 AS INTEGER;",
@@ -72,7 +80,7 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         assertThat(typeRegistryLogInterceptor.containsWarnMessage("is already mapped")).isTrue();
 
         TestHelper.execute(
-                "INSERT INTO public.enum_test(id, value) VALUES (1, 'Y'::public.test_type);",
+                "INSERT INTO public.enum_test(id, value, status) VALUES (1, 'Y'::public.test_type, 'open'::\"bug.status\");",
                 "INSERT INTO test.int_test(id, value) VALUES (1, 123);");
 
         SourceRecords records = consumeRecordsByTopic(2);
@@ -84,6 +92,7 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         Struct after1 = ((Struct) publicEnumRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         Struct after2 = ((Struct) testIntRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after1.get("value")).isEqualTo("Y");
+        assertThat(after1.get("status")).isEqualTo("open");
         assertThat(after2.get("value")).isInstanceOf(Integer.class).isEqualTo(123);
 
         TestHelper.execute(
