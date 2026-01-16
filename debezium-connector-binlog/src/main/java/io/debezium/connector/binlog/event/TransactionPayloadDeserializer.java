@@ -19,6 +19,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.TransactionPayloadEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 
 /**
@@ -82,7 +83,11 @@ public class TransactionPayloadDeserializer extends TransactionPayloadEventDataD
 
         // Decompress the payload
         byte[] src = eventData.getPayload();
-        byte[] dst = ByteBuffer.allocate(eventData.getUncompressedSize()).array();
+        final var uncompressedSize = eventData.getUncompressedSize();
+        if (uncompressedSize > Integer.MAX_VALUE) {
+            throw new DebeziumException("Cannot process event of size '" + uncompressedSize + "' larger than max array size");
+        }
+        final var dst = ByteBuffer.allocate((int) uncompressedSize).array();
         Zstd.decompressByteArray(dst, 0, dst.length, src, 0, src.length);
 
         // Read and store events from decompressed byte array into input stream
