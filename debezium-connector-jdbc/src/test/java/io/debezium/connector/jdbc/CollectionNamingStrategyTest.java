@@ -35,7 +35,7 @@ public class CollectionNamingStrategyTest {
     public void testDefaultTableNamingStrategy() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of());
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("database_schema_table");
     }
 
@@ -43,7 +43,7 @@ public class CollectionNamingStrategyTest {
     public void testCollectionNamingStrategyWithTableNameFormat() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "kafka_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("kafka_database_schema_table");
     }
 
@@ -51,7 +51,7 @@ public class CollectionNamingStrategyTest {
     public void testDeprecatedTableNamingStrategyWithTableNameFormat() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "kafkadep_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("kafkadep_database_schema_table");
     }
 
@@ -59,7 +59,7 @@ public class CollectionNamingStrategyTest {
     public void testDeprecatedDefaultTableNamingStrategyWithTableNameFormat() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "kafkadep_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultTableNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("kafkadep_database_schema_table");
     }
 
@@ -68,7 +68,7 @@ public class CollectionNamingStrategyTest {
     public void testCollectionNamingStrategyWithPrependedSchema() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "SYS.${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("SYS.database_schema_table");
     }
 
@@ -77,7 +77,7 @@ public class CollectionNamingStrategyTest {
     public void testDeprecatedTableNamingStrategyWithPrependedSchema() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "SYSDEP.${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("SYSDEP.database_schema_table");
     }
 
@@ -86,7 +86,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(
                 Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.db}_${source.schema}_${source.table}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1"),
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1", config),
                 config.getCollectionNameFormat()))
                 .isEqualTo("source_database1_schema1_table1");
     }
@@ -96,7 +96,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(
                 Map.of(JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "sourcedep_${source.db}_${source.schema}_${source.table}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1"),
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1", config),
                 config.getCollectionNameFormat()))
                 .isEqualTo("sourcedep_database1_schema1_table1");
     }
@@ -106,7 +106,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.invalid}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
         Assertions.assertThrows(DataException.class, () -> strategy
-                .resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1"),
+                .resolveCollectionName(RECORD_FACTORY.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1", config),
                         config.getCollectionNameFormat()));
     }
 
@@ -115,14 +115,14 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(
                 Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.db}_${source.schema}_${source.table}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table"), config.getCollectionNameFormat())).isNull();
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table", config), config.getCollectionNameFormat())).isNull();
     }
 
     @Test
     public void testDefaultCollectionNamingStrategyWithTopicAndTombstone() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "kafka_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("kafka_database_schema_table");
     }
 
@@ -130,7 +130,7 @@ public class CollectionNamingStrategyTest {
     public void testDeprecatedDefaultTableNamingStrategyWithTopicAndTombstone() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "kafkadep_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table"), config.getCollectionNameFormat()))
+        assertThat(strategy.resolveCollectionName(RECORD_FACTORY.tombstoneRecord("database.schema.table", config), config.getCollectionNameFormat()))
                 .isEqualTo("kafkadep_database_schema_table");
     }
 

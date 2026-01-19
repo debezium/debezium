@@ -25,7 +25,9 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
@@ -41,28 +43,28 @@ public class SinkRecordBuilder {
     private SinkRecordBuilder() {
     }
 
-    public static SinkRecordTypeBuilder create() {
-        return new SinkRecordTypeBuilder(Type.CREATE);
+    public static SinkRecordTypeBuilder create(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.CREATE, config);
     }
 
-    public static SinkRecordTypeBuilder update() {
-        return new SinkRecordTypeBuilder(Type.UPDATE);
+    public static SinkRecordTypeBuilder update(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.UPDATE, config);
     }
 
-    public static SinkRecordTypeBuilder delete() {
-        return new SinkRecordTypeBuilder(Type.DELETE);
+    public static SinkRecordTypeBuilder delete(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.DELETE, config);
     }
 
-    public static SinkRecordTypeBuilder tombstone() {
-        return new SinkRecordTypeBuilder(Type.TOMBSTONE);
+    public static SinkRecordTypeBuilder tombstone(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.TOMBSTONE, config);
     }
 
-    public static SinkRecordTypeBuilder truncate() {
-        return new SinkRecordTypeBuilder(Type.TRUNCATE);
+    public static SinkRecordTypeBuilder truncate(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.TRUNCATE, config);
     }
 
-    public static SinkRecordTypeBuilder cloudEvent() {
-        return new SinkRecordTypeBuilder(Type.CLOUD_EVENT);
+    public static SinkRecordTypeBuilder cloudEvent(JdbcSinkConnectorConfig config) {
+        return new SinkRecordTypeBuilder(Type.CLOUD_EVENT, config);
     }
 
     public static class SinkRecordTypeBuilder {
@@ -80,13 +82,15 @@ public class SinkRecordBuilder {
         private SerializerType cloudEventsSerializerType;
         private String cloudEventsSchemaName = null;
         private String cloudEventsSchemaNamePattern = ".*" + Pattern.quote(CloudEventsMaker.CLOUDEVENTS_SCHEMA_SUFFIX) + "$";
+        private final JdbcSinkConnectorConfig config;
         private final Map<String, Object> keyValues = new HashMap<>();
         private final Map<String, Object> beforeValues = new HashMap<>();
         private final Map<String, Object> afterValues = new HashMap<>();
         private final Map<String, Object> sourceValues = new HashMap<>();
 
-        private SinkRecordTypeBuilder(Type type) {
+        private SinkRecordTypeBuilder(Type type, JdbcSinkConnectorConfig config) {
             this.type = type;
+            this.config = config;
         }
 
         public SinkRecordTypeBuilder flat(boolean flat) {
@@ -168,7 +172,7 @@ public class SinkRecordBuilder {
             return this;
         }
 
-        public KafkaDebeziumSinkRecord build() {
+        public JdbcKafkaSinkRecord build() {
             return switch (type) {
                 case CREATE -> buildCreateSinkRecord();
                 case UPDATE -> buildUpdateSinkRecord();
@@ -179,7 +183,7 @@ public class SinkRecordBuilder {
             };
         }
 
-        private KafkaDebeziumSinkRecord buildCreateSinkRecord() {
+        private JdbcKafkaSinkRecord buildCreateSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
@@ -187,73 +191,130 @@ public class SinkRecordBuilder {
             final Struct after = populateStructFromMap(new Struct(recordSchema), afterValues);
             final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
 
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+
             if (!flat) {
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.create(after, source, Instant.now());
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
-                        cloudEventsSchemaNamePattern);
+
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
             else {
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset), cloudEventsSchemaNamePattern);
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
         }
 
-        private KafkaDebeziumSinkRecord buildUpdateSinkRecord() {
+        private JdbcKafkaSinkRecord buildUpdateSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
             final Struct after = populateStructFromMap(new Struct(recordSchema), afterValues);
 
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+
             if (!flat) {
                 final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
                 final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.update(before, after, source, Instant.now());
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset), cloudEventsSchemaName);
+
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
             else {
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset), cloudEventsSchemaName);
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, after, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
         }
 
-        private KafkaDebeziumSinkRecord buildDeleteSinkRecord() {
+        private JdbcKafkaSinkRecord buildDeleteSinkRecord() {
             Objects.requireNonNull(recordSchema, "A record schema must be provided.");
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
+
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
 
             if (!flat) {
                 final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
                 final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.delete(before, source, Instant.now());
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
-                        cloudEventsSchemaNamePattern);
+
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
             else {
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, null, offset), cloudEventsSchemaNamePattern);
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, recordSchema, null, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
         }
 
-        private KafkaDebeziumSinkRecord buildTombstoneSinkRecord() {
+        private JdbcKafkaSinkRecord buildTombstoneSinkRecord() {
             final Struct key = populateStructForKey();
-            return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, null, null, offset), cloudEventsSchemaNamePattern);
+
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+
+            return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, keySchema, key, null, null, offset),
+                    config.getPrimaryKeyMode(),
+                    config.getPrimaryKeyFields(),
+                    config.getFieldFilter(),
+                    cloudEventsSchemaNamePattern,
+                    databaseDialect);
         }
 
-        private KafkaDebeziumSinkRecord buildTruncateSinkRecord() {
+        private JdbcKafkaSinkRecord buildTruncateSinkRecord() {
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+
             if (!flat) {
                 final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.truncate(source, Instant.now());
-                return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, null, null, envelope.schema(), payload, offset), cloudEventsSchemaNamePattern);
+                return new JdbcKafkaSinkRecord(new SinkRecord(topicName, partition, null, null, envelope.schema(), payload, offset),
+                        config.getPrimaryKeyMode(),
+                        config.getPrimaryKeyFields(),
+                        config.getFieldFilter(),
+                        cloudEventsSchemaNamePattern,
+                        databaseDialect);
             }
             else {
                 return null;
             }
         }
 
-        private KafkaDebeziumSinkRecord buildCloudEventRecord() {
+        private JdbcKafkaSinkRecord buildCloudEventRecord() {
             final String schemaName = (cloudEventsSchemaName != null ? cloudEventsSchemaName : "test.test") + "." + CloudEventsMaker.CLOUDEVENTS_SCHEMA_SUFFIX;
             final SchemaBuilder schemaBuilder = SchemaBuilder.struct()
                     .name(schemaName)
@@ -285,9 +346,17 @@ public class SinkRecordBuilder {
                 ceValue = ceValueStruct;
             }
 
-            return new KafkaDebeziumSinkRecord(new SinkRecord(baseRecord.topic(), baseRecord.kafkaPartition(), baseRecord.keySchema(), baseRecord.key(),
+            var sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            var databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+
+            return new JdbcKafkaSinkRecord(new SinkRecord(baseRecord.topic(), baseRecord.kafkaPartition(), baseRecord.keySchema(), baseRecord.key(),
                     ceSchema, ceValue,
-                    baseRecord.kafkaOffset(), baseRecord.timestamp(), baseRecord.timestampType(), baseRecord.headers()), cloudEventsSchemaNamePattern);
+                    baseRecord.kafkaOffset(), baseRecord.timestamp(), baseRecord.timestampType(), baseRecord.headers()),
+                    config.getPrimaryKeyMode(),
+                    config.getPrimaryKeyFields(),
+                    config.getFieldFilter(),
+                    cloudEventsSchemaNamePattern,
+                    databaseDialect);
         }
 
         private Envelope createEnvelope() {

@@ -31,6 +31,7 @@ import io.debezium.connector.jdbc.dialect.db2.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimeType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
@@ -220,13 +221,13 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getTruncateStatement(TableDescriptor table) {
+    public String getTruncateStatement(CollectionId tableId) {
         // For some reason the TRUNCATE statement doesn't work for DB2 even if it is supported from 9.7 https://www.ibm.com/support/pages/apar/JR37942
         // The problem verifies with Hibernate, plain JDBC works good.
         // Qlik uses the below approach https://community.qlik.com/t5/Qlik-Replicate/Using-Qlik-for-DB2-TRUNCATE-option/td-p/1989498
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("ALTER TABLE ");
-        builder.append(getQualifiedTableName(table.getId()));
+        builder.append(getQualifiedTableName(tableId));
         builder.append(" ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE");
         return builder.build();
     }

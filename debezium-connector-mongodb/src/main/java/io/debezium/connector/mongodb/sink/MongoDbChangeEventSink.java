@@ -12,7 +12,6 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
@@ -37,10 +36,11 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.sink.AbstractChangeEventSink;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
 
-final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
+final class MongoDbChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
@@ -51,6 +51,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
                            final ErrorReporter errorReporter, ConnectorContext connectorContext) {
+        super(sinkConfig);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
@@ -66,8 +67,8 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
     }
 
-    public Optional<CollectionId> getCollectionId(String collectionName) {
-        return Optional.of(new CollectionId(collectionName));
+    public CollectionId getCollectionId(String collectionName) {
+        return new CollectionId(collectionName);
     }
 
     public void execute(final Collection<SinkRecord> records) {

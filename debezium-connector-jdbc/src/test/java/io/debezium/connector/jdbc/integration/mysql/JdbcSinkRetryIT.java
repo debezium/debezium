@@ -23,7 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -90,12 +90,14 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
 
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "content",
                 Schema.OPTIONAL_STRING_SCHEMA,
-                "c11");
+                "c11",
+                config);
         try {
             // it waits the lock of PRIMARY index id=1 is released to acquire exclusive lock for update.
             // and exceeded innodb_lock_wait_timeout during each retry.
@@ -161,12 +163,14 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
 
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "content",
                 Schema.OPTIONAL_STRING_SCHEMA,
-                "retry-me");
+                "retry-me",
+                config);
         try {
             // since the connection was killed, the next query by the connector will fail with a JDBCConnectionException,
             // which the connector should then retry.

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mchange.v2.c3p0.DataSources;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
@@ -136,7 +136,6 @@ public abstract class AbstractJdbcSinkTest {
         sinkConnector.start(properties);
         try {
             sinkTask = (SinkTask) sinkConnector.taskClass().getConstructor().newInstance();
-
             // Initialize sink task with a mock context
             sinkTask.initialize(new JdbcSinkTaskTestContext(properties));
             sinkTask.start(properties);
@@ -165,7 +164,7 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(KafkaDebeziumSinkRecord record) {
+    protected void consume(JdbcKafkaSinkRecord record) {
         if (record != null) {
             consume(Collections.singletonList(record));
         }
@@ -174,8 +173,8 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided collection of {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(List<KafkaDebeziumSinkRecord> records) {
-        List<SinkRecord> kafkaRecords = records.stream().map(KafkaDebeziumSinkRecord::getOriginalKafkaRecord).toList();
+    protected void consume(List<JdbcKafkaSinkRecord> records) {
+        List<SinkRecord> kafkaRecords = records.stream().map(JdbcKafkaSinkRecord::getOriginalKafkaRecord).toList();
         sinkTask.put(kafkaRecords);
     }
 
@@ -186,7 +185,7 @@ public abstract class AbstractJdbcSinkTest {
         return randomTableNameGenerator.randomName();
     }
 
-    protected String destinationTableName(KafkaDebeziumSinkRecord record) {
+    protected String destinationTableName(JdbcKafkaSinkRecord record) {
         // todo: pass the configuration in from the test
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getDefaultSinkConfig());
         return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(record, config.getCollectionNameFormat()));

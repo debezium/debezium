@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider;
@@ -59,12 +59,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         buffer.put((byte) 2);
         buffer.put((byte) 3);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 Schema.OPTIONAL_BYTES_SCHEMA,
-                buffer);
+                buffer,
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data binary(3), primary key(id))";

@@ -400,10 +400,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getTruncateStatement(TableDescriptor table) {
+    public String getTruncateStatement(CollectionId tableId) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("TRUNCATE TABLE ");
-        builder.append(getQualifiedTableName(table.getId()));
+        builder.append(getQualifiedTableName(tableId));
 
         return builder.build();
     }
