@@ -20,6 +20,7 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alexandre Busquets
 Alexandre Colella
 Alexandru Cristu
 Alexey Loubyansky
@@ -58,6 +59,7 @@ Ankur Gupta
 Ant Kutschera
 Anton Kondratev
 Anton Martynov
+Anton Repin
 Aravind Pedapudi
 archiedx
 Arik Cohen
@@ -241,7 +243,7 @@ Gustavo Lira
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
-Haydar Miezanie
+Haydar Miezanie Abdul Jamil
 ibnubay
 Jacob Barrieault
 Jacob Gminder
@@ -421,6 +423,7 @@ Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
 Mateusz Michalik
+Mateusz Tworek
 Mathijs van den Worm
 Matt Bayley
 Matt Beary
@@ -470,6 +473,7 @@ Navdeep Agarwal
 Naveen Kumar KR
 Nayana Hettiarachchi
 Nenad Stojanovikj
+Nicolas Payart
 Nick Chomey
 Nick Murray
 Niels Pardon
@@ -542,10 +546,13 @@ Robin Moffatt
 Rodolphe Quiedeville
 Roman Kuchar
 Roman Kudryashov
+Rophy Tsai
 Rotem Adhoh
+Rudi Bruchez
 Sagar Rao
 Sahan Dilshan
 Sahap Asci
+Sreedev R
 Sumit Jha
 Sylvain Marty
 René Kerner
