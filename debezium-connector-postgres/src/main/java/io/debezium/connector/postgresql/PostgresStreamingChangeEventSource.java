@@ -325,6 +325,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         // Tx BEGIN/END event
         if (message.isTransactionalMessage()) {
+            if (message.getOperation() == Operation.BEGIN) {
+                offsetContext.clearOrigin();
+            }
 
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                     getSlotXmin(),

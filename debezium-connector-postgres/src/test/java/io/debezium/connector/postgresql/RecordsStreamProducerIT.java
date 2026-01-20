@@ -4232,6 +4232,447 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(source.schema().field(SourceInfo.ORIGIN_LSN_KEY)).isNotNull();
     }
 
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "ORIGIN messages are only supported by pgoutput decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Replication origins require PostgreSQL 11+")
+    public void shouldNotLeakOriginInfoBetweenTransactions() throws Exception {
+        // This test verifies that origin information does not leak from one transaction to another.
+        // Transaction 1 has an origin set, Transaction 2 does not have an origin.
+        // The DML events from Transaction 2 should NOT show the origin from Transaction 1.
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_origin_leak;",
+                "CREATE TABLE test_origin_leak (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        String originName = "test_origin_leak_dc1";
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_create('" + originName + "');");
+        }
+        catch (Exception e) {
+            if (!e.getMessage().contains("already exists")) {
+                throw e;
+            }
+        }
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_origin_leak")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        consumer = testConsumer(2);
+
+        // Transaction 1: WITH origin set
+        TestHelper.execute(
+                "SELECT pg_replication_origin_session_setup('" + originName + "');" +
+                        "INSERT INTO test_origin_leak (data) VALUES ('transaction with origin');");
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_session_reset();");
+        }
+        catch (Exception e) {
+        }
+
+        // Transaction 2: WITHOUT origin set - this should NOT inherit origin from Transaction 1
+        TestHelper.execute("INSERT INTO test_origin_leak (data) VALUES ('transaction without origin');");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        // Verify first record (Transaction 1 - has origin)
+        assertFalse(consumer.isEmpty(), "Expected at least one record");
+        SourceRecord record1 = consumer.remove();
+        Struct source1 = ((Struct) record1.value()).getStruct("source");
+        assertNotNull(source1, "Source struct should not be null");
+
+        String origin1 = source1.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn1 = source1.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 1 (with origin): origin={}, origin_lsn={}", origin1, originLsn1);
+
+        assertNotNull(origin1, "Origin should not be null for transaction with origin set");
+        assertThat(origin1).isEqualTo(originName);
+        assertNotNull(originLsn1, "Origin LSN should not be null");
+
+        // Verify second record (Transaction 2 - NO origin, should be null)
+        assertFalse(consumer.isEmpty(), "Expected second record");
+        SourceRecord record2 = consumer.remove();
+        Struct source2 = ((Struct) record2.value()).getStruct("source");
+        assertNotNull(source2, "Source struct should not be null");
+
+        String origin2 = source2.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn2 = source2.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 2 (without origin): origin={}, origin_lsn={}", origin2, originLsn2);
+
+        assertThat(origin2)
+                .describedAs("Origin should be null for transaction without origin set - must not leak from previous transaction")
+                .isNull();
+        assertThat(originLsn2)
+                .describedAs("Origin LSN should be null for transaction without origin set")
+                .isNull();
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_drop('" + originName + "');");
+        }
+        catch (Exception e) {
+        }
+    }
+
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "ORIGIN messages are only supported by pgoutput decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Replication origins require PostgreSQL 11+")
+    public void shouldCorrectlyTrackDifferentOriginsAcrossTransactions() throws Exception {
+        // This test verifies that when two consecutive transactions have different origins,
+        // each transaction's DML events correctly show their respective origin.
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_multi_origin;",
+                "CREATE TABLE test_multi_origin (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        String originName1 = "test_origin_dc1";
+        String originName2 = "test_origin_dc2";
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_create('" + originName1 + "');");
+        }
+        catch (Exception e) {
+            if (!e.getMessage().contains("already exists")) {
+                throw e;
+            }
+        }
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_create('" + originName2 + "');");
+        }
+        catch (Exception e) {
+            if (!e.getMessage().contains("already exists")) {
+                throw e;
+            }
+        }
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_multi_origin")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+
+        consumer = testConsumer(2);
+
+        // Transaction 1: With origin "dc1" and LSN 0x11111 (69905)
+        TestHelper.execute(
+                "SELECT pg_replication_origin_session_setup('" + originName1 + "');" +
+                        "SELECT pg_replication_origin_xact_setup('0/11111', now());" +
+                        "INSERT INTO test_multi_origin (data) VALUES ('from dc1');");
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_session_reset();");
+        }
+        catch (Exception e) {
+        }
+
+        // Transaction 2: With DIFFERENT origin "dc2" and LSN 0x22222 (139810)
+        TestHelper.execute(
+                "SELECT pg_replication_origin_session_setup('" + originName2 + "');" +
+                "SELECT pg_replication_origin_xact_setup('0/22222', now());" +
+                "INSERT INTO test_multi_origin (data) VALUES ('from dc2');");
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_session_reset();");
+        }
+        catch (Exception e) {
+        }
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        // Verify first record (Transaction 1 - origin dc1)
+        assertFalse(consumer.isEmpty(), "Expected at least one record");
+        SourceRecord record1 = consumer.remove();
+        Struct source1 = ((Struct) record1.value()).getStruct("source");
+        assertNotNull(source1, "Source struct should not be null");
+
+        String origin1 = source1.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn1 = source1.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 1 (dc1): origin={}, origin_lsn={}", origin1, originLsn1);
+
+        assertThat(origin1)
+                .describedAs("First transaction should have origin dc1")
+                .isEqualTo(originName1);
+        assertThat(originLsn1)
+                .describedAs("First transaction should have LSN 0x11111")
+                .isEqualTo(69905L); // 0x11111 in decimal
+
+        // Verify second record (Transaction 2 - origin dc2, NOT dc1)
+        assertFalse(consumer.isEmpty(), "Expected second record");
+        SourceRecord record2 = consumer.remove();
+        Struct source2 = ((Struct) record2.value()).getStruct("source");
+        assertNotNull(source2, "Source struct should not be null");
+
+        String origin2 = source2.getString(SourceInfo.ORIGIN_KEY);
+        Long originLsn2 = source2.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("Record 2 (dc2): origin={}, origin_lsn={}", origin2, originLsn2);
+
+        // Second transaction should have its own origin (dc2), NOT the previous one (dc1)
+        assertThat(origin2)
+                .describedAs("Second transaction should have origin dc2, not dc1 from previous transaction")
+                .isEqualTo(originName2);
+        assertThat(originLsn2)
+                .describedAs("Second transaction should have LSN 0x22222")
+                .isEqualTo(139810L); // 0x22222 in decimal
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_drop('" + originName1 + "');");
+        }
+        catch (Exception e) {
+        }
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_drop('" + originName2 + "');");
+        }
+        catch (Exception e) {
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1528")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "ORIGIN messages are only supported by pgoutput decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Replication origins require PostgreSQL 11+")
+    @Timeout(value = 10, unit = TimeUnit.MINUTES)
+    public void shouldPreserveOriginInfoAfterConnectorRestartMidTransaction() throws Exception {
+        /*
+         * This test verifies that ORIGIN messages are correctly processed even when
+         * the connector restarts mid-transaction and WalPositionLocator triggers a replay
+         * from the transaction BEGIN.
+         *
+         * Key behavior being tested:
+         * - When the connector stops mid-transaction (lastEventStoredLsn > lastCommitLsn),
+         *   WalPositionLocator ensures streaming resumes from the BEGIN of that transaction.
+         * - During this replay, ORIGIN messages must be processed (shouldMessageBeSkipped returns false)
+         *   to ensure subsequent records have the correct origin info.
+         *
+         * Test approach:
+         * - Insert a large transaction (2M rows) with ORIGIN set - large enough that the connector
+         *   can't process all records before we stop it
+         * - Start connector and consume some records
+         * - Stop connector mid-transaction (before COMMIT is processed)
+         * - Restart connector - WalPositionLocator detects lastEventStoredLsn > lastCommitLsn
+         *   and replays from transaction BEGIN
+         * - Verify records after restart have origin info (proves ORIGIN was re-processed)
+         */
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        // Create a table with multiple columns to increase message size per row
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_origin_restart;",
+                "CREATE TABLE test_origin_restart (pk SERIAL PRIMARY KEY, " +
+                        "col1 TEXT DEFAULT 'data1', col2 TEXT DEFAULT 'data2', col3 TEXT DEFAULT 'data3', " +
+                        "col4 TEXT DEFAULT 'data4', col5 TEXT DEFAULT 'data5', col6 TEXT DEFAULT 'data6', " +
+                        "col7 TEXT DEFAULT 'data7', col8 TEXT DEFAULT 'data8', col9 TEXT DEFAULT 'data9', " +
+                        "col10 TEXT DEFAULT 'data10');");
+
+        String originName = "test_restart_origin";
+        final String originLsnPgFormat = "0/75BCD15"; // 123456789 in decimal
+        final long originLsnValue = 123456789L;
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_create('" + originName + "');");
+        }
+        catch (Exception e) {
+            if (!e.getMessage().contains("already exists")) {
+                throw e;
+            }
+        }
+
+        // Start connector first to create replication slot
+        // Using default FileOffsetBackingStore (persistent offsets)
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_origin_restart")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        // Insert a small initial transaction (WITHOUT origin) to establish lastCommitLsn
+        // This ensures that when we stop mid-transaction later, lastCommitLsn will be
+        // from this transaction, not from the fallback logic
+        logger.info("Inserting initial transaction to establish lastCommitLsn...");
+        TestHelper.execute("INSERT INTO test_origin_restart (col1) VALUES ('initial_row_1'), ('initial_row_2'), ('initial_row_3');");
+
+        // Consume the initial transaction records
+        consumer = testConsumer(3);
+        consumer.await(30, TimeUnit.SECONDS);
+        logger.info("Consumed {} initial records", 3);
+        while (!consumer.isEmpty()) {
+            consumer.remove();
+        }
+
+        // Stop connector before inserting the large transaction
+        // This ensures the 2M row transaction is queued in the replication slot
+        // and the connector will process it when we restart
+        stopConnector();
+        Thread.sleep(1000);
+
+        // Insert 2M rows in a single transaction with ORIGIN set
+        // Since connector is stopped, this transaction will be queued in the replication slot
+        final int totalRows = 2_000_000;
+        final int batchSize = 50_000;
+
+        logger.info("Starting large transaction insert of {} rows with origin '{}'", totalRows, originName);
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.setAutoCommit(false);
+
+            // Set up the replication origin for this session
+            conn.execute("SELECT pg_replication_origin_session_setup('" + originName + "')");
+            conn.execute("SELECT pg_replication_origin_xact_setup('" + originLsnPgFormat + "', now())");
+
+            // Insert rows in batches
+            for (int batch = 0; batch < totalRows / batchSize; batch++) {
+                StringBuilder insertSql = new StringBuilder();
+                insertSql.append("INSERT INTO test_origin_restart (col1, col2, col3, col4, col5, col6, col7, col8, col9, col10) VALUES ");
+                for (int i = 0; i < batchSize; i++) {
+                    if (i > 0) {
+                        insertSql.append(",");
+                    }
+                    int rowNum = batch * batchSize + i;
+                    insertSql.append("('row_").append(rowNum).append("'");
+                    for (int col = 2; col <= 10; col++) {
+                        insertSql.append(", 'col").append(col).append("_row_").append(rowNum).append("'");
+                    }
+                    insertSql.append(")");
+                }
+                conn.executeWithoutCommitting(insertSql.toString());
+                logger.info("Inserted batch {}/{}", batch + 1, totalRows / batchSize);
+            }
+
+            logger.info("Committing large transaction...");
+            conn.commit();
+            logger.info("Large transaction committed");
+
+            try {
+                conn.execute("SELECT pg_replication_origin_session_reset()");
+            }
+            catch (Exception e) {
+            }
+        }
+
+        // Start connector to process the large transaction
+        logger.info("Starting connector to process the large transaction");
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        // Consume some records - just enough to verify origin info works
+        // but not too many so we can stop mid-transaction
+        final int recordsToConsumeFirstRun = 1000;
+        consumer = testConsumer(recordsToConsumeFirstRun);
+        consumer.await(2, TimeUnit.MINUTES);
+
+        // Verify first record has origin info
+        SourceRecord firstRecord = consumer.remove();
+        Struct firstSource = ((Struct) firstRecord.value()).getStruct("source");
+        String firstOrigin = firstSource.getString(SourceInfo.ORIGIN_KEY);
+        Long firstOriginLsn = firstSource.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+        logger.info("First record (first run): origin={}, origin_lsn={}", firstOrigin, firstOriginLsn);
+
+        assertNotNull(firstOrigin, "Origin should not be null in first run");
+        assertThat(firstOrigin).isEqualTo(originName);
+        assertNotNull(firstOriginLsn, "Origin LSN should not be null in first run");
+        assertThat(firstOriginLsn).isEqualTo(originLsnValue);
+
+        // Drain remaining records from the consumer
+        while (!consumer.isEmpty()) {
+            consumer.remove();
+        }
+
+        // Stop connector mid-transaction
+        // With 100k rows, the connector should still be processing when we stop it
+        logger.info("Stopping connector mid-transaction...");
+        stopConnector();
+
+        // Small delay to ensure clean shutdown
+        Thread.sleep(2000);
+
+        // Restart connector - WalPositionLocator should detect lastEventStoredLsn > lastCommitLsn
+        // and replay from the transaction BEGIN, re-processing the ORIGIN message
+        logger.info("Restarting connector (WalPositionLocator should replay from BEGIN)...");
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        // Consume ALL remaining records after restart and verify they all have origin info
+        // This proves that ORIGIN was re-processed during replay
+        logger.info("Consuming all remaining records after restart...");
+
+        int totalRecordsConsumed = 0;
+        int recordsWithOrigin = 0;
+        int recordsWithoutOrigin = 0;
+        int lastPkSeen = 0;
+
+        // Keep consuming until no more records available
+        final long consumeStartTime = System.currentTimeMillis();
+        final long maxConsumeTimeMs = 5 * 60 * 1000; // 5 minutes max
+        boolean hasMoreRecords = true;
+
+        while (hasMoreRecords && System.currentTimeMillis() - consumeStartTime < maxConsumeTimeMs) {
+            // Poll for records with a timeout
+            SourceRecords records = consumeRecordsByTopic(10_000, false);
+            if (records == null || records.allRecordsInOrder().isEmpty()) {
+                logger.info("No more records available after consuming {} total records", totalRecordsConsumed);
+                hasMoreRecords = false;
+                break;
+            }
+
+            for (SourceRecord record : records.allRecordsInOrder()) {
+                totalRecordsConsumed++;
+
+                Struct key = (Struct) record.key();
+                Integer pk = (Integer) key.get(PK_FIELD);
+                if (pk != null) {
+                    lastPkSeen = pk;
+                }
+
+                Struct source = ((Struct) record.value()).getStruct("source");
+                String origin = source.getString(SourceInfo.ORIGIN_KEY);
+                Long originLsn = source.getInt64(SourceInfo.ORIGIN_LSN_KEY);
+
+                if (origin != null && originLsn != null) {
+                    recordsWithOrigin++;
+                    // Verify the values are correct
+                    assertThat(origin).isEqualTo(originName);
+                    assertThat(originLsn).isEqualTo(originLsnValue);
+                }
+                else {
+                    recordsWithoutOrigin++;
+                }
+            }
+
+            // Log progress every 100k records
+            if (totalRecordsConsumed % 100_000 < 10_000) {
+                logger.info("Consumed {} records so far, last pk={}, with origin={}, without origin={}",
+                        totalRecordsConsumed, lastPkSeen, recordsWithOrigin, recordsWithoutOrigin);
+            }
+        }
+
+        logger.info("After restart: consumed {} total records, last pk={}, {} with origin, {} without origin",
+                totalRecordsConsumed, lastPkSeen, recordsWithOrigin, recordsWithoutOrigin);
+
+        // All records should have origin info
+        // This proves that ORIGIN messages are correctly processed during replay
+        assertThat(totalRecordsConsumed)
+                .describedAs("Should have consumed records after restart")
+                .isGreaterThan(0);
+        assertThat(recordsWithOrigin)
+                .describedAs("All records after restart should have origin info (proves ORIGIN was re-processed during replay)")
+                .isEqualTo(totalRecordsConsumed);
+        assertThat(recordsWithoutOrigin)
+                .describedAs("No records should be missing origin info")
+                .isEqualTo(0);
+
+        try {
+            TestHelper.execute("SELECT pg_replication_origin_drop('" + originName + "');");
+        }
+        catch (Exception e) {
+        }
+    }
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         assertInsert(statement, null, expectedSchemaAndValuesByColumn);
     }
