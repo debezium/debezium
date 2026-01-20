@@ -5,12 +5,17 @@
  */
 package io.debezium.connector.jdbc;
 
+import java.sql.Array;
 import java.sql.BatchUpdateException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
@@ -20,14 +25,17 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
-import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.util.Stopwatch;
 
 /**
- * UNNEST-optimized implementation for PostgreSQL that writes batches using column-wise binding.
+ * UNNEST-optimized implementation for PostgreSQL that writes batches using SQL arrays.
  * This approach can provide 5-10x performance improvement for bulk inserts/upserts.
  *
- * For batch statements (isBatchStatement=true), uses UNNEST with column-wise binding.
+ * For batch statements (isBatchStatement=true), uses UNNEST with PreparedStatement.setArray().
+ * This ensures a single SQL query plan regardless of batch size, eliminating the query plan
+ * explosion problem in pg_stat_statements.
+ *
  * For non-batch statements, delegates to parent's standard row-wise binding.
  *
  * @author Gaurav Miglani
@@ -74,19 +82,18 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     }
 
     /**
-     * Process a batch using UNNEST approach where values are bound column-wise rather than row-wise.
-     * For UNNEST, we bind all values for column 1 across all records, then all values for column 2, etc.
+     * Process a batch using UNNEST approach where each column's values are passed as a SQL array.
+     * Uses PreparedStatement.setArray() for optimal performance and query plan caching.
      */
     private Work processUnnestBatch(List<JdbcSinkRecord> records, String sqlStatement) {
         return conn -> {
             try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
 
-                QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
                 Stopwatch allbindStopwatch = Stopwatch.reusable();
                 allbindStopwatch.start();
 
-                // Bind values column-wise for UNNEST
-                bindValuesForUnnest(records, queryBinder);
+                // Bind column arrays for UNNEST using setArray()
+                bindArraysForUnnest(records, conn, prepareStatement);
 
                 allbindStopwatch.stop();
                 LOGGER.trace("[PERF] All records bind execution time for UNNEST {}", allbindStopwatch.durations());
@@ -108,12 +115,14 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     }
 
     /**
-     * Bind values for UNNEST statement where each column's values from all records are bound together.
+     * Bind arrays for UNNEST statement using PreparedStatement.setArray().
+     * This approach ensures a single SQL query plan regardless of batch size.
+     *
      * For INSERT/UPSERT: bind key fields first, then non-key fields
      * For UPDATE: bind non-key fields first, then key fields
      * For DELETE: bind only key fields
      */
-    private void bindValuesForUnnest(List<JdbcSinkRecord> records, QueryBinder queryBinder) {
+    private void bindArraysForUnnest(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps) throws SQLException {
         if (records.isEmpty()) {
             return;
         }
@@ -122,34 +131,38 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         int parameterIndex = 1;
 
         if (firstRecord.isDelete()) {
-            parameterIndex = bindKeyValuesColumnWise(records, queryBinder, parameterIndex);
+            parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
         }
         else {
             switch (getConfig().getInsertMode()) {
                 case INSERT:
                 case UPSERT:
                     // For INSERT/UPSERT: key fields first, then non-key fields
-                    parameterIndex = bindKeyValuesColumnWise(records, queryBinder, parameterIndex);
-                    parameterIndex = bindNonKeyValuesColumnWise(records, queryBinder, parameterIndex);
+                    parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
+                    parameterIndex = bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
                     break;
                 case UPDATE:
                     // For UPDATE: non-key fields first, then key fields
-                    parameterIndex = bindNonKeyValuesColumnWise(records, queryBinder, parameterIndex);
-                    parameterIndex = bindKeyValuesColumnWise(records, queryBinder, parameterIndex);
+                    parameterIndex = bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
+                    parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
                     break;
             }
         }
     }
 
     /**
-     * Bind key field values column-wise across all records.
+     * Bind key field arrays using setArray().
+     * Each column's values across all records are collected into an array and bound as a single parameter.
      */
-    private int bindKeyValuesColumnWise(List<JdbcSinkRecord> records, QueryBinder queryBinder, int startIndex) {
+    private int bindKeyFieldArrays(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
         JdbcSinkRecord firstRecord = records.get(0);
         Set<String> keyFieldNames = firstRecord.keyFieldNames();
 
         int parameterIndex = startIndex;
         for (String fieldName : keyFieldNames) {
+            // Collect all values for this column
+            List<Object> columnValues = new ArrayList<>(records.size());
+
             for (JdbcSinkRecord record : records) {
                 final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
                 final Struct keySource = record.filteredKey();
@@ -164,24 +177,31 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     }
                 }
 
-                List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, parameterIndex, value);
-                boundValues.forEach(queryBinder::bind);
-                parameterIndex += boundValues.size();
+                columnValues.add(value);
             }
+
+            // Convert to array and bind using setArray()
+            String sqlTypeName = getSqlTypeName(firstRecord.jdbcFields().get(fieldName));
+            Array sqlArray = conn.createArrayOf(sqlTypeName, columnValues.toArray());
+            ps.setArray(parameterIndex++, sqlArray);
         }
 
         return parameterIndex;
     }
 
     /**
-     * Bind non-key field values column-wise across all records.
+     * Bind non-key field arrays using setArray().
+     * Each column's values across all records are collected into an array and bound as a single parameter.
      */
-    private int bindNonKeyValuesColumnWise(List<JdbcSinkRecord> records, QueryBinder queryBinder, int startIndex) {
+    private int bindNonKeyFieldArrays(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
         JdbcSinkRecord firstRecord = records.get(0);
         Set<String> nonKeyFieldNames = firstRecord.nonKeyFieldNames();
 
         int parameterIndex = startIndex;
         for (String fieldName : nonKeyFieldNames) {
+            // Collect all values for this column
+            List<Object> columnValues = new ArrayList<>(records.size());
+
             for (JdbcSinkRecord record : records) {
                 final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
                 final Struct payload = record.getPayload();
@@ -194,12 +214,41 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     value = payload.get(fieldName);
                 }
 
-                List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, parameterIndex, value);
-                boundValues.forEach(queryBinder::bind);
-                parameterIndex += boundValues.size();
+                columnValues.add(value);
             }
+
+            // Convert to array and bind using setArray()
+            String sqlTypeName = getSqlTypeName(firstRecord.jdbcFields().get(fieldName));
+            Array sqlArray = conn.createArrayOf(sqlTypeName, columnValues.toArray());
+            ps.setArray(parameterIndex++, sqlArray);
         }
 
         return parameterIndex;
+    }
+
+    /**
+     * Get the SQL type name for createArrayOf() from the field descriptor.
+     * Maps Kafka Connect schema types to PostgreSQL array element types.
+     *
+     * PostgreSQL createArrayOf() requires base type names without:
+     * - Array brackets: text[] -> text
+     * - Length modifiers: varchar(255) -> varchar
+     * - Precision/scale: numeric(10,2) -> numeric
+     */
+    private String getSqlTypeName(JdbcFieldDescriptor field) {
+        Schema schema = field.getSchema();
+        JdbcType type = getDialect().getSchemaType(schema);
+        String typeName = type.getTypeName(schema, field.isKey());
+
+        // Remove array brackets: text[][] -> text
+        typeName = typeName.replaceAll("\\[]", "").trim();
+
+        // Remove length/precision modifiers: varchar(255) -> varchar, numeric(10,2) -> numeric
+        int parenIndex = typeName.indexOf('(');
+        if (parenIndex > 0) {
+            typeName = typeName.substring(0, parenIndex).trim();
+        }
+
+        return typeName.toLowerCase();
     }
 }

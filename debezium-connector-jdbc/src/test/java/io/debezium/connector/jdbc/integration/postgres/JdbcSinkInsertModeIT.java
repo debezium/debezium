@@ -146,7 +146,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
         properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "true");
-        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        // Disable UNNEST as geometry types not supported with it
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "false");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
