@@ -245,11 +245,21 @@ class GitHubIssue {
     def status
 
     def getType() {
-        IssueType.valueOf(labels.find({ it.startsWith(LABEL_ISSUE_TYPE) })[5..-1])
+        try {
+            IssueType.valueOf(labels.find({ it.startsWith(LABEL_ISSUE_TYPE) })[5..-1])
+        }
+        catch (e) {
+            throw new Exception("Error while getting issue type for ${this.url}", e)
+        }
     }
 
     def getComponents() {
-        labels.findAll({ it.startsWith(LABEL_COMPONENT) }).collect { it[10..-1] }
+        try {
+            labels.findAll({ it.startsWith(LABEL_COMPONENT) }).collect { it[10..-1] }
+        }
+        catch (e) {
+            throw new Exception("Error while getting component for ${this.url}", e)
+        }
     }
 
     def getCurrentIteration() {
@@ -516,66 +526,71 @@ If you are using our container images, then please do not forget to pull them fr
 
 def setNewIteration() {
     def issues = getProjectIssuesForIteration(iterationTitle)
-    def issuesToUpdate = issues.collectEntries({ [(it): it.findIterationField(iterationTitle)] }).findAll { it.value }
-    def updateQuery = new StringBuilder(modifyOperationPre)
+    def allIssuesToUpdate = issues.collectEntries({ [(it): it.findIterationField(iterationTitle)] }).findAll { it.value }
 
-    issuesToUpdate.each { issue, iterationFieldName ->
-        if (!allIssues && (issue.status == 'Done' || issue.status == 'Released')) {
-            return
+    allIssuesToUpdate.entrySet().toList().collate(10).each { issuesToUpdate -> 
+        def updateQuery = new StringBuilder(modifyOperationPre)
+
+        issuesToUpdate.each { entry ->
+            issue = entry.key
+            iterationFieldName = entry.value
+            if (!allIssues && (issue.status == 'Done' || issue.status == 'Released')) {
+                return
+            }
+            def itemNo = issue.number
+            def itemId = issue.itemId
+            def fieldId = availableIterations[iterationFieldName].id
+            def iterationId = availableIterations[iterationFieldName].iterationNames[newIterationTitle]
+            if (!iterationId) {
+                System.err.println "Iteration '$newIterationTitle' requested for field '$iterationFieldName' but not supported"
+                System.exit(9)
+            }
+            def updateFragment = """
+      setItem${itemNo}: updateProjectV2ItemFieldValue(
+        input: {
+          projectId: \$projectId,
+          itemId: \"${itemId}\",
+          fieldId: \"${fieldId}\",
+          value: { iterationId: \"${iterationId}\" }
         }
-        def itemNo = issue.number
-        def itemId = issue.itemId
-        def fieldId = availableIterations[iterationFieldName].id
-        def iterationId = availableIterations[iterationFieldName].iterationNames[newIterationTitle]
-        if (!iterationId) {
-            System.err.println "Iteration '$newIterationTitle' requested for field '$iterationFieldName' but not supported"
-            System.exit(9)
+      ) {
+        projectV2Item { id }
+      }
+    """
+            updateQuery << updateFragment
         }
-        def updateFragment = """
-  setItem${itemNo}: updateProjectV2ItemFieldValue(
-    input: {
-      projectId: \$projectId,
-      itemId: \"${itemId}\",
-      fieldId: \"${fieldId}\",
-      value: { iterationId: \"${iterationId}\" }
-    }
-  ) {
-    projectV2Item { id }
-  }
-"""
-        updateQuery << updateFragment
-    }
-    updateQuery << '}'
+        updateQuery << '}'
 
-    def client = new OkHttpClient()
-    def slurper = new JsonSlurper()
-    def variables = [
-        'projectId': projectId
-    ]
+        def client = new OkHttpClient()
+        def slurper = new JsonSlurper()
+        def variables = [
+            'projectId': projectId
+        ]
 
-    def payload = JsonOutput.toJson([query: updateQuery, variables: variables])
+        def payload = JsonOutput.toJson([query: updateQuery, variables: variables])
 
-    def requestBody = RequestBody.create(payload, MediaType.get("application/json"))
-    def request = new Request.Builder()
-            .url("https://api.github.com/graphql")
-            .addHeader("Authorization", "Bearer ${token}")
-            .addHeader("Accept", "application/vnd.github+json")
-            .post(requestBody)
-            .build()
-    def response = client.newCall(request).execute()
-    def body = response.body().string()
+        def requestBody = RequestBody.create(payload, MediaType.get("application/json"))
+        def request = new Request.Builder()
+                .url("https://api.github.com/graphql")
+                .addHeader("Authorization", "Bearer ${token}")
+                .addHeader("Accept", "application/vnd.github+json")
+                .post(requestBody)
+                .build()
+        def response = client.newCall(request).execute()
+        def body = response.body().string()
 
-    if (!response.isSuccessful()) {
-        System.err.println("GitHub GraphQL call failed: HTTP ${response.code()}")
-        System.err.println(body)
-        System.exit(3)
-    }
+        if (!response.isSuccessful()) {
+            System.err.println("GitHub GraphQL call failed: HTTP ${response.code()}")
+            System.err.println(body)
+            System.exit(3)
+        }
 
-    def json = slurper.parseText(body)
-    if (json.errors) {
-        System.err.println("Failed to parse GraphQL response with errors:")
-        json.errors.each { System.err.println(" - ${it.message}") }
-        System.exit(4)
+        def json = slurper.parseText(body)
+        if (json.errors) {
+            System.err.println("Failed to parse GraphQL response with errors:")
+            json.errors.each { System.err.println(" - ${it.message}") }
+            System.exit(4)
+        }
     }
 }
 

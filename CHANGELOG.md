@@ -2,6 +2,69 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.5.0.Alpha1
+January 20th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Alpha1)
+
+### New features since 3.4.0.Final
+
+* debezium-platform helm chart - Ability to use HTTPS URLs [debezium/dbz#36](https://github.com/debezium/dbz/issues/36)
+* Add Support for Dynamic Oracle Log Archive Destinations [DBZ-9622] [debezium/dbz#1246](https://github.com/debezium/dbz/issues/1246)
+* Debezium Extensions for Quarkus: support for Db2 [debezium/dbz#1447](https://github.com/debezium/dbz/issues/1447)
+* Create jbang catalog for Debezium Extensions for Quarkus [debezium/dbz#1464](https://github.com/debezium/dbz/issues/1464)
+* DB2 - Ability to Set a Maximum Change Timespan to Query [debezium/dbz#1466](https://github.com/debezium/dbz/issues/1466)
+* remove unnecessary jbang main() [debezium/dbz#1467](https://github.com/debezium/dbz/issues/1467)
+* debezium/server NATS Jetstream sync publishing to have retry loop instead of simply failing with Exception [debezium/dbz#1494](https://github.com/debezium/dbz/issues/1494)
+* Do not fail on 'zero-year' dates in MySQL [debezium/dbz#1499](https://github.com/debezium/dbz/issues/1499)
+
+
+### Breaking changes since 3.4.0.Final
+
+None
+
+
+### Fixes since 3.4.0.Final
+
+* Recovery private redo threads can lead to LogMiner failures [debezium/dbz#40](https://github.com/debezium/dbz/issues/40)
+* On adding "Signalling collection name" in the Form editor it should by preserved in the smart editor [DBZ-9080] [debezium/dbz#1226](https://github.com/debezium/dbz/issues/1226)
+* Platform: UI Bugs [DBZ-9559] [debezium/dbz#1416](https://github.com/debezium/dbz/issues/1416)
+* Deleting pipeline does not work when pressing enter after typing name [DBZ-9687] [debezium/dbz#1436](https://github.com/debezium/dbz/issues/1436)
+* Oracle connector fails when user creates a table with a column named "override" [debezium/dbz#1461](https://github.com/debezium/dbz/issues/1461)
+* Debezium Server: HTTP sink, JWTAuthenticatorTests fail [debezium/dbz#1470](https://github.com/debezium/dbz/issues/1470)
+* Debezium issue on connect to IBMi [debezium/dbz#1473](https://github.com/debezium/dbz/issues/1473)
+* Oracle OLR adapter crashes with auto-commit error when encountering unknown tables [debezium/dbz#1480](https://github.com/debezium/dbz/issues/1480)
+* Impossible to run docker image for testing purpose with `docker-maven-plugin` and docker API version > `1.44` [debezium/dbz#1481](https://github.com/debezium/dbz/issues/1481)
+* Cassandra connector return wrong value for DATE columns [debezium/dbz#1486](https://github.com/debezium/dbz/issues/1486)
+* RedisOffsetBackingStore: Race condition causes infinite NullPointerException loop on reconnect leading to unrecoverable state [debezium/dbz#1488](https://github.com/debezium/dbz/issues/1488)
+* pg_stat_replication.flush_lsn can move backwards when lsn.flush.mode=connector_and_driver [debezium/dbz#1489](https://github.com/debezium/dbz/issues/1489)
+* JDBC Sink Connector fails to insert JSON data into MariaDB [debezium/dbz#1492](https://github.com/debezium/dbz/issues/1492)
+* Connector cannot handle uncompressed transaction payloads beyond 2GB [debezium/dbz#1503](https://github.com/debezium/dbz/issues/1503)
+* MySQL: New charset not taken into account [debezium/dbz#1504](https://github.com/debezium/dbz/issues/1504)
+* Debezium Platrform: Update the source and destination flow to get the connections details in smart editor. [debezium/dbz#1506](https://github.com/debezium/dbz/issues/1506)
+* DCO must be checked only on pull request [debezium/dbz#1524](https://github.com/debezium/dbz/issues/1524)
+* ReselectPostProcessor does not account for CustomConverter(s) [debezium/dbz#1527](https://github.com/debezium/dbz/issues/1527)
+* Thread-safety issue in MongoDB connector causes incorrect source.collection metadata during parallel snapshot [debezium/dbz#1531](https://github.com/debezium/dbz/issues/1531)
+
+
+### Other changes since 3.4.0.Final
+
+* Add Commit Signing Check for Pull Requests [debezium/dbz#17](https://github.com/debezium/dbz/issues/17)
+* Migrate Debezium Extensions for Quarkus in debezium/debezium-quarkus repository [debezium/dbz#22](https://github.com/debezium/dbz/issues/22)
+* reorganize the debezium-quarkus repository [debezium/dbz#34](https://github.com/debezium/dbz/issues/34)
+* Update Debezium Platform doc with recent features [DBZ-9319] [debezium/dbz#1381](https://github.com/debezium/dbz/issues/1381)
+* Align Postgres Debezium Extension for Quarkus with new SPI, agroal and test-suite [DBZ-9553] [debezium/dbz#1412](https://github.com/debezium/dbz/issues/1412)
+* Move contributor, sanity and octocat checks workflow to dbz repo [debezium/dbz#1453](https://github.com/debezium/dbz/issues/1453)
+* Debezium-Platform: Fix The grep nitification feature in the pipeline logs [debezium/dbz#1465](https://github.com/debezium/dbz/issues/1465)
+* introduce a factory for `io.debezium.runtime.Debezium` [debezium/dbz#1469](https://github.com/debezium/dbz/issues/1469)
+* move debezium-quarkus to `3.5.0-SNAPSHOT` [debezium/dbz#1482](https://github.com/debezium/dbz/issues/1482)
+* upgrade `debezium-quarkus` to debezium `3.4.0.Final` [debezium/dbz#1483](https://github.com/debezium/dbz/issues/1483)
+* Update the Debezium management platform documentation [debezium/dbz#1495](https://github.com/debezium/dbz/issues/1495)
+* Refactor OracleConnection auto-commit setup as an initial Operation [debezium/dbz#1496](https://github.com/debezium/dbz/issues/1496)
+* add `debezium-quarkus` project in `debezium-platform-conductor` pipeline [debezium/dbz#1507](https://github.com/debezium/dbz/issues/1507)
+* Update workflow to use v4 of actions/cache in mysql-binlog-connector-java repo [debezium/dbz#1515](https://github.com/debezium/dbz/issues/1515)
+* Add debezium platform conductor into core CI [debezium/dbz#1520](https://github.com/debezium/dbz/issues/1520)
+
+
+
 ## 3.4.0.Final
 December 18th 2025 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.Final)
 
