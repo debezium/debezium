@@ -15,10 +15,8 @@ import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.PostgreSQLDialect;
@@ -137,6 +135,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
 
         // Get first record for schema information
         JdbcSinkRecord firstRecord = records.get(0);
+
         final SqlStatementBuilder builder = new SqlStatementBuilder();
 
         builder.append("INSERT INTO ");
@@ -151,38 +150,15 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         allFields.addAll(firstRecord.keyFieldNames());
         allFields.addAll(firstRecord.nonKeyFieldNames());
 
-        // For each column, create ARRAY[binding1, binding2, ...] with proper casting
+        // For each column, use a single ? placeholder (will be bound as SQL array via setArray())
+        // This ensures the same SQL string regardless of batch size -> single query plan
         builder.appendList(",", allFields, (fieldName) -> {
             final io.debezium.sink.field.FieldDescriptor field = firstRecord.allFields().get(fieldName);
             final Schema fieldSchema = field.getSchema();
             final String columnType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
 
-            // Get the column descriptor for this field
-            final String columnName = resolveColumnName(field);
-            final io.debezium.sink.column.ColumnDescriptor column = table.getColumnByName(columnName);
-
-            // Generate query bindings for each record
-            // For simple types: "?, ?, ?"
-            // For geometry: "ST_GeomFromWKB(?, ?), ST_GeomFromWKB(?, ?), ST_GeomFromWKB(?, ?)"
-            String placeholders = records.stream()
-                    .map(record -> {
-                        // Get the value for proper binding generation
-                        final Object value;
-                        if (record.nonKeyFieldNames().contains(fieldName)) {
-                            // Get value from payload
-                            value = record.getPayload().get(fieldName);
-                        }
-                        else {
-                            // Get value from key
-                            final Struct keySource = record.filteredKey();
-                            value = (keySource != null) ? keySource.get(fieldName) : null;
-                        }
-                        // Use the field's query binding which handles complex types like geometry
-                        return record.jdbcFields().get(fieldName).getQueryBinding(column, value);
-                    })
-                    .collect(Collectors.joining(","));
-
-            return "ARRAY[" + placeholders + "]::" + columnType + "[]";
+            // Single placeholder per column - the array will be passed via setArray()
+            return "?::" + columnType + "[]";
         });
 
         builder.append(") AS t(");
@@ -211,6 +187,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
 
         JdbcSinkRecord firstRecord = records.get(0);
         final SqlStatementBuilder builder = new SqlStatementBuilder();
+
         builder.append(batchInsert.get());
 
         // Add ON CONFLICT clause
