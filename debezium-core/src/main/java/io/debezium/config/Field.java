@@ -673,7 +673,7 @@ public final class Field {
      * @return the list of dependents; never null but possibly empty
      */
     public List<String> dependents(Object value) {
-        return valueDependants.get(value);
+        return valueDependants.get(value) == null ? Collections.emptyList() : valueDependants.get(value);
     }
 
     /**
