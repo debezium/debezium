@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -409,5 +410,28 @@ public class ConfigurationTest {
         assertThat(ddlFilter.test(
                 "SET STATEMENT max_statement_time=60 FOR INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1692866524004) ON DUPLICATE KEY UPDATE value = 1692866524004"))
                 .isTrue();
+    }
+
+    @Test
+    public void shouldCorrectlyValidatePresenceOfDependantsBasedOnParentValue() {
+
+        Field parent = Field.create("auth_type")
+                .withDescription("Authorization type")
+                .withDefault("NONE")
+                .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
+                .withDependents("BASIC", List.of("username", "password"))
+                .withDependents("SSL", List.of("ssl.protocol"));
+        Field dependent = Field.create("username")
+                .withDescription("Username for basic authentication");
+
+        config = Configuration.create()
+                .with(parent, "BASIC")
+                .with(dependent, "")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(parent, dependent)).get(dependent.name()).errorMessages();
+        assertThat(errorMessages).isNotEmpty();
+        assertThat(errorMessages.get(0))
+                .isEqualTo("username is required when auth_type is BASIC.");
     }
 }

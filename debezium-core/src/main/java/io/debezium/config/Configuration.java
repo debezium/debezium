@@ -2009,10 +2009,33 @@ public interface Configuration {
             configValuesByFieldName.put(missingDependent, undefinedConfigValue);
         });
 
+        Map<String, String> currentConfiguration = asMap();
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> field.validate(this, fields::fieldWithName, configValuesByFieldName));
+        fields.forEachTopLevelField(field -> validateFieldOnTheParentValue(fields, field, currentConfiguration, configValuesByFieldName));
 
         return configValuesByFieldName;
+    }
+
+    private void validateFieldOnTheParentValue(Field.Set fields, Field field, Map<String, String> currentConfiguration,
+                                               Map<String, ConfigValue> configValuesByFieldName) {
+
+        field.validate(this, fields::fieldWithName, configValuesByFieldName);
+
+        String parentValue = currentConfiguration.get(field.name());
+        field.dependents(parentValue).forEach(dependent -> {
+
+            if (!currentConfiguration.containsKey(dependent) ||
+                    currentConfiguration.get(dependent) == null ||
+                    currentConfiguration.get(dependent).isEmpty()) {
+
+                ConfigValue undefinedConfigValue = new ConfigValue(dependent);
+                undefinedConfigValue.addErrorMessage(String.format("%s is required when %s is %s.", dependent, field.name(), parentValue));
+                configValuesByFieldName.put(dependent, undefinedConfigValue);
+            }
+            else {
+                fields.fieldWithName(dependent).validate(this, fields::fieldWithName, configValuesByFieldName);
+            }
+        });
     }
 
     /**
