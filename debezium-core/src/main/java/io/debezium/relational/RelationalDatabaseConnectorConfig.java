@@ -375,7 +375,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withDependents(List.of(TABLE_INCLUDE_LIST_NAME))
             .withDescription("The schemas for which events should be captured");
 
     /**
@@ -402,7 +402,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withDependents(List.of(TABLE_INCLUDE_LIST_NAME))
             .withValidation(Field::isListOfRegex)
             .withDescription("The databases for which changes are to be captured");
 

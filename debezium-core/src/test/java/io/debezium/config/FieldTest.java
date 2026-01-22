@@ -44,61 +44,104 @@ public class FieldTest {
 
     @Test
     public void shouldReturnDependantFieldsBasedOnValue() {
-
-        Field field = Field.create("auth_type")
+        Field authType = Field.create("auth_type")
                 .withDescription("Authorization type")
                 .withDefault("NONE")
                 .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
-                .withDependents("BASIC", List.of("username", "password"))
-                .withDependents("SSL", List.of("ssl.protocol"));
+                .withDependents("BASIC", DependentFieldMatcher.exact("username", "password"))
+                .withDependents("SSL", DependentFieldMatcher.exact("ssl.protocol"));
 
-        assertThat(field.dependents("BASIC")).containsAll(List.of("username", "password"));
-        assertThat(field.dependents("SSL")).containsAll(List.of("ssl.protocol"));
+        Field username = Field.create("username");
+        Field password = Field.create("password");
+        Field sslProtocol = Field.create("ssl.protocol");
+
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(authType, username, password, sslProtocol)
+                .create();
+
+        Field resolvedAuthType = configDef.connector().stream()
+                .filter(f -> f.name().equals("auth_type"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(resolvedAuthType.dependents("BASIC")).containsExactlyInAnyOrder("password", "username");
+        assertThat(resolvedAuthType.dependents("SSL")).containsExactly("ssl.protocol");
     }
 
     @Test
     public void shouldReturnSameDependantFieldsForMultipleParentValues() {
-
-        Field field = Field.create("connector_adapter")
+        // Create fields with matchers
+        Field adapter = Field.create("connector_adapter")
                 .withDescription("Connector adapter type")
                 .withDefault("LogMiner")
                 .withAllowedValues(Set.of("LogMiner", "LogMiner_Unbuffered", "XStream", "OLR"))
                 .withDependents(List.of("LogMiner", "LogMiner_Unbuffered"),
-                        List.of("log.mining.strategy", "log.mining.batch.size.min", "database.url"))
-                .withDependents("XStream", List.of("database.out.server.name"))
-                .withDependents("OLR", List.of("openlogreplicator.host", "openlogreplicator.port"));
+                        DependentFieldMatcher.exact("log.mining.strategy", "log.mining.batch.size.min", "database.url"))
+                .withDependents("XStream", DependentFieldMatcher.exact("database.out.server.name"))
+                .withDependents("OLR", DependentFieldMatcher.exact("openlogreplicator.host", "openlogreplicator.port"));
+
+        Field logMiningStrategy = Field.create("log.mining.strategy");
+        Field logMiningBatchSize = Field.create("log.mining.batch.size.min");
+        Field databaseUrl = Field.create("database.url");
+        Field xstreamServer = Field.create("database.out.server.name");
+        Field olrHost = Field.create("openlogreplicator.host");
+        Field olrPort = Field.create("openlogreplicator.port");
+
+        // Create ConfigDefinition to trigger pattern resolution
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(adapter, logMiningStrategy, logMiningBatchSize, databaseUrl, xstreamServer, olrHost, olrPort)
+                .create();
+
+        // Get resolved field from ConfigDefinition
+        Field resolvedAdapter = configDef.connector().stream()
+                .filter(f -> f.name().equals("connector_adapter"))
+                .findFirst()
+                .orElseThrow();
 
         // Both LogMiner and LogMiner_Unbuffered should have the same dependents
-        assertThat(field.dependents("LogMiner"))
-                .containsExactlyInAnyOrder("log.mining.strategy", "log.mining.batch.size.min", "database.url");
-        assertThat(field.dependents("LogMiner_Unbuffered"))
-                .containsExactlyInAnyOrder("log.mining.strategy", "log.mining.batch.size.min", "database.url");
+        assertThat(resolvedAdapter.dependents("LogMiner"))
+                .containsExactlyInAnyOrder("database.url", "log.mining.batch.size.min", "log.mining.strategy");
+        assertThat(resolvedAdapter.dependents("LogMiner_Unbuffered"))
+                .containsExactlyInAnyOrder("database.url", "log.mining.batch.size.min", "log.mining.strategy");
 
         // XStream should have its own dependents
-        assertThat(field.dependents("XStream"))
+        assertThat(resolvedAdapter.dependents("XStream"))
                 .containsExactly("database.out.server.name");
 
         // OLR should have its own dependents
-        assertThat(field.dependents("OLR"))
+        assertThat(resolvedAdapter.dependents("OLR"))
                 .containsExactlyInAnyOrder("openlogreplicator.host", "openlogreplicator.port");
     }
 
     @Test
     public void aChildFiledShouldHaveARecommenderBasedOnParentValue() {
+        // Create fields with matchers
+        Field authType = Field.create("auth_type")
+                .withDescription("Authorization type")
+                .withDefault("NONE")
+                .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
+                .withDependents("BASIC", DependentFieldMatcher.exact("username", "password"))
+                .withDependents("SSL", DependentFieldMatcher.exact("ssl.protocol"));
 
-        ConfigDef configDef = Field.group(new ConfigDef(), "auth",
-                Field.create("auth_type")
-                        .withDescription("Authorization type")
-                        .withDefault("NONE")
-                        .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
-                        .withDependents("BASIC", List.of("username", "password"))
-                        .withDependents("SSL", List.of("ssl.protocol")),
-                Field.create("username")
-                        .withDescription("Username for basic authentication"));
+        Field username = Field.create("username")
+                .withDescription("Username for basic authentication");
 
-        ConfigDef.ConfigKey child = configDef.configKeys().get("username");
+        Field password = Field.create("password");
+        Field sslProtocol = Field.create("ssl.protocol");
+
+        // Create ConfigDefinition to trigger pattern resolution
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(authType, username, password, sslProtocol)
+                .create();
+
+        // Create ConfigDef from resolved fields
+        ConfigDef kafkaConfigDef = configDef.configDef();
+
+        ConfigDef.ConfigKey child = kafkaConfigDef.configKeys().get("username");
         assertThat(child.recommender).isNotNull();
         assertThat(child.recommender.visible(child.name, Map.of("auth_type", "BASIC"))).isTrue();
-
     }
 }

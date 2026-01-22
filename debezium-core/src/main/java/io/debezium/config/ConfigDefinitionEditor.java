@@ -70,6 +70,24 @@ public class ConfigDefinitionEditor {
     }
 
     public ConfigDefinition create() {
-        return new ConfigDefinition(connectorName, type, connector, history, events);
+
+        java.util.Set<String> allFieldNames = new java.util.LinkedHashSet<>();
+        type.forEach(f -> allFieldNames.add(f.name()));
+        connector.forEach(f -> allFieldNames.add(f.name()));
+        history.forEach(f -> allFieldNames.add(f.name()));
+        events.forEach(f -> allFieldNames.add(f.name()));
+
+        List<Field> resolvedType = resolvePatterns(type, allFieldNames);
+        List<Field> resolvedConnector = resolvePatterns(connector, allFieldNames);
+        List<Field> resolvedHistory = resolvePatterns(history, allFieldNames);
+        List<Field> resolvedEvents = resolvePatterns(events, allFieldNames);
+
+        return new ConfigDefinition(connectorName, resolvedType, resolvedConnector, resolvedHistory, resolvedEvents);
+    }
+
+    private List<Field> resolvePatterns(List<Field> fields, java.util.Set<String> allFieldNames) {
+        return fields.stream()
+                .map(field -> field.resolvePatterns(allFieldNames))
+                .collect(java.util.stream.Collectors.toList());
     }
 }

@@ -416,23 +416,28 @@ public class ConfigurationTest {
 
     @Test
     public void shouldCorrectlyValidatePresenceOfDependantsBasedOnParentValue() {
-
         Field parent = Field.create("auth_type")
                 .withDescription("Authorization type")
                 .withDefault("NONE")
                 .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
-                .withDependents("BASIC", List.of("username"))
-                .withDependents("SSL", List.of("ssl.protocol"));
+                .withDependents("BASIC", DependentFieldMatcher.exact("username"))
+                .withDependents("SSL", DependentFieldMatcher.exact("ssl.protocol"));
         Field dependent = Field.create("username")
                 .withDescription("Username for basic authentication")
                 .required();
+        Field sslProtocol = Field.create("ssl.protocol");
+
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(parent, dependent, sslProtocol)
+                .create();
 
         config = Configuration.create()
                 .with(parent, "BASIC")
                 .with(dependent, "")
                 .build();
 
-        List<String> errorMessages = config.validate(Field.setOf(parent, dependent)).get(dependent.name()).errorMessages();
+        List<String> errorMessages = config.validate(Field.setOf(configDef.all())).get(dependent.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
         assertThat(errorMessages.get(0))
                 .isEqualTo("username is required when auth_type is BASIC.");
@@ -440,13 +445,13 @@ public class ConfigurationTest {
 
     @Test
     public void shouldCorrectlyCheckOnlyRequiredDependants() {
-
+        // Create fields with matchers
         Field parent = Field.create("auth_type")
                 .withDescription("Authorization type")
                 .withDefault("NONE")
                 .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
-                .withDependents("BASIC", List.of("username", "password", "not_required"))
-                .withDependents("SSL", List.of("ssl.protocol"));
+                .withDependents("BASIC", DependentFieldMatcher.exact("username", "password", "not_required"))
+                .withDependents("SSL", DependentFieldMatcher.exact("ssl.protocol"));
         Field username = Field.create("username")
                 .withDescription("Username for basic authentication")
                 .required();
@@ -455,13 +460,20 @@ public class ConfigurationTest {
                 .required();
         Field notRequired = Field.create("not_required")
                 .withDescription("Just a not required property");
+        Field sslProtocol = Field.create("ssl.protocol");
+
+        // Create ConfigDefinition to trigger pattern resolution
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(parent, username, password, notRequired, sslProtocol)
+                .create();
 
         config = Configuration.create()
                 .with(parent, "BASIC")
                 .with(password, "")
                 .build();
 
-        Map<String, ConfigValue> validationResult = config.validate(Field.setOf(parent, username, password, notRequired));
+        Map<String, ConfigValue> validationResult = config.validate(Field.setOf(configDef.all()));
 
         assertThat(validationResult.get(username.name()).errorMessages()).isNotEmpty();
         assertThat(validationResult.get(username.name()).errorMessages().get(0))
@@ -472,5 +484,64 @@ public class ConfigurationTest {
                 .isEqualTo("password is required when auth_type is BASIC.");
 
         assertThat(validationResult.get(notRequired.name()).errorMessages()).isEmpty();
+    }
+
+    @Test
+    public void shouldResolvePatternBasedDependentsUsingPrefix() {
+        // Create a parent field that uses prefix matching for dependents
+        Field connectorAdapter = Field.create("connector.adapter")
+                .withDescription("Connector adapter type")
+                .withDefault("LogMiner")
+                .withAllowedValues(Set.of("LogMiner", "XStream"))
+                .withDependents("LogMiner", DependentFieldMatcher.withPrefix("log.mining."))
+                .withDependents("XStream", DependentFieldMatcher.exact("xstream.server.name"));
+
+        // Create several fields with the log.mining. prefix
+        Field logMiningStrategy = Field.create("log.mining.strategy").required();
+        Field logMiningBatchSize = Field.create("log.mining.batch.size").required();
+        Field logMiningBufferType = Field.create("log.mining.buffer.type").required();
+        Field xstreamServer = Field.create("xstream.server.name").required();
+        Field otherField = Field.create("other.property");
+
+        // Create ConfigDefinition to trigger pattern resolution
+        ConfigDefinition configDef = ConfigDefinition.editor()
+                .name("test-connector")
+                .connector(connectorAdapter, logMiningStrategy, logMiningBatchSize,
+                        logMiningBufferType, xstreamServer, otherField)
+                .create();
+
+        // Get the resolved field from ConfigDefinition
+        Field resolvedAdapter = configDef.connector().stream()
+                .filter(f -> f.name().equals("connector.adapter"))
+                .findFirst()
+                .orElseThrow();
+
+        // Verify that the prefix pattern matched all log.mining.* fields
+        List<String> logMinerDependents = resolvedAdapter.dependents("LogMiner");
+        assertThat(logMinerDependents).containsExactlyInAnyOrder(
+                "log.mining.batch.size",
+                "log.mining.buffer.type",
+                "log.mining.strategy");
+
+        // Verify that exact matcher works for XStream
+        assertThat(resolvedAdapter.dependents("XStream"))
+                .containsExactly("xstream.server.name");
+
+        // Test validation when LogMiner is selected but a required log.mining field is missing
+        config = Configuration.create()
+                .with(connectorAdapter, "LogMiner")
+                .with(logMiningStrategy, "") // Empty value for required field
+                .with(logMiningBatchSize, "1000")
+                .build();
+
+        Map<String, ConfigValue> validationResult = config.validate(Field.setOf(configDef.all()));
+
+        // Should have error for the missing required field
+        assertThat(validationResult.get("log.mining.strategy").errorMessages()).isNotEmpty();
+        assertThat(validationResult.get("log.mining.strategy").errorMessages().get(0))
+                .isEqualTo("log.mining.strategy is required when connector.adapter is LogMiner.");
+
+        // XStream field should not be validated when LogMiner is selected
+        assertThat(validationResult.get("xstream.server.name").errorMessages()).isEmpty();
     }
 }
