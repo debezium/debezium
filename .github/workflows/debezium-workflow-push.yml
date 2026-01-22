@@ -454,3 +454,10 @@ jobs:
       - uses: ./.github/actions/build-debezium-openlineage
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  build_platform_conductor:
+    name: "Debezium Platform - conductor"
+    needs: [ check_style ]
+    uses: ./.github/workflows/platform-conductor-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build

@@ -6,9 +6,11 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.util.Strings;
 
 /**
  * This utility class contains SQL statements to configure, manage and query Oracle LogMiner
@@ -44,10 +46,25 @@ public class SqlUtils {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
-    public static String switchHistoryQuery(String archiveDestinationName) {
-        return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName) + ")",
-                ARCHIVED_LOG_VIEW);
+    public static String switchHistoryQuery(List<String> archiveDestinationNames) {
+        if (archiveDestinationNames.isEmpty()) {
+            throw new DebeziumException("At least one destination name is expected");
+        }
+
+        if (archiveDestinationNames.size() == 1) {
+            // When only using one, no aggregate or group by is used for simplicity
+            return "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG A, V$ARCHIVE_DEST_STATUS DS " +
+                    "WHERE A.FIRST_TIME > TRUNC(SYSDATE) " +
+                    "AND A.DEST_ID = DS.DEST_ID " +
+                    "AND %s".formatted(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames));
+        }
+
+        // Use aggregate to get max switch count across all configured destinations
+        return "SELECT 'TOTAL', MAX(COUNT(1)) FROM V$ARCHIVED_LOG A, V$ARCHIVE_DEST_STATUS DS " +
+                "WHERE A.FIRST_TIME > TRUNC(SYSDATE) " +
+                "AND A.DEST_ID = DS.DEST_ID " +
+                "AND %s ".formatted(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)) +
+                "GROUP BY DS.DEST_NAME";
     }
 
     public static String currentRedoNameQuery() {
@@ -70,13 +87,17 @@ public class SqlUtils {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER=? AND TABLE_NAME=?", ALL_LOG_GROUPS);
     }
 
-    public static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, List<String> archiveDestinationNames) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
         sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
-        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("FROM ");
+        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+        sb.append(DATABASE_VIEW).append(" D, ");
+        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+        sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
+        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
@@ -88,11 +109,15 @@ public class SqlUtils {
         return sb.append(")").toString();
     }
 
-    public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName) {
+    public static String allRedoThreadArchiveLogs(int threadId, List<String> archiveDestinationNames) {
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
-        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, DS.DEST_NAME ");
+        sb.append("FROM ");
+        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+        sb.append(DATABASE_VIEW).append(" D, ");
+        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+        sb.append("WHERE A.DEST_ID = DS.DEST_ID");
+        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.THREAD#=").append(threadId).append(" ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
@@ -107,10 +132,10 @@ public class SqlUtils {
      * @param scn oldest system change number to search by
      * @param archiveLogRetention duration archive logs will be mined
      * @param archiveLogOnlyMode true if to only mine archive logs, false to mine all available logs
-     * @param archiveDestinationName configured archive log destination to use, may be {@code null}
+     * @param archiveDestinationNames configured archive log destination to use, may be {@code null}
      * @return the query string to obtain minable log files
      */
-    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, String archiveDestinationName) {
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, List<String> archiveDestinationNames) {
         // The generated query performs a union in order to obtain a list of all archive logs that should be mined
         // combined with a list of redo logs that should be mined.
         //
@@ -157,7 +182,8 @@ public class SqlUtils {
         final StringBuilder sb = new StringBuilder();
         if (!archiveLogOnlyMode) {
             sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
-            sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD ");
+            sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD, ");
+            sb.append("NULL AS DEST_NAME ");
             sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ");
             sb.append(DATABASE_VIEW).append(" D, ");
             sb.append(LOG_VIEW).append(" L ");
@@ -168,13 +194,18 @@ public class SqlUtils {
             sb.append("UNION ");
         }
         sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
-        sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
+        sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
+        sb.append("DS.DEST_NAME ");
+        sb.append("FROM ");
+        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+        sb.append(DATABASE_VIEW).append(" D, ");
+        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
         sb.append("WHERE A.NAME IS NOT NULL ");
         sb.append("AND A.ARCHIVED = 'YES' ");
         sb.append("AND A.STATUS = 'A' ");
         sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND A.DEST_ID = DS.DEST_ID ");
+        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
 
@@ -185,24 +216,17 @@ public class SqlUtils {
         return sb.append("ORDER BY 7").toString();
     }
 
-    /**
-     * Returns a SQL predicate clause that should be applied to any {@link #ARCHIVED_LOG_VIEW} queries
-     * so that the results are filtered to only include the local destinations and not those that may
-     * be generated by tools such as Oracle Data Guard.
-     *
-     * @param archiveDestinationName archive log destination to be used, may be {@code null} to auto-select
-     */
-    private static String localArchiveLogDestinationsOnlyQuery(String archiveDestinationName) {
-        final StringBuilder query = new StringBuilder(256);
-        query.append("SELECT DEST_ID FROM ").append(ARCHIVE_DEST_STATUS_VIEW).append(" WHERE ");
-        query.append("STATUS='VALID' AND TYPE='LOCAL' ");
-        if (Strings.isNullOrEmpty(archiveDestinationName)) {
-            query.append("AND ROWNUM=1");
+    private static String destinationNamesPredicate(String columnName, List<String> values) {
+        if (values.isEmpty()) {
+            throw new DebeziumException("Expected at least one archive log destination");
         }
-        else {
-            query.append("AND UPPER(DEST_NAME)='").append(archiveDestinationName.toUpperCase()).append("'");
+
+        final String formattedValues = values.stream().map("'%s'"::formatted).collect(Collectors.joining(","));
+        if (values.size() == 1) {
+            return columnName + " = " + formattedValues;
         }
-        return query.toString();
+
+        return columnName + " IN (" + formattedValues + ")";
     }
 
     // ***** LogMiner methods ***

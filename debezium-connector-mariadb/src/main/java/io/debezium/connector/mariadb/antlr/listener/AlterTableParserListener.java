@@ -10,6 +10,7 @@ import static io.debezium.antlr.AntlrDdlParser.getText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.slf4j.Logger;
@@ -365,5 +366,28 @@ public class AlterTableParserListener extends TableCommonParserListener {
         parser.runIfNotNull(() -> tableEditor.setPrimaryKeyNames(parser.parseName(ctx.uid())), tableEditor);
 
         super.enterAlterByNotExistingPrimaryKey(ctx);
+    }
+
+    @Override
+    public void enterAlterByConvertCharacterset(MariaDBParser.AlterByConvertCharactersetContext ctx) {
+        parser.runIfNotNull(() -> {
+            String charsetName = parser.extractCharset(ctx.charsetName(), ctx.collationName());
+            if (charsetName != null) {
+                tableEditor.setDefaultCharsetName(charsetName);
+                tableEditor.setColumns(tableEditor.columns().stream()
+                        .map(
+                                column -> {
+                                    final ColumnEditor columnEditor = column.edit();
+                                    if (columnEditor.charsetName() != null) {
+                                        columnEditor.charsetNameOfTable(charsetName);
+                                        columnEditor.charsetName(charsetName);
+                                    }
+                                    return columnEditor;
+                                })
+                        .map(ColumnEditor::create)
+                        .collect(Collectors.toList()));
+            }
+        }, tableEditor);
+        super.enterAlterByConvertCharacterset(ctx);
     }
 }

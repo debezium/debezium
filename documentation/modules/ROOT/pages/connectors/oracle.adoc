@@ -2776,13 +2776,13 @@ Because the retention policy that is configured for each destination might diffe
 [TIP]
 ====
 When using the {prodname} Oracle connector in an environment where the standby uses a different archive destination name than the primary instance, the `archive.destination.name` property can include a comma-separated list of destination names.
-The values should be ordered by preference as the {prodname} connector will use the first destination that is `LOCAL` and `VALID`.
+The values should be ordered by preference as the {prodname} connector will use the destinations to collect logs, and the order to define the log precedence.
 This is useful to minimize the reconfiguration necessary when the standby becomes the new primary during a failover scenario.
 
 For example, if the destination for the primary is `LOG_ARCHIVE_DEST_2` and the destination for the standby is `LOG_ARCHIVE_DEST_5`, set the `archive.destination.name` property to `LOG_ARCHIVE_DEST_2,LOG_ARCHIVE_DEST_5`.
-This will prioritize destination #2 and it will be used on the primary and destination #5 will be used on the standby.
+When a failover occurs and the standby becomes the primary, Debezium will prioritize destination #2, falling back to destination #5 to pickup any logs that existed prior to the standby being promoted.
 
-If the destination for CDC is the same for both the primary and standby instances, using a single value is sufficient.
+If the archive destination is the same for both the primary and standby instances, using a single destination name value is sufficient.
 In fact, the property is only required if either instance has more than one archive destination that is both `LOCAL` and `VALID`.
 ====
 
