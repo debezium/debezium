@@ -57,6 +57,33 @@ public class FieldTest {
     }
 
     @Test
+    public void shouldReturnSameDependantFieldsForMultipleParentValues() {
+
+        Field field = Field.create("connector_adapter")
+                .withDescription("Connector adapter type")
+                .withDefault("LogMiner")
+                .withAllowedValues(Set.of("LogMiner", "LogMiner_Unbuffered", "XStream", "OLR"))
+                .withDependents(List.of("LogMiner", "LogMiner_Unbuffered"),
+                        List.of("log.mining.strategy", "log.mining.batch.size.min", "database.url"))
+                .withDependents("XStream", List.of("database.out.server.name"))
+                .withDependents("OLR", List.of("openlogreplicator.host", "openlogreplicator.port"));
+
+        // Both LogMiner and LogMiner_Unbuffered should have the same dependents
+        assertThat(field.dependents("LogMiner"))
+                .containsExactlyInAnyOrder("log.mining.strategy", "log.mining.batch.size.min", "database.url");
+        assertThat(field.dependents("LogMiner_Unbuffered"))
+                .containsExactlyInAnyOrder("log.mining.strategy", "log.mining.batch.size.min", "database.url");
+
+        // XStream should have its own dependents
+        assertThat(field.dependents("XStream"))
+                .containsExactly("database.out.server.name");
+
+        // OLR should have its own dependents
+        assertThat(field.dependents("OLR"))
+                .containsExactlyInAnyOrder("openlogreplicator.host", "openlogreplicator.port");
+    }
+
+    @Test
     public void aChildFiledShouldHaveARecommenderBasedOnParentValue() {
 
         ConfigDef configDef = Field.group(new ConfigDef(), "auth",
