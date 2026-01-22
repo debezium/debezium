@@ -173,8 +173,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                             // beginning, middle, or end of the log. So by updating this value if and only if
                             // the log changes, allows for maximum session reuse.
                             sessionStartScnChanged = true;
-                            sessionStartScn = result.miningSessionStartScn;
                         }
+                        sessionStartScn = result.miningSessionStartScn;
                     }
 
                     readScn = result.readStartScn();
