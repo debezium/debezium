@@ -5771,7 +5771,7 @@ Each connector requires a unique XStream Outbound connector to be configured.
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
 You can adjust the connector configuration to enable the connector to use the Oracle XStream adapter.
 
-The following configuration example adds the properties `database.connection.adapter` and `database.out.server.name` to enable the connector to use the XStream API implementation.
+The following configuration example adds the properties `database.connection.adapter` and `xstream.out.server.name` to enable the connector to use the XStream API implementation.
 
 [source,json,indent=0]
 ----
@@ -5790,7 +5790,7 @@ The following configuration example adds the properties `database.connection.ada
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory",
         "database.connection.adapter": "xstream",
-        "database.out.server.name" : "dbzxout"
+        "xstream.out.server.name" : "dbzxout"
     }
 }
 ----
@@ -5851,7 +5851,7 @@ The following configuration properties are _required_ when using XStream unless 
 |Default
 |Description
 
-|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `+database.out.server.name+`>>
+|[[oracle-property-xstream-out-server-name]]<<oracle-property-xstream-out-server-name, `+xstream.out.server.name+`>>
 |No default
 |Name of the XStream outbound server configured in the database.
 
