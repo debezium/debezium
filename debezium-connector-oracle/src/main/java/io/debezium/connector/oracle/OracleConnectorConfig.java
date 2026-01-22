@@ -93,14 +93,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field XSTREAM_SERVER_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "out.server.name")
-            .withDisplayName("XStream out server name")
+    /**
+     * @deprecated to be removed in Debezium 4.0
+     */
+    @Deprecated
+    public static final String DEPRECATED_XSTREAM_SERVER_NAME = ConfigurationNames.DATABASE_CONFIG_PREFIX + "out.server.name";
+
+    public static final Field XSTREAM_SERVER_NAME = Field.create("xstream.out.server.name")
+            .withDisplayName("XStream outbound server name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
             .withValidation(OracleConnectorConfig::validateOutServerName)
-            .withDescription("Name of the XStream Out server to connect to.");
+            .withDescription("Name of the XStream Outbound server to connect to.")
+            .withDeprecatedAliases(DEPRECATED_XSTREAM_SERVER_NAME);
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
             .withDisplayName("Interval Handling")
@@ -886,7 +893,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final String databaseName;
     private final String pdbName;
-    private final String xoutServerName;
+    private final String xstreamOutboundServerName;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
 
@@ -966,7 +973,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
         this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
-        this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
+        this.xstreamOutboundServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
@@ -1055,8 +1062,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return pdbName != null ? pdbName : databaseName;
     }
 
-    public String getXoutServerName() {
-        return xoutServerName;
+    public String getXStreamOutboundServerName() {
+        return xstreamOutboundServerName;
     }
 
     public IntervalHandlingMode getIntervalHandlingMode() {
