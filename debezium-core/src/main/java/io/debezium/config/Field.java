@@ -916,6 +916,25 @@ public final class Field {
     }
 
     /**
+     * Create and return a new Field instance that is a copy of this field but with the given display name.
+     * This method allows associating the same list of dependent fields with multiple parent field values,
+     * which is useful when multiple values of a field require the same set of dependent fields.
+     *
+     * @param values the list of field values that share the same dependents
+     * @param dependents the names of the fields that depend on this field when it has any of the specified values
+     * @return the new field; never null
+     */
+    public Field withDependents(List<String> values, List<String> dependents) {
+
+        Map<Object, List<String>> updatedValueDependants = new LinkedHashMap<>(valueDependants);
+        for (String value : values) {
+            updatedValueDependants.put(value, dependents);
+        }
+        return new Field(name(), displayName(), type(), width, description(), importance(),
+                dependents, updatedValueDependants, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+    }
+
+    /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
