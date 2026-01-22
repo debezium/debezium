@@ -31,6 +31,7 @@ import io.debezium.connector.jdbc.dialect.db2i.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.dialect.db2i.debezium.TimeType;
 import io.debezium.connector.jdbc.dialect.db2i.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
@@ -72,6 +73,40 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     protected Optional<String> getDatabaseTimeZoneQuery() {
         return Optional.of("SELECT CURRENT TIMEZONE FROM sysibm.sysdummy1");
+    }
+
+    @Override
+    protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
+        final String binding = super.columnQueryBindingFromField(fieldName, table, record);
+
+        // DB2i requires explicit CAST for parameter markers in MERGE statements
+        if (!"?".equals(binding)) {
+            return binding;
+        }
+
+        final FieldDescriptor field = record.allFields().get(fieldName);
+        final String columnName = resolveColumnName(field);
+        final ColumnDescriptor column = table.getColumnByName(columnName);
+
+        String typeName = column.getTypeName();
+        if (typeName == null || typeName.isEmpty()) {
+            // Fallback if type name is not available
+            return binding;
+        }
+
+        // DB2i requires size specification in CAST, append precision/scale if not already present
+        if (!typeName.contains("(")) {
+            final int precision = column.getPrecision();
+            final int scale = column.getScale();
+
+            if (precision > 0) {
+                typeName = (scale > 0)
+                        ? typeName + "(" + precision + "," + scale + ")"
+                        : typeName + "(" + precision + ")";
+            }
+        }
+
+        return "CAST(? AS " + typeName + ")";
     }
 
     @Override
@@ -138,19 +173,37 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
         return "0001-01-01T00:00:00+00:00";
     }
 
+    /**
+     * Generates the MERGE (upsert) statement for DB2i.
+     * <p>
+     * DB2i-specific requirements:
+     * <ul>
+     *   <li>Uses SELECT from sysibm.sysdummy1 instead of VALUES clause</li>
+     *   <li>Parameter markers must be explicitly CAST to their types</li>
+     *   <li>Target table uses alias TGT to avoid ambiguity in ON clause</li>
+     *   <li>SET clause does not use table qualification (DB2i differs from DB2 LUW)</li>
+     * </ul>
+     *
+     * @param table the target table descriptor
+     * @param record the sink record containing data to merge
+     * @return the complete MERGE SQL statement
+     */
     @Override
     public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("merge into ");
         builder.append(getQualifiedTableName(table.getId()));
-        builder.append(" using (values(");
-        builder.appendLists(record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
-        builder.append(")) as DAT(");
-        builder.appendLists(record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
-        builder.append(") on ");
-        builder.appendList(" AND ", record.keyFieldNames(), (name) -> getMergeDatClause(name, table, record));
+        builder.append(" as TGT"); // Add target table alias
+        builder.append(" using (select ");
+        builder.appendLists(record.keyFieldNames(), record.nonKeyFieldNames(),
+                (name) -> columnQueryBindingFromField(name, table, record) + " as " + columnNameFromField(name, record));
+        builder.append(" from sysibm.sysdummy1");
+        builder.append(") as DAT on ");
+        // ON clause uses target table alias
+        builder.appendList(" AND ", record.keyFieldNames(), (name) -> getOnClause(name, table, record));
         if (!record.nonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
+            // SET clause does NOT use qualified names in DB2i
             builder.appendList(", ", record.nonKeyFieldNames(), (name) -> getMergeDatClause(name, table, record));
         }
 
@@ -163,13 +216,19 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
         return builder.build();
     }
 
+    private String getOnClause(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
+        final String columnName = columnNameFromField(fieldName, record);
+        // ON clause uses target table alias TGT
+        return "TGT." + columnName + "=DAT." + columnName;
+    }
+
     private String getMergeDatClause(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
         final String columnName = columnNameFromField(fieldName, record);
         // This is where DB2 for i differs from DB2 LUW
         // DB2 for i does not use fully qualified names in the SET portion of the MERGE command
         //
-        // DB2 LUW version: return toIdentifier(table.getId()) + "." + columnName + "=DAT." + columnName;
-        // DB2 for i version:
+        // DB2 LUW version would also qualify here: return toIdentifier(table.getId()) + "." + columnName + "=DAT." + columnName;
+        // DB2 for i version (SET clause only):
         return columnName + "=DAT." + columnName;
     }
 

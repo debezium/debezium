@@ -435,6 +435,10 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             // .withNetworkAliases(sourceType.getValue());
             // containers.put(sourceType, container);
             // }
+
+            // else if (SourceType.DB2I.equals(sourceType)) {
+            // Not supported in Testcontainers
+            // }
         }
         return containers;
     }

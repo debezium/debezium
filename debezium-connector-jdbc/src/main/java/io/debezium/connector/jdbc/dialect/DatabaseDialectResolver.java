@@ -37,9 +37,8 @@ public class DatabaseDialectResolver {
     public static DatabaseDialect resolve(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         final SessionFactoryImplementor implementor = sessionFactory.unwrap(SessionFactoryImplementor.class);
         final Dialect dialect = implementor.getJdbcServices().getDialect();
-
         final ServiceLoader<DatabaseDialectProvider> providers = ServiceLoader.load(DatabaseDialectProvider.class);
-        LOGGER.info("Looking for dialect {}", dialect);
+
         for (DatabaseDialectProvider provider : providers) {
             if (provider.supports(dialect)) {
                 LOGGER.info("Using dialect {}", provider.name().getName());
@@ -47,7 +46,6 @@ public class DatabaseDialectResolver {
             }
         }
 
-        LOGGER.info("Using dialect {}", GeneralDatabaseDialect.class.getName());
         return new GeneralDatabaseDialect(config, sessionFactory);
     }
 }

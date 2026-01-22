@@ -20,6 +20,9 @@ public enum SourceType {
     // removed temporarily because there is quite a bit of setup required for DB2 in the test suite
     // DB2("db2");
 
+    // DB2i is not supported in the current test suite. It requires a non-container setup and IBM Power hardware.
+    // DB2I("db2i");
+
     private final String value;
 
     SourceType(String value) {

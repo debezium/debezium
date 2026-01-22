@@ -228,6 +228,12 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>net.sf.jt400</groupId>
+            <artifactId>jt400</artifactId>
+            <version>21.0.6</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
         </dependency>
