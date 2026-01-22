@@ -15,12 +15,14 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_C
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -419,10 +421,11 @@ public class ConfigurationTest {
                 .withDescription("Authorization type")
                 .withDefault("NONE")
                 .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
-                .withDependents("BASIC", List.of("username", "password"))
+                .withDependents("BASIC", List.of("username"))
                 .withDependents("SSL", List.of("ssl.protocol"));
         Field dependent = Field.create("username")
-                .withDescription("Username for basic authentication");
+                .withDescription("Username for basic authentication")
+                .required();
 
         config = Configuration.create()
                 .with(parent, "BASIC")
@@ -433,5 +436,41 @@ public class ConfigurationTest {
         assertThat(errorMessages).isNotEmpty();
         assertThat(errorMessages.get(0))
                 .isEqualTo("username is required when auth_type is BASIC.");
+    }
+
+    @Test
+    public void shouldCorrectlyCheckOnlyRequiredDependants() {
+
+        Field parent = Field.create("auth_type")
+                .withDescription("Authorization type")
+                .withDefault("NONE")
+                .withAllowedValues(Set.of("NONE", "BASIC", "SSL"))
+                .withDependents("BASIC", List.of("username", "password", "not_required"))
+                .withDependents("SSL", List.of("ssl.protocol"));
+        Field username = Field.create("username")
+                .withDescription("Username for basic authentication")
+                .required();
+        Field password = Field.create("password")
+                .withDescription("Password for basic authentication")
+                .required();
+        Field notRequired = Field.create("not_required")
+                .withDescription("Just a not required property");
+
+        config = Configuration.create()
+                .with(parent, "BASIC")
+                .with(password, "")
+                .build();
+
+        Map<String, ConfigValue> validationResult = config.validate(Field.setOf(parent, username, password, notRequired));
+
+        assertThat(validationResult.get(username.name()).errorMessages()).isNotEmpty();
+        assertThat(validationResult.get(username.name()).errorMessages().get(0))
+                .isEqualTo("username is required when auth_type is BASIC.");
+
+        assertThat(validationResult.get(password.name()).errorMessages()).isNotEmpty();
+        assertThat(validationResult.get(password.name()).errorMessages().get(0))
+                .isEqualTo("password is required when auth_type is BASIC.");
+
+        assertThat(validationResult.get(notRequired.name()).errorMessages()).isEmpty();
     }
 }
