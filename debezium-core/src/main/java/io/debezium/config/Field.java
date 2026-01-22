@@ -138,8 +138,12 @@ public final class Field {
          */
         public void forEachTopLevelField(Consumer<Field> consumer) {
             Collection<String> namesOfDependents = fieldsByName.values().stream()
-                    .map(Field::dependents)
-                    .flatMap(Collection::stream)
+                    .flatMap(field -> {
+                        Stream<String> simpleDependents = field.dependents().stream();
+                        Stream<String> valueDependents = field.valueDependants.values().stream()
+                                .flatMap(Collection::stream);
+                        return Stream.concat(simpleDependents, valueDependents);
+                    })
                     .collect(Collectors.toSet());
             fieldsByName.values().stream().filter(f -> !namesOfDependents.contains(f.name())).forEach(consumer);
         }
@@ -545,6 +549,7 @@ public final class Field {
     private final Importance importance;
     private final List<String> dependents;
     private final Map<Object, List<String>> valueDependants;
+    private final Map<Object, List<DependentFieldMatcher>> valueDependantMatchers;
     private final Recommender recommender;
     private final java.util.Set<?> allowedValues;
     private final GroupEntry group;
@@ -574,6 +579,16 @@ public final class Field {
                     List<String> dependents, Map<Object, List<String>> valueDependants, Supplier<Object> defaultValueGenerator, Validator validator,
                     Recommender recommender, boolean isRequired, GroupEntry group, java.util.Set<?> allowedValues,
                     java.util.Set<String> deprecatedAliases) {
+        this(name, displayName, type, width, description, importance, dependents, valueDependants, null,
+                defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+    }
+
+    protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
+                    List<String> dependents, Map<Object, List<String>> valueDependants,
+                    Map<Object, List<DependentFieldMatcher>> valueDependantMatchers,
+                    Supplier<Object> defaultValueGenerator, Validator validator,
+                    Recommender recommender, boolean isRequired, GroupEntry group, java.util.Set<?> allowedValues,
+                    java.util.Set<String> deprecatedAliases) {
         Objects.requireNonNull(name, "The field name is required");
         this.name = name;
         this.displayName = displayName;
@@ -585,6 +600,7 @@ public final class Field {
         this.importance = importance != null ? importance : Importance.MEDIUM;
         this.dependents = dependents != null ? dependents : Collections.emptyList();
         this.valueDependants = valueDependants != null ? valueDependants : Collections.emptyMap();
+        this.valueDependantMatchers = valueDependantMatchers != null ? valueDependantMatchers : Collections.emptyMap();
         this.recommender = recommender;
         this.isRequired = isRequired;
         this.group = group;
@@ -789,7 +805,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDescription(String description) {
-        return new Field(name(), displayName, type(), width, description, importance(), dependents, valueDependants,
+        return new Field(name(), displayName, type(), width, description, importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -800,7 +816,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDisplayName(String displayName) {
-        return new Field(name(), displayName, type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName, type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -810,7 +826,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withWidth(Width width) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -820,7 +836,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withType(Type type) {
-        return new Field(name(), displayName(), type, width(), description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type, width(), description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -862,23 +878,23 @@ public final class Field {
     }
 
     public Field required() {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, true, group, allowedValues, deprecatedAliases)
                 .withValidation(Field::isRequired);
     }
 
     public Field optional() {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, false, group, allowedValues, deprecatedAliases);
     }
 
     public Field withGroup(GroupEntry group) {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     public Field withAllowedValues(java.util.Set<?> allowedValues) {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -888,50 +904,56 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withImportance(Importance importance) {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * @param dependents the names of the fields that depend on this field
+     * @param dependents the names of the fields that depend on this field (simple, non-value-based dependencies)
      * @return the new field; never null
      */
-    public Field withDependents(String... dependents) {
+    public Field withDependents(List<String> dependents) {
         return new Field(name(), displayName(), type(), width, description(), importance(),
-                Arrays.asList(dependents), valueDependants, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+                dependents, valueDependants, valueDependantMatchers, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues,
+                deprecatedAliases);
     }
 
     /**
-     * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * @param dependents the names of the fields that depend on this field
-     * @return the new field; never null
-     */
-    public Field withDependents(String value, List<String> dependents) {
-
-        Map<Object, List<String>> updatedValueDependants = new LinkedHashMap<>(valueDependants);
-        updatedValueDependants.put(value, dependents);
-        return new Field(name(), displayName(), type(), width, description(), importance(),
-                dependents, updatedValueDependants, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
-    }
-
-    /**
-     * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * This method allows associating the same list of dependent fields with multiple parent field values,
-     * which is useful when multiple values of a field require the same set of dependent fields.
+     * Create and return a new Field instance that is a copy of this field but with dependent fields
+     * resolved using matchers. Matchers allow flexible specification of dependent fields using patterns,
+     * prefixes, or exact names.
      *
-     * @param values the list of field values that share the same dependents
-     * @param dependents the names of the fields that depend on this field when it has any of the specified values
+     * @param value the field value that triggers the dependents
+     * @param matchers the matchers that will resolve to dependent field names
      * @return the new field; never null
      */
-    public Field withDependents(List<String> values, List<String> dependents) {
+    public Field withDependents(String value, DependentFieldMatcher... matchers) {
 
-        Map<Object, List<String>> updatedValueDependants = new LinkedHashMap<>(valueDependants);
+        Map<Object, List<DependentFieldMatcher>> updatedMatchers = new LinkedHashMap<>(valueDependantMatchers);
+        updatedMatchers.put(value, Arrays.asList(matchers));
+        return new Field(name(), displayName(), type(), width, description(), importance(),
+                dependents, valueDependants, updatedMatchers, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+    }
+
+    /**
+     * Create and return a new Field instance that is a copy of this field but with the same matchers
+     * associated with multiple parent field values. This is useful when multiple values require the same
+     * set of dependent fields matched by the same patterns.
+     *
+     * @param values the list of field values that share the same dependent matchers
+     * @param matchers the matchers that will resolve to dependent field names
+     * @return the new field; never null
+     */
+    public Field withDependents(List<String> values, DependentFieldMatcher... matchers) {
+
+        Map<Object, List<DependentFieldMatcher>> updatedMatchers = new LinkedHashMap<>(valueDependantMatchers);
+        List<DependentFieldMatcher> matcherList = Arrays.asList(matchers);
         for (String value : values) {
-            updatedValueDependants.put(value, dependents);
+            updatedMatchers.put(value, matcherList);
         }
         return new Field(name(), displayName(), type(), width, description(), importance(),
-                dependents, updatedValueDependants, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+                dependents, valueDependants, updatedMatchers, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     /**
@@ -940,7 +962,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(String defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 () -> defaultValue, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -951,7 +973,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(boolean defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 () -> Boolean.valueOf(defaultValue), validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -961,7 +983,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(int defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 () -> defaultValue, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -972,7 +994,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(long defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 () -> defaultValue, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -984,7 +1006,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(BooleanSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator::getAsBoolean, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -996,7 +1018,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(IntSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator::getAsInt, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -1008,7 +1030,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(LongSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator::getAsLong, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -1019,7 +1041,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withRecommender(Recommender recommender) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -1033,7 +1055,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withNoValidation() {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, null, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -1051,7 +1073,7 @@ public final class Field {
                 actualValidator = validator.and(actualValidator);
             }
         }
-        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents, valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents, valueDependants, valueDependantMatchers,
                 defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
@@ -1064,8 +1086,37 @@ public final class Field {
         else {
             actualValidator = validator.and(Field::deprecatedFieldWarning);
         }
-        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(), valueDependants,
+        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(), valueDependants, valueDependantMatchers,
                 defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues, aliases);
+    }
+
+    /**
+     * Package-private helper method to resolve pattern-based dependent field matchers into concrete field names.
+     * This is called by ConfigDefinitionEditor.create() to resolve all matchers before creating the ConfigDefinition.
+     *
+     * @param allFieldNames all available field names in the configuration
+     * @return a new Field with resolved dependents, or this field if no matchers are present
+     */
+    Field resolvePatterns(java.util.Set<String> allFieldNames) {
+        if (valueDependantMatchers.isEmpty()) {
+            return this;
+        }
+
+        Map<Object, List<String>> resolvedDependants = new LinkedHashMap<>(valueDependants);
+        for (Map.Entry<Object, List<DependentFieldMatcher>> entry : valueDependantMatchers.entrySet()) {
+            Object value = entry.getKey();
+            List<String> resolvedNames = entry.getValue().stream()
+                    .flatMap(matcher -> matcher.resolve(allFieldNames).stream())
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+            resolvedDependants.put(value, resolvedNames);
+        }
+
+        // Return new field with resolved dependents
+        return new Field(name(), displayName(), type(), width(), description(), importance(),
+                dependents, resolvedDependants, valueDependantMatchers, defaultValueGenerator,
+                validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     @Override

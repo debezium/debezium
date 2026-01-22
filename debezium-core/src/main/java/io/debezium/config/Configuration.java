@@ -2011,12 +2011,12 @@ public interface Configuration {
 
         Map<String, String> currentConfiguration = asMap();
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> validateParentandDependents(fields, field, currentConfiguration, configValuesByFieldName));
+        fields.forEachTopLevelField(field -> validateParentAndDependents(fields, field, currentConfiguration, configValuesByFieldName));
 
         return configValuesByFieldName;
     }
 
-    private void validateParentandDependents(Field.Set fields, Field field, Map<String, String> currentConfiguration,
+    private void validateParentAndDependents(Field.Set fields, Field field, Map<String, String> currentConfiguration,
                                              Map<String, ConfigValue> configValuesByFieldName) {
 
         field.validate(this, fields::fieldWithName, configValuesByFieldName);
