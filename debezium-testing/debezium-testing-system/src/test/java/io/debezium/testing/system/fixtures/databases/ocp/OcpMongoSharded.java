@@ -42,10 +42,4 @@ public class OcpMongoSharded extends OcpDatabaseFixture<OcpMongoShardedControlle
         controller = deployer.deploy();
         return controller;
     }
-
-    @Override
-    public void teardown() throws Exception {
-        controller.getMongo().stop();
-        controller.getMongo().waitForStopped();
-    }
 }
