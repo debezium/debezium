@@ -2011,22 +2011,20 @@ public interface Configuration {
 
         Map<String, String> currentConfiguration = asMap();
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> validateFieldOnTheParentValue(fields, field, currentConfiguration, configValuesByFieldName));
+        fields.forEachTopLevelField(field -> validateParentandDependents(fields, field, currentConfiguration, configValuesByFieldName));
 
         return configValuesByFieldName;
     }
 
-    private void validateFieldOnTheParentValue(Field.Set fields, Field field, Map<String, String> currentConfiguration,
-                                               Map<String, ConfigValue> configValuesByFieldName) {
+    private void validateParentandDependents(Field.Set fields, Field field, Map<String, String> currentConfiguration,
+                                             Map<String, ConfigValue> configValuesByFieldName) {
 
         field.validate(this, fields::fieldWithName, configValuesByFieldName);
 
         String parentValue = currentConfiguration.get(field.name());
         field.dependents(parentValue).forEach(dependent -> {
 
-            if (!currentConfiguration.containsKey(dependent) ||
-                    currentConfiguration.get(dependent) == null ||
-                    currentConfiguration.get(dependent).isEmpty()) {
+            if (isRequiredAndMissing(fields, currentConfiguration, dependent)) {
 
                 ConfigValue undefinedConfigValue = new ConfigValue(dependent);
                 undefinedConfigValue.addErrorMessage(String.format("%s is required when %s is %s.", dependent, field.name(), parentValue));
@@ -2036,6 +2034,12 @@ public interface Configuration {
                 fields.fieldWithName(dependent).validate(this, fields::fieldWithName, configValuesByFieldName);
             }
         });
+    }
+
+    private static boolean isRequiredAndMissing(Field.Set fields, Map<String, String> currentConfiguration, String dependent) {
+        return fields.fieldWithName(dependent).isRequired() & (!currentConfiguration.containsKey(dependent) ||
+                currentConfiguration.get(dependent) == null ||
+                currentConfiguration.get(dependent).isEmpty());
     }
 
     /**
