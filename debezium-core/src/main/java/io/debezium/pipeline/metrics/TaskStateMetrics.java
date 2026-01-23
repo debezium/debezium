@@ -19,27 +19,27 @@ import io.debezium.metrics.Metrics;
 @ThreadSafe
 public class TaskStateMetrics extends Metrics implements TaskStateMetricsMXBean {
 
-    private final AtomicLong connectTaskRebalanceExempt = new AtomicLong();
+    private final AtomicLong connectTaskDnd = new AtomicLong();
 
     public TaskStateMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "task");
     }
 
     @Override
-    public long getConnectTaskRebalanceExempt() {
-        return connectTaskRebalanceExempt.get();
+    public long getConnectTaskDnd() {
+        return connectTaskDnd.get();
     }
 
     /**
-     * Sets the rebalance exemption status.
+     * Sets the do-not-disturb status.
      *
-     * @param exempt 1 if the task should be exempt from rebalancing, 0 otherwise
+     * @param dnd 1 if the task should not be disturbed, 0 otherwise
      */
-    public void setConnectTaskRebalanceExempt(long exempt) {
-        connectTaskRebalanceExempt.set(exempt);
+    public void setConnectTaskDnd(long dnd) {
+        connectTaskDnd.set(dnd);
     }
 
     public void reset() {
-        connectTaskRebalanceExempt.set(0);
+        connectTaskDnd.set(0);
     }
 }

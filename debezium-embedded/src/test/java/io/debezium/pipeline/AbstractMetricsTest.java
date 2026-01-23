@@ -318,7 +318,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    public void testConnectTaskRebalanceExemptMetric() throws Exception {
+    public void testConnectTaskDndMetric() throws Exception {
         executeInsertStatements();
 
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -346,7 +346,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         // Wait for MBeans to be registered and snapshot to start
         // Poll frequently (5ms) to catch snapshot while running since it completes quickly
-        Awaitility.await("Waiting for snapshot to start and rebalance exempt to be set")
+        Awaitility.await("Waiting for snapshot to start and DND to be set")
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .pollInterval(5, TimeUnit.MILLISECONDS)
                 .ignoreException(InstanceNotFoundException.class)
@@ -358,12 +358,12 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
                         Object snapshotRunning = mBeanServer.getAttribute(snapshotMetricsObjectName,
                                 "SnapshotRunning");
-                        Object rebalanceExempt = mBeanServer.getAttribute(taskMetricsObjectName,
-                                "ConnectTaskRebalanceExempt");
+                        Object dnd = mBeanServer.getAttribute(taskMetricsObjectName,
+                                "ConnectTaskDnd");
 
                         // During snapshot, both should be 1
                         return Long.valueOf(1).equals(snapshotRunning)
-                                && Long.valueOf(1).equals(rebalanceExempt);
+                                && Long.valueOf(1).equals(dnd);
                     }
                     catch (InstanceNotFoundException e) {
                         return false;
@@ -373,9 +373,9 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Wait for snapshot to complete
         waitForSnapshotToBeCompleted(connector(), server(), task(), database());
 
-        // After snapshot: ConnectTaskRebalanceExempt should be 0
-        assertThat(mBeanServer.getAttribute(taskMetricsObjectName, "ConnectTaskRebalanceExempt"))
-                .as("ConnectTaskRebalanceExempt should be 0 after snapshot completes")
+        // After snapshot: ConnectTaskDnd should be 0
+        assertThat(mBeanServer.getAttribute(taskMetricsObjectName, "ConnectTaskDnd"))
+                .as("ConnectTaskDnd should be 0 after snapshot completes")
                 .isEqualTo(0L);
     }
 

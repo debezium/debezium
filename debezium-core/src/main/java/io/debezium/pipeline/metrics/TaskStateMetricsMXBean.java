@@ -13,9 +13,9 @@ package io.debezium.pipeline.metrics;
 public interface TaskStateMetricsMXBean {
 
     /**
-     * Gets the current rebalance exemption status.
+     * Gets the current do-not-disturb status.
      *
-     * @return 1 if the task is exempt from rebalancing, 0 otherwise
+     * @return 1 if the task should not be disturbed, 0 otherwise
      */
-    long getConnectTaskRebalanceExempt();
+    long getConnectTaskDnd();
 }
