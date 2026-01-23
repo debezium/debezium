@@ -28,6 +28,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
+import io.debezium.config.DependentFieldMatcher;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -105,7 +106,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
-            .withValidation(OracleConnectorConfig::validateOutServerName)
+            .required()
             .withDescription("Name of the XStream Outbound server to connect to.")
             .withDeprecatedAliases(DEPRECATED_XSTREAM_SERVER_NAME);
 
@@ -154,8 +155,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
             .withDescription("The adapter to use when capturing changes from the database. "
                     + "Options include: "
-                    + "'logminer': (the default) to capture changes using native Oracle LogMiner; "
-                    + "'xstream' to capture changes using Oracle XStreams");
+                    + "'LogMiner': (the default) to capture changes using native Oracle LogMiner with buffered transactions; "
+                    + "'LogMiner_Unbuffered': to capture changes using native Oracle LogMiner without buffering; "
+                    + "'XStream': to capture changes using Oracle XStreams; "
+                    + "'OLR': to capture changes using OpenLogReplicator")
+            .withDependents(
+                    List.of("LogMiner", "LogMiner_Unbuffered"),
+                    DependentFieldMatcher.withPrefix("log.mining."),
+                    DependentFieldMatcher.exact("database.url", "rac.nodes"))
+            .withDependents("XStream",
+                    DependentFieldMatcher.exact("xstream.out.server.name"))
+            .withDependents("OLR",
+                    DependentFieldMatcher.withPrefix("openlogreplicator."));
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
@@ -578,7 +589,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .required()
             .withDescription("The configured logical source name in the OpenLogReplicator configuration that is to stream changes");
 
     public static final Field OLR_HOST = Field.create("openlogreplicator.host")
@@ -586,7 +597,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .required()
             .withDescription("The hostname of the OpenLogReplicator network service");
 
     public static final Field OLR_PORT = Field.create("openlogreplicator.port")
@@ -594,7 +605,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .required()
             .withDescription("The port of the OpenLogReplicator network service");
 
     public static final Field LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST = Field.createInternal("log.mining.schema_changes.username.exclude.list")
@@ -2230,13 +2241,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }).collect(Collectors.toSet());
     }
 
-    public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            return Field.isRequired(config, field, problems);
-        }
-        return 0;
-    }
-
     public static int requiredWhenNoUrl(Configuration config, Field field, ValidationOutput problems) {
         // Validates that the field is required but only when an URL field is not present
         if (config.getString(URL) == null) {
@@ -2349,13 +2353,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                         String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
                 return 1;
             }
-        }
-        return 0;
-    }
-
-    public static int validateRequiredWhenUsingOpenLogReplicator(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.OLR.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            return Field.isRequired(config, field, problems);
         }
         return 0;
     }
