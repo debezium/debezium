@@ -507,7 +507,10 @@ public final class Field {
         return fieldsWithDependents.stream()
                 .flatMap(parentField -> parentField.valueDependants.entrySet().stream()
                         .flatMap(entry -> createRecommendersForDependents(parentField, entry)))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        Field::mergeRecommenders));
     }
 
     private static Stream<Map.Entry<String, ConfigDef.Recommender>> createRecommendersForDependents(
@@ -528,11 +531,31 @@ public final class Field {
                         @Override
                         public boolean visible(String name, Map<String, Object> parsedConfig) {
                             Object currentParentValue = parsedConfig.get(parentField.name);
+                            // For enum fields, comparison should be case-insensitive
+                            if (parentValue instanceof String && currentParentValue instanceof String) {
+                                return ((String) parentValue).equalsIgnoreCase((String) currentParentValue);
+                            }
                             return parentValue.equals(currentParentValue);
                         }
                     };
                     return Map.entry((String) dependentFieldName, recommender);
                 });
+    }
+
+    private static ConfigDef.Recommender mergeRecommenders(ConfigDef.Recommender r1, ConfigDef.Recommender r2) {
+        return new ConfigDef.Recommender() {
+            @Override
+            public List<Object> validValues(String name, Map<String, Object> parsedConfig) {
+                // Return valid values from the first recommender (they should be the same)
+                return r1.validValues(name, parsedConfig);
+            }
+
+            @Override
+            public boolean visible(String name, Map<String, Object> parsedConfig) {
+                // Field is visible if EITHER recommender says it's visible
+                return r1.visible(name, parsedConfig) || r2.visible(name, parsedConfig);
+            }
+        };
     }
 
     private static Predicate<Field> hasValueDependents() {
@@ -683,13 +706,40 @@ public final class Field {
     }
 
     /**
+     * Get the map of value-based dependents for this field.
+     * The map key is the parent field value, and the value is the list of dependent field names.
+     *
+     * @return the map of value-based dependents
+     */
+    public Map<Object, List<String>> valueDependants() {
+        return valueDependants;
+    }
+
+    /**
      * Get the names of the fields that are or may be dependent upon this field
      * based on the field value
      * @param value the value which dependents are related
      * @return the list of dependents; never null but possibly empty
      */
     public List<String> dependents(Object value) {
-        return valueDependants.get(value) == null ? Collections.emptyList() : valueDependants.get(value);
+        // Try exact match first
+        List<String> exactMatch = valueDependants.get(value);
+        if (exactMatch != null) {
+            return exactMatch;
+        }
+
+        // For string values, try case-insensitive match
+        if (value instanceof String) {
+            String stringValue = (String) value;
+            for (Map.Entry<Object, List<String>> entry : valueDependants.entrySet()) {
+                if (entry.getKey() instanceof String &&
+                        stringValue.equalsIgnoreCase((String) entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return Collections.emptyList();
     }
 
     /**

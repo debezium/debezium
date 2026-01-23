@@ -1952,13 +1952,29 @@ public interface Configuration {
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
     default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
-        boolean valid = true;
-        for (Field field : fields) {
+        // Convert to Field.Set to support top-level and dependent field validation
+        Field.Set fieldSet = Field.setOf(fields);
+        final boolean[] valid = { true };
+
+        // Only validate top-level fields and their dependents
+        fieldSet.forEachTopLevelField(field -> {
             if (!field.validate(this, problems)) {
-                valid = false;
+                valid[0] = false;
             }
-        }
-        return valid;
+
+            // Validate dependents based on the parent field's value
+            Object parentValue = this.getString(field);
+            for (String dependentName : field.dependents(parentValue)) {
+                Field dependent = fieldSet.fieldWithName(dependentName);
+                if (dependent != null) {
+                    if (!dependent.validate(this, problems)) {
+                        valid[0] = false;
+                    }
+                }
+            }
+        });
+
+        return valid[0];
     }
 
     /**
