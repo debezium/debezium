@@ -72,14 +72,14 @@ public class Sink extends JdbcConnectionProvider {
     }
 
     public String formatTableName(String tableName) {
-        if (type.is(SinkType.ORACLE, SinkType.DB2)) {
+        if (type.is(SinkType.ORACLE, SinkType.DB2, SinkType.DB2I)) {
             return tableName.toUpperCase();
         }
         return tableName;
     }
 
     public String formatColumnName(String columnName) {
-        if (type.is(SinkType.ORACLE, SinkType.DB2)) {
+        if (type.is(SinkType.ORACLE, SinkType.DB2, SinkType.DB2I)) {
             return columnName.toUpperCase();
         }
         return columnName;
