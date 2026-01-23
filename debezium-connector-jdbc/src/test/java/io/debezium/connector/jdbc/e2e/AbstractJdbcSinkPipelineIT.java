@@ -131,7 +131,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BIT(n) data type support")
-    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.DB2 }, reason = "BIT(n) is sent as bytes, BLOB is not permitted in primary keys")
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.DB2, SinkType.DB2I }, reason = "BIT(n) is sent as bytes, BLOB is not permitted in primary keys")
     public void testBitWithSizeDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
                 sink,
@@ -184,7 +184,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BIT VARYING(n) data type support")
-    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.DB2 }, reason = "BIT VARYING(n) is sent as bytes, BLOB is not permitted in primary keys")
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.DB2, SinkType.DB2I }, reason = "BIT VARYING(n) is sent as bytes, BLOB is not permitted in primary keys")
     public void testBitVaryingDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
                 sink,
@@ -270,6 +270,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     switch (sink.getType()) {
                         case POSTGRES:
                         case DB2:
+                            return rs.getBoolean(index) ? 1 : 0;
+                        case DB2I:
                             return rs.getBoolean(index) ? 1 : 0;
                         default:
                             return rs.getInt(index);
@@ -1143,6 +1145,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                             assertColumn(sink, record, "id", "VARCHAR", 512);
                             assertColumn(sink, record, "data", "CLOB");
                             break;
+                        case DB2I:
+                            assertColumn(sink, record, "id", "VARCHAR", 32768);
+                            assertColumn(sink, record, "data", "CLOB");
+                            break;
                         case ORACLE:
                             assertColumn(sink, record, "id", "VARCHAR2", 4000);
                             assertColumn(sink, record, "data", "CLOB");
@@ -1649,6 +1655,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 // TIME is only seconds precision
                 nanoSeconds = 0;
                 break;
+            case DB2I:
+                // TIME is only seconds precision
+                nanoSeconds = 0;
+                break;
         }
 
         assertDataType(source,
@@ -1697,6 +1707,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         int nanoSeconds1 = isConnectPrecision(source) ? 456000000 : 456789000;
 
         if (sink.getType().is(/* SinkType.ORACLE, */ SinkType.DB2)) {
+            nanoSeconds0 = 0;
+            nanoSeconds1 = 0;
+        }
+        if (sink.getType().is(/* SinkType.ORACLE, */ SinkType.DB2I)) {
             nanoSeconds0 = 0;
             nanoSeconds1 = 0;
         }
@@ -1758,6 +1772,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     public void testNanoTimeDataType(Source source, Sink sink) throws Exception {
         int nanoSeconds = isConnectPrecision(source) ? 456000000 : 456789000;
         if (sink.getType().is(SinkType.DB2)) {
+            nanoSeconds = 0;
+        }
+        if (sink.getType().is(SinkType.DB2I)) {
             nanoSeconds = 0;
         }
         assertDataTypeNonKeyOnly(source,
@@ -2027,6 +2044,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No TIME(n) WITH TIME ZONE data type support")
     @SkipWhenSink(value = { SinkType.MYSQL }, reason = "MySQL has no support for TIME(n) with TIME ZONE support")
     @SkipWhenSink(value = { SinkType.DB2 }, reason = "There is an issue with Daylight Savings Time")
+    @SkipWhenSink(value = { SinkType.DB2I }, reason = "There is an issue with Daylight Savings Time")
     @WithTemporalPrecisionMode
     public void testTimeWithTimeZoneDataType(Source source, Sink sink) throws Exception {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
@@ -2486,7 +2504,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BYTEA data type support")
-    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.ORACLE, SinkType.DB2 }, reason = "These data types are not allowed in the primary keys")
+    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.ORACLE, SinkType.DB2, SinkType.DB2I }, reason = "These data types are not allowed in the primary keys")
     public void testByteaDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
                 sink,
@@ -2884,7 +2902,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @ForSource(value = { SourceType.POSTGRES, SourceType.MYSQL }, reason = "The VECTOR data type only applies to PostgreSQL and MySQL")
-    @SkipWhenSink(value = { SinkType.DB2, SinkType.ORACLE, SinkType.SQLSERVER }, reason = "The VECTOR data type can only be consumed natively by PostgreSQL and MySQL")
+    @SkipWhenSink(value = { SinkType.DB2, SinkType.DB2I, SinkType.ORACLE,
+            SinkType.SQLSERVER }, reason = "The VECTOR data type can only be consumed natively by PostgreSQL and MySQL")
     @WithPostgresExtension("vector")
     public void testVectorDataType(Source source, Sink sink) throws Exception {
         List<String> values = List.of("'[1,2,3]'");
@@ -2965,6 +2984,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @ForSource(value = { SourceType.POSTGRES }, reason = "The GEOGRAPHY data type only applies to PostgreSQL")
     @SkipWhenSink(value = { SinkType.DB2 }, reason = "No support for GEOGRAPHY data type")
+    @SkipWhenSink(value = { SinkType.DB2I }, reason = "No support for GEOGRAPHY data type")
     @WithPostgresExtension("postgis")
     public void testGeometryDataTypeFromPostgres(Source source, Sink sink) throws Exception {
         String postgisSchema = "postgis";
@@ -3113,7 +3133,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
-        if (sink.getType().is(SinkType.SQLSERVER) && sink.getType().is(SinkType.DB2)) {
+        if (sink.getType().is(SinkType.SQLSERVER) && sink.getType().is(SinkType.DB2) && sink.getType().is(SinkType.DB2I)) {
 
             expectedValues = List.of(ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC),
                     ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
