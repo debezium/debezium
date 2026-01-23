@@ -4366,8 +4366,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Transaction 2: With DIFFERENT origin "dc2" and LSN 0x22222 (139810)
         TestHelper.execute(
                 "SELECT pg_replication_origin_session_setup('" + originName2 + "');" +
-                "SELECT pg_replication_origin_xact_setup('0/22222', now());" +
-                "INSERT INTO test_multi_origin (data) VALUES ('from dc2');");
+                        "SELECT pg_replication_origin_xact_setup('0/22222', now());" +
+                        "INSERT INTO test_multi_origin (data) VALUES ('from dc2');");
         try {
             TestHelper.execute("SELECT pg_replication_origin_session_reset();");
         }
@@ -4436,17 +4436,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
          *
          * Key behavior being tested:
          * - When the connector stops mid-transaction (lastEventStoredLsn > lastCommitLsn),
-         *   WalPositionLocator ensures streaming resumes from the BEGIN of that transaction.
+         * WalPositionLocator ensures streaming resumes from the BEGIN of that transaction.
          * - During this replay, ORIGIN messages must be processed (shouldMessageBeSkipped returns false)
-         *   to ensure subsequent records have the correct origin info.
+         * to ensure subsequent records have the correct origin info.
          *
          * Test approach:
          * - Insert a large transaction (2M rows) with ORIGIN set - large enough that the connector
-         *   can't process all records before we stop it
+         * can't process all records before we stop it
          * - Start connector and consume some records
          * - Stop connector mid-transaction (before COMMIT is processed)
          * - Restart connector - WalPositionLocator detects lastEventStoredLsn > lastCommitLsn
-         *   and replays from transaction BEGIN
+         * and replays from transaction BEGIN
          * - Verify records after restart have origin info (proves ORIGIN was re-processed)
          */
 
