@@ -3321,6 +3321,27 @@ Tags can help you to organize and categorize metrics data.
 You can define tags to identify particular application instances, environments, regions, versions, and so forth.
 For more information, see xref:customized-mbean-names[Customized MBean names].
 
+|[[sqlserver-property-custom-sanitize-pattern]]<<sqlserver-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
+|`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys. +
+ +
+By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
+Use this property to specify a custom regular expression that identifies configuration keys that contain sensitive information and should be masked.
+
+[IMPORTANT]
+====
+Setting `custom.sanitize.pattern` replaces Debezium's default pattern entirely; it does not extend or augment the default.
+====
+
+For example, to mask keys containing `api.key` or `token` anywhere in the name:
+
+----
+"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
+----
+
+Configuration keys whose values are masked are replaced with `pass:[********]` when configuration properties are displayed, logged, or returned by APIs.
+
+
 |[[sqlserver-property-errors-max-retires]]<<sqlserver-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
 |Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +

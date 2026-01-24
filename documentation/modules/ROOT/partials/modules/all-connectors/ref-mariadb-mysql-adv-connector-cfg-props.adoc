@@ -90,7 +90,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 [id="{context}-property-custom-sanitize-pattern"]
 xref:{context}-property-custom-sanitize-pattern[`custom.sanitize.pattern`]::
 
-Default value::: '.*secret$|.*password$|.*sasl\.jaas\.config$|.*basic\.auth\.user\.info|.*registry\.auth\.client-secret'
+Default value::: `.*secret$|.*password$|.*sasl\.jaas\.config$|.*basic\.auth\.user\.info|.*registry\.auth\.client-secret`
 
 Description:::
 An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
@@ -104,9 +104,9 @@ Setting `custom.sanitize.pattern` replaces Debezium's default pattern entirely; 
 ====
 +
 For example, to mask keys containing `api.key` or `token` anywhere in the name:
-`custom.sanitize.pattern=.*api\.key*|.*token.*`
+`custom.sanitize.pattern=pass:['.*api\.key*|.*token.*']`
 +
-Configuration keys whose values are masked are replaced with `********` when configuration properties are displayed, logged, or returned by APIs.
+Configuration keys whose values are masked are replaced with `pass:[********]` when configuration properties are displayed, logged, or returned by APIs.
 
 
 
