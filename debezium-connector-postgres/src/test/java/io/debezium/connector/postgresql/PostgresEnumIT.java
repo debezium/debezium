@@ -86,8 +86,8 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         SourceRecords records = consumeRecordsByTopic(2);
         List<SourceRecord> publicEnumRecords = records.recordsForTopic(topicName("public.enum_test"));
         List<SourceRecord> testIntRecords = records.recordsForTopic(topicName("test.int_test"));
-        assertThat(publicEnumRecords).hasSize(1);
-        assertThat(testIntRecords).hasSize(1);
+        assertThat(publicEnumRecords).isNotNull().hasSize(1);
+        assertThat(testIntRecords).isNotNull().hasSize(1);
 
         Struct after1 = ((Struct) publicEnumRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         Struct after2 = ((Struct) testIntRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
@@ -102,8 +102,8 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         records = consumeRecordsByTopic(2);
         List<SourceRecord> testEnumRecords = records.recordsForTopic(topicName("test.enum_test"));
         List<SourceRecord> publicIntRecords = records.recordsForTopic(topicName("public.int_test"));
-        assertThat(testEnumRecords).hasSize(1);
-        assertThat(publicIntRecords).hasSize(1);
+        assertThat(testEnumRecords).isNotNull().hasSize(1);
+        assertThat(publicIntRecords).isNotNull().hasSize(1);
 
         Struct after3 = ((Struct) testEnumRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         Struct after4 = ((Struct) publicIntRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
