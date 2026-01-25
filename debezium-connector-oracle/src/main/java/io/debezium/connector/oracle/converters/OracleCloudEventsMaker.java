@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.oracle.converters;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
@@ -44,5 +47,14 @@ public class OracleCloudEventsMaker extends CloudEventsMaker {
     @Override
     public Set<String> connectorSpecificSourceFields() {
         return ORACLE_SOURCE_FIELDS;
+    }
+
+    @Override
+    public String cePartitionKey() {
+        Map<String, String> partitionKeys = new OraclePartition(
+                sourceField(AbstractSourceInfo.SERVER_NAME_KEY).toString(),
+                sourceField(AbstractSourceInfo.DATABASE_NAME_KEY).toString()).getSourcePartition();
+
+        return partitionKeys.keySet().stream().sorted().map(k -> k + ":" + partitionKeys.get(k)).collect(Collectors.joining(";"));
     }
 }
