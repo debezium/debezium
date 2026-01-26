@@ -35,8 +35,7 @@ public class MySqlSignalActionProvider implements SignalActionProvider {
         // Add MySQL-specific signal actions
         if (connectorConfig instanceof MySqlConnectorConfig) {
             actions.put(SetBinlogPositionSignal.NAME,
-                    new SetBinlogPositionSignal<>(dispatcher, changeEventSourceCoordinator,
-                            (MySqlConnectorConfig) connectorConfig));
+                    new SetBinlogPositionSignal<>(dispatcher));
         }
 
         return actions;
