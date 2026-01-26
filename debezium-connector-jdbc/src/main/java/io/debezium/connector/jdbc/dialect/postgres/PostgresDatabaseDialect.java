@@ -9,10 +9,15 @@ import static io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampTyp
 import static io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType.POSITIVE_INFINITY;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SessionFactory;
@@ -54,6 +59,8 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         }
     }
 
+    private final Set<String> enumTypeNames = new HashSet<>();
+
     private PostgresDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
     }
@@ -78,7 +85,20 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             // This means that the table will be stored as lower-case
             collectionId = collectionId.toLowerCase();
         }
+        cacheEnumTypes(connection);
         return super.readTable(connection, collectionId);
+    }
+
+    private void cacheEnumTypes(Connection connection) throws SQLException {
+        if (!enumTypeNames.isEmpty()) {
+            return;
+        }
+        try (Statement stmt = connection.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT typname FROM pg_type WHERE typtype = 'e'")) {
+            while (rs.next()) {
+                enumTypeNames.add(rs.getString(1).toLowerCase());
+            }
+        }
     }
 
     @Override
@@ -132,6 +152,10 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             }
             else if ("jsonb".equals(typeName)) {
                 return "cast(? as jsonb)";
+            }
+            else if (column.getJdbcType() == Types.VARCHAR && enumTypeNames.contains(typeName)) {
+                // Handle user-defined enum types that require explicit casting from varchar
+                return String.format("cast(? as \"%s\")", column.getTypeName());
             }
         }
         return super.getQueryBindingWithValueCast(column, schema, type);
