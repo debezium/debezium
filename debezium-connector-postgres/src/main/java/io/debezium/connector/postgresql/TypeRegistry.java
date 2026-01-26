@@ -150,7 +150,11 @@ public class TypeRegistry {
             nameToType.put(qualifiedName, type);
         }
         else {
-            LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+            PostgresType currentType = nameToType.get(qualifiedName);
+            if (!currentType.equals(type)) {
+                // Only print the warning when the types are different
+                LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+            }
         }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
