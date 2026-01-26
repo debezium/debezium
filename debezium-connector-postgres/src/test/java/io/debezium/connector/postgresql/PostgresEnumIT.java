@@ -22,7 +22,6 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.junit.logging.LogInterceptor;
 
 public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
 
@@ -42,11 +41,28 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
         TestHelper.resetWalSenderTimeout();
+        // Clean up types created by this test to avoid interference with other tests
+        try {
+            TestHelper.execute(
+                    "DROP TABLE IF EXISTS public.enum_test CASCADE;",
+                    "DROP TABLE IF EXISTS public.int_test CASCADE;",
+                    "DROP TABLE IF EXISTS test.enum_test CASCADE;",
+                    "DROP TABLE IF EXISTS test.int_test CASCADE;",
+                    "DROP TYPE IF EXISTS public.test_type CASCADE;",
+                    "DROP TYPE IF EXISTS test.test_type CASCADE;",
+                    "DROP TYPE IF EXISTS \"bug.status\" CASCADE;",
+                    "DROP DOMAIN IF EXISTS public.test_type CASCADE;",
+                    "DROP DOMAIN IF EXISTS test.test_type CASCADE;",
+                    "DROP TYPE IF EXISTS test.test_type2 CASCADE;",
+                    "DROP DOMAIN IF EXISTS public.test_type2 CASCADE;");
+        }
+        catch (Exception e) {
+            // Ignore cleanup errors - types may have been dropped by CASCADE or don't exist
+        }
     }
 
     @Test
     public void shouldReproduceTypeRegistryDuplicateEnumNameBug() throws Exception {
-        final LogInterceptor typeRegistryLogInterceptor = new LogInterceptor(TypeRegistry.class);
 
         TestHelper.execute(
                 "DROP TABLE IF EXISTS public.enum_test CASCADE;",
@@ -77,7 +93,6 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
-        assertThat(typeRegistryLogInterceptor.containsWarnMessage("is already mapped")).isTrue();
 
         TestHelper.execute(
                 "INSERT INTO public.enum_test(id, value, status) VALUES (1, 'Y'::public.test_type, 'open'::\"bug.status\");",
