@@ -87,6 +87,32 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testShouldDeleteRowPrimaryKeyRecordValueWhenDeletesEnabled(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id,name,nick_name$");
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
+        consume(createRecord);
+        consume(factory.deleteRecord(topicName));
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testShouldDeleteRowWhenDeletesEnabledUsingSubsetOfRecordKeyFields(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());

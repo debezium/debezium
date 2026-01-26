@@ -66,7 +66,7 @@ public class JdbcSinkConnectorConfigTest {
     public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeNotRecordKey() {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
-        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_value");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "kafka");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
@@ -82,6 +82,22 @@ public class JdbcSinkConnectorConfigTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
                 .isTrue();
+        assertThat(config.isDeleteEnabled()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9583")
+    public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeRecordValue() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_value");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id,name,nick_name$");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(
+            JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD,
+            JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD,
+            JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS_FIELD), LOGGER::error)).isTrue();
         assertThat(config.isDeleteEnabled()).isTrue();
     }
 
