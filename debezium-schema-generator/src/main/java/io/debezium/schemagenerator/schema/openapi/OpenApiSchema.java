@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.schemagenerator.schema;
+package io.debezium.schemagenerator.schema.openapi;
 
 import java.io.IOException;
 import java.util.Map;
@@ -13,6 +13,9 @@ import org.eclipse.microprofile.openapi.models.OpenAPI;
 
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.schemagenerator.JsonSchemaCreatorService;
+import io.debezium.schemagenerator.schema.Schema;
+import io.debezium.schemagenerator.schema.SchemaDescriptor;
+import io.debezium.schemagenerator.schema.SchemaName;
 import io.debezium.util.IoUtil;
 import io.smallrye.openapi.api.constants.OpenApiConstants;
 import io.smallrye.openapi.api.models.ComponentsImpl;
