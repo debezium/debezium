@@ -78,22 +78,13 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
-                              FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode) {
-        this(valueConverterProvider, null, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
-    }
-
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
-                              SchemaNameAdjuster schemaNameAdjuster,
-                              CustomConverterRegistry customConverterRegistry,
-                              Schema sourceInfoSchema,
                               Schema transactionSchema,
                               FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode) {
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
                 customConverterRegistry, sourceInfoSchema, transactionSchema, fieldNamer,
-                multiPartitionMode, null);
+                multiPartitionMode, eventConvertingFailureHandlingMode);
     }
 
     /**
@@ -103,17 +94,6 @@ public class TableSchemaBuilder {
      *            null
      * @param schemaNameAdjuster the adjuster for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
-                              DefaultValueConverter defaultValueConverter,
-                              SchemaNameAdjuster schemaNameAdjuster,
-                              CustomConverterRegistry customConverterRegistry,
-                              Schema sourceInfoSchema,
-                              FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode) {
-        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
-    }
-
     public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
                               DefaultValueConverter defaultValueConverter,
                               SchemaNameAdjuster schemaNameAdjuster,
@@ -330,25 +310,18 @@ public class TableSchemaBuilder {
                         catch (final Exception e) {
                             Column col = columnsThatShouldBeAdded.get(i);
                             String message = "Failed to properly convert data value for '{}.{}' of type {}";
-                            if (eventConvertingFailureHandlingMode == null) {
-                                Loggings.logErrorAndTraceRecord(LOGGER, row,
-                                        message, tableId, col.name(), col.typeName(), e);
-                            }
-                            else {
-                                // NOTE: what if failed column is not accept null?
-                                switch (eventConvertingFailureHandlingMode) {
-                                    case FAIL:
-                                        Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                        throw new DebeziumException("Failed to properly convert data value for '" +
-                                                tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
-                                    case WARN:
-                                        Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                    case SKIP:
-                                        Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                }
+                            switch (eventConvertingFailureHandlingMode) {
+                                case FAIL:
+                                    Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
+                                    throw new DebeziumException("Failed to properly convert data value for '" +
+                                            tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
+                                case WARN:
+                                    Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
+                                case SKIP:
+                                    Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
                             }
                         }
                     }

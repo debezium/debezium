@@ -44,7 +44,8 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
-                        true),
+                        true,
+                        connectorConfig.getEventConvertingFailureHandlingMode()),
                 false, connectorConfig.getKeyMapper(), taskContext);
     }
 

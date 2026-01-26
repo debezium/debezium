@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.antlr.AntlrDdlParser;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
@@ -92,7 +93,8 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 converters,
                 getDefaultValueConverters(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
         properties = new Properties();
         properties.put("topic.prefix", "test");
     }

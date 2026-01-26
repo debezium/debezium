@@ -75,7 +75,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                                                             PostgresDefaultValueConverter defaultValueConverter, CustomConverterRegistry customConverterRegistry) {
         return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
                 customConverterRegistry, config.getSourceInfoStructMaker().schema(),
-                config.getFieldNamer(), false);
+                config.getFieldNamer(), false, config.getEventConvertingFailureHandlingMode());
     }
 
     /**
