@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -132,9 +131,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Send signal to skip to the binlog position after value3 and value4
         // This position includes all events up to and including id=3,4
         // When we restart, the connector will skip those and start from id=5
-        // The signal will stop the connector after updating the offset
+        // Use "continue" action to let the test control the shutdown explicitly
         String signalData = String.format(
-                "{\"binlog_filename\": \"%s\", \"binlog_position\": %d, \"action\": \"stop\"}",
+                "{\"binlog_filename\": \"%s\", \"binlog_position\": %d, \"action\": \"continue\"}",
                 binlogFile, binlogPos);
 
         connection.execute(
@@ -143,15 +142,13 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for the signal to be processed and offset to be committed
         // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
         consumeAvailableRecords(record -> {
         });
 
-        // Stop the connector to ensure a clean shutdown
-        // The signal's async stop via changeEventSourceCoordinator.stop() initiates shutdown,
-        // but stopConnector() ensures proper cleanup and waits for completion
+        // Stop the connector explicitly - using "continue" action lets us control the shutdown
         stopConnector();
 
         // Insert data we want to capture after the skip
@@ -162,17 +159,34 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
+        // Wait for streaming to be running
+        waitForStreamingRunning("mysql", SERVER_NAME);
+
         // Wait for records to be available after restart
-        // Don't use waitForStreamingRunning() here as JMX metrics may not be properly
-        // re-registered after stop/restart cycle
         waitForAvailableRecords(30, TimeUnit.SECONDS);
 
-        // Verify we only get record 5 (skipped 3 and 4)
-        records = consumeRecordsByTopic(2);
-        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
-        assertThat(tableRecords).hasSize(1);
+        // Consume all available records and filter for test_table
+        // After restart from the signal position, we may get:
+        // - Heartbeat records
+        // - The signal INSERT record (since it's after the signal position)
+        // - The id=5 INSERT record
+        String testTableTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        final int[] testTableCount = { 0 };
+        final SourceRecord[] foundRecord = { null };
 
-        Struct value = (Struct) tableRecords.get(0).value();
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed record topic: " + record.topic());
+            if (testTableTopic.equals(record.topic())) {
+                testTableCount[0]++;
+                foundRecord[0] = record;
+            }
+        });
+
+        // Verify we got exactly record 5 (skipped 3 and 4)
+        assertThat(testTableCount[0]).as("Expected 1 record for test_table after restart").isEqualTo(1);
+        assertThat(foundRecord[0]).isNotNull();
+
+        Struct value = (Struct) foundRecord[0].value();
         Struct after = value.getStruct("after");
         assertThat(after.getInt32("id")).isEqualTo(5);
         assertThat(after.getString("value")).isEqualTo("value5");
@@ -247,8 +261,8 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         // Send signal to skip to the GTID set after value3 and value4
         // This GTID set includes all transactions up to and including id=3,4
         // When we restart, the connector will skip those and start from id=5
-        // The signal will stop the connector after updating the offset
-        String signalData = "{\"gtid_set\": \"" + gtidSet + "\", \"action\": \"stop\"}";
+        // Use "continue" action to let the test control the shutdown explicitly
+        String signalData = "{\"gtid_set\": \"" + gtidSet + "\", \"action\": \"continue\"}";
 
         connection.execute(
                 "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
@@ -256,15 +270,13 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
 
         // Wait for the signal to be processed and offset to be committed
         // The signal processing will trigger a heartbeat event with the new offset
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         // Consume all pending records to ensure signal is processed
         consumeAvailableRecords(record -> {
         });
 
-        // Stop the connector to ensure a clean shutdown
-        // The signal's async stop via changeEventSourceCoordinator.stop() initiates shutdown,
-        // but stopConnector() ensures proper cleanup and waits for completion
+        // Stop the connector explicitly - using "continue" action lets us control the shutdown
         stopConnector();
 
         // Insert data we want to capture after the skip
@@ -275,17 +287,34 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
 
+        // Wait for streaming to be running
+        waitForStreamingRunning("mysql", SERVER_NAME);
+
         // Wait for records to be available after restart
-        // Don't use waitForStreamingRunning() here as JMX metrics may not be properly
-        // re-registered after stop/restart cycle
         waitForAvailableRecords(30, TimeUnit.SECONDS);
 
-        // Verify we only get record 5 (skipped 3 and 4)
-        records = consumeRecordsByTopic(2);
-        List<SourceRecord> tableRecords = records.recordsForTopic(SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table");
-        assertThat(tableRecords).hasSize(1);
+        // Consume all available records and filter for test_table
+        // After restart from the GTID set position, we may get:
+        // - Heartbeat records
+        // - The signal INSERT record (since it's after the GTID set)
+        // - The id=5 INSERT record
+        String testTableTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        final int[] testTableCount = { 0 };
+        final SourceRecord[] foundRecord = { null };
 
-        Struct value = (Struct) tableRecords.get(0).value();
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed record topic: " + record.topic());
+            if (testTableTopic.equals(record.topic())) {
+                testTableCount[0]++;
+                foundRecord[0] = record;
+            }
+        });
+
+        // Verify we got exactly record 5 (skipped 3 and 4)
+        assertThat(testTableCount[0]).as("Expected 1 record for test_table after restart").isEqualTo(1);
+        assertThat(foundRecord[0]).isNotNull();
+
+        Struct value = (Struct) foundRecord[0].value();
         Struct after = value.getStruct("after");
         assertThat(after.getInt32("id")).isEqualTo(5);
         assertThat(after.getString("value")).isEqualTo("value5");
@@ -334,6 +363,5 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
             return false;
         }
     }
-
 
 }

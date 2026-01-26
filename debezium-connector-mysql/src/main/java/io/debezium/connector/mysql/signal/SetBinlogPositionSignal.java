@@ -36,6 +36,7 @@ import io.debezium.util.Strings;
  *
  * The "action" field controls connector behavior after offset modification:
  * - "stop" (default): Automatically stop the connector after updating the offset
+ * - "continue": Don't stop the connector, continue processing (use with external orchestration)
  * - "restart": (Reserved for future use) Automatically restart the connector
  *
  * @author Debezium Authors
@@ -48,6 +49,7 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
 
     public enum Action {
         STOP,
+        CONTINUE,
         RESTART
     }
 
