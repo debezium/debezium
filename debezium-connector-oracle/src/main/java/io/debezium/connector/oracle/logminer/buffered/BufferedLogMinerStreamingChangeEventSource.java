@@ -74,6 +74,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class);
     private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails");
+    private static final Logger WINDOW_ADVANCED = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".WindowAdvanced");
+
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
 
     private final String queryString;
@@ -82,6 +84,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
+    private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
 
     public BufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                       OracleConnection jdbcConnection,
@@ -739,7 +742,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!minCacheScn.isNull()) {
             // Cache have values
-            final Scn miningSessionStartScn = minCacheScn.subtract(Scn.ONE);
+            // By default, the mining window starts at the oldest transaction in the cache.
+            // If window max is configured, it may be adjusted to not pin on long-running transactions.
+            final Scn miningSessionStartScn = applyWindowMaxAdjustment(
+                    minCacheScn.subtract(Scn.ONE),
+                    endScn,
+                    minCacheScn,
+                    minCacheScnChangeTime);
 
             getOffsetContext().setScn(miningSessionStartScn);
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
@@ -760,6 +769,82 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setOffsetScn(getOffsetContext().getScn());
             return new ProcessResult(miningSessionStartScn, endScn);
         }
+    }
+
+    /**
+     * Adjusts the mining session start SCN based on the window max duration threshold.
+     * <p>
+     * When {@code log.mining.window.max.ms} is configured, this method prevents long-running
+     * transactions from pinning the mining window to an old position. If the oldest
+     * transaction in the cache exceeds the window threshold, this method finds the oldest
+     * transaction that falls within the acceptable window, or advances to the end SCN if all
+     * transactions are too old.
+     * <p>
+     * Long-running transactions will still be captured when they eventually commit, but they
+     * won't force the connector to re-mine an ever-growing window of redo logs.
+     *
+     * @param defaultStartScn the default start SCN (oldest transaction minus one)
+     * @param endScn the current end SCN of the mining window
+     * @param minCacheScn the SCN of the oldest transaction in the cache
+     * @param minCacheScnChangeTime the change time of the oldest transaction in the cache
+     * @return the adjusted start SCN, or {@code defaultStartScn} if no adjustment is needed
+     */
+    private Scn applyWindowMaxAdjustment(Scn defaultStartScn, Scn endScn,
+                                         Scn minCacheScn, Instant minCacheScnChangeTime) {
+        final Duration windowMaxMs = getConfig().getLogMiningWindowMaxMs();
+        if (windowMaxMs.toMillis() <= 0 || lastProcessedScnChangeTime == null) {
+            return defaultStartScn;
+        }
+
+        // Mark in offsets that the window advance feature has been enabled
+        if (!getOffsetContext().isWindowAdvanceEnabled()) {
+            getOffsetContext().setWindowAdvanceEnabled();
+        }
+
+        final Instant thresholdTime = lastProcessedScnChangeTime.minus(windowMaxMs);
+
+        // Check if the oldest transaction exceeds the window threshold
+        if (minCacheScnChangeTime == null || minCacheScnChangeTime.compareTo(thresholdTime) >= 0) {
+            // Oldest transaction is within the window, no adjustment needed
+            return defaultStartScn;
+        }
+
+        // The oldest transaction exceeds the threshold, find a suitable start SCN
+        // by looking for the oldest transaction that falls within the window
+        final Optional<LogMinerTransactionCache.ScnDetails> activeScnDetails = getTransactionCache()
+                .streamTransactionsAndReturn(stream -> stream
+                        .filter(t -> t.getChangeTime().compareTo(thresholdTime) >= 0)
+                        .map(t -> new LogMinerTransactionCache.ScnDetails(t.getStartScn(), t.getChangeTime()))
+                        .min(Comparator.comparing(LogMinerTransactionCache.ScnDetails::scn)));
+
+        Scn adjustedStartScn;
+        if (activeScnDetails.isPresent()) {
+            // Found a transaction within the window, use its start SCN
+            adjustedStartScn = activeScnDetails.get().scn().subtract(Scn.ONE);
+        }
+        else {
+            // All transactions are older than the window max duration
+            // Advance to the end SCN (like we do when the cache is empty)
+            adjustedStartScn = endScn.subtract(Scn.ONE);
+        }
+
+        // Safety check: never advance past the end SCN
+        final Scn maxAllowedScn = endScn.subtract(Scn.ONE);
+        if (adjustedStartScn.compareTo(maxAllowedScn) > 0) {
+            adjustedStartScn = maxAllowedScn;
+        }
+
+        // Log a warning, but only once per oldest transaction SCN to avoid flooding logs
+        if (!minCacheScn.equals(lastLoggedWindowAdvanceScn)) {
+            WINDOW_ADVANCED.warn("Mining window lower bound advanced past transaction at SCN {} to SCN {} " +
+                    "due to log.mining.window.max.ms threshold ({}ms). " +
+                    "Long-running transactions older than the threshold will continue to be captured " +
+                    "but won't pin the mining window.",
+                    minCacheScn, adjustedStartScn, windowMaxMs.toMillis());
+            lastLoggedWindowAdvanceScn = minCacheScn;
+        }
+
+        return adjustedStartScn;
     }
 
     /**

@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -230,6 +231,60 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         }
         finally {
             TestHelper.dropTable(connection, "dbz8044");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1553")
+    public void shouldAdvanceMiningWindowForLongRunningTransaction() throws Exception {
+        TestHelper.dropTable(connection, "dbz1553");
+        try {
+            connection.execute("CREATE TABLE dbz1553 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1553");
+
+            // Configure the connector with a 30 second window max
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1553")
+                    .with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, "30000")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
+                    .build();
+
+            final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Start a long-running transaction that will not be committed
+            connection.executeWithoutCommitting("INSERT INTO dbz1553 (id,data) values (1, 'long-running')");
+
+            // Wait for the window threshold to be exceeded and the mining window to be advanced.
+            // The log message should appear once the mining window lower bound is moved past the
+            // long-running transaction.
+            Awaitility.await()
+                    .atMost(Duration.ofMinutes(2))
+                    .pollInterval(Duration.ofSeconds(5))
+                    .until(() -> logInterceptor.containsWarnMessage("Mining window lower bound advanced"));
+
+            // Verify the warning message indicates the window was advanced due to the threshold
+            assertThat(logInterceptor.containsWarnMessage("due to log.mining.window.max.ms threshold")).isTrue();
+
+            // Now commit the long-running transaction
+            connection.commit();
+
+            // Consume the record to verify the transaction was fully captured
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.allRecordsInOrder()).hasSize(1);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1553");
+            assertThat(tableRecords).hasSize(1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("long-running");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1553");
         }
     }
 }

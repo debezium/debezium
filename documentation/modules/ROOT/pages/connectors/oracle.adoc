@@ -538,6 +538,14 @@ After you drop a transaction, the connector abandons uncommitted changes for tha
 Use the `drop-transaction` signal only when you are certain that the transaction should not be processed.
 ====
 
+ifdef::community[]
+[NOTE]
+====
+As an alternative to manually dropping transactions, you can configure the xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] property to automatically advance the mining window when a long-running transaction exceeds a specified duration.
+Unlike the `drop-transaction` signal, this approach continues to track the transaction and buffer its events, while preventing the mining window from growing indefinitely.
+====
+endif::community[]
+
 .Procedure
 * Send a signal that includes the standard `id`, `type`, and `data` properties of a {prodname} signal to your preferred signaling channel.
 In the  `data` component of the signal, specify the ID of the transaction that you want to remove.
@@ -4454,6 +4462,26 @@ By default, the LogMiner adapter maintains an in-memory buffer of all running tr
 Because all of the DML operations that are part of a transaction are buffered until a commit or rollback is detected,
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
+
+ifdef::community[]
+|[[oracle-property-log-mining-window-max-ms]]<<oracle-property-log-mining-window-max-ms, `log.mining.window.max.ms`>>
+|`0`
+|Positive integer value that specifies the maximum duration in milliseconds that the LogMiner mining window lower bound can remain at the same position due to a long-running transaction.
+When set to `0` (default), the feature is disabled and the lower bound is always set to the oldest transaction's start SCN.
+
+When a transaction exceeds this threshold, the mining session lower bound advanceds to the start SCN of the next oldest transaction within the threshold.
+
+This feature is useful in environments with long-running transactions, particularly when those transactions are on tables not included in the connector's table filters.
+
+By advancing the session bounds, the connector can reduce the mining session window size, improving query performance without abandoning the transaction.
+
+[WARNING]
+====
+Setting this value may increase the risk of edge cases involving missed commits or unsupported transactions.
+
+Carefully evaluate the risk of these edge cases occurring in your environment relative to the performance benefits of preventing mining window growth.
+=====
+endif::community[]
 
 |[[oracle-property-archive-destination-name]]<<oracle-property-archive-destination-name, `+archive.destination.name+`>>
 |No default
