@@ -929,12 +929,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         final PGReplicationStream stream = s;
 
-        return new ReplicationStream() {
+        return new ReplicationStream() {keepAliveRunning
 
             private static final int CHECK_WARNINGS_AFTER_COUNT = 100;
             private int warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
             private ExecutorService keepAliveExecutor = null;
             private AtomicBoolean keepAliveRunning;
+            private volatile Exception keepAliveException = null;
             private final Metronome metronome = Metronome.sleeper(statusUpdateInterval, Clock.SYSTEM);
 
             // make sure this is volatile since multiple threads may be interested in this value
@@ -942,6 +943,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                checkKeepAliveException();
                 processWarnings(false);
                 ByteBuffer read = stream.read();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
@@ -954,6 +956,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                checkKeepAliveException();
                 processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
@@ -1021,6 +1024,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                             }
                             catch (InterruptedException ie) {
                                 LOGGER.debug("Keep-alive thread interrupted, shutting down");
+                                keepAliveException = ie;
                                 Thread.currentThread().interrupt();
                                 return;
                             }
@@ -1028,6 +1032,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 // Immediately log the error. Don't rethrow the exception, because it will
                                 // never be seen (or be seen in a timely manner).
                                 LOGGER.error("Unexpected exception while performing keepalive status update on the replication stream", exp);
+                                keepAliveException = exp;
                                 return;
                             }
                         }
@@ -1041,6 +1046,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     keepAliveRunning.set(false);
                     keepAliveExecutor.shutdownNow();
                     keepAliveExecutor = null;
+                }
+            }
+
+            private void checkKeepAliveException() {
+                if (keepAliveException != null) {
+                    throw new RuntimeException("received unexpected exception will perform keep alive", keepAliveException);
                 }
             }
 
