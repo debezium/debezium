@@ -27,11 +27,11 @@ class AbstractRecordBufferTest {
     }
 
     protected @NotNull JdbcKafkaSinkRecord createRecordNoPkFields(SinkRecordFactory factory, byte i, JdbcSinkConnectorConfig config) {
-        return createRecord(factory.createRecord("topic", i), config);
+        return createRecord(factory.createRecord("topic", i, config), config);
     }
 
     protected @NotNull JdbcKafkaSinkRecord createRecordPkFieldId(SinkRecordFactory factory, byte i, JdbcSinkConnectorConfig config) {
-        return createRecord(factory.createRecord("topic", i), config);
+        return createRecord(factory.createRecord("topic", i, config), config);
     }
 
 }

@@ -225,11 +225,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
     public void stop() {
         stateLock.lock();
         try {
-
             if (changeEventSink != null) {
+                changeEventSink.close();
                 try {
-                    changeEventSink.close();
-
                     DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
                     if (sessionFactory != null && sessionFactory.isOpen()) {
                         LOGGER.info("Closing the session factory");

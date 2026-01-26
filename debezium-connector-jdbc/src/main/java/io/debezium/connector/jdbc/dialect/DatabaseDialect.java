@@ -173,7 +173,7 @@ public interface DatabaseDialect {
      * @param table the current relational table model, should not be {@code null}
      * @return the truncate SQL statement to be executed, never {@code null}
      */
-    String getTruncateStatement(TableDescriptor table);
+    String getTruncateStatement(CollectionId tableId);
 
     /**
      * Returns the SQL binding fragment for a column, schema, and type mapping.

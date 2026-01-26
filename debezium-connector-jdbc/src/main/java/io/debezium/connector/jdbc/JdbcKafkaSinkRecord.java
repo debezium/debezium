@@ -24,7 +24,7 @@ import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
 /**
- * An immutable representation of a {@link SinkRecord}.
+ * An immutable representation of a {@link SinkRecord} with extensions for the JDBC connector.
  *
  * @author Chris Cranford
  * @author rk3rn3r

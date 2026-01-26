@@ -5,6 +5,8 @@
  */
 package io.debezium.sink;
 
+import java.util.Set;
+
 import org.apache.kafka.common.config.ConfigDef;
 
 import io.debezium.config.EnumeratedValue;
@@ -176,6 +178,16 @@ public interface SinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
+    String PRIMARY_KEY_FIELDS = "primary.key.fields";
+    Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
+            .withDisplayName("Comma-separated list of primary key field names")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 5))
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("A comma-separated list of primary key field names. " +
+                    "This is interpreted differently depending on " + PRIMARY_KEY_MODE + ".");
+
     String CLOUDEVENTS_SCHEMA_NAME_PATTERN = "cloud.events.schema.name.pattern";
     Field CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD = Field.create(CLOUDEVENTS_SCHEMA_NAME_PATTERN)
             .withDisplayName("CloudEvents messages schema name pattern")
@@ -184,11 +196,13 @@ public interface SinkConnectorConfig {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(".*CloudEvents\\.Envelope$")
-            .withDescription("Regular expression pattern to identify CloudEvents messages by this schema name pattern.");
+            .withDescription("Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.");
 
     String getCollectionNameFormat();
 
     PrimaryKeyMode getPrimaryKeyMode();
+
+    Set<String> getPrimaryKeyFields();
 
     boolean isTruncateEnabled();
 

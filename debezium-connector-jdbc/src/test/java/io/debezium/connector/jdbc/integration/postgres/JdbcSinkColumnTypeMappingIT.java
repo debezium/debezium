@@ -21,7 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
@@ -81,12 +81,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 Schema.OPTIONAL_STRING_SCHEMA,
-                insertValue);
+                insertValue,
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data %s null, primary key(id))";
@@ -94,12 +96,13 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         consume(createRecord);
 
-        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+        final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 Schema.OPTIONAL_STRING_SCHEMA,
-                updateValue);
+                updateValue,
+                config);
 
         consume(updateRecord);
 
@@ -125,12 +128,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         buffer.put((byte) 2);
         buffer.put((byte) 3);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 Schema.OPTIONAL_BYTES_SCHEMA,
-                buffer);
+                buffer,
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data bytea, primary key(id))";
@@ -159,12 +164,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                Arrays.asList("a"));
+                Arrays.asList("a"),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data text[], primary key(id))";
@@ -193,12 +200,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                Arrays.asList("a", "b", "c"));
+                Arrays.asList("a", "b", "c"),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data text[], primary key(id))";
@@ -227,12 +236,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                Arrays.asList("a", null, "c", null));
+                Arrays.asList("a", null, "c", null),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (data text[], id int not null, primary key(id))";
@@ -261,12 +272,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                null);
+                null,
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (data text[], id int not null, primary key(id))";
@@ -296,12 +309,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                Arrays.asList());
+                List.of(),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data text[], primary key(id))";
@@ -330,12 +345,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
-                Arrays.asList("a", "b", "c"));
+                Arrays.asList("a", "b", "c"),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data character varying[], primary key(id))";
@@ -364,12 +381,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
-                Arrays.asList(1, 2, 42));
+                Arrays.asList(1, 2, 42),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data int[], primary key(id))";
@@ -398,12 +417,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
                 SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().build(),
-                Arrays.asList(false, true));
+                Arrays.asList(false, true),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, data bool[], primary key(id))";
@@ -433,12 +454,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String topicName = topicName("server2", "schema", tableName);
         final List<UUID> uuids = List.of(UUID.randomUUID(), UUID.randomUUID());
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 List.of("text_data", "uuid_data"),
                 List.of(SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), SchemaBuilder.array(Uuid.schema()).optional().build()),
-                Arrays.asList(List.of("a", "b"), uuids.stream().map(UUID::toString).collect(Collectors.toList())));
+                Arrays.asList(List.of("a", "b"), uuids.stream().map(UUID::toString).collect(Collectors.toList())),
+                config);
 
         final String destinationTable = destinationTableName(createRecord);
         final String sql = "CREATE TABLE %s (id int not null, text_data text[], uuid_data uuid[], primary key(id))";
