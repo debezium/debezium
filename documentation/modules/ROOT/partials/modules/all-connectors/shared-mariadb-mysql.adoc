@@ -596,7 +596,7 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |Deprecated, see `no_data`.
 
 |`no_data`
-|The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.2).
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8.2).
 
 |`never`
 |When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
