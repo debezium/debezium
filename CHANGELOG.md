@@ -2,6 +2,32 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.6.Final
+January 26th 2026
+
+### New features since 3.2.5.Final
+
+None
+
+
+### Breaking changes since 3.2.5.Final
+
+None
+
+
+### Fixes since 3.2.5.Final
+
+* Always return NoOpLineageEmitter when open lineage integration not enabled [DBZ-9504](https://issues.redhat.com/browse/DBZ-9504)
+* Always recalculate minCacheScn after abandonment [DBZ-9659](https://issues.redhat.com/browse/DBZ-9659)
+* Correctly handle Oracle primary key optionality [debezium/dbz#7](https://github.com/debezium/dbz/issues/7)
+
+
+### Other changes since 3.2.5.Final
+
+None
+
+
+
 ## 3.2.5.Final
 November 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12470127)
 
