@@ -27,8 +27,11 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
+    public static final String WINDOW_ADVANCE_ENABLED_KEY = "window_advance_enabled";
 
     private final Schema sourceInfoSchema;
+
+    private boolean windowAdvanceEnabled;
 
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
@@ -52,12 +55,13 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
                                 Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions, SnapshotType snapshot,
                                 boolean snapshotCompleted, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
-                                String transactionId, Long transactionSequence) {
+                                String transactionId, Long transactionSequence, boolean windowAdvanceEnabled) {
         super(new SourceInfo(connectorConfig), snapshotCompleted);
         sourceInfo.setScn(scn);
         sourceInfo.setScnIndex(scnIndex);
         sourceInfo.setTransactionId(transactionId);
         sourceInfo.setTransactionSequence(transactionSequence);
+        this.windowAdvanceEnabled = windowAdvanceEnabled;
         // It is safe to set this value to the supplied SCN, specifically for snapshots.
         // During streaming this value will be updated by the current event handler.
         sourceInfo.setEventScn(scn);
@@ -98,6 +102,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         private String transactionId;
         private Long transactionSequence;
         private CommitScn commitScn = CommitScn.empty();
+        private boolean windowAdvanceEnabled;
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -164,10 +169,15 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
+        public Builder windowAdvanceEnabled(boolean windowAdvanceEnabled) {
+            this.windowAdvanceEnabled = windowAdvanceEnabled;
+            return this;
+        }
+
         public OracleOffsetContext build() {
             return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, lcrPosition, snapshotScn,
                     snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
-                    incrementalSnapshotContext, transactionId, transactionSequence);
+                    incrementalSnapshotContext, transactionId, transactionSequence, windowAdvanceEnabled);
         }
     }
 
@@ -216,6 +226,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             if (sourceInfo.getTransactionSequence() != null) {
                 result.put(SourceInfo.TXSEQ_KEY, sourceInfo.getTransactionSequence());
             }
+        }
+
+        if (windowAdvanceEnabled) {
+            result.put(WINDOW_ADVANCE_ENABLED_KEY, true);
         }
 
         return sourceInfo.isSnapshot() ? result : incrementalSnapshotContext.store(transactionContext.store(result));
@@ -292,6 +306,18 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public void setSnapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
         this.snapshotPendingTransactions = snapshotPendingTransactions;
+    }
+
+    public boolean isWindowAdvanceEnabled() {
+        return windowAdvanceEnabled;
+    }
+
+    /**
+     * Marks the window advance feature as having been enabled.
+     * Once set to true, this cannot be unset (until offsets are cleared).
+     */
+    public void setWindowAdvanceEnabled() {
+        this.windowAdvanceEnabled = true;
     }
 
     public void setTransactionId(String transactionId) {
@@ -491,6 +517,17 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     public static Long loadTransactionSequence(Map<String, ?> offset) {
         return readOffsetValue(offset, SourceInfo.TXSEQ_KEY, Long.class);
+    }
+
+    /**
+     * Helper method to read whether window advance has been enabled from the offset map.
+     *
+     * @param offset the offset map
+     * @return true if window advance has ever been enabled, false otherwise
+     */
+    public static boolean loadWindowAdvanceEnabled(Map<String, ?> offset) {
+        Boolean value = readOffsetValue(offset, WINDOW_ADVANCE_ENABLED_KEY, Boolean.class);
+        return value != null && value;
     }
 
     private static <T> T readOffsetValue(Map<String, ?> offsets, String key, Class<T> valueType) {
