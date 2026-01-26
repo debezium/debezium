@@ -1355,6 +1355,26 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
+|[[cassandra-property-custom-sanitize-pattern]]<<cassandra-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
+|`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys. +
+ +
+By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
+Use this property to specify a custom regular expression that identifies configuration keys that contain sensitive information and should be masked.
+
+[IMPORTANT]
+====
+Setting `custom.sanitize.pattern` replaces Debezium's default pattern entirely; it does not extend or augment the default.
+====
+
+For example, to mask keys containing `api.key` or `token` anywhere in the name:
+
+----
+"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
+----
+
+Configuration keys whose values are masked are replaced with `pass:[********]` when configuration properties are displayed, logged, or returned by APIs.
+
 |[[cassandra-property-errors-max-retires]]<<cassandra-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
 |Specifies how the connector responds after an operation fails with a retriable error, such as a connection error. +
