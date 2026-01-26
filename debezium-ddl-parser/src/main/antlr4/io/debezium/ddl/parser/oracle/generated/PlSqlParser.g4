@@ -3621,9 +3621,13 @@ range_partitions
     ;
 
 list_partitions
-    : PARTITION BY LIST '(' column_name ')' '(' PARTITION partition_name? list_values_clause table_partition_description (
-        ',' PARTITION partition_name? list_values_clause table_partition_description
-    )* ')'
+    : PARTITION BY LIST '(' column_name ')' (
+        AUTOMATIC (STORE IN '(' tablespace (',' tablespace)* ')')?
+    )? (
+        '(' PARTITION partition_name? list_values_clause table_partition_description (
+            ',' PARTITION partition_name? list_values_clause table_partition_description
+        )* ')'
+    )?
     ;
 
 hash_partitions
