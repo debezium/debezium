@@ -11,6 +11,8 @@ import java.util.Map;
 import org.eclipse.microprofile.openapi.models.Components;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
 
+import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.schemagenerator.JsonSchemaCreatorService;
 import io.debezium.util.IoUtil;
 import io.smallrye.openapi.api.constants.OpenApiConstants;
 import io.smallrye.openapi.api.models.ComponentsImpl;
@@ -68,7 +70,11 @@ public class OpenApiSchema implements Schema {
     }
 
     @Override
-    public String getSpec(org.eclipse.microprofile.openapi.models.media.Schema connectorSchema) {
+    public String getSpec(ConnectorMetadata connectorMetadata) {
+
+        JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, getFieldFilter());
+        org.eclipse.microprofile.openapi.models.media.Schema connectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
+
         OpenAPI debeziumAPI = new OpenAPIImpl();
         debeziumAPI.setOpenapi(OpenApiConstants.OPEN_API_VERSION);
 

@@ -8,6 +8,7 @@ package io.debezium.schemagenerator.schema;
 import java.util.Map;
 
 import io.debezium.config.Field;
+import io.debezium.metadata.ConnectorMetadata;
 
 public interface Schema {
 
@@ -15,7 +16,7 @@ public interface Schema {
 
     void configure(Map<String, Object> config);
 
-    String getSpec(org.eclipse.microprofile.openapi.models.media.Schema connectorSchema);
+    String getSpec(ConnectorMetadata connectorMetadata);
 
     /**
      * Returns a filter to be applied to the fields of the schema. Only matching
