@@ -93,7 +93,6 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
-
         TestHelper.execute(
                 "INSERT INTO public.enum_test(id, value, status) VALUES (1, 'Y'::public.test_type, 'open'::\"bug.status\");",
                 "INSERT INTO test.int_test(id, value) VALUES (1, 123);");
