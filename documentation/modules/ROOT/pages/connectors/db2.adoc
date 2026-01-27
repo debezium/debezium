@@ -3307,14 +3307,12 @@ The property adds following headers:
 `__debezium.context.taskId`:: The unique identifier of the connector task.
 `__debezium.context.connectorName`::  The name of the {prodname} connector.
 
-|[[db2-proeprty-streaming-query-timespan-seconds]]<<db2-proeprty-streaming-query-timespan-seconds, `streaming.query.timespan.seconds`>>
+|[[db2-property-streaming-query-timespan-seconds]]<<db2-property-streaming-query-timespan-seconds, `streaming.query.timespan.seconds`>>
 |0 (infinite/disabled)
 |This property specifies whether {prodname} during streaming (not during snapshots) limits the timespan of change events per query to a number of seconds since the last poll.
- +
- +
+
 The maximum number of seconds for a streaming query to include the changes for, starting from latest change included in the last streaming query.
- +
- +
+
 Used to limit the size of queries when the change table is large to avoid excessive resource usage, sometimes resulting in query cancellation.
 If 0, no timespan limit will apply.
 One second is not allowed as this can result in an infinite loop.  Recommended non-zero default is 120 seconds.
