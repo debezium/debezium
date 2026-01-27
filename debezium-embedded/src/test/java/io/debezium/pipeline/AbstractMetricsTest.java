@@ -72,7 +72,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testLifecycle() throws Exception {
+    public void testLifecycle() throws Exception {
 
         start();
 
@@ -106,7 +106,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testSnapshotOnlyMetrics() throws Exception {
+    public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -117,7 +117,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testSnapshotAndStreamingMetrics() throws Exception {
+    public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -133,7 +133,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     @Test
     @FixFor("DBZ-6603")
-    void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
+    public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
         // Setup
         executeInsertStatements();
 
@@ -148,7 +148,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testStreamingOnlyMetrics() throws Exception {
+    public void testStreamingOnlyMetrics() throws Exception {
 
         // start connector
         start(this::noSnapshot);
@@ -159,7 +159,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testAdvancedStreamingMetrics() throws Exception {
+    public void testAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)
@@ -171,7 +171,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
     }
 
     @Test
-    void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
+    public void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
 
         // start connector
         start(x -> noSnapshot(x)
