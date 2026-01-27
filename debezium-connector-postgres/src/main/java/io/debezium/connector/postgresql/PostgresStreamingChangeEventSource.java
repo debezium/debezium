@@ -341,6 +341,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
         // DML event
         else {
+
+            if (message.getOperation() == Operation.NOOP) {
+                LOGGER.info("Received a NOOP event. This event is no longer processed, and ignored.");
+                return;
+            }
+
             TableId tableId = null;
             if (!message.isSkippedMessage()) {
                 tableId = PostgresSchema.parse(message.getTable());
