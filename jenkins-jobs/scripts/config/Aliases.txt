@@ -330,3 +330,5 @@ william-xiang,William Xiang
 xiangqiumin,Xiang Qiu Min
 rishabh singh,Rishabh Singh
 maarten.vercruysse,Maarten Vercruysse
+ARepin,Anton Repin
+redboyben,Benoit Audigier

@@ -2,6 +2,38 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+January 27th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+stable-iteration%3A3.4.1.Final)
+
+### New features since 3.4.0.Final
+
+* Add Support for Dynamic Oracle Log Archive Destinations [DBZ-9622] [debezium/dbz#1246](https://github.com/debezium/dbz/issues/1246)
+
+
+### Breaking changes since 3.4.0.Final
+
+None
+
+
+### Fixes since 3.4.0.Final
+
+* Recovery private redo threads can lead to LogMiner failures [debezium/dbz#40](https://github.com/debezium/dbz/issues/40)
+* Oracle connector fails when user creates a table with a column named "override" [debezium/dbz#1461](https://github.com/debezium/dbz/issues/1461)
+* Cassandra connector return wrong value for DATE columns [debezium/dbz#1486](https://github.com/debezium/dbz/issues/1486)
+* RedisOffsetBackingStore: Race condition causes infinite NullPointerException loop on reconnect leading to unrecoverable state [debezium/dbz#1488](https://github.com/debezium/dbz/issues/1488)
+* JDBC Sink Connector fails to insert JSON data into MariaDB [debezium/dbz#1492](https://github.com/debezium/dbz/issues/1492)
+* MySQL: New charset not taken into account [debezium/dbz#1504](https://github.com/debezium/dbz/issues/1504)
+* Oracle database PDB name in lowercase not collecting DML operation [DBZ-9054] [debezium/dbz#1057](https://github.com/debezium/dbz/issues/1057)
+* Thread-safety issue in MongoDB connector causes incorrect source.collection metadata during parallel snapshot [debezium/dbz#1531](https://github.com/debezium/dbz/issues/1531)
+* Log mining lower boundary does not update until a log switch [debezium/dbz#1560](https://github.com/debezium/dbz/issues/1560)
+* Oracle Create Table DDL fails to parse when using `AUTOMATIC` keyword in partition list [debezium/dbz#1566](https://github.com/debezium/dbz/issues/1566)
+
+
+### Other changes since 3.4.0.Final
+
+None
+
+
+
 ## 3.4.0.Final
 December 18th 2025 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.0.Final)
 
