@@ -2255,24 +2255,24 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[mongodb-property-custom-sanitize-pattern]]<<mongodb-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
 |`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
-|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys. +
- +
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
+
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
 Use this property to specify a custom regular expression that identifies configuration keys that contain sensitive information and should be masked.
 
-[IMPORTANT]
-====
-Setting `custom.sanitize.pattern` replaces Debezium's default pattern entirely; it does not extend or augment the default.
-====
-
-For example, to mask keys containing `api.key` or `token` anywhere in the name:
+For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
 ----
 "custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
 ----
 
-Configuration keys whose values are masked are replaced with `pass:[********]` when configuration properties are displayed, logged, or returned by APIs.
+If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
+A string of asterisks replaces the original values, for example,  `pass:[********]`.
 
+[IMPORTANT]
+====
+The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
+====
 
 |[[mongodb-property-errors-max-retires]]<<mongodb-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
