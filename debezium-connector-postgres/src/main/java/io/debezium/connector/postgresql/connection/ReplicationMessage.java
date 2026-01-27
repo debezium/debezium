@@ -35,9 +35,11 @@ import io.debezium.connector.postgresql.TypeRegistry;
 public interface ReplicationMessage {
 
     /**
-     *
      * Data modification operation executed
-     *
+     * <p>
+     * While operation types may no longer be used, they should not be removed from this as the
+     * connector offsets maintains {@code messageType}, which stores the operation of the last
+     * process event. Removing an operation type will cause the offset loader to fail on restart.
      */
     enum Operation {
         INSERT,
@@ -46,7 +48,10 @@ public interface ReplicationMessage {
         TRUNCATE,
         MESSAGE,
         BEGIN,
-        COMMIT
+        COMMIT,
+        @Deprecated
+        NOOP,
+        ORIGIN
     }
 
     /**
