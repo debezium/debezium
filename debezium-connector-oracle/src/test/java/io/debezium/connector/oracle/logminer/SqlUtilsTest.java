@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
+import io.debezium.doc.FixFor;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.ANY_LOGMINER)
 public class SqlUtilsTest {
@@ -173,4 +174,19 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(ARCHIVE_LOG_PATTERN.formatted(10, "IN ('LOG_ARCHIVE_DEST_1','LOG_ARCHIVE_DEST_3')", "AND A.FIRST_TIME >= SYSDATE - (1/24) "));
     }
 
+    @Test
+    @FixFor("dbz#1579")
+    void testAllRedoThreadArchiveLogsQuery() throws Exception {
+        String result = SqlUtils.allRedoThreadArchiveLogs(1, List.of("LOG_ARCHIVE_DEST_1"));
+        assertThat(result).isEqualTo(
+                "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, DS.DEST_NAME " +
+                        "FROM V$ARCHIVED_LOG A, V$DATABASE D, V$ARCHIVE_DEST_STATUS DS " +
+                        "WHERE A.DEST_ID = DS.DEST_ID " +
+                        "AND DS.DEST_NAME = 'LOG_ARCHIVE_DEST_1' " +
+                        "AND A.STATUS='A' " +
+                        "AND A.THREAD#=1 " +
+                        "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                        "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                        "ORDER BY A.SEQUENCE# DESC");
+    }
 }
