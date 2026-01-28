@@ -321,7 +321,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .sorted();
     }
 
-    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+    protected Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
 
         String tableIncludeList = connectorConfig.tableIncludeList();
         List<String> signalingDataCollections = connectorConfig.getSignalingDataCollectionIds();
