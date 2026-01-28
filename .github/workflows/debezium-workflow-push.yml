@@ -182,6 +182,7 @@ jobs:
   build_debezium_testing:
     name: "Testing Module"
     needs: [ check_style, build_schema_generator ]
+    if: always() && needs.check_style.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -195,6 +196,7 @@ jobs:
   build_storage:
     name: "Storage Module"
     needs: [ check_style, build_debezium_testing ]
+    if: always() && needs.check_style.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -208,6 +210,7 @@ jobs:
   build_cassandra:
     name: "Cassandra"
     needs: [ check_style, build_debezium_server ]
+    if: always() && needs.check_style.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -367,6 +370,7 @@ jobs:
   build_spanner:
     name: "Spanner"
     needs: [ check_style, build_storage ]
+    if: always() && needs.check_style.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -398,6 +402,7 @@ jobs:
     name: "JDBC"
     needs: [ check_style, build_spanner ]
     uses: ./.github/workflows/connector-jdbc-workflow.yml
+    if: always() && needs.check_style.result == 'success'
     with:
       maven-cache-key: maven-debezium-test-push-build
 
@@ -405,6 +410,7 @@ jobs:
   build_debezium_server:
     name: "Debezium Server"
     needs: [ check_style, build_jdbc ]
+    if: always() && needs.check_style.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
