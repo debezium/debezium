@@ -511,6 +511,10 @@ public class CloudEventsConverter implements Converter, Versioned {
             ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
         }
 
+        if (maker.cePartitionKey() != null) {
+            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.PARTITIONKEY, Schema.STRING_SCHEMA);
+        }
+
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
 
         Schema ceSchema = ceSchemaBuilder.build();
@@ -533,6 +537,9 @@ public class CloudEventsConverter implements Converter, Versioned {
 
         if (this.openTelemetryTracingAttributesEnable) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.TRACE_PARENT, recordAndMetadata.traceParent());
+        }
+        if (maker.cePartitionKey() != null) {
+            ceValueBuilder.withValue(CloudEventsMaker.FieldName.PARTITIONKEY, maker.cePartitionKey());
         }
 
         if (this.extensionAttributesEnable) {
