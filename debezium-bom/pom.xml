@@ -66,7 +66,7 @@
         <!-- Testing -->
         <version.junit>6.0.1</version.junit>
         <version.junit.platform.launcher>${version.junit}</version.junit.platform.launcher>
-        <version.assertj>3.27.6</version.assertj>
+        <version.assertj>3.27.7</version.assertj>
         <version.jmh>1.37</version.jmh>
         <version.awaitility>4.3.0</version.awaitility>
         <version.testcontainers>2.0.2</version.testcontainers>
