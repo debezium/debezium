@@ -525,7 +525,7 @@ public final class TestHelper {
     }
 
     private static List<String> getOpenIdleTransactions(PostgresConnection connection) throws SQLException {
-        int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
+        int connectionPID = (connection.connection().unwrap(PgConnection.class)).getBackendPID();
         return connection.queryAndMap(
                 "SELECT state FROM pg_stat_activity WHERE state like 'idle in transaction' AND pid <> " + connectionPID,
                 rs -> {
