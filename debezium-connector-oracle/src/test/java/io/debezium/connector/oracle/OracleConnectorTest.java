@@ -59,6 +59,13 @@ public class OracleConnectorTest {
     protected static void assertConfigDefIsValid(Connector connector, io.debezium.config.Field.Set fields) {
         ConfigDef configDef = connector.config();
         assertThat(configDef).isNotNull();
+
+        // Collect all field names that are dependents of other fields (via value-based dependencies)
+        java.util.Set<String> dependentFieldNames = new java.util.HashSet<>();
+        fields.forEach(field -> {
+            field.valueDependants().values().forEach(dependentFieldNames::addAll);
+        });
+
         fields.forEach(expected -> {
             assertThat(configDef.names()).contains(expected.name());
             ConfigKey key = configDef.configKeys().get(expected.name());
@@ -76,7 +83,10 @@ public class OracleConnectorTest {
             assertThat(key.group).isNotNull();
             assertThat(key.orderInGroup).isGreaterThan(0);
             assertThat(key.validator).isNull();
-            assertThat(key.recommender).isNull();
+            // Recommenders are allowed for fields that are value-based dependents of other fields
+            if (!dependentFieldNames.contains(expected.name())) {
+                assertThat(key.recommender).isNull();
+            }
         });
     }
 }
