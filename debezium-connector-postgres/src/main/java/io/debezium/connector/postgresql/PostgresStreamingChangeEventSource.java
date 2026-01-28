@@ -120,12 +120,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void initSchema() {
+        LOGGER.info("Performing initial schema load");
         try {
             taskContext.refreshSchema(connection, true);
         }
         catch (SQLException e) {
             throw new DebeziumException("Error while executing initial schema load", e);
         }
+        LOGGER.info("Completed initial schema load");
     }
 
     @Override
@@ -156,14 +158,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition = new WalPositionLocator();
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
-            // for large dbs, the refresh of schema can take too much time
-            // such that the connection times out. We must enable keep
-            // alive to ensure that it doesn't time out
+            // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(
                     Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME, threadNameContext));
-
-            initSchema();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
