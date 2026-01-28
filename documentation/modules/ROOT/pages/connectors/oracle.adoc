@@ -4683,7 +4683,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-Use this property to specify a custom regular expression that identifies configuration keys that contain sensitive information and should be masked.
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
