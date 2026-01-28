@@ -3313,7 +3313,6 @@ The property adds following headers:
 
 The maximum number of seconds for a streaming query to include the changes for, starting from latest change included in the last streaming query.
 
-
 Used to limit the size of queries when the change table is large to avoid excessive resource usage, sometimes resulting in query cancellation.
 If 0, no timespan limit will apply.
 One second is not allowed as this can result in an infinite loop.  Recommended non-zero default is 120 seconds.
