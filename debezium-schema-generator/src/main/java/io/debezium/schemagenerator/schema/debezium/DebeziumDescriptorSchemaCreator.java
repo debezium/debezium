@@ -8,9 +8,12 @@ package io.debezium.schemagenerator.schema.debezium;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -155,7 +158,7 @@ public class DebeziumDescriptorSchemaCreator {
         return (Number) field.get(validator);
     }
 
-    private List<Group> buildGroups() {
+    private List<Group> buildGroups(Set<String> usedGroups) {
 
         return IntStream.range(0, Field.Group.values().length)
                 .mapToObj(groupPosition -> new Group(
@@ -166,7 +169,7 @@ public class DebeziumDescriptorSchemaCreator {
     }
 
     private String formatGroupName(Field.Group group) {
-        // Convert enum name to readable format: CONNECTION_ADVANCED_SSL -> Connection Advanced SSL
+
         return Arrays.stream(group.name().split("_"))
                 .map(word -> word.charAt(0) + word.substring(1).toLowerCase())
                 .collect(Collectors.joining(" "));
