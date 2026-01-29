@@ -34,6 +34,9 @@ import io.debezium.Module;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
@@ -47,7 +50,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
  *
  * @author Roman Kudryashov
  */
-public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ComponentMetadataProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodeLogicalDecodingMessageContent.class);
 
@@ -207,5 +210,20 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public ComponentMetadata getConnectorMetadata() {
+        return new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor(DecodeLogicalDecodingMessageContent.class.getName(), Module.version());
+            }
+
+            @Override
+            public io.debezium.config.Field.Set getComponentFields() {
+                return io.debezium.config.Field.setOf(FIELDS_NULL_INCLUDE);
+            }
+        };
     }
 }

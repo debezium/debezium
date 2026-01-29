@@ -1,0 +1,3 @@
+io.debezium.connector.jdbc.JdbcConnectorMetadataProvider
+io.debezium.connector.jdbc.transforms.CollectionNameTransformation
+io.debezium.connector.jdbc.transforms.FieldNameTransformation
