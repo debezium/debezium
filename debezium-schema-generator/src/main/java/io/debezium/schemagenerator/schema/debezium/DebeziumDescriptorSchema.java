@@ -11,7 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentMetadata;
 import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
 import io.debezium.schemagenerator.schema.DefaultFieldFilter;
 import io.debezium.schemagenerator.schema.Schema;
@@ -68,9 +68,9 @@ public class DebeziumDescriptorSchema implements Schema {
     }
 
     @Override
-    public String getSpec(ConnectorMetadata connectorMetadata) {
+    public String getSpec(ComponentMetadata componentMetadata) {
         DebeziumDescriptorSchemaCreator service = new DebeziumDescriptorSchemaCreator(
-                connectorMetadata, getFieldFilter());
+                componentMetadata, getFieldFilter());
 
         ConnectorDescriptor descriptor = service.buildDescriptor();
 

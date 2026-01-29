@@ -23,7 +23,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
+import io.debezium.schemagenerator.model.debezium.Display;
+import io.debezium.schemagenerator.model.debezium.Group;
+import io.debezium.schemagenerator.model.debezium.Metadata;
+import io.debezium.schemagenerator.model.debezium.Property;
+import io.debezium.schemagenerator.model.debezium.Validation;
+import io.debezium.schemagenerator.model.debezium.ValueDependant;
 import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
 import io.debezium.schemagenerator.model.debezium.Display;
 import io.debezium.schemagenerator.model.debezium.Group;
@@ -40,31 +47,37 @@ public class DebeziumDescriptorSchemaCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumDescriptorSchemaCreator.class);
 
-    private final ConnectorMetadata connectorMetadata;
+    private final ComponentMetadata componentMetadata;
     private final FieldFilter fieldFilter;
 
-    public DebeziumDescriptorSchemaCreator(ConnectorMetadata connectorMetadata, FieldFilter fieldFilter) {
-        this.connectorMetadata = connectorMetadata;
+    public DebeziumDescriptorSchemaCreator(ComponentMetadata componentMetadata, FieldFilter fieldFilter) {
+        this.componentMetadata = componentMetadata;
         this.fieldFilter = fieldFilter;
     }
 
     public ConnectorDescriptor buildDescriptor() {
 
         Metadata metadata = new Metadata(
-                "Captures changes from a " + connectorMetadata.getConnectorDescriptor().getDisplayName(),
+                "Captures changes from a " + componentMetadata.getComponentDescriptor().getDisplayName(),
                 null);
 
-        List<Property> properties = StreamSupport.stream(connectorMetadata.getConnectorFields().spliterator(), false)
-                .map(this::buildProperty)
-                .filter(Objects::nonNull).toList();
+        List<Property> properties = new ArrayList<>();
+        Set<String> usedGroups = new LinkedHashSet<>();
+        componentMetadata.getConfigDefinition().all().forEach(field -> {
+            Property property = buildProperty(field);
+            if (property != null) {
+                usedGroups.add(property.display().group().toLowerCase());
+                properties.add(property);
+            }
+        });
 
         return new ConnectorDescriptor(
-                connectorMetadata.getConnectorDescriptor().getDisplayName(),
-                "source-connector",
-                connectorMetadata.getConnectorDescriptor().getVersion(),
+                componentMetadata.getComponentDescriptor().getDisplayName(),
+                componentMetadata.getComponentDescriptor().getType(),
+                componentMetadata.getComponentDescriptor().getVersion(),
                 metadata,
                 properties,
-                buildGroups());
+                buildGroups(usedGroups));
     }
 
     private Property buildProperty(Field field) {
