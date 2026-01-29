@@ -93,13 +93,20 @@ public class ComponentDescriptor {
     /**
      * Fallback method that determines component type based on class name patterns.
      * Used when the class cannot be loaded via reflection.
+     * <p>
+     * Debezium naming convention: Classes ending in "Connector" (without "Sink" prefix)
+     * are source connectors by default.
      */
     private static String determineComponentTypeByName(String className) {
-        if (className.contains("SourceConnector") || className.contains("Source")) {
+        if (className.contains("SinkConnector") || className.contains("Sink")) {
+            return "sink-connector";
+        }
+        else if (className.contains("SourceConnector") || className.contains("Source")) {
             return "source-connector";
         }
-        else if (className.contains("SinkConnector") || className.contains("Sink")) {
-            return "sink-connector";
+        else if (className.endsWith("Connector")) {
+            // Debezium convention: XyzConnector (without Sink prefix) is a source connector
+            return "source-connector";
         }
         else if (className.contains("Transformation") || className.contains("Transform")) {
             return "transformation";
