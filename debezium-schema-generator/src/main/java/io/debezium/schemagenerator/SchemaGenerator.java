@@ -17,8 +17,8 @@ import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 import java.util.stream.Collectors;
 
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.schemagenerator.schema.Schema;
 import io.debezium.schemagenerator.schema.SchemaName;
 
@@ -27,25 +27,28 @@ public class SchemaGenerator {
     private static final Logger LOGGER = System.getLogger(SchemaGenerator.class.getName());
 
     public static void main(String[] args) {
-        if (args.length != 5) {
+        if (args.length != 5 && args.length != 6) {
             LOGGER.log(Logger.Level.INFO, "There were " + args.length + " arguments:");
             for (int i = 0; i < args.length; ++i) {
                 LOGGER.log(Logger.Level.INFO, "  Argument #[" + i + "]: " + args[i]);
             }
-            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerConnector> <filenamePrefix> <filenameSuffix>");
+            throw new IllegalArgumentException(
+                    "Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerComponent> <filenamePrefix> <filenameSuffix> [projectArtifactPath]");
         }
 
         String formatName = args[0].trim();
         Path outputDirectory = new File(args[1]).toPath();
-        boolean groupDirectoryPerConnector = Boolean.parseBoolean(args[2]);
+        boolean groupDirectoryPerComponent = Boolean.parseBoolean(args[2]);
         String filenamePrefix = args[3];
         String filenameSuffix = args[4];
+        Path projectArtifactPath = args.length == 6 ? new File(args[5]).toPath() : null;
 
-        new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerConnector, filenamePrefix, filenameSuffix);
+        new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerComponent, filenamePrefix, filenameSuffix, projectArtifactPath);
     }
 
-    private void run(String formatName, Path outputDirectory, boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
-        List<ConnectorMetadata> allMetadata = getMetadata();
+    private void run(String formatName, Path outputDirectory, boolean groupDirectoryPerComponent, String filenamePrefix, String filenameSuffix,
+                     Path projectArtifactPath) {
+        List<ComponentMetadata> allMetadata = getMetadata(projectArtifactPath);
 
         Schema format = getSchemaFormat(formatName);
         LOGGER.log(Logger.Level.INFO, "Using schema format: " + format.getDescriptor().getName());
@@ -53,21 +56,21 @@ public class SchemaGenerator {
         if (allMetadata.isEmpty()) {
             throw new RuntimeException("No connectors found in classpath. Exiting!");
         }
-        for (ConnectorMetadata connectorMetadata : allMetadata) {
+        for (ComponentMetadata componentMetadata : allMetadata) {
             LOGGER.log(Logger.Level.INFO, "Creating \"" + format.getDescriptor().getName()
                     + "\" schema for connector: "
-                    + connectorMetadata.getConnectorDescriptor().getDisplayName() + "...");
-            String spec = format.getSpec(connectorMetadata);
+                    + componentMetadata.getComponentDescriptor().getDisplayName() + "...");
+            String spec = format.getSpec(componentMetadata);
 
             try {
                 String schemaFilename = "";
-                if (groupDirectoryPerConnector) {
-                    schemaFilename += connectorMetadata.getConnectorDescriptor().getId() + File.separator;
+                if (groupDirectoryPerComponent) {
+                    schemaFilename += componentMetadata.getComponentDescriptor().getType() + File.separator;
                 }
                 if (null != filenamePrefix && !filenamePrefix.isEmpty()) {
                     schemaFilename += filenamePrefix;
                 }
-                schemaFilename += connectorMetadata.getConnectorDescriptor().getId();
+                schemaFilename += componentMetadata.getComponentDescriptor().getId();
                 if (null != filenameSuffix && !filenameSuffix.isEmpty()) {
                     schemaFilename += filenameSuffix;
                 }
@@ -82,12 +85,50 @@ public class SchemaGenerator {
         }
     }
 
-    private List<ConnectorMetadata> getMetadata() {
-        ServiceLoader<ConnectorMetadataProvider> metadataProviders = ServiceLoader.load(ConnectorMetadataProvider.class);
+    private List<ComponentMetadata> getMetadata(Path projectArtifactPath) {
+        ServiceLoader<ComponentMetadataProvider> metadataProviders = ServiceLoader.load(ComponentMetadataProvider.class);
 
         return metadataProviders.stream()
+                .filter(p -> isFromProject(p, projectArtifactPath))
                 .map(p -> p.get().getConnectorMetadata())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Checks if a ServiceLoader provider comes from the current project being built,
+     * rather than from a dependency JAR. This ensures that each module only generates
+     * schemas for its own metadata providers, not for those inherited from dependencies.
+     *
+     * @param provider the ServiceLoader provider
+     * @param projectArtifactPath path to the project's artifact (JAR or classes directory)
+     * @return true if the provider is from the current project, false otherwise
+     */
+    private boolean isFromProject(ServiceLoader.Provider<ComponentMetadataProvider> provider, Path projectArtifactPath) {
+        if (projectArtifactPath == null) {
+            // No filtering - include all providers (for backwards compatibility)
+            return true;
+        }
+
+        try {
+            Class<?> providerClass = provider.type();
+            String classLocation = providerClass.getProtectionDomain().getCodeSource().getLocation().getPath();
+            Path classLocationPath = new File(classLocation).toPath().toAbsolutePath();
+            Path normalizedProjectPath = projectArtifactPath.toAbsolutePath();
+
+            boolean isFromProject = classLocationPath.equals(normalizedProjectPath);
+
+            if (!isFromProject) {
+                LOGGER.log(Logger.Level.DEBUG, "Skipping metadata provider " + providerClass.getName() +
+                        " (from " + classLocationPath + ", not from project " + normalizedProjectPath + ")");
+            }
+
+            return isFromProject;
+        }
+        catch (Exception e) {
+            LOGGER.log(Logger.Level.WARNING, "Could not determine location of provider " + provider.type().getName() +
+                    ", including it by default", e);
+            return true;
+        }
     }
 
     /**
