@@ -5,7 +5,9 @@
  */
 package io.debezium.metadata;
 
+import java.util.List;
+
 public interface ComponentMetadataProvider {
 
-    ComponentMetadata getConnectorMetadata();
+    List<ComponentMetadata> getConnectorMetadata();
 }

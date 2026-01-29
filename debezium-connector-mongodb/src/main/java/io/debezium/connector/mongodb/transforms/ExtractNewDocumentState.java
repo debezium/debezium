@@ -33,12 +33,8 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
-import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.data.Envelope;
-import io.debezium.metadata.ComponentDescriptor;
-import io.debezium.metadata.ComponentMetadata;
-import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
@@ -53,7 +49,7 @@ import io.debezium.transforms.ConnectRecordUtil;
  * @author Sairam Polavarapu
  * @author Renato mefi
  */
-public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> implements ComponentMetadataProvider {
+public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> {
 
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
@@ -369,18 +365,4 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         return BsonDocument.parse(record.value().toString());
     }
 
-    @Override
-    public ComponentMetadata getConnectorMetadata() {
-        return new ComponentMetadata() {
-            @Override
-            public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(ExtractNewDocumentState.class.getName(), Module.version());
-            }
-
-            @Override
-            public Field.Set getComponentFields() {
-                return configFields;
-            }
-        };
-    }
 }
