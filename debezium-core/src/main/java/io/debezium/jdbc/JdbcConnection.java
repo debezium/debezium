@@ -1706,6 +1706,18 @@ public class JdbcConnection implements AutoCloseable {
         return sql.toString();
     }
 
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+        return new StringBuilder("SELECT ")
+                .append(projection)
+                .append(" FROM ")
+                .append(quotedTableIdString(tableId))
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" OFFSET ").append(size)
+                .append(" ROWS FETCH NEXT 1 ROWS ONLY")
+                .toString();
+    }
+
     /**
      * Indicates how NULL values are sorted by default in an ORDER BY clause.  The ANSI standard doesn't really specify.
      *

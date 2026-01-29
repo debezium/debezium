@@ -83,6 +83,18 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     @Override
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+        return new StringBuilder("SELECT ")
+                .append(projection)
+                .append(" FROM ")
+                .append(quotedTableIdString(tableId))
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" LIMIT 1 OFFSET ").append(size)
+                .toString();
+    }
+
+    @Override
     public Optional<Boolean> nullsSortLast() {
         // "any NULLs are considered to have the lowest value"
         // https://mariadb.com/kb/en/null-values/#ordering

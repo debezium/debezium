@@ -522,6 +522,20 @@ public class OracleConnection extends JdbcConnection {
         return sql.toString();
     }
 
+    @Override
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+        final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
+        return new StringBuilder("SELECT ")
+                .append(projection)
+                .append(" FROM ")
+                .append(quotedTableIdString(truncatedTableId))
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" OFFSET ").append(size)
+                .append(" ROWS FETCH NEXT 1 ROWS ONLY")
+                .toString();
+    }
+
     public static String connectionString(JdbcConfiguration config) {
         return config.getString(URL) != null ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
