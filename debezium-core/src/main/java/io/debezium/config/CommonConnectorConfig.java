@@ -903,6 +903,30 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("The maximum number of threads used to perform the snapshot. Defaults to 1.");
 
+    public static final Field SNAPSHOT_MAX_THREADS_MULTIPLIER = Field.create("snapshot.max.threads.multiplier")
+            .withDisplayName("Snapshot maximum thread multiplier")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 8))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The factor used to scale the number of snapshot chunks per table. " +
+                    "The default behavior is to take 'row_count/snapshot.max.threads' to compute the number of chunks. " +
+                    "This may not be ideal for larger tables, and using the multiplier, the formula is adjusted to increase the " +
+                    "number of chunks by using 'row_count/(snapshot.max.threads * snapshot.max.threads.multiplier).");
+
+    public static final Field LEGACY_SNAPSHOT_MAX_THREADS = Field.createInternal("legacy.snapshot.max.threads")
+            .withDisplayName("Enforces using a single thread per table regardless of table size")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 9))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When enabled, uses the legacy table-per-thread parallel snapshot algorithm. " +
+                    "When set to false (the default), tables are split into chunks and processed across all snapshot threads, " +
+                    "allowing for higher concurrency for snapshots.");
+
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 20))
@@ -1449,6 +1473,8 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
+                    SNAPSHOT_MAX_THREADS_MULTIPLIER,
+                    LEGACY_SNAPSHOT_MAX_THREADS,
                     SNAPSHOT_MODE_CUSTOM_NAME,
                     SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA,
                     SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
@@ -1506,6 +1532,8 @@ public abstract class CommonConnectorConfig {
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
     private final int snapshotMaxThreads;
+    private final int snapshotMaxThreadsMultiplier;
+    private final boolean legacySnapshotMaxThreads;
 
     private final String snapshotModeCustomName;
     private final Integer queryFetchSize;
@@ -1553,6 +1581,8 @@ public abstract class CommonConnectorConfig {
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
+        this.snapshotMaxThreadsMultiplier = config.getInteger(SNAPSHOT_MAX_THREADS_MULTIPLIER);
+        this.legacySnapshotMaxThreads = config.getBoolean(LEGACY_SNAPSHOT_MAX_THREADS);
         this.snapshotModeCustomName = config.getString(SNAPSHOT_MODE_CUSTOM_NAME);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
@@ -1710,6 +1740,22 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotMaxThreads() {
         return snapshotMaxThreads;
+    }
+
+    public int getSnapshotMaxThreadsMultiplier() {
+        return snapshotMaxThreadsMultiplier;
+    }
+
+    public int getSnapshotMaxThreadsMultiplierForTable(TableId tableId) {
+        final String key = SNAPSHOT_MAX_THREADS_MULTIPLIER.name() + "." + tableId.identifier();
+        if (config.hasKey(key)) {
+            return config.getInteger(key);
+        }
+        return getSnapshotMaxThreadsMultiplier();
+    }
+
+    public boolean isLegacySnapshotMaxThreads() {
+        return legacySnapshotMaxThreads;
     }
 
     public String getSnapshotModeCustomName() {
