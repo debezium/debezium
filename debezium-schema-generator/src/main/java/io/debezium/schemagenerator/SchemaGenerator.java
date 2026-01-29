@@ -90,7 +90,7 @@ public class SchemaGenerator {
 
         return metadataProviders.stream()
                 .filter(p -> isFromProject(p, projectArtifactPath))
-                .map(p -> p.get().getConnectorMetadata())
+                .flatMap(p -> p.get().getConnectorMetadata().stream())
                 .collect(Collectors.toList());
     }
 
@@ -104,6 +104,7 @@ public class SchemaGenerator {
      * @return true if the provider is from the current project, false otherwise
      */
     private boolean isFromProject(ServiceLoader.Provider<ComponentMetadataProvider> provider, Path projectArtifactPath) {
+
         if (projectArtifactPath == null) {
             // No filtering - include all providers (for backwards compatibility)
             return true;

@@ -5,12 +5,18 @@
  */
 package io.debezium.connector.sqlserver.metadata;
 
+import java.util.List;
+
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataProvider;
 
-public class SqlServerConnectorMetadataProvider implements ComponentMetadataProvider {
+/**
+ * Aggregator for all SQL Server connector metadata.
+ */
+public class SqlServerMetadataProvider implements ComponentMetadataProvider {
+
     @Override
-    public ComponentMetadata getConnectorMetadata() {
-        return new SqlServerConnectorMetadata();
+    public List<ComponentMetadata> getConnectorMetadata() {
+        return List.of(new SqlServerConnectorMetadata());
     }
 }

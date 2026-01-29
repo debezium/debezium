@@ -1,1 +1,1 @@
-io.debezium.connector.oracle.metadata.OracleConnectorMetadataProvider
+io.debezium.connector.oracle.metadata.OracleMetadataProvider

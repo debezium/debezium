@@ -17,7 +17,7 @@ public class TimescaleDbConfigDefinition {
     public static final String TARGET_TOPIC_PREFIX_CONF = "target.topic.prefix";
     public static final String TARGET_TOPIC_PREFIX_DEFAULT = "timescaledb";
 
-    static final Field SCHEMA_LIST_NAMES_FIELD = Field.create(SCHEMA_LIST_NAMES_CONF)
+    public static final Field SCHEMA_LIST_NAMES_FIELD = Field.create(SCHEMA_LIST_NAMES_CONF)
             .withDisplayName("The list of TimescaleDB data schemas")
             .withType(ConfigDef.Type.LIST)
             .withDefault(SCHEMA_LIST_NAMES_DEFAULT)
@@ -25,7 +25,7 @@ public class TimescaleDbConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Comma-separated list schema names that contain TimescaleDB data tables, defaults to: '" + SCHEMA_LIST_NAMES_DEFAULT + "'");
 
-    static final Field TARGET_TOPIC_PREFIX_FIELD = Field.create(TARGET_TOPIC_PREFIX_CONF)
+    public static final Field TARGET_TOPIC_PREFIX_FIELD = Field.create(TARGET_TOPIC_PREFIX_CONF)
             .withDisplayName("The prefix of TimescaleDB topic names")
             .withType(ConfigDef.Type.STRING)
             .withDefault(TARGET_TOPIC_PREFIX_DEFAULT)

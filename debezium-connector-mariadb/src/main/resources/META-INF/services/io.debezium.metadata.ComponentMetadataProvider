@@ -1,1 +1,1 @@
-io.debezium.connector.mariadb.metadata.MariaDbConnectorMetadataProvider
+io.debezium.connector.mariadb.metadata.MariaDbMetadataProvider

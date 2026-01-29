@@ -5,15 +5,18 @@
  */
 package io.debezium.connector.mariadb.metadata;
 
+import java.util.List;
+
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataProvider;
 
 /**
- * @author Chris Cranford
+ * Aggregator for all MariaDB connector metadata.
  */
-public class MariaDbConnectorMetadataProvider implements ComponentMetadataProvider {
+public class MariaDbMetadataProvider implements ComponentMetadataProvider {
+
     @Override
-    public ComponentMetadata getConnectorMetadata() {
-        return new MariaDbConnectorMetadata();
+    public List<ComponentMetadata> getConnectorMetadata() {
+        return List.of(new MariaDbConnectorMetadata());
     }
 }
