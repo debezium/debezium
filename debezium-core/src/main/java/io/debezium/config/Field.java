@@ -138,12 +138,8 @@ public final class Field {
          */
         public void forEachTopLevelField(Consumer<Field> consumer) {
             Collection<String> namesOfDependents = fieldsByName.values().stream()
-                    .flatMap(field -> {
-                        Stream<String> simpleDependents = field.dependents().stream();
-                        Stream<String> valueDependents = field.valueDependants.values().stream()
-                                .flatMap(Collection::stream);
-                        return Stream.concat(simpleDependents, valueDependents);
-                    })
+                    .flatMap(field -> Stream.concat(field.dependents().stream(), field.valueDependants.values().stream()
+                            .flatMap(Collection::stream)))
                     .collect(Collectors.toSet());
             fieldsByName.values().stream().filter(f -> !namesOfDependents.contains(f.name())).forEach(consumer);
         }
@@ -463,39 +459,37 @@ public final class Field {
         Map<String, ConfigDef.Recommender> fieldRecommenders = buildRecommenders(fieldsWithDependents);
 
         for (int i = 0; i < fields.length; i++) {
-            Field field = fields[i];
             int orderInGroup = groupName != null ? i + 1 : 1;
 
-            ConfigDef.Recommender recommender = fieldRecommenders.get(field.name);
-            // Define main field
+            ConfigDef.Recommender recommender = fieldRecommenders.get(fields[i].name);
+
             configDef.define(
-                    field.name(),
-                    field.type(),
-                    field.defaultValue(),
+                    fields[i].name(),
+                    fields[i].type(),
+                    fields[i].defaultValue(),
                     null,
-                    field.importance(),
-                    field.description(),
+                    fields[i].importance(),
+                    fields[i].description(),
                     groupName, // Can be null
                     orderInGroup,
-                    field.width(),
-                    field.displayName(),
-                    field.dependents(),
+                    fields[i].width(),
+                    fields[i].displayName(),
+                    fields[i].dependents(),
                     recommender);
 
-            // Define deprecated aliases
-            for (String alias : field.deprecatedAliases()) {
+            for (String alias : fields[i].deprecatedAliases()) {
                 configDef.define(
                         alias,
-                        field.type(),
-                        field.defaultValue(),
+                        fields[i].type(),
+                        fields[i].defaultValue(),
                         null,
-                        field.importance(),
-                        field.description(),
+                        fields[i].importance(),
+                        fields[i].description(),
                         groupName, // Can be null
                         orderInGroup,
-                        field.width(),
-                        field.displayName(),
-                        field.dependents(),
+                        fields[i].width(),
+                        fields[i].displayName(),
+                        fields[i].dependents(),
                         recommender);
             }
         }
@@ -505,8 +499,8 @@ public final class Field {
 
     private static Map<String, ConfigDef.Recommender> buildRecommenders(List<Field> fieldsWithDependents) {
         return fieldsWithDependents.stream()
-                .flatMap(parentField -> parentField.valueDependants.entrySet().stream()
-                        .flatMap(entry -> createRecommendersForDependents(parentField, entry)))
+                .flatMap(parent -> parent.valueDependants.entrySet().stream()
+                        .flatMap(entry -> createRecommendersForDependents(parent, entry)))
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         Map.Entry::getValue,
@@ -517,29 +511,28 @@ public final class Field {
                                                                                                     Field parentField,
                                                                                                     Entry<Object, List<String>> valueDependantEntry) {
 
-        Object parentValue = valueDependantEntry.getKey();
-        Collection<?> dependentFieldNames = valueDependantEntry.getValue();
+        return ((Collection<?>) valueDependantEntry.getValue()).stream()
+                .map(name -> buildRecommender((String) name, parentField, valueDependantEntry.getKey()));
+    }
 
-        return dependentFieldNames.stream()
-                .map(dependentFieldName -> {
-                    ConfigDef.Recommender recommender = new ConfigDef.Recommender() {
-                        @Override
-                        public List<Object> validValues(String name, Map<String, Object> parsedConfig) {
-                            return parentField.recommender.validValues(parentField, Configuration.from(parsedConfig));
-                        }
+    private static Entry<String, ConfigDef.Recommender> buildRecommender(String name, Field parentField, Object parentValue) {
+        ConfigDef.Recommender recommender = new ConfigDef.Recommender() {
+            @Override
+            public List<Object> validValues(String name, Map<String, Object> parsedConfig) {
+                return parentField.recommender.validValues(parentField, Configuration.from(parsedConfig));
+            }
 
-                        @Override
-                        public boolean visible(String name, Map<String, Object> parsedConfig) {
-                            Object currentParentValue = parsedConfig.get(parentField.name);
-                            // For enum fields, comparison should be case-insensitive
-                            if (parentValue instanceof String && currentParentValue instanceof String) {
-                                return ((String) parentValue).equalsIgnoreCase((String) currentParentValue);
-                            }
-                            return parentValue.equals(currentParentValue);
-                        }
-                    };
-                    return Map.entry((String) dependentFieldName, recommender);
-                });
+            @Override
+            public boolean visible(String name, Map<String, Object> parsedConfig) {
+                Object currentParentValue = parsedConfig.get(parentField.name);
+                // For enum fields, comparison should be case-insensitive
+                if (parentValue instanceof String && currentParentValue instanceof String) {
+                    return ((String) parentValue).equalsIgnoreCase((String) currentParentValue);
+                }
+                return parentValue.equals(currentParentValue);
+            }
+        };
+        return Map.entry(name, recommender);
     }
 
     private static ConfigDef.Recommender mergeRecommenders(ConfigDef.Recommender r1, ConfigDef.Recommender r2) {
