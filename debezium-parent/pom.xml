@@ -143,6 +143,28 @@
                     <version>3.0.0</version>
                 </plugin>
                 <plugin>
+                    <!--
+                        Schema generator plugin for connectors and transformations.
+                        Configuration defined here, activated in child modules with simple reference.
+                        Descriptors are placed in META-INF/descriptors/ for easy collection in CI/Jenkins.
+                    -->
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-schema-generator</artifactId>
+                    <version>${project.version}</version>
+                    <executions>
+                        <execution>
+                            <id>generate-connector-metadata</id>
+                            <goals>
+                                <goal>generate-api-spec</goal>
+                            </goals>
+                            <phase>prepare-package</phase>
+                            <configuration>
+                                <outputDirectory>${project.build.outputDirectory}/META-INF/descriptors/</outputDirectory>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
                     <groupId>io.smallrye</groupId>
                     <artifactId>jandex-maven-plugin</artifactId>
                     <version>${version.jandex}</version>
