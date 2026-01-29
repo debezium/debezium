@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.mysql.metadata;
 
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 
-public class MySqlConnectorMetadataProvider implements ConnectorMetadataProvider {
+public class MySqlConnectorMetadataProvider implements ComponentMetadataProvider {
 
     @Override
-    public ConnectorMetadata getConnectorMetadata() {
+    public ComponentMetadata getConnectorMetadata() {
         return new MySqlConnectorMetadata();
     }
 }

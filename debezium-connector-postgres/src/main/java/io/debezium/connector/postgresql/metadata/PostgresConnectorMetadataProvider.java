@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.postgresql.metadata;
 
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 
-public class PostgresConnectorMetadataProvider implements ConnectorMetadataProvider {
+public class PostgresConnectorMetadataProvider implements ComponentMetadataProvider {
 
     @Override
-    public ConnectorMetadata getConnectorMetadata() {
+    public ComponentMetadata getConnectorMetadata() {
         return new PostgresConnectorMetadata();
     }
 }

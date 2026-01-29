@@ -9,18 +9,18 @@ import io.debezium.config.Field;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 
-public class MongoDbConnectorMetadata implements ConnectorMetadata {
+public class MongoDbConnectorMetadata implements ComponentMetadata {
 
     @Override
-    public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(MongoDbConnector.class.getName(), Module.version());
+    public ComponentDescriptor getComponentDescriptor() {
+        return new ComponentDescriptor(MongoDbConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getConnectorFields() {
+    public Field.Set getComponentFields() {
         return MongoDbConnectorConfig.ALL_FIELDS;
     }
 }
