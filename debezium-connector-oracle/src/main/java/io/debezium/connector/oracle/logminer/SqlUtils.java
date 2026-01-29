@@ -116,7 +116,7 @@ public class SqlUtils {
         sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
         sb.append(DATABASE_VIEW).append(" D, ");
         sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.DEST_ID = DS.DEST_ID");
+        sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
         sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.THREAD#=").append(threadId).append(" ");
