@@ -86,6 +86,11 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
         if (optionalColumn.get() != null) {
             columnEditor.optional(optionalColumn.get().booleanValue());
         }
+        else {
+            // MariaDB default behavior: columns are nullable unless explicitly marked NOT NULL
+            // This handles implicit nullability in DDL like: ALTER TABLE ... CHANGE col col DATE DEFAULT NULL
+            columnEditor.optional(true);
+        }
         if (uniqueColumn && !tableEditor.hasPrimaryKey()) {
             // take the first unique constrain if no primary key is set
             tableEditor.addColumn(columnEditor.create());
