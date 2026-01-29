@@ -9,18 +9,18 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 
-public class PostgresConnectorMetadata implements ConnectorMetadata {
+public class PostgresConnectorMetadata implements ComponentMetadata {
 
     @Override
-    public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(PostgresConnector.class.getName(), Module.version());
+    public ComponentDescriptor getComponentDescriptor() {
+        return new ComponentDescriptor(PostgresConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getConnectorFields() {
+    public Field.Set getComponentFields() {
         return PostgresConnectorConfig.ALL_FIELDS;
     }
 

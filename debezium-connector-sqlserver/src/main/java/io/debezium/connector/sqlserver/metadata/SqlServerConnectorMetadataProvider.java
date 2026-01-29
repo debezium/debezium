@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.sqlserver.metadata;
 
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 
-public class SqlServerConnectorMetadataProvider implements ConnectorMetadataProvider {
+public class SqlServerConnectorMetadataProvider implements ComponentMetadataProvider {
     @Override
-    public ConnectorMetadata getConnectorMetadata() {
+    public ComponentMetadata getConnectorMetadata() {
         return new SqlServerConnectorMetadata();
     }
 }

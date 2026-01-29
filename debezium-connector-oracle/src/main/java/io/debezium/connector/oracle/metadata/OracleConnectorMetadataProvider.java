@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.oracle.metadata;
 
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 
-public class OracleConnectorMetadataProvider implements ConnectorMetadataProvider {
+public class OracleConnectorMetadataProvider implements ComponentMetadataProvider {
 
     @Override
-    public ConnectorMetadata getConnectorMetadata() {
+    public ComponentMetadata getConnectorMetadata() {
         return new OracleConnectorMetadata();
     }
 }
