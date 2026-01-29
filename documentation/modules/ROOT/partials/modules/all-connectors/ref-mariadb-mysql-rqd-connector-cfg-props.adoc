@@ -190,28 +190,6 @@ endif::MYSQL[]
 for the {connector-name} connector.
 
 
-[id="{context}-property-custom-sanitize-pattern"]
-xref:{context}-property-custom-sanitize-pattern[`custom.sanitize.pattern`]::
-
-Default value::: `.*secret$|.*password$|.*sasl\.jaas\.config$|.*basic\.auth\.user\.info|.*registry\.auth\.client-secret`
-
-Description:::
-An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
-+
-By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
-+
-For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
-`"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"`
-+
-If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
-A string of asterisks replaces the original values, for example,  `pass:[********]`.
-
-[IMPORTANT]
-====
-The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
-====
-
 [id="{context}-property-database-exclude-list"]
 xref:{context}-property-database-exclude-list[`database.exclude.list`]::
 
