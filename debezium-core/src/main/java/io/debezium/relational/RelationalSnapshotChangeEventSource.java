@@ -503,7 +503,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             // When legacy snapshot max threads is enabled, we fall back to the table per thread behavior. This provides
             // a reasonable fallback for parallelism while the new chunked solution matures.
-            if (connectorConfig.isLegacySnapshotMaxThreads()) {
+            if (snapshotMaxThreads == 1 || connectorConfig.isLegacySnapshotMaxThreads()) {
                 createLegacyDataEvents(sourceContext, snapshotContext, connectionPool, snapshotSelectOverridesByTable, offsets, snapshotReceiver);
             }
             else {
