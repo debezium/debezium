@@ -1,1 +1,2 @@
 io.debezium.connector.mysql.metadata.MySqlConnectorMetadataProvider
+io.debezium.connector.mysql.transforms.ReadToInsertEvent

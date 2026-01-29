@@ -1,1 +1,3 @@
 io.debezium.connector.postgresql.metadata.PostgresConnectorMetadataProvider
+io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent
+io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb

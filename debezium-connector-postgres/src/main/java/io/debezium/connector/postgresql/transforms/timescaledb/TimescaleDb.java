@@ -24,6 +24,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.SourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.relational.TableId;
 import io.debezium.transforms.SmtManager;
 
@@ -39,7 +42,7 @@ import io.debezium.transforms.SmtManager;
  *
  * @param <R>
  */
-public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ComponentMetadataProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TimescaleDb.class);
 
@@ -160,5 +163,20 @@ public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R
     @VisibleForTesting
     void setMetadata(TimescaleDbMetadata metadata) {
         this.metadata = metadata;
+    }
+
+    @Override
+    public ComponentMetadata getConnectorMetadata() {
+        return new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor(TimescaleDb.class.getName(), Module.version());
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                return Field.setOf(TimescaleDbConfigDefinition.SCHEMA_LIST_NAMES_FIELD, TimescaleDbConfigDefinition.TARGET_TOPIC_PREFIX_FIELD);
+            }
+        };
     }
 }
