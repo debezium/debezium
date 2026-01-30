@@ -3471,6 +3471,49 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columnWithName("string2").length()).isEqualTo(128);
     }
 
+    @Test
+    @FixFor("DBZ-1568")
+    public void shouldHandleImplicitNullabilityInAlterTableChange() {
+        // Create table with NOT NULL column
+        String ddl = "CREATE TABLE test (\n" +
+                "  id INT PRIMARY KEY,\n" +
+                "  start_date DATE NOT NULL\n" +
+                ");";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        Table table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("start_date").isOptional()).isFalse();
+
+        // Alter column without explicit NULL keyword (implicit nullability)
+        ddl = "ALTER TABLE test CHANGE start_date start_date DATE DEFAULT NULL;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+
+        // Column should now be nullable per MySQL's default behavior
+        assertThat(table.columnWithName("start_date").isOptional()).isTrue();
+        assertThat(table.columnWithName("start_date").typeName()).isEqualTo("DATE");
+        assertThat(table.columnWithName("start_date").hasDefaultValue()).isTrue();
+
+        // Test with MODIFY as well
+        ddl = "CREATE TABLE test2 (\n" +
+                "  id INT PRIMARY KEY,\n" +
+                "  value INT NOT NULL\n" +
+                ");";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test2");
+        assertThat(table.columnWithName("value").isOptional()).isFalse();
+
+        // Modify column without explicit NULL keyword
+        ddl = "ALTER TABLE test2 MODIFY value INT DEFAULT 0;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test2");
+
+        // Column should now be nullable per MySQL's default behavior
+        assertThat(table.columnWithName("value").isOptional()).isTrue();
+        assertThat(table.columnWithName("value").typeName()).isEqualTo("INT");
+    }
+
     private String toIsoString(String timestamp) {
         return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
