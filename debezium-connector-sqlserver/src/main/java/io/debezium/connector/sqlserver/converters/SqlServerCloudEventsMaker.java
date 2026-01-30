@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.sqlserver.converters;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.sqlserver.SqlServerPartition;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
@@ -46,5 +49,14 @@ public class SqlServerCloudEventsMaker extends CloudEventsMaker {
     @Override
     public Set<String> connectorSpecificSourceFields() {
         return SQLSERVER_SOURCE_FIELDS;
+    }
+
+    @Override
+    public String cePartitionKey() {
+        Map<String, String> partitionKeys = new SqlServerPartition(
+                sourceField(AbstractSourceInfo.SERVER_NAME_KEY).toString(),
+                sourceField(AbstractSourceInfo.DATABASE_NAME_KEY).toString()).getSourcePartition();
+
+        return partitionKeys.keySet().stream().sorted().map(k -> k + ":" + partitionKeys.get(k)).collect(Collectors.joining(";"));
     }
 }

@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.postgresql.converters;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.postgresql.PostgresPartition;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
@@ -48,5 +51,14 @@ public class PostgresCloudEventsMaker extends CloudEventsMaker {
     @Override
     public Set<String> connectorSpecificSourceFields() {
         return POSTGRES_SOURCE_FIELDS;
+    }
+
+    @Override
+    public String cePartitionKey() {
+        Map<String, String> partitionKeys = new PostgresPartition(
+                sourceField(AbstractSourceInfo.SERVER_NAME_KEY).toString(),
+                sourceField(AbstractSourceInfo.DATABASE_NAME_KEY).toString()).getSourcePartition();
+
+        return partitionKeys.keySet().stream().sorted().map(k -> k + ":" + partitionKeys.get(k)).collect(Collectors.joining(";"));
     }
 }
