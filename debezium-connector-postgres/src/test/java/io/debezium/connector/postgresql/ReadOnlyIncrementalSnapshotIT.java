@@ -299,4 +299,11 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         return x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
                 .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000);
     }
+
+    @Override
+    @Test
+    public void shouldSnapshotNewlyCreatedTableNotInSchemaCache() {
+        // Skip this test for read-only mode - it requires source signaling and publication filtering
+        // which are not compatible with read-only connections
+    }
 }
