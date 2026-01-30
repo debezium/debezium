@@ -45,9 +45,15 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
 
         connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
         if (connection.connection().getAutoCommit()) {
+            // todo:
+            // for some reason enabling auto-commit here creates issues for other test classes
+            // that come after this test class; despite the fact of whether the buffer size is
+            // set to 0 to disable it or if we use auto-commit within try-with-resources areas
+            // that perform bulk database operations. For now, disabling this, as the only
+            // impact is that loading data in the tests takes significantly longer.
             // Makes sure that when we do large bulk inserts, the performance is optimal
             // and the inserts are all part of a singular transaction.
-            connection.setAutoCommit(false);
+            // connection.setAutoCommit(false);
         }
 
         super.beforeEach();
