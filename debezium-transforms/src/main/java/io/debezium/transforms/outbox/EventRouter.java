@@ -12,7 +12,7 @@ import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 
-import io.debezium.Module;
+import io.debezium.transforms.Module;
 
 /**
  * Debezium Outbox Transform Event Router
