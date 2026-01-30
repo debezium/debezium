@@ -21,13 +21,13 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.transforms.Module;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
 
