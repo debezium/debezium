@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.doc.FixFor;
@@ -63,7 +64,8 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 converters,
                 getDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
 
     }
 
@@ -202,7 +204,8 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 converters,
                 getDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
 
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
@@ -360,7 +363,8 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 converters,
                 getDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
@@ -595,7 +599,8 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 converters,
                 getDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
         String ddl = "CREATE TABLE `tbl_default` (  \n"
                 + "`id` int(11) NOT NULL AUTO_INCREMENT,\n"
                 + "c0 tinyint not null default '10.01',\n"
