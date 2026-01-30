@@ -1952,13 +1952,29 @@ public interface Configuration {
      * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
      */
     default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
-        boolean valid = true;
-        for (Field field : fields) {
+        // Convert to Field.Set to support top-level and dependent field validation
+        Field.Set fieldSet = Field.setOf(fields);
+        final boolean[] valid = { true };
+
+        // Only validate top-level fields and their dependents
+        fieldSet.forEachTopLevelField(field -> {
             if (!field.validate(this, problems)) {
-                valid = false;
+                valid[0] = false;
             }
-        }
-        return valid;
+
+            // Validate dependents based on the parent field's value
+            Object parentValue = this.getString(field);
+            for (String dependentName : field.dependents(parentValue)) {
+                Field dependent = fieldSet.fieldWithName(dependentName);
+                if (dependent != null) {
+                    if (!dependent.validate(this, problems)) {
+                        valid[0] = false;
+                    }
+                }
+            }
+        });
+
+        return valid[0];
     }
 
     /**
@@ -2009,10 +2025,37 @@ public interface Configuration {
             configValuesByFieldName.put(missingDependent, undefinedConfigValue);
         });
 
+        Map<String, String> currentConfiguration = asMap();
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> field.validate(this, fields::fieldWithName, configValuesByFieldName));
+        fields.forEachTopLevelField(field -> validateParentAndDependents(fields, field, currentConfiguration, configValuesByFieldName));
 
         return configValuesByFieldName;
+    }
+
+    private void validateParentAndDependents(Field.Set fields, Field field, Map<String, String> currentConfiguration,
+                                             Map<String, ConfigValue> configValuesByFieldName) {
+
+        field.validate(this, fields::fieldWithName, configValuesByFieldName);
+
+        String parentValue = currentConfiguration.get(field.name());
+        field.dependents(parentValue).forEach(dependent -> {
+
+            if (isRequiredAndMissing(fields, currentConfiguration, dependent)) {
+
+                ConfigValue undefinedConfigValue = new ConfigValue(dependent);
+                undefinedConfigValue.addErrorMessage(String.format("%s is required when %s is %s.", dependent, field.name(), parentValue));
+                configValuesByFieldName.put(dependent, undefinedConfigValue);
+            }
+            else {
+                fields.fieldWithName(dependent).validate(this, fields::fieldWithName, configValuesByFieldName);
+            }
+        });
+    }
+
+    private static boolean isRequiredAndMissing(Field.Set fields, Map<String, String> currentConfiguration, String dependent) {
+        return fields.fieldWithName(dependent).isRequired() & (!currentConfiguration.containsKey(dependent) ||
+                currentConfiguration.get(dependent) == null ||
+                currentConfiguration.get(dependent).isEmpty());
     }
 
     /**
