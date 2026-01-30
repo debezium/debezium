@@ -49,6 +49,9 @@
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
 
+        <!-- Schema generator output directory -->
+        <schema.generator.output.dir>${project.build.outputDirectory}/META-INF/descriptors/</schema.generator.output.dir>
+
         <!-- Needed for pre jdk 9 -->
         <useSystemClassLoader>true</useSystemClassLoader>
 
@@ -159,7 +162,7 @@
                             </goals>
                             <phase>prepare-package</phase>
                             <configuration>
-                                <outputDirectory>${project.build.outputDirectory}/META-INF/descriptors/</outputDirectory>
+                                <outputDirectory>${schema.generator.output.dir}</outputDirectory>
                             </configuration>
                         </execution>
                     </executions>
