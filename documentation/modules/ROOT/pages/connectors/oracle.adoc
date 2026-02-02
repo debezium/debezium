@@ -6042,6 +6042,21 @@ If an ORA-25191 exception is thrown, please raise a GitHub issue with the detail
 As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
 
 
+*What is the cause for ORA-01013 and how to handle it?*::
+The {prodname} Oracle Connector may report the following exception when a query execution takes too much time:
++
+```
+ORA-01013: user requested cancel of current operation
+```
++
+The {prodname} Oracle connector provides a configuration option, xref:oracle-property-database-query-timeout-ms[`database.query.timeout.ms`], which controls how long a query may execute before being canceled.
+This prevents resources being allocated for long queries, which can potentially cause database performance degradation.
+In most circumstances, the default of ten minutes provides a reasonable execution time while guarding against excessive database resource consumption.
++
+The configuration option can be increased providing a higher threshold before queries are canceled, particularly in cases where the exception is raised frequently.
+The configuration option can also be set to `0`, disabling query timeouts, and causes all queries to execute until they return results.
+
+
 *How to solve SAX feature external-general-entities not supported*::
 ifdef::community[]
 Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type.
