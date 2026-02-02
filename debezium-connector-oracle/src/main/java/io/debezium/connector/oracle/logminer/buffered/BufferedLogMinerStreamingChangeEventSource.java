@@ -584,6 +584,45 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
+
+            if (transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
+                // This means that Oracle LogMiner found a rollback that should be applied but its
+                // corresponding transaction was read in a prior mining session and the transaction's
+                // sequence could not be resolved. We need to search for a matching transaction by prefix.
+                final String prefix = transactionId.substring(0, 8);
+                LOGGER.debug("Rollback event refers to a transaction '{}' with no explicit sequence; checking all transactions with prefix '{}'",
+                        transactionId, prefix);
+
+                // Collect all matching transactions to determine if we can safely identify a single one
+                final List<Transaction> matchingTransactions = getTransactionCache().streamTransactionsAndReturn(
+                        stream -> stream.filter(t -> t.getTransactionId().startsWith(prefix))
+                                .toList());
+
+                if (matchingTransactions.isEmpty()) {
+                    LOGGER.debug("No matching transaction found in cache for partial transaction '{}' with prefix '{}'",
+                            transactionId, prefix);
+                }
+                else if (matchingTransactions.size() == 1) {
+                    // Exactly one match - safe to rollback
+                    final Transaction matched = matchingTransactions.get(0);
+                    LOGGER.warn("Matched partial transaction '{}' to cached transaction '{}' (startScn={}, changeTime={}). " +
+                            "Rolling back the matched transaction.",
+                            transactionId, matched.getTransactionId(), matched.getStartScn(), matched.getChangeTime());
+                    finalizeTransaction(matched.getTransactionId(), event.getScn(), true);
+                    getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                    getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+                }
+                else {
+                    // Multiple matches - ambiguous, cannot determine which to rollback
+                    // TODO: Investigate whether this scenario is possible and if so, how to disambiguate
+                    LOGGER.warn("Unable to match partial transaction '{}' to a single cached transaction. Found {} transactions " +
+                            "with prefix '{}'. Cannot determine which transaction to rollback. " +
+                            "Manual investigation required. Transactions: {}",
+                            transactionId, matchingTransactions.size(), prefix,
+                            matchingTransactions.stream().map(Transaction::getTransactionId).collect(Collectors.joining(", ")));
+                }
+            }
+
             // In the event the transaction was prematurely removed due to retention policy, when we do find
             // the transaction's rollback in the logs in the future, we should remove the entry if it exists
             // to avoid any potential memory-leak with the cache.
