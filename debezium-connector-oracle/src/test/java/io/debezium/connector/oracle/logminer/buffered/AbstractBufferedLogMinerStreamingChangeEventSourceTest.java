@@ -77,6 +77,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
+    private static final String PARTIAL_TXN_ID_FULL = "0e001c0012345678";
+    private static final String PARTIAL_TXN_ID_PARTIAL = "0e001c00ffffffff";
+    private static final String PARTIAL_TXN_ID_OTHER = "0f001d0087654321";
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -544,6 +547,57 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1145")
+    public void testCacheIsEmptyWhenTransactionIsRolledBackWithPartialTransactionId() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
+
+            assertThat(source.getTransactionCache().isEmpty()).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
+
+            source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
+            assertThat(metrics.getRolledBackTransactionIds()).contains(PARTIAL_TXN_ID_PARTIAL);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1145")
+    public void testCacheIsNotEmptyWhenOnlyMatchingTransactionIsRolledBackWithPartialTransactionId() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getStartLogMinerEventRow(3, PARTIAL_TXN_ID_OTHER));
+            source.processEvent(getInsertLogMinerEventRow(4, PARTIAL_TXN_ID_OTHER));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+
+            source.processEvent(getRollbackLogMinerEventRow(5, PARTIAL_TXN_ID_PARTIAL));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1145")
+    public void testCacheIsNotEmptyWhenNoMatchingTransactionExistsForPartialTransactionId() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_OTHER));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_OTHER));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+
+            source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
         }
     }
 
