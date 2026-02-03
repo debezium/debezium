@@ -6042,19 +6042,19 @@ If an ORA-25191 exception is thrown, please raise a GitHub issue with the detail
 As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
 
 
-*What is the cause for ORA-01013 and how to handle it?*::
-The {prodname} Oracle Connector may report the following exception when a query execution takes too much time:
+*What causes ORA-01013 and how can I resolve it?*::
+When a query runs for too long, the {prodname} Oracle connector might report the following exception:
 +
 ```
 ORA-01013: user requested cancel of current operation
 ```
 +
-The {prodname} Oracle connector provides a configuration option, xref:oracle-property-database-query-timeout-ms[`database.query.timeout.ms`], which controls how long a query may execute before being canceled.
-This prevents resources being allocated for long queries, which can potentially cause database performance degradation.
+The {prodname} Oracle connector provides a configuration option, xref:oracle-property-database-query-timeout-ms[`database.query.timeout.ms`], which specifies how long a query can execute before it is canceled.
+Configuring this timeout prevents the connector from allocating resources to queries for too long, which can degrade database performance.
 In most circumstances, the default of ten minutes provides a reasonable execution time while guarding against excessive database resource consumption.
 +
-The configuration option can be increased providing a higher threshold before queries are canceled, particularly in cases where the exception is raised frequently.
-The configuration option can also be set to `0`, disabling query timeouts, and causes all queries to execute until they return results.
+You can increase the default value to provide a higher threshold before queries are canceled, particularly if the exception occurs frequently.
+You can also set the value to `0` to disable query timeouts and permit all queries to run until they return results.
 
 
 *How to solve SAX feature external-general-entities not supported*::
