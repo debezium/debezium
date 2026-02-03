@@ -1649,6 +1649,15 @@ Based on this pattern, if the connector reads an event in which the `schema` fie
 |Specifies the schema name where the PostgreSQL PostGIS extension is installed.
 The default is `public`; however, if the PostGIS extension was installed in another schema, this property should be used to specify the alternate schema name.
 
+|[[jdbc-property-dialect-postgres-unnest-insert-enabled]]<<jdbc-property-dialect-postgres-unnest-insert-enabled, `+dialect.postgres.unnest.insert.enabled+`>>
+|`false`
+|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL.
+
+When enabled, uses PostgreSQL `UNNEST()` for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
+This optimization is compatible with `INSERT` and `UPSERT` modes.
+
+For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog. 
+
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
 |Specifies whether the connector automatically sets an `IDENTITY_INSERT` before an `INSERT` or `UPSERT` operation into the identity column of SQL Server tables, and then unsets it immediately after the operation.
