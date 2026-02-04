@@ -4,6 +4,8 @@ import java.util.stream.*
 if (
     !params.DEBEZIUM_REPOSITORY ||
     !params.DEBEZIUM_BRANCH ||
+    !params.DEBEZIUM_DESCRIPTOR_REPOSITORY ||
+    !params.DEBEZIUM_DESCRIPTOR_BRANCH ||
     !params.DEBEZIUM_ADDITIONAL_REPOSITORIES
 ) {
     error 'Input parameters not provided'
@@ -12,6 +14,7 @@ if (
 GIT_CREDENTIALS_ID = 'debezium-github'
 
 DEBEZIUM_DIR = 'debezium'
+DESCRIPTORS_REPO_DIR = 'debezium-descriptors-registry'
 HOME_DIR = '/home/cloud-user'
 
 def additionalDirs = [:]
@@ -21,6 +24,10 @@ node('Slave') {
             dir('.') {
                 deleteDir()
             }
+
+            sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
+
+            DESCRIPTORS_OUTPUT_DIR = "${WORKSPACE}/descriptors-output"
             checkout([$class                           : 'GitSCM',
                       branches                         : [[name: "*/$params.DEBEZIUM_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
@@ -57,11 +64,20 @@ node('Slave') {
                 sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc11 -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=ojdbc11.jar"
                 sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=xstreams.jar"
             }
+
+            checkout([$class                           : 'GitSCM',
+                      branches                         : [[name: "*/$params.DEBEZIUM_DESCRIPTOR_BRANCH"]],
+                      doGenerateSubmoduleConfigurations: false,
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DESCRIPTORS_REPO_DIR]],
+                      submoduleCfg                     : [],
+                      userRemoteConfigs                : [[url: "https://$params.DEBEZIUM_DESCRIPTOR_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+            )
         }
 
         stage('Build and deploy Debezium') {
             dir(DEBEZIUM_DIR) {
-                sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -U -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests -Passembly,oracle-all,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
+                sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -U -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests -Passembly,oracle-all,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000 -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR}"
             }
         }
 
@@ -71,7 +87,41 @@ node('Slave') {
                     // Execute a dependency installation script if provided by the repository
                     sh "if [ -f install-artifacts.sh ]; then ./install-artifacts.sh; fi"
 
-                    sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
+                    sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000 -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR}"
+                }
+            }
+        }
+
+        stage("Publishing descriptors to ${params.DEBEZIUM_DESCRIPTOR_REPOSITORY}") {
+            dir(DESCRIPTORS_REPO_DIR) {
+
+                def debeziumCommit = sh(
+                    script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && git rev-parse --short HEAD",
+                    returnStdout: true
+                ).trim()
+
+                def snapshotVersion = sh(
+                    script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
+                    returnStdout: true
+                ).trim()
+
+                def buildTimestamp = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
+
+                sh """
+                    find . -maxdepth 1 -type d -name '*-SNAPSHOT' -exec rm -rf {} + 2>/dev/null || true
+                """
+
+                sh """
+                    mkdir -p ${snapshotVersion}
+                    cp -r ${DESCRIPTORS_OUTPUT_DIR}/* ${snapshotVersion}/
+                """
+
+                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    sh """
+                        git add ${snapshotVersion}
+                        git commit -m '[snapshot] ${snapshotVersion} from debezium/debezium@${debeziumCommit} at ${buildTimestamp}' || echo 'No changes to commit'
+                        git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${params.DEBEZIUM_DESCRIPTOR_REPOSITORY} HEAD:${params.DEBEZIUM_DESCRIPTOR_BRANCH}
+                    """
                 }
             }
         }
