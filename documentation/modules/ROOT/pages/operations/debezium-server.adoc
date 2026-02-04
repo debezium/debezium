@@ -1443,6 +1443,10 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 |
 |Must be set to `nats-jetstream`.
 
+|[[nats-jetstream-stream-name]]<<nats-jetstream-stream-name, `debezium.sink.nats-jetstream.stream-name`>>
+|DebeziumStream
+|Optional custom name for the stream that {prodname} creates.
+
 |[[nats-jetstream-url]]<<nats-jetstream-url, `debezium.sink.nats-jetstream.url`>>
 |
 | URL (or comma separated list of URLs) to a node or nodes in the cluster formatted as `nats://host:port`.
