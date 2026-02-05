@@ -10,8 +10,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.ResolverStyle;
 import java.time.temporal.ChronoField;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,20 +55,15 @@ public final class TimestampUtils {
     public static Instant convertTimestampNoZoneToInstant(String value) {
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(value);
         if (toTimestampMatcher.matches()) {
-            final LocalDateTime dateTime;
             String text = toTimestampMatcher.group(1);
-            if (text.indexOf(" AM") > 0 || text.indexOf(" PM") > 0) {
-                dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(text.trim()));
-            }
-            else {
-                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(text.trim()));
-            }
-            return dateTime.atZone(GMT_ZONE_ID).toInstant();
+            final DateTimeFormatter formatter = resolveToTimestampFormatter(value, text);
+            return LocalDateTime.from(formatter.parse(text.trim())).atZone(GMT_ZONE_ID).toInstant();
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(value);
         if (toDateMatcher.matches()) {
-            return LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1))).atZone(GMT_ZONE_ID).toInstant();
+            final DateTimeFormatter formatter = resolveToDateFormatter(value);
+            return LocalDateTime.from(formatter.parse(toDateMatcher.group(1))).atZone(GMT_ZONE_ID).toInstant();
         }
 
         // Unable to resolve value
@@ -95,6 +92,34 @@ public final class TimestampUtils {
             return value;
         }
         return null;
+    }
+
+    private static DateTimeFormatter resolveToTimestampFormatter(String value, String matchedText) {
+        Objects.requireNonNull(value);
+
+        final DateTimeFormatter baseFormatter;
+        if (matchedText.indexOf(" AM") > 0 || matchedText.indexOf(" PM") > 0) {
+            baseFormatter = TIMESTAMP_AM_PM_SHORT_FORMATTER;
+        }
+        else {
+            baseFormatter = TIMESTAMP_FORMATTER;
+        }
+
+        if (value.startsWith("TO_TIMESTAMP('0000-")) {
+            // Lenient resolution allows for 0 year
+            return baseFormatter.withResolverStyle(ResolverStyle.LENIENT);
+        }
+        return baseFormatter;
+    }
+
+    private static DateTimeFormatter resolveToDateFormatter(String value) {
+        Objects.requireNonNull(value);
+
+        if (value.startsWith("TO_DATE('0000-")) {
+            // Lenient resolution allows for 0 year
+            return TIMESTAMP_FORMATTER.withResolverStyle(ResolverStyle.LENIENT);
+        }
+        return TIMESTAMP_FORMATTER;
     }
 
     private TimestampUtils() {
