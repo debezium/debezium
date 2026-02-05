@@ -83,6 +83,7 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   "datacontenttype" : "application/json",          // <6>
   "iodebeziumop" : "r",                            // <7>
   "iodebeziumversion" : "{debezium-version}",      // <8>
+  "partitionkey": "server:test_server",            // <9>
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578923739738",
@@ -92,10 +93,10 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   "iodebeziumtable" : "a",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
-  "iodebeziumtxid": "565",                       // <9>
+  "iodebeziumtxid": "565",                       // <10>
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : {                                       // <10>
+  "data" : {                                       // <11>
     "before" : null,
     "after" : {
       "pk" : 1,
@@ -142,9 +143,12 @@ Possible values are `r` for read, `c` for create, `u` for update, or `d` for del
 |All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
 
 |9
-|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+|All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
 
 |10
+|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+
+|11
 |The actual data change.
 Depending on the operation and the connector, the data might contain `before`, `after`, or `patch` fields.
 
@@ -162,6 +166,7 @@ The following example also shows what a CloudEvents change event record emitted 
   "time" : "2020-01-13T14:04:18.597Z",
   "datacontenttype" : "application/avro",          // <1>
   "dataschema" : "http://my-registry/schemas/ids/1", // <2>
+  "partitionkey": "server:test_server",
   "iodebeziumop" : "r",
   "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
