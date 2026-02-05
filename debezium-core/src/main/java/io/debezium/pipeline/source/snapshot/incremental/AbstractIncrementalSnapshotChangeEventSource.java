@@ -829,10 +829,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     protected void createAndDispatchSchemaChangeEvent(Table newTable, P partition, OffsetContext offsetContext, TableId tableId)
             throws SQLException {
+        String databaseName = newTable.id().catalog();
+        if (databaseName == null || databaseName.isEmpty()) {
+            databaseName = connectorConfig.getJdbcConfig().getDatabase();
+        }
         SchemaChangeEvent schemaChangeEvent = SchemaChangeEvent.ofCreate(
                 partition,
                 offsetContext,
-                newTable.id().catalog(),
+                databaseName,
                 newTable.id().schema(),
                 getTableDDL(tableId),
                 newTable,
