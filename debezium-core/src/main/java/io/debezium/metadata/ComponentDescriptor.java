@@ -15,15 +15,21 @@ public class ComponentDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ComponentDescriptor.class);
 
+    private static final String SINK_CONNECTOR_TYPE = "sink-connector";
+    private static final String SOURCE_CONNECTOR_TYPE = "source-connector";
+    private static final String TRANSFORMATION_TYPE = "transformation";
+    private static final String PREDICATE_TYPE = "predicate";
+    private static final String UNKNOWN_TYPE = "unknown";
+
     /**
      * Mapping of Kafka Connect interface names to component type identifiers.
      * Checked in order, so more specific types should come first.
      */
     private static final Map<String, String> COMPONENT_TYPE_MAPPINGS = Map.of(
-            "org.apache.kafka.connect.source.SourceConnector", "source-connector",
-            "org.apache.kafka.connect.sink.SinkConnector", "sink-connector",
-            "org.apache.kafka.connect.transforms.Transformation", "transformation",
-            "org.apache.kafka.connect.transforms.predicates.Predicate", "predicate");
+            "org.apache.kafka.connect.source.SourceConnector", SOURCE_CONNECTOR_TYPE,
+            "org.apache.kafka.connect.sink.SinkConnector", SINK_CONNECTOR_TYPE,
+            "org.apache.kafka.connect.transforms.Transformation", TRANSFORMATION_TYPE,
+            "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE);
 
     private final String id;
     private final String displayName;
@@ -81,7 +87,7 @@ public class ComponentDescriptor {
                     .findFirst()
                     .orElseGet(() -> {
                         LOGGER.warn("Component class {} does not implement any recognized Kafka Connect interface", className);
-                        return "unknown";
+                        return UNKNOWN_TYPE;
                     });
         }
         catch (ClassNotFoundException e) {
@@ -99,22 +105,22 @@ public class ComponentDescriptor {
      */
     private static String determineComponentTypeByName(String className) {
         if (className.contains("SinkConnector") || className.contains("Sink")) {
-            return "sink-connector";
+            return SINK_CONNECTOR_TYPE;
         }
         else if (className.contains("SourceConnector") || className.contains("Source")) {
-            return "source-connector";
+            return SOURCE_CONNECTOR_TYPE;
         }
         else if (className.endsWith("Connector")) {
             // Debezium convention: XyzConnector (without Sink prefix) is a source connector
-            return "source-connector";
+            return SOURCE_CONNECTOR_TYPE;
         }
         else if (className.contains("Transformation") || className.contains("Transform")) {
-            return "transformation";
+            return TRANSFORMATION_TYPE;
         }
         else if (className.contains("Predicate")) {
-            return "predicate";
+            return PREDICATE_TYPE;
         }
-        return "unknown";
+        return UNKNOWN_TYPE;
     }
 
     /**

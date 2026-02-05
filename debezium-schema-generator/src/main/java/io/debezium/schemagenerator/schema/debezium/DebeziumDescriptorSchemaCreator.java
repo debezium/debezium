@@ -8,7 +8,6 @@ package io.debezium.schemagenerator.schema.debezium;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -24,14 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
-import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
-import io.debezium.schemagenerator.model.debezium.Display;
-import io.debezium.schemagenerator.model.debezium.Group;
-import io.debezium.schemagenerator.model.debezium.Metadata;
-import io.debezium.schemagenerator.model.debezium.Property;
-import io.debezium.schemagenerator.model.debezium.Validation;
-import io.debezium.schemagenerator.model.debezium.ValueDependant;
-import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
+import io.debezium.schemagenerator.model.debezium.ComponentDescriptor;
 import io.debezium.schemagenerator.model.debezium.Display;
 import io.debezium.schemagenerator.model.debezium.Group;
 import io.debezium.schemagenerator.model.debezium.Metadata;
@@ -55,23 +47,24 @@ public class DebeziumDescriptorSchemaCreator {
         this.fieldFilter = fieldFilter;
     }
 
-    public ConnectorDescriptor buildDescriptor() {
+    public ComponentDescriptor buildDescriptor() {
 
         Metadata metadata = new Metadata(
-                "Captures changes from a " + componentMetadata.getComponentDescriptor().getDisplayName(),
+                // TODO provide a mechanism to get a meaningful description
+                componentMetadata.getComponentDescriptor().getDisplayName(),
                 null);
 
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
-        componentMetadata.getConfigDefinition().all().forEach(field -> {
-            Property property = buildProperty(field);
-            if (property != null) {
-                usedGroups.add(property.display().group().toLowerCase());
-                properties.add(property);
-            }
-        });
+        StreamSupport.stream(componentMetadata.getConfigDefinition().all().spliterator(), false)
+                .map(this::buildProperty)
+                .filter(Objects::nonNull)
+                .forEach(property -> {
+                    usedGroups.add(property.display().group().toLowerCase());
+                    properties.add(property);
+                });
 
-        return new ConnectorDescriptor(
+        return new ComponentDescriptor(
                 componentMetadata.getComponentDescriptor().getDisplayName(),
                 componentMetadata.getComponentDescriptor().getType(),
                 componentMetadata.getComponentDescriptor().getVersion(),
@@ -178,6 +171,7 @@ public class DebeziumDescriptorSchemaCreator {
                         formatGroupName(Field.Group.values()[groupPosition]),
                         groupPosition,
                         getGroupDescription(Field.Group.values()[groupPosition])))
+                .filter(group -> usedGroups.contains(group.name().toLowerCase()))
                 .collect(Collectors.toList());
     }
 
