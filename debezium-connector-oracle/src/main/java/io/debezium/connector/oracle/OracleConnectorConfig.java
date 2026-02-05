@@ -511,6 +511,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription(
                     "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
 
+    public static final Field LOG_MINING_WINDOW_MAX_MS = Field.create("log.mining.window.max.ms")
+            .withDisplayName("Maximum number of milliseconds that the mining window can span")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(TimeUnit.MINUTES.toMillis(0))
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The maximum number of milliseconds that the mining window can span. " +
+                    "If a transaction remains open for longer than this duration, the mining window start SCN will be advanced " +
+                    "to minimize the window size, preventing it from growing indefinitely. Defaults to 0 (disabled).");
+
     public static final Field LOG_MINING_RESTART_CONNECTION = Field.create("log.mining.restart.connection")
             .withDisplayName("Restarts Oracle database connection when reaching maximum session time or database log switch")
             .withType(Type.BOOLEAN)
@@ -852,6 +863,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
+                    LOG_MINING_WINDOW_MAX_MS,
                     LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
                     LOG_MINING_READ_ONLY,
                     LOG_MINING_FLUSH_TABLE_NAME,
@@ -944,6 +956,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningInitialDelay;
     private final Duration logMiningMaxDelay;
     private final Duration logMiningMaximumSession;
+    private final Duration logMiningWindowMaxMs;
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
     private final Boolean logMiningReadOnly;
     private final String logMiningFlushTableName;
@@ -1043,6 +1056,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
         this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
         this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
+
+        // Initialize logMiningWindowMaxMs, but disable if CTE is enabled as they are incompatible
+        final Duration configuredWindowMaxMs = Duration.ofMillis(config.getLong(LOG_MINING_WINDOW_MAX_MS));
+        if (this.logMiningUseCteQuery && !configuredWindowMaxMs.isZero()) {
+            LOGGER.warn("The log.mining.window.max.ms feature is not compatible with log.mining.use.cte.query. " +
+                    "The log.mining.window.max.ms feature will be disabled.");
+            this.logMiningWindowMaxMs = Duration.ZERO;
+        }
+        else {
+            this.logMiningWindowMaxMs = configuredWindowMaxMs;
+        }
+
         this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
@@ -1999,6 +2024,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Optional<Duration> getLogMiningMaximumSession() {
         return logMiningMaximumSession.toMillis() == 0L ? Optional.empty() : Optional.of(logMiningMaximumSession);
+    }
+
+    /**
+     * @return the maximum duration for the mining window
+     */
+    public Duration getLogMiningWindowMaxMs() {
+        return logMiningWindowMaxMs;
     }
 
     /**
