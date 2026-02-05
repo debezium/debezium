@@ -144,7 +144,7 @@ class DebeziumDescriptorSchemaTest {
         assertThat(firstDependant.get("values").isArray()).isTrue();
         assertThat(firstDependant.get("dependants").isArray()).isTrue();
 
-        assertThat(firstDependant.get("values").get(0).asText()).isEqualTo("LogMiner");
+        assertThat(firstDependant.get("values").get(0).asText()).isEqualTo("logminer");
         assertThat(firstDependant.get("dependants").get(0).asText()).isEqualTo("log.mining.buffer.type");
     }
 

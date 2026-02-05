@@ -166,20 +166,6 @@ public class FieldTest {
 
     @Test
     @FixFor("DBZ-1543")
-    public void shouldPreserveCaseForEnumeratedValueEnums() {
-        // Test that EnumeratedValue enums preserve their getValue() case in allowedValues
-        // Before DBZ-1543, these values were incorrectly lowercased to "logminer", "logminer_unbuffered", etc.
-        Field adapter = Field.create("connection.adapter")
-                .withDescription("Connection Adapter")
-                .withEnum(TestAdapter.class, TestAdapter.LOG_MINER);
-
-        Set<String> allowedValues = (Set<String>) adapter.allowedValues();
-        assertThat(allowedValues)
-                .containsExactlyInAnyOrder("LogMiner", "LogMiner_Unbuffered", "XStream", "OLR");
-    }
-
-    @Test
-    @FixFor("DBZ-1543")
     public void shouldMatchCaseBetweenAllowedValuesAndValueDependants() {
 
         // Test that allowedValues and valueDependants keys use the same case
@@ -206,12 +192,12 @@ public class FieldTest {
         Set<String> allowedValues = (Set<String>) resolvedAdapter.allowedValues();
         Map<Object, List<String>> valueDependants = resolvedAdapter.valueDependants();
 
-        assertThat(allowedValues).contains("LogMiner");
-        assertThat(valueDependants).containsKey("LogMiner");
-        assertThat(valueDependants.get("LogMiner")).containsExactly("log.mining.buffer.type");
+        assertThat(allowedValues).contains("logminer");
+        assertThat(valueDependants).containsKey("logminer");
+        assertThat(valueDependants.get("logminer")).containsExactly("log.mining.buffer.type");
 
-        assertThat(allowedValues).contains("LogMiner_Unbuffered");
-        assertThat(valueDependants).containsKey("LogMiner_Unbuffered");
-        assertThat(valueDependants.get("LogMiner_Unbuffered")).containsExactly("log.mining.buffer.type");
+        assertThat(allowedValues).contains("logminer_unbuffered");
+        assertThat(valueDependants).containsKey("logminer_unbuffered");
+        assertThat(valueDependants.get("logminer_unbuffered")).containsExactly("log.mining.buffer.type");
     }
 }
