@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({ "name", "type", "version", "metadata", "properties", "groups" })
-public record ConnectorDescriptor(
+public record ComponentDescriptor(
         @JsonProperty("name") String name,
         @JsonProperty("type") String type,
         @JsonProperty("version") String version,
