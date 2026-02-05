@@ -7,7 +7,9 @@ package io.debezium.relational.history;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -20,7 +22,9 @@ import io.debezium.config.Field;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.relational.history.TableChanges.TableChangeType;
@@ -139,6 +143,108 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                     try {
                         logger.debug("Applying: {}", ddl);
                         ddlParser.parse(ddl, schema);
+                        listener.onChangeApplied(recovered);
+                    }
+                    catch (final ParsingException | MultipleParsingExceptions e) {
+                        if (skipUnparseableDDL) {
+                            logger.warn("Ignoring unparseable statements '{}' stored in database schema history", ddl, e);
+                        }
+                        else {
+                            throw e;
+                        }
+                    }
+                }
+            }
+            else {
+                logger.debug("Skipping: {}", recovered.ddl());
+            }
+        });
+        listener.recoveryStopped();
+    }
+
+    @Override
+    public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema,
+                        DdlParser ddlParser, TableFilter memoryFilter)
+            throws InterruptedException {
+        if (memoryFilter == null) {
+            // No filter provided, use standard recovery
+            recover(offsets, schema, ddlParser);
+            return;
+        }
+
+        listener.recoveryStarted();
+        Map<Document, HistoryRecord> stopPoints = new HashMap<>();
+        offsets.forEach((Map<String, ?> source, Map<String, ?> position) -> {
+            Document srcDocument = Document.create();
+            if (source != null) {
+                source.forEach(srcDocument::set);
+            }
+            stopPoints.put(srcDocument, new HistoryRecord(source, position, null, null, null, null, null));
+        });
+
+        recoverRecords(recovered -> {
+            listener.onChangeFromHistory(recovered);
+            Document srcDocument = recovered.document().getDocument(HistoryRecord.Fields.SOURCE);
+            if (stopPoints.containsKey(srcDocument) && comparator.isAtOrBefore(recovered, stopPoints.get(srcDocument))) {
+                Array tableChanges = recovered.tableChanges();
+                String ddl = recovered.ddl();
+
+                if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
+                    TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
+                    for (TableChange entry : changes) {
+                        TableId tableId = entry.getId();
+
+                        // MEMORY OPTIMIZATION: Only update schema for included tables
+                        if (!memoryFilter.isIncluded(tableId)) {
+                            logger.debug("Skipping table '{}' from memory during recovery (not in include list)", tableId);
+                            continue;
+                        }
+
+                        if (entry.getType() == TableChangeType.CREATE) {
+                            schema.overwriteTable(entry.getTable());
+                        }
+                        else if (entry.getType() == TableChangeType.ALTER) {
+                            if (entry.getPreviousId() != null) {
+                                schema.removeTable(entry.getPreviousId());
+                            }
+                            schema.overwriteTable(entry.getTable());
+                        }
+                        // DROP
+                        else {
+                            schema.removeTable(entry.getId());
+                        }
+                    }
+                    listener.onChangeApplied(recovered);
+                }
+                else if (ddl != null && ddlParser != null) {
+                    if (recovered.databaseName() != null) {
+                        ddlParser.setCurrentDatabase(recovered.databaseName());
+                    }
+                    if (recovered.schemaName() != null) {
+                        ddlParser.setCurrentSchema(recovered.schemaName());
+                    }
+                    if (ddlFilter.test(ddl)) {
+                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'",
+                                Loggings.maybeRedactSensitiveData(ddl), config.getString(DDL_FILTER));
+                        return;
+                    }
+                    try {
+                        logger.debug("Applying: {}", ddl);
+                        // Parse DDL normally, then remove non-included tables
+                        ddlParser.parse(ddl, schema);
+
+                        // MEMORY OPTIMIZATION: Remove non-included tables after DDL parsing
+                        Set<TableId> tablesToRemove = new HashSet<>();
+                        for (TableId tableId : schema.tableIds()) {
+                            if (!memoryFilter.isIncluded(tableId)) {
+                                tablesToRemove.add(tableId);
+                            }
+                        }
+                        for (TableId tableId : tablesToRemove) {
+                            logger.debug("Removing table '{}' from memory during DDL recovery (not in include list)", tableId);
+                            schema.removeTable(tableId);
+                        }
+
                         listener.onChangeApplied(recovered);
                     }
                     catch (final ParsingException | MultipleParsingExceptions e) {
