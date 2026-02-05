@@ -345,8 +345,24 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             emitWindowClose(partition, offsetContext);
             LOGGER.trace("Window close emitted");
         }
+        catch (SQLException e) {
+            LOGGER.error("SQL error while executing incremental snapshot for table '{}', failing backfill and continuing streaming",
+                    context.currentDataCollectionId(), e);
+            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                    SQL_EXCEPTION);
+            nextDataCollection(partition, offsetContext);
+        }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+            if (e.getCause() instanceof SQLException) {
+                LOGGER.error("SQL error (wrapped) while executing incremental snapshot for table '{}', failing backfill and continuing streaming",
+                        context.currentDataCollectionId(), e);
+                notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                        SQL_EXCEPTION);
+                nextDataCollection(partition, offsetContext);
+            }
+            else {
+                throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+            }
         }
         finally {
             postReadChunk(context);
