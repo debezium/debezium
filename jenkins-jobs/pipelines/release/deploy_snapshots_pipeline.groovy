@@ -1,6 +1,3 @@
-import groovy.json.*
-import java.util.stream.*
-
 if (
     !params.DEBEZIUM_REPOSITORY ||
     !params.DEBEZIUM_BRANCH ||
@@ -92,20 +89,24 @@ node('Slave') {
             }
         }
 
+        def debeziumCommit = sh(
+            script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && git rev-parse --short HEAD",
+            returnStdout: true
+        ).trim()
+
+        def snapshotVersion = sh(
+            script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
+            returnStdout: true
+        ).trim()
+
+        def buildTimestamp = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
+
+        stage('Generate descriptors manifest') {
+            fileUtils.generateDescriptorManifest(DESCRIPTORS_OUTPUT_DIR, debeziumCommit, params.DEBEZIUM_BRANCH, buildTimestamp)
+        }
+
         stage("Publishing descriptors to ${params.DEBEZIUM_DESCRIPTOR_REPOSITORY}") {
             dir(DESCRIPTORS_REPO_DIR) {
-
-                def debeziumCommit = sh(
-                    script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && git rev-parse --short HEAD",
-                    returnStdout: true
-                ).trim()
-
-                def snapshotVersion = sh(
-                    script: "cd ${WORKSPACE}/${DEBEZIUM_DIR} && mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
-                    returnStdout: true
-                ).trim()
-
-                def buildTimestamp = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
 
                 sh """
                     find . -maxdepth 1 -type d -name '*-SNAPSHOT' -exec rm -rf {} + 2>/dev/null || true
