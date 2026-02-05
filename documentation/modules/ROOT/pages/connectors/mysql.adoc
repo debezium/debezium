@@ -179,6 +179,81 @@ endif::community[]
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
+// Type: procedure
+// ModuleID: debezium-mysql-using-the-set-binlog-position-signal-to-change-binlog-reading-position
+// Title: Using the set-binlog-position signal to change the binlog reading position
+[id="mysql-set-binlog-position-signal"]
+=== Setting binlog position via signal
+
+You can use {prodname} signaling to send a `set-binlog-position` signal to the connector at run time to dynamically change the binlog reading position.
+This is useful for the following scenarios:
+
+* **Disaster recovery**: Skip to a known good position after system failures.
+* **Partial replication**: Start CDC from recent data, skipping historical events.
+* **Testing**: Test with specific datasets without full historical snapshots.
+
+The signal supports two formats depending on whether GTID mode is enabled:
+
+.Binlog file and position format
+When GTID mode is disabled, specify the binlog filename and position:
+[source,json]
+----
+{"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}
+----
+
+.GTID set format
+When GTID mode is enabled, specify the GTID set:
+[source,json]
+----
+{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}
+----
+
+.Prerequisites
+* The connector is configured to use one of the available {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* A {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signaling data collection] exists on the source database.
+* The connector has `heartbeat.interval.ms` configured to ensure offset changes are persisted.
+
+[IMPORTANT]
+====
+Changing the binlog position causes the connector to skip change events in the binlog range between the current position and the new position.
+Changes in the skipped range are not captured.
+Use this signal only when you are certain that the skipped events should not be processed.
+
+After the signal is processed, you must restart the connector for the new position to take effect.
+====
+
+.Procedure
+* Send a signal that includes the standard `id`, `type`, and `data` properties of a {prodname} signal to your preferred signaling channel.
+In the `data` component of the signal, specify either the binlog file and position or the GTID set.
++
+.Example SQL using the `source` signal channel with binlog file and position
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium_signal (id, type, data) VALUES (
+  'set-position-001',
+  'set-binlog-position',
+  '{"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}'
+);
+----
++
+.Example SQL using the `source` signal channel with GTID set
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium_signal (id, type, data) VALUES (
+  'set-gtid-001',
+  'set-binlog-position',
+  '{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}'
+);
+----
+
+.Validation rules
+* When using binlog file and position format:
+** The `binlog_filename` must match the MySQL binlog naming pattern (for example, `mysql-bin.000001`).
+** The `binlog_position` must be a non-negative integer.
+* When using GTID set format:
+** The `gtid_set` must be a valid GTID set string.
+* You cannot specify both binlog file/position and GTID set in the same signal.
+
 // Type: concept
 // Title: Default names of Kafka topics that receive {prodname} MySQL change event records
 [[mysql-topic-names]]
