@@ -11,7 +11,7 @@ on:
 
 env:
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle,\\!debezium-connector-oracle"
-  MAVEN_CORE_SIBLING_CONNECTOR_PROJECTS: "debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi"
+  MAVEN_CORE_SIBLING_CONNECTOR_PROJECTS: "debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi"
 
 jobs:
   sqlserver:
