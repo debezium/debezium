@@ -3,15 +3,17 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.schemagenerator.model.debezium;
+package io.debezium.schemagenerator.schema.debezium;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
@@ -19,66 +21,55 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
+import io.debezium.schemagenerator.model.debezium.Display;
+import io.debezium.schemagenerator.model.debezium.Group;
+import io.debezium.schemagenerator.model.debezium.Metadata;
+import io.debezium.schemagenerator.model.debezium.Property;
+import io.debezium.schemagenerator.model.debezium.Validation;
+import io.debezium.schemagenerator.model.debezium.ValueDependant;
 import io.debezium.schemagenerator.schema.Schema.FieldFilter;
 
 /**
  * Service to convert ConnectorMetadata to Debezium Descriptor format DTOs.
  */
-public class DebeziumDescriptorSchemaCreatorService {
+public class DebeziumDescriptorSchemaCreator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumDescriptorSchemaCreatorService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumDescriptorSchemaCreator.class);
 
     private final ConnectorMetadata connectorMetadata;
     private final FieldFilter fieldFilter;
 
-    public DebeziumDescriptorSchemaCreatorService(ConnectorMetadata connectorMetadata, FieldFilter fieldFilter) {
+    public DebeziumDescriptorSchemaCreator(ConnectorMetadata connectorMetadata, FieldFilter fieldFilter) {
         this.connectorMetadata = connectorMetadata;
         this.fieldFilter = fieldFilter;
     }
 
     public ConnectorDescriptor buildDescriptor() {
-        // Build metadata
+
         Metadata metadata = new Metadata(
                 "Captures changes from a " + connectorMetadata.getConnectorDescriptor().getDisplayName(),
                 null);
 
-        // Build properties
-        List<Property> properties = new ArrayList<>();
-        connectorMetadata.getConnectorFields().forEach(field -> {
-            Property property = buildProperty(field);
-            if (property != null) {
-                properties.add(property);
-            }
-        });
+        List<Property> properties = StreamSupport.stream(connectorMetadata.getConnectorFields().spliterator(), false)
+                .map(this::buildProperty)
+                .filter(Objects::nonNull).toList();
 
-        // Build and return descriptor
         return new ConnectorDescriptor(
                 connectorMetadata.getConnectorDescriptor().getDisplayName(),
-                determineConnectorType(),
+                "source-connector",
                 connectorMetadata.getConnectorDescriptor().getVersion(),
                 metadata,
                 properties,
                 buildGroups());
     }
 
-    private String determineConnectorType() {
-        String className = connectorMetadata.getConnectorDescriptor().getClassName();
-        if (className.contains("Source")) {
-            return "source-connector";
-        }
-        else if (className.contains("Sink")) {
-            return "sink-connector";
-        }
-        return "source-connector"; // Default
-    }
-
     private Property buildProperty(Field field) {
-        // Apply field filter
+
         if (!fieldFilter.include(field)) {
             return null;
         }
 
-        // Build display
         String groupName = field.group() != null ? formatGroupName(field.group().getGroup()) : null;
         Integer groupOrder = field.group() != null ? field.group().getPositionInGroup() : null;
 
@@ -90,15 +81,7 @@ public class DebeziumDescriptorSchemaCreatorService {
                 mapWidth(field.width()),
                 mapImportance(field.importance()));
 
-        // Build valueDependants
-        List<ValueDependant> valueDependants = null;
-        if (field.valueDependants() != null && !field.valueDependants().isEmpty()) {
-            valueDependants = field.valueDependants().entrySet().stream()
-                    .map(entry -> new ValueDependant(
-                            Collections.singletonList(entry.getKey().toString()),
-                            entry.getValue()))
-                    .collect(Collectors.toList());
-        }
+        List<ValueDependant> valueDependants = buildValueDependants(field);
 
         List<Validation> validations = buildValidations(field);
 
@@ -111,38 +94,59 @@ public class DebeziumDescriptorSchemaCreatorService {
                 valueDependants);
     }
 
+    private static List<ValueDependant> buildValueDependants(Field field) {
+
+        if (field.valueDependants() == null || field.valueDependants().isEmpty()) {
+            return List.of();
+        }
+
+        return field.valueDependants().entrySet().stream()
+                .map(entry -> new ValueDependant(
+                        Collections.singletonList(entry.getKey().toString()),
+                        entry.getValue()))
+                .collect(Collectors.toList());
+    }
+
     private List<Validation> buildValidations(Field field) {
+
         List<Validation> validations = new ArrayList<>();
 
-        if (field.allowedValues() != null && !field.allowedValues().isEmpty()) {
+        if (field.allowedValues() != null) {
             List<String> values = field.allowedValues().stream()
                     .map(Object::toString)
                     .collect(Collectors.toList());
-            validations.add(Validation.enumValues(values));
-        }
-
-        Field.Validator validator = field.validator();
-        if (validator != null && validator.getClass().getSimpleName().equals("RangeValidator")) {
-            try {
-                Number min = extractRangeValidatorField(validator, "min");
-                Number max = extractRangeValidatorField(validator, "max");
-
-                if (min != null && max != null) {
-                    validations.add(Validation.range(min, max));
-                }
-                else if (min != null) {
-                    validations.add(Validation.min(min));
-                }
-                else if (max != null) {
-                    validations.add(Validation.max(max));
-                }
-            }
-            catch (Exception e) {
-                LOGGER.warn("Unable to extract min and max values from validator", e);
+            if (!values.isEmpty()) {
+                validations.add(Validation.enumValues(values));
             }
         }
 
-        return validations.isEmpty() ? null : validations;
+        if (field.validator() != null && field.validator().getClass().getSimpleName().equals("RangeValidator")) {
+            extractRangeValidator(field.validator(), validations)
+                    .ifPresent(validations::add);
+        }
+
+        return validations;
+    }
+
+    private Optional<Validation> extractRangeValidator(Field.Validator validator, List<Validation> validations) {
+        try {
+            Number min = extractRangeValidatorField(validator, "min");
+            Number max = extractRangeValidatorField(validator, "max");
+
+            if (min != null && max != null) {
+                return Optional.of(Validation.range(min, max));
+            }
+            if (min != null) {
+                return Optional.of(Validation.min(min));
+            }
+            if (max != null) {
+                return Optional.of(Validation.max(max));
+            }
+        }
+        catch (Exception e) {
+            LOGGER.warn("Unable to extract min and max values from validator", e);
+        }
+        return Optional.empty();
     }
 
     private Number extractRangeValidatorField(Field.Validator validator, String fieldName) throws Exception {
@@ -152,17 +156,12 @@ public class DebeziumDescriptorSchemaCreatorService {
     }
 
     private List<Group> buildGroups() {
-        Map<Field.Group, Integer> groupOrders = new LinkedHashMap<>();
-        int order = 0;
-        for (Field.Group group : Field.Group.values()) {
-            groupOrders.put(group, order++);
-        }
 
-        return Arrays.stream(Field.Group.values())
-                .map(group -> new Group(
-                        formatGroupName(group),
-                        groupOrders.get(group),
-                        getGroupDescription(group)))
+        return IntStream.range(0, Field.Group.values().length)
+                .mapToObj(groupPosition -> new Group(
+                        formatGroupName(Field.Group.values()[groupPosition]),
+                        groupPosition,
+                        getGroupDescription(Field.Group.values()[groupPosition])))
                 .collect(Collectors.toList());
     }
 
@@ -186,7 +185,6 @@ public class DebeziumDescriptorSchemaCreatorService {
             case ADVANCED_HEARTBEAT -> "Heartbeat configuration";
             case CONNECTOR_ADVANCED -> "Advanced connector configuration";
             case ADVANCED -> "Advanced configuration";
-            default -> "";
         };
     }
 
