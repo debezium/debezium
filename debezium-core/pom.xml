@@ -12,7 +12,6 @@
     <name>Debezium Core</name>
 
     <properties>
-        <net.bytebuddy.experimental>false</net.bytebuddy.experimental>
         <mockito.argLine>-Dnet.bytebuddy.experimental=${net.bytebuddy.experimental} -javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
