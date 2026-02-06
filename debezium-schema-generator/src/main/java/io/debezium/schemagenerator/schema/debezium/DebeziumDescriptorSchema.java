@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
-import io.debezium.schemagenerator.model.debezium.DebeziumDescriptorSchemaCreatorService;
 import io.debezium.schemagenerator.schema.DefaultFieldFilter;
 import io.debezium.schemagenerator.schema.Schema;
 import io.debezium.schemagenerator.schema.SchemaDescriptor;
@@ -70,7 +69,7 @@ public class DebeziumDescriptorSchema implements Schema {
 
     @Override
     public String getSpec(ConnectorMetadata connectorMetadata) {
-        DebeziumDescriptorSchemaCreatorService service = new DebeziumDescriptorSchemaCreatorService(
+        DebeziumDescriptorSchemaCreator service = new DebeziumDescriptorSchemaCreator(
                 connectorMetadata, getFieldFilter());
 
         ConnectorDescriptor descriptor = service.buildDescriptor();
