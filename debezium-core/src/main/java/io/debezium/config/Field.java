@@ -979,10 +979,7 @@ public final class Field {
      */
     public Field withDependents(String value, DependentFieldMatcher... matchers) {
 
-        Map<Object, List<DependentFieldMatcher>> updatedMatchers = new LinkedHashMap<>(valueDependantMatchers);
-        updatedMatchers.put(value, Arrays.asList(matchers));
-        return new Field(name(), displayName(), type(), width, description(), importance(),
-                dependents, valueDependants, updatedMatchers, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+        return withDependents(List.of(value), matchers);
     }
 
     /**
@@ -999,7 +996,7 @@ public final class Field {
         Map<Object, List<DependentFieldMatcher>> updatedMatchers = new LinkedHashMap<>(valueDependantMatchers);
         List<DependentFieldMatcher> matcherList = Arrays.asList(matchers);
         for (String value : values) {
-            updatedMatchers.put(value, matcherList);
+            updatedMatchers.put(value.toLowerCase(), matcherList);
         }
         return new Field(name(), displayName(), type(), width, description(), importance(),
                 dependents, valueDependants, updatedMatchers, defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);

@@ -57,9 +57,7 @@ public class SchemaGenerator {
             LOGGER.log(Logger.Level.INFO, "Creating \"" + format.getDescriptor().getName()
                     + "\" schema for connector: "
                     + connectorMetadata.getConnectorDescriptor().getDisplayName() + "...");
-            JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, format.getFieldFilter());
-            org.eclipse.microprofile.openapi.models.media.Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
-            String spec = format.getSpec(buildConnectorSchema);
+            String spec = format.getSpec(connectorMetadata);
 
             try {
                 String schemaFilename = "";

@@ -47,7 +47,7 @@ import io.debezium.schemagenerator.SchemaGenerator;
 @Mojo(name = "generate-api-spec", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 public class SchemaGeneratorMojo extends AbstractMojo {
 
-    @Parameter(defaultValue = "openapi", property = "schema.format")
+    @Parameter(defaultValue = "debezium", property = "schema.format")
     private String format;
 
     @Parameter(defaultValue = "${project.build.directory}${file.separator}generated-sources", required = true)

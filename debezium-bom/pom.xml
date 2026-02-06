@@ -72,6 +72,7 @@
         <version.testcontainers>2.0.2</version.testcontainers>
         <version.jsonpath>2.10.0</version.jsonpath>
         <version.jsonassert>1.5.3</version.jsonassert>
+        <version.json.schema.validator>1.5.3</version.json.schema.validator>
         <version.org.reflections>0.10.2</version.org.reflections>
         <version.cassandra.unit>4.3.1.0</version.cassandra.unit>
         <version.logback>1.2.13</version.logback> <!-- Latest: 1.5.21 Update with SLF4J.-->
@@ -664,6 +665,12 @@
                 <groupId>org.skyscreamer</groupId>
                 <artifactId>jsonassert</artifactId>
                 <version>${version.jsonassert}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${version.json.schema.validator}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
