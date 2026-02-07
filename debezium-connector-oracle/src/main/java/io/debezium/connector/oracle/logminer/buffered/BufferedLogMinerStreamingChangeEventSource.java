@@ -510,8 +510,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 getPartition(),
                                 getOffsetContext(),
                                 Envelope.Operation.TRUNCATE,
-                                dmlEvent.getDmlEntry().getOldValues(),
-                                dmlEvent.getDmlEntry().getNewValues(),
+                                dmlEvent.getOldValues(),
+                                dmlEvent.getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
                                 getSchema(),
                                 Clock.system());
@@ -522,8 +522,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 getPartition(),
                                 getOffsetContext(),
                                 dmlEvent.getEventType(),
-                                dmlEvent.getDmlEntry().getOldValues(),
-                                dmlEvent.getDmlEntry().getNewValues(),
+                                dmlEvent.getOldValues(),
+                                dmlEvent.getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
                                 getSchema(),
                                 Clock.system());

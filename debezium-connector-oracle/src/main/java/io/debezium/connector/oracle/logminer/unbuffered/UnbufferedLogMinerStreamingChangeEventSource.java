@@ -544,9 +544,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                             getConfig(),
                             getPartition(),
                             getOffsetContext(),
-                            dmlEvent.getDmlEntry().getEventType(),
-                            dmlEvent.getDmlEntry().getOldValues(),
-                            dmlEvent.getDmlEntry().getNewValues(),
+                            dmlEvent.getEventType(),
+                            dmlEvent.getOldValues(),
+                            dmlEvent.getNewValues(),
                             getSchema().tableFor(dmlEvent.getTableId()),
                             getSchema(),
                             Clock.system()));

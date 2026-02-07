@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
 
 /**
@@ -46,15 +45,24 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
-     * @param entry the parsed SQL statement entry
+     * @param oldValues old column values
+     * @param newValues new column values
      * @param columnName the column name references by the SelectLobLocatorEvent
      * @return the constructed SelectLobLocatorEvent
      */
     @ProtoFactory
     public XmlBeginEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime,
-                                 LogMinerDmlEntryImpl entry, String columnName) {
-        return new XmlBeginEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId,
-                Instant.parse(changeTime), entry, columnName);
+                                 String[] oldValues, String[] newValues, String columnName) {
+        return new XmlBeginEvent(
+                EventType.from(eventType),
+                Scn.valueOf(scn),
+                TableId.parse(tableId),
+                rowId,
+                rsId,
+                Instant.parse(changeTime),
+                oldValues,
+                newValues,
+                columnName);
     }
 
     /**
@@ -63,7 +71,7 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the column name
      */
-    @ProtoField(number = 8)
+    @ProtoField(number = 9)
     public String getColumnName(XmlBeginEvent event) {
         return event.getColumnName();
     }
