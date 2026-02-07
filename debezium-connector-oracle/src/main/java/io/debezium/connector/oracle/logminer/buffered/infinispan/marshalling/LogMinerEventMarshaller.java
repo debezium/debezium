@@ -10,13 +10,23 @@ import org.infinispan.protostream.annotations.ProtoSchema;
 
 /**
  * An interface that is used by the ProtoStream framework to designate the adapters and path
- * to where the a Protocol Buffers .proto file will be generated based on the adapters
+ * to where the Protocol Buffers .proto file will be generated based on the adapters
  * at compile time.
  *
  * @author Chris Cranford
  */
-@ProtoSchema(includeClasses = { LogMinerEventAdapter.class, DmlEventAdapter.class, SelectLobLocatorEventAdapter.class, LobWriteEventAdapter.class,
-        LobEraseEventAdapter.class, LogMinerDmlEntryImplAdapter.class, TruncateEventAdapter.class, XmlBeginEventAdapter.class, XmlWriteEventAdapter.class,
-        XmlEndEventAdapter.class, RedoSqlDmlEventAdapter.class, ExtendedStringBeginEventAdapter.class, ExtendedStringWriteEventAdapter.class }, schemaFilePath = "/")
+@ProtoSchema(includeClasses = {
+        LogMinerEventAdapter.class,
+        DmlEventAdapter.class,
+        SelectLobLocatorEventAdapter.class,
+        LobWriteEventAdapter.class,
+        LobEraseEventAdapter.class,
+        TruncateEventAdapter.class,
+        XmlBeginEventAdapter.class,
+        XmlWriteEventAdapter.class,
+        XmlEndEventAdapter.class,
+        RedoSqlDmlEventAdapter.class,
+        ExtendedStringBeginEventAdapter.class,
+        ExtendedStringWriteEventAdapter.class }, schemaFilePath = "/")
 public interface LogMinerEventMarshaller extends SerializationContextInitializer {
 }

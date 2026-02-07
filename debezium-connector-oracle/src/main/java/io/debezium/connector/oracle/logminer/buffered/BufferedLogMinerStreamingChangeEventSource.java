@@ -54,6 +54,7 @@ import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrat
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -486,7 +487,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setTableId(event.getTableId());
                 getOffsetContext().setRedoThread(row.getThread());
                 getOffsetContext().setRsId(event.getRsId());
-                getOffsetContext().setRowId(event.getRowId());
+                getOffsetContext().setRowId(event.getRowIdAsString());
                 getOffsetContext().setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
 
                 if (eventIndex == 1) {
@@ -509,8 +510,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 getPartition(),
                                 getOffsetContext(),
                                 Envelope.Operation.TRUNCATE,
-                                dmlEvent.getDmlEntry().getOldValues(),
-                                dmlEvent.getDmlEntry().getNewValues(),
+                                dmlEvent.getOldValues(),
+                                dmlEvent.getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
                                 getSchema(),
                                 Clock.system());
@@ -521,8 +522,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 getPartition(),
                                 getOffsetContext(),
                                 dmlEvent.getEventType(),
-                                dmlEvent.getDmlEntry().getOldValues(),
-                                dmlEvent.getDmlEntry().getNewValues(),
+                                dmlEvent.getOldValues(),
+                                dmlEvent.getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
                                 getSchema(),
                                 Clock.system());
@@ -644,6 +645,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.warn("Failed to process truncate event", e);
             getMetrics().incrementWarningCount();
         }
+    }
+
+    @Override
+    protected LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent) {
+        return getConfig().isLogMiningIncludeRedoSql()
+                ? new RedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
+                : new DmlEvent(event, parsedEvent);
     }
 
     @Override

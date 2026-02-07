@@ -21,27 +21,21 @@ public class LogMinerEvent {
     private final EventType eventType;
     private final Scn scn;
     private final TableId tableId;
-    private final String rowId;
+    private final long rowId;
     private final String rsId;
-    private final Instant changeTime;
-
-    // These are purposely only used by the bufferless implementation
-    private String transactionId;
-    private Long transactionSequence;
+    private final long changeTime;
 
     public LogMinerEvent(LogMinerEventRow row) {
         this(row.getEventType(), row.getScn(), row.getTableId(), row.getRowId(), row.getRsId(), row.getChangeTime());
-        this.transactionId = row.getTransactionId();
-        this.transactionSequence = row.getTransactionSequence();
     }
 
     public LogMinerEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
         this.eventType = eventType;
         this.scn = scn;
         this.tableId = tableId;
-        this.rowId = rowId;
+        this.rowId = RowIdCodec.encode(rowId);
         this.rsId = rsId;
-        this.changeTime = changeTime;
+        this.changeTime = changeTime.toEpochMilli();
     }
 
     public EventType getEventType() {
@@ -56,8 +50,13 @@ public class LogMinerEvent {
         return tableId;
     }
 
-    public String getRowId() {
+    public Long getRowId() {
         return rowId;
+    }
+
+    public String getRowIdAsString() {
+        // Given this method decodes the value inline, it should be used infrequently.
+        return RowIdCodec.decode(rowId);
     }
 
     public String getRsId() {
@@ -65,17 +64,7 @@ public class LogMinerEvent {
     }
 
     public Instant getChangeTime() {
-        return changeTime;
-    }
-
-    // Only populated by the unbuffered implementation
-    public String getTransactionId() {
-        return transactionId;
-    }
-
-    // Only populated by the unbuffered implementation
-    public Long getTransactionSequence() {
-        return transactionSequence;
+        return Instant.ofEpochMilli(changeTime);
     }
 
     @Override
@@ -92,14 +81,12 @@ public class LogMinerEvent {
                 Objects.equals(tableId, that.tableId) &&
                 Objects.equals(rowId, that.rowId) &&
                 Objects.equals(rsId, that.rsId) &&
-                Objects.equals(changeTime, that.changeTime) &&
-                Objects.equals(transactionId, that.transactionId) &&
-                Objects.equals(transactionSequence, that.transactionSequence);
+                Objects.equals(changeTime, that.changeTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(eventType, scn, tableId, rowId, rsId, changeTime, transactionId, transactionSequence);
+        return Objects.hash(eventType, scn, tableId, rowId, rsId, changeTime);
     }
 
     @Override
@@ -108,11 +95,9 @@ public class LogMinerEvent {
                 "eventType=" + eventType +
                 ", scn=" + scn +
                 ", tableId=" + tableId +
-                ", rowId='" + rowId + '\'' +
+                ", rowId='" + RowIdCodec.decode(rowId) + '\'' +
                 ", rsId=" + rsId +
                 ", changeTime=" + changeTime +
-                ", transactionId=" + transactionId +
-                ", transactionSequence=" + transactionSequence +
                 '}';
     }
 }

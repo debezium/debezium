@@ -15,32 +15,49 @@ import java.util.Objects;
  */
 public class Scn implements Comparable<Scn> {
 
-    /**
-     * Represents an Scn that implies the maximum possible value of an SCN, useful as a placeholder.
-     */
-    public static final Scn MAX = new Scn(BigInteger.valueOf(-2));
+    private static final long OVERFLOW_MARKER = Long.MIN_VALUE;
 
-    /**
-     * Represents an Scn without a value.
-     */
-    public static final Scn NULL = new Scn(null);
+    public static final Scn MAX = new Scn(-2L, null);
+    public static final Scn NULL = new Scn(0L, null, true);
+    public static final Scn ONE = new Scn(1L, null);
 
-    /**
-     * Represents an Scn with value 1, useful for playing with inclusive/exclusive query boundaries.
-     */
-    public static final Scn ONE = new Scn(BigInteger.valueOf(1));
-
-    private final BigInteger scn;
+    private final long longValue;
+    private final BigInteger bigIntegerValue;
+    private final boolean empty;
 
     public Scn(BigInteger scn) {
-        this.scn = scn;
+        if (scn == null) {
+            this.longValue = 0L;
+            this.bigIntegerValue = null;
+            this.empty = true;
+        }
+        else if (scn.bitLength() < 64) {
+            this.longValue = scn.longValue();
+            this.bigIntegerValue = null;
+            this.empty = false;
+        }
+        else {
+            this.longValue = OVERFLOW_MARKER;
+            this.bigIntegerValue = scn;
+            this.empty = false;
+        }
+    }
+
+    private Scn(long longValue, BigInteger bigIntegerValue) {
+        this(longValue, bigIntegerValue, false);
+    }
+
+    private Scn(long longValue, BigInteger bigIntegerValue, boolean nullValue) {
+        this.longValue = longValue;
+        this.bigIntegerValue = bigIntegerValue;
+        this.empty = nullValue;
     }
 
     /**
      * Returns whether this {@link Scn} is null and contains no value.
      */
     public boolean isNull() {
-        return this.scn == null;
+        return empty;
     }
 
     /**
@@ -50,7 +67,7 @@ public class Scn implements Comparable<Scn> {
      * @return instance of Scn
      */
     public static Scn valueOf(int value) {
-        return new Scn(BigInteger.valueOf(value));
+        return new Scn(value, null);
     }
 
     /**
@@ -60,7 +77,7 @@ public class Scn implements Comparable<Scn> {
      * @return instance of Scn
      */
     public static Scn valueOf(long value) {
-        return new Scn(BigInteger.valueOf(value));
+        return new Scn(value, null);
     }
 
     /**
@@ -77,11 +94,17 @@ public class Scn implements Comparable<Scn> {
      * Get the Scn represented as a {@code long} data type.
      */
     public long longValue() {
-        return isNull() ? 0 : scn.longValue();
+        if (empty) {
+            return 0L;
+        }
+        return bigIntegerValue != null ? bigIntegerValue.longValue() : longValue;
     }
 
     public BigInteger asBigInteger() {
-        return scn;
+        if (empty) {
+            return null;
+        }
+        return bigIntegerValue != null ? bigIntegerValue : BigInteger.valueOf(longValue);
     }
 
     /**
@@ -95,12 +118,26 @@ public class Scn implements Comparable<Scn> {
             return Scn.NULL;
         }
         else if (value.isNull()) {
-            return new Scn(scn);
+            return new Scn(this.longValue, this.bigIntegerValue);
         }
         else if (isNull()) {
-            return new Scn(value.scn);
+            return new Scn(value.longValue, value.bigIntegerValue);
         }
-        return new Scn(scn.add(value.scn));
+
+        // If either use BigInteger, compute with BigInteger
+        if (this.bigIntegerValue != null && value.bigIntegerValue != null) {
+            return new Scn(this.asBigInteger().add(value.asBigInteger()));
+        }
+
+        // Both are longs - check overflow
+        try {
+            long result = Math.addExact(this.longValue, value.longValue);
+            return new Scn(result, null);
+        }
+        catch (ArithmeticException e) {
+            // Overflow - use BigInteger
+            return new Scn(BigInteger.valueOf(this.longValue).add(BigInteger.valueOf(value.longValue)));
+        }
     }
 
     /**
@@ -114,12 +151,35 @@ public class Scn implements Comparable<Scn> {
             return Scn.NULL;
         }
         else if (value.isNull()) {
-            return new Scn(scn);
+            return new Scn(this.longValue, this.bigIntegerValue);
         }
         else if (isNull()) {
-            return new Scn(value.scn.negate());
+            if (value.bigIntegerValue != null) {
+                return new Scn(value.asBigInteger().negate());
+            }
+            try {
+                long result = Math.negateExact(value.longValue);
+                return new Scn(result, null);
+            }
+            catch (ArithmeticException e) {
+                return new Scn(BigInteger.valueOf(value.longValue).negate());
+            }
         }
-        return new Scn(scn.subtract(value.scn));
+
+        // If either uses BigInteger, compute with BigInteger
+        if (this.bigIntegerValue != null || value.bigIntegerValue != null) {
+            return new Scn(this.asBigInteger().subtract(value.asBigInteger()));
+        }
+
+        // Both are longs - check overflow
+        try {
+            long result = Math.subtractExact(this.longValue, value.longValue);
+            return new Scn(result, null);
+        }
+        catch (ArithmeticException e) {
+            // Overflow - use BigInteger
+            return new Scn(BigInteger.valueOf(this.longValue).subtract(BigInteger.valueOf(value.longValue)));
+        }
     }
 
     /**
@@ -139,7 +199,12 @@ public class Scn implements Comparable<Scn> {
         else if (!isNull() && o.isNull()) {
             return 1;
         }
-        return scn.compareTo(o.scn);
+
+        if (this.bigIntegerValue != null || o.bigIntegerValue != null) {
+            return this.asBigInteger().compareTo(o.asBigInteger());
+        }
+
+        return Long.compare(this.longValue, o.longValue);
     }
 
     @Override
@@ -150,17 +215,41 @@ public class Scn implements Comparable<Scn> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        Scn scn1 = (Scn) o;
-        return Objects.equals(scn, scn1.scn);
+
+        final Scn other = (Scn) o;
+        if (this.empty != other.empty) {
+            return false;
+        }
+        if (this.empty) {
+            return true;
+        }
+
+        if (this.bigIntegerValue != null || other.bigIntegerValue != null) {
+            return Objects.equals(this.bigIntegerValue, other.bigIntegerValue);
+        }
+
+        return this.longValue == other.longValue;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(scn);
+        if (empty) {
+            return 0;
+        }
+        if (bigIntegerValue != null) {
+            return bigIntegerValue.hashCode();
+        }
+        return Long.hashCode(longValue);
     }
 
     @Override
     public String toString() {
-        return isNull() ? "null" : scn.toString();
+        if (empty) {
+            return "null";
+        }
+        if (bigIntegerValue != null) {
+            return bigIntegerValue.toString();
+        }
+        return Long.toString(longValue);
     }
 }
