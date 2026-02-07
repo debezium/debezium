@@ -31,13 +31,12 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
-import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
+import io.debezium.connector.oracle.logminer.unbuffered.events.UnbufferedDmlEvent;
+import io.debezium.connector.oracle.logminer.unbuffered.events.UnbufferedRedoSqlDmlEvent;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -494,6 +493,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
+    protected LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent) {
+        return getConfig().isLogMiningIncludeRedoSql()
+                ? new UnbufferedRedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
+                : new UnbufferedDmlEvent(event, parsedEvent);
+    }
+
+    @Override
     protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
         return !getMetrics().getBatchMetrics().hasProcessedAnyTransactions();
     }
@@ -513,36 +519,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         // This makes sure that if the connector configuration is changed, such as a table added or removed
         // from the include list, the sequence is unaffected and the restart position is always the same.
 
-        if (event instanceof TruncateEvent truncateEvent) {
-            final int databaseOffsetSeconds = databaseOffset.getTotalSeconds();
-
-            getMetrics().calculateLagFromSource(truncateEvent.getChangeTime());
-
-            // Set per-event details
-            getOffsetContext().setEventScn(truncateEvent.getScn());
-            getOffsetContext().setTransactionId(truncateEvent.getTransactionId());
-            getOffsetContext().setTransactionSequence(truncateEvent.getTransactionSequence());
-            getOffsetContext().setSourceTime(truncateEvent.getChangeTime().minusSeconds(databaseOffsetSeconds));
-            getOffsetContext().setTableId(truncateEvent.getTableId());
-            getOffsetContext().setRsId(truncateEvent.getRsId());
-            getOffsetContext().setRowId(truncateEvent.getRowId());
-
-            getEventDispatcher().dispatchDataChangeEvent(
-                    getPartition(),
-                    truncateEvent.getTableId(),
-                    new LogMinerChangeRecordEmitter(
-                            getConfig(),
-                            getPartition(),
-                            getOffsetContext(),
-                            Envelope.Operation.TRUNCATE,
-                            truncateEvent.getDmlEntry().getOldValues(),
-                            truncateEvent.getDmlEntry().getNewValues(),
-                            getSchema().tableFor(truncateEvent.getTableId()),
-                            getSchema(),
-                            Clock.system()));
-
-        }
-        else if (event instanceof DmlEvent dmlEvent) {
+        if (event instanceof UnbufferedDmlEvent dmlEvent) {
             final int databaseOffsetSeconds = databaseOffset.getTotalSeconds();
 
             getMetrics().calculateLagFromSource(dmlEvent.getChangeTime());
@@ -556,7 +533,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             getOffsetContext().setRsId(dmlEvent.getRsId());
             getOffsetContext().setRowId(dmlEvent.getRowId());
 
-            if (event instanceof RedoSqlDmlEvent redoDmlEvent) {
+            if (event instanceof UnbufferedRedoSqlDmlEvent redoDmlEvent) {
                 getOffsetContext().setRedoSql(redoDmlEvent.getRedoSql());
             }
 
