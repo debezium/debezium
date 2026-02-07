@@ -400,7 +400,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                 getBatchMetrics().rowObserved();
 
-                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
+                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName, schema);
                 processEvent(event);
             }
 
