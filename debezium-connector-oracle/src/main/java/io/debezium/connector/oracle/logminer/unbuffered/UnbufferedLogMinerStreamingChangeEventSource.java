@@ -531,7 +531,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             getOffsetContext().setSourceTime(dmlEvent.getChangeTime().minusSeconds(databaseOffsetSeconds));
             getOffsetContext().setTableId(dmlEvent.getTableId());
             getOffsetContext().setRsId(dmlEvent.getRsId());
-            getOffsetContext().setRowId(dmlEvent.getRowId());
+            getOffsetContext().setRowId(dmlEvent.getRowIdAsString());
 
             if (event instanceof UnbufferedRedoSqlDmlEvent redoDmlEvent) {
                 getOffsetContext().setRedoSql(redoDmlEvent.getRedoSql());

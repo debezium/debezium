@@ -100,7 +100,7 @@ public class LogMinerEventAdapter {
      */
     @ProtoField(number = 4)
     public String getRowId(LogMinerEvent event) {
-        return event.getRowId();
+        return event.getRowIdAsString();
     }
 
     /**

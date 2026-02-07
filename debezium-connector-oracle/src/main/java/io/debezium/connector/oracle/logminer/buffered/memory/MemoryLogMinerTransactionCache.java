@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 
 /**
  * A concrete implementation of the {@link LogMinerTransactionCache} that stores transactions and events
@@ -124,11 +125,12 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public boolean removeTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
+        final long encodedRowId = RowIdCodec.encode(rowId);
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId().equals(rowId)) {
+                if (entry.event.getRowId() == encodedRowId) {
                     events.remove(i);
                     eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
                     return true;
