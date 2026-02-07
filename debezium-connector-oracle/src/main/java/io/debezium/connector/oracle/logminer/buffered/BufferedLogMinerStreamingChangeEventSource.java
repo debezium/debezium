@@ -487,7 +487,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setTableId(event.getTableId());
                 getOffsetContext().setRedoThread(row.getThread());
                 getOffsetContext().setRsId(event.getRsId());
-                getOffsetContext().setRowId(event.getRowId());
+                getOffsetContext().setRowId(event.getRowIdAsString());
                 getOffsetContext().setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
 
                 if (eventIndex == 1) {

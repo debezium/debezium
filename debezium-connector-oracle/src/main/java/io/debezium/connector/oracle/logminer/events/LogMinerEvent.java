@@ -21,9 +21,9 @@ public class LogMinerEvent {
     private final EventType eventType;
     private final Scn scn;
     private final TableId tableId;
-    private final String rowId;
+    private final long rowId;
     private final String rsId;
-    private final Instant changeTime;
+    private final long changeTime;
 
     public LogMinerEvent(LogMinerEventRow row) {
         this(row.getEventType(), row.getScn(), row.getTableId(), row.getRowId(), row.getRsId(), row.getChangeTime());
@@ -33,9 +33,9 @@ public class LogMinerEvent {
         this.eventType = eventType;
         this.scn = scn;
         this.tableId = tableId;
-        this.rowId = rowId;
+        this.rowId = RowIdCodec.encode(rowId);
         this.rsId = rsId;
-        this.changeTime = changeTime;
+        this.changeTime = changeTime.toEpochMilli();
     }
 
     public EventType getEventType() {
@@ -50,8 +50,13 @@ public class LogMinerEvent {
         return tableId;
     }
 
-    public String getRowId() {
+    public Long getRowId() {
         return rowId;
+    }
+
+    public String getRowIdAsString() {
+        // Given this method decodes the value inline, it should be used infrequently.
+        return RowIdCodec.decode(rowId);
     }
 
     public String getRsId() {
@@ -59,7 +64,7 @@ public class LogMinerEvent {
     }
 
     public Instant getChangeTime() {
-        return changeTime;
+        return Instant.ofEpochMilli(changeTime);
     }
 
     @Override
@@ -90,7 +95,7 @@ public class LogMinerEvent {
                 "eventType=" + eventType +
                 ", scn=" + scn +
                 ", tableId=" + tableId +
-                ", rowId='" + rowId + '\'' +
+                ", rowId='" + RowIdCodec.decode(rowId) + '\'' +
                 ", rsId=" + rsId +
                 ", changeTime=" + changeTime +
                 '}';

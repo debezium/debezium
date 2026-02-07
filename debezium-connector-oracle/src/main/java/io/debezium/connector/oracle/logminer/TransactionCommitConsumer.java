@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
@@ -39,7 +40,6 @@ import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
-import io.debezium.util.Strings;
 
 import oracle.sql.RAW;
 
@@ -553,7 +553,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private boolean hasRowId(DmlEvent event) {
-        return !Strings.isNullOrEmpty(event.getRowId()) && !event.getRowId().equalsIgnoreCase("AAAAAAAAAAAAAAAAAA");
+        return event.getRowId() != null && event.getRowId() != RowIdCodec.EMPTY_ROW_ID;
     }
 
     static class ConstructionDetails {
