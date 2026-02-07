@@ -25,14 +25,8 @@ public class LogMinerEvent {
     private final String rsId;
     private final Instant changeTime;
 
-    // These are purposely only used by the bufferless implementation
-    private String transactionId;
-    private Long transactionSequence;
-
     public LogMinerEvent(LogMinerEventRow row) {
         this(row.getEventType(), row.getScn(), row.getTableId(), row.getRowId(), row.getRsId(), row.getChangeTime());
-        this.transactionId = row.getTransactionId();
-        this.transactionSequence = row.getTransactionSequence();
     }
 
     public LogMinerEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
@@ -68,16 +62,6 @@ public class LogMinerEvent {
         return changeTime;
     }
 
-    // Only populated by the unbuffered implementation
-    public String getTransactionId() {
-        return transactionId;
-    }
-
-    // Only populated by the unbuffered implementation
-    public Long getTransactionSequence() {
-        return transactionSequence;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -92,14 +76,12 @@ public class LogMinerEvent {
                 Objects.equals(tableId, that.tableId) &&
                 Objects.equals(rowId, that.rowId) &&
                 Objects.equals(rsId, that.rsId) &&
-                Objects.equals(changeTime, that.changeTime) &&
-                Objects.equals(transactionId, that.transactionId) &&
-                Objects.equals(transactionSequence, that.transactionSequence);
+                Objects.equals(changeTime, that.changeTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(eventType, scn, tableId, rowId, rsId, changeTime, transactionId, transactionSequence);
+        return Objects.hash(eventType, scn, tableId, rowId, rsId, changeTime);
     }
 
     @Override
@@ -111,8 +93,6 @@ public class LogMinerEvent {
                 ", rowId='" + rowId + '\'' +
                 ", rsId=" + rsId +
                 ", changeTime=" + changeTime +
-                ", transactionId=" + transactionId +
-                ", transactionSequence=" + transactionSequence +
                 '}';
     }
 }

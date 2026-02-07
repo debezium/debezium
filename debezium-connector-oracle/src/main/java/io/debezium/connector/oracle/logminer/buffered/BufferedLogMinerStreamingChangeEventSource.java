@@ -54,6 +54,7 @@ import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrat
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -644,6 +645,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.warn("Failed to process truncate event", e);
             getMetrics().incrementWarningCount();
         }
+    }
+
+    @Override
+    protected LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent) {
+        return getConfig().isLogMiningIncludeRedoSql()
+                ? new RedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
+                : new DmlEvent(event, parsedEvent);
     }
 
     @Override
