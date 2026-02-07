@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
 
 /**
@@ -45,13 +44,24 @@ public class RedoSqlDmlEventAdapter extends DmlEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
-     * @param entry the parsed SQL statement entry
+     * @param oldValues old column values
+     * @param newValues new column values
      * @param redoSql the redo sql
      * @return the constructed RedoSqlDmlEvent
      */
     @ProtoFactory
-    public RedoSqlDmlEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, LogMinerDmlEntryImpl entry, String redoSql) {
-        return new RedoSqlDmlEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), entry, redoSql);
+    public RedoSqlDmlEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime,
+                                   String[] oldValues, String[] newValues, String redoSql) {
+        return new RedoSqlDmlEvent(
+                EventType.from(eventType),
+                Scn.valueOf(scn),
+                TableId.parse(tableId),
+                rowId,
+                rsId,
+                Instant.parse(changeTime),
+                oldValues,
+                newValues,
+                redoSql);
     }
 
     /**
@@ -60,7 +70,7 @@ public class RedoSqlDmlEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the redo SQL statement
      */
-    @ProtoField(number = 8)
+    @ProtoField(number = 9)
     public String getRedoSql(RedoSqlDmlEvent event) {
         return event.getRedoSql();
     }
