@@ -552,17 +552,21 @@ jobs:
           -DfailFlakyTests=false
           -DskipITs
           ${{ matrix.feature.extra }}
-  quarkus-outbox:
+  quarkus:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
-    name: Quarkus Outbox Extension - Java ${{ matrix.feature.release }}
+    name: Quarkus Extensions - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v6
         with:
-          submodules: recursive
+          path: core
+      - uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
@@ -572,11 +576,11 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2/repository
-          key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - name: Build (core)
         run: >
-          ./mvnw -B -ntp clean install
+          ./core/mvnw clean install -f core/pom.xml
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
           -Dformat.skip=true
           -Dcheckstyle.skip=true
@@ -587,7 +591,7 @@ jobs:
           ${{ matrix.feature.extra }}
       - name: Maven Build
         run: >
-          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd 
+          ./core/mvnw clean install -f quarkus/pom.xml 
           -Passembly ${{ matrix.feature.args }} 
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check 
