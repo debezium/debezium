@@ -3621,7 +3621,7 @@ range_partitions
     ;
 
 list_partitions
-    : PARTITION BY LIST '(' column_name ')' (
+    : PARTITION BY LIST '(' column_name (',' column_name)* ')' (
         AUTOMATIC (STORE IN '(' tablespace (',' tablespace)* ')')?
     )? (
         '(' PARTITION partition_name? list_values_clause table_partition_description (
@@ -3783,7 +3783,10 @@ range_values_list
     ;
 
 list_values_clause
-    : VALUES '(' (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
+    : VALUES '(' (
+        (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT)
+        | '(' (literal (',' literal*) | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
+    ) ')'
     ;
 
 table_partition_description
