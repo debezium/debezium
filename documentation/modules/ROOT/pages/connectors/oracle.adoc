@@ -6007,6 +6007,31 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
 
+[id="what-causes-redo-thread-inconsistency"]
+*What causes Redo Thread inconsistency?*::
+The {prodname} Oracle connector can only capture changes when all required database transaction logs are available and contain no sequence gaps.
+When using the LogMiner adapter, users may notice when this requirement cannot be met, log entries appear reporting that an Oracle redo thread is inconsistent:
++
+```
+Redo Thread X is inconsistent; an archive log with sequence 12345 is not available
+```
+An Oracle redo thread can be inconsistent for a variety of reasons, including but not limited to:
+. While an Oracle RAC node is in the process of shutting down, when the redo thread transitions from OPEN to CLOSED.
+. An online redo log has reached maximum capacity and is queued for archival, but the archival process has not completed.
+. The resume read position the connector is not available.
+
++
+The most common reason for this log entry is that an online redo log the connector requires has been queued for archival.
+When a log is scheduled for archival, a database process called ARC copies the online redo log on disk to the archive destination(s).
+When an Oracle system is under load or there are several queued archival jobs, it could take a short period of time before the online redo log is registered in `V$ARCHIVED_LOG` by the ARC process when the archival completes.
+Given that {prodname} does not have direct filesystem access, the log must be registered in the performance view before Debezium can continue. +
+ +
+In some instances, redo thread inconsistency may result in an error that reports the SCN is not available.
+It is important to review the log entries prior to this exception to determine if the reason was because the maximum number of retries were exhausted. +
+ +
+When the Oracle ARC process takes more time to complete the archival than the {prodname} Oracle connector allows, the internal connector configuration property `internal.log.mining.query.max.retries` can be adjusted to increase the number of retry attempts.
+By default, the connector retries up to `5` attempts before throwing an exception.
+
 [id="what-causes-ora-01555-and-how-to-handle-it"]
 *What's the cause for ORA-01555 and how to handle it?*::
 The {prodname} Oracle connector uses flashback queries when the initial snapshot phase executes.
@@ -6085,9 +6110,8 @@ endif::community[]
 ifdef::product[]
 Use of the `XMLTYPE` with the {prodname} Oracle connector is available as a Technology Preview feature.
 To use this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
- +
 endif::product[]
-
++
 Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runtime finds an uses this implementation rather than the other on the classpath, this error will occur.
 In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
  +
