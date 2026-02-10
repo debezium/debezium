@@ -913,7 +913,7 @@ public abstract class CommonConnectorConfig {
             .withDefault(1)
             .withValidation(Field::isPositiveInteger)
             .withDescription("The factor used to scale the number of snapshot chunks per table. " +
-                    "The default behavior is to take 'row_count/snapshot.max.threads' to compute the number of chunks. " +
+                    "The default behavior is to take 'row_count/snapshot.max.threads' to compute the number of rows per chunks. " +
                     "This may not be ideal for larger tables, and using the multiplier, the formula is adjusted to increase the " +
                     "number of chunks by using 'row_count/(snapshot.max.threads * snapshot.max.threads.multiplier).");
 
