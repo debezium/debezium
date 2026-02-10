@@ -16,11 +16,12 @@ def modifyFile(filename, modClosure) {
     )
 }
 
-def generateDescriptorManifest(String outputDirPath, String commit, String branch, String timestamp) {
+def generateDescriptorManifest(String outputDirPath, String commit, String branch, String timestamp, String version) {
     // Build the manifest structure
     def manifest = [
         schemaVersion: "1.0",
         build: [
+            version: version,
             timestamp: timestamp,
             sourceRepository: "debezium/debezium",
             sourceCommit: commit,

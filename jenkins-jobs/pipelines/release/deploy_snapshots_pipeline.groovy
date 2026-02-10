@@ -102,7 +102,7 @@ node('Slave') {
         def buildTimestamp = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC'))
 
         stage('Generate descriptors manifest') {
-            fileUtils.generateDescriptorManifest(DESCRIPTORS_OUTPUT_DIR, debeziumCommit, params.DEBEZIUM_BRANCH, buildTimestamp)
+            fileUtils.generateDescriptorManifest(DESCRIPTORS_OUTPUT_DIR, debeziumCommit, params.DEBEZIUM_BRANCH, buildTimestamp, snapshotVersion)
         }
 
         stage("Publishing descriptors to ${params.DEBEZIUM_DESCRIPTOR_REPOSITORY}") {
