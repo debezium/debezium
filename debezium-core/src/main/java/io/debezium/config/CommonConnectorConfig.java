@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1752,6 +1753,17 @@ public abstract class CommonConnectorConfig {
             return config.getInteger(key);
         }
         return getSnapshotMaxThreadsMultiplier();
+    }
+
+    public int getMaxSnapshotMaxThreadsMultiplier() {
+        final int tableMultiplierMax = config.asMap().keySet()
+                .stream()
+                .filter(k -> k.startsWith(SNAPSHOT_MAX_THREADS_MULTIPLIER.name() + "."))
+                .map(config::getInteger)
+                .max(Comparator.naturalOrder())
+                .orElse(0);
+
+        return Math.max(tableMultiplierMax, getSnapshotMaxThreadsMultiplier());
     }
 
     public boolean isLegacySnapshotMaxThreads() {
