@@ -6019,6 +6019,7 @@ Redo Thread X is inconsistent; an archive log with sequence 12345 is not availab
 --
 A variety of factors can trigger the preceding inconsistent redo thread error.
 The following list highlights some possible contributing factors:
+
 * During shutdown of an Oracle RAC node, the redo thread transitions from OPEN to CLOSED.
 * An online redo log reaches maximum capacity and is queued for archiving, but the archive process cannot complete (for instance, because the destination is full or unavailable).
 * The resume read position for the connector is not available.
