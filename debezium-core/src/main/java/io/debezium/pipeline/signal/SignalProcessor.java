@@ -187,7 +187,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private void processSignal(SignalRecord signalRecord) {
 
         LOGGER.debug("Signal Processor offset context {}", previousOffsets.getOffsets());
-        LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", signalRecord.getId(), signalRecord.getType(), signalRecord.getData());
+        LOGGER.debug("Received signal id = '{}', type = '{}'", signalRecord.getId(), signalRecord.getType());
         final SignalAction<P> action = signalActions.get(signalRecord.getType());
         if (action == null) {
             LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", signalRecord.getId(), signalRecord.getType());
@@ -201,14 +201,14 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                     previousOffsets.getTheOnlyOffset(), signalRecord.getAdditionalData()));
         }
         catch (IOException e) {
-            LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
+            LOGGER.warn("Signal '{}' has been received but the data cannot be parsed", signalRecord.getId(), e);
         }
         catch (InterruptedException e) {
-            LOGGER.warn("Action {} has been interrupted. The signal {} may not have been processed.", signalRecord.getType(), signalRecord);
+            LOGGER.warn("Action {} has been interrupted. The signal {} may not have been processed.", signalRecord.getType(), signalRecord.getId());
             Thread.currentThread().interrupt();
         }
         catch (Exception e) {
-            LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord, e);
+            LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord.getId(), e);
         }
     }
 

@@ -93,7 +93,7 @@ public class SourceSignalChannel implements SignalChannelReader {
             return true;
         }
         catch (Exception e) {
-            LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
+            LOGGER.warn("Exception while preparing to process the signal", e);
             return false;
         }
     }
