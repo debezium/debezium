@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -86,6 +87,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_MS_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
+    private static final String GET_START_LSN_FOR_LAST_BATCH_SCANNED = "SELECT TOP 1 start_lsn from sys.dm_cdc_log_scan_sessions ORDER BY session_id DESC";
+    private static final String START_LSN_INDICATING_EMPTY_BATCH = "00000000:00000000:0000\u0000";
 
     /**
      * Queries the list of captured column names and their change table identifiers in the given database.
@@ -797,5 +801,34 @@ public class SqlServerConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    public long getMsCdcCapturePollingInterval() {
+        AtomicLong msCdcCapturePollingInterval = new AtomicLong(5); // default
+        try {
+            call(GET_MS_CDC_JOB_INFO, null, rs -> {
+                while (rs.next()) {
+                    if (rs.getString("job_type").equals("capture")) {
+                        msCdcCapturePollingInterval.set(rs.getLong("pollinginterval"));
+                    }
+                }
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Exception caught while calling sys.sp_cdc_help_jobs", e);
+        }
+        return msCdcCapturePollingInterval.get();
+    }
+
+    public boolean didTransactionEnd() {
+        try {
+            Optional<String> startLsn = queryAndMap(GET_START_LSN_FOR_LAST_BATCH_SCANNED,
+                    rs -> rs.next() ? Optional.of(rs.getString(1)) : Optional.empty());
+            return startLsn.isPresent() && startLsn.get().equals(START_LSN_INDICATING_EMPTY_BATCH);
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Exception caught while querying sys.dm_cdc_log_scan_sessions", e);
+            return false;
+        }
     }
 }

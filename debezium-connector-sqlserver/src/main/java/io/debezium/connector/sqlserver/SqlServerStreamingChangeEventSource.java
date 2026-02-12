@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -22,6 +24,9 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -86,6 +91,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      * @link https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
     private final SqlServerConnection metadataConnection;
+    private final long msCdcCapturePollingInterval;
+    private final ScheduledExecutorService transactionEndDetectionScheduler;
+    private ScheduledFuture transactionEndDetectionFuture = null;
 
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -112,6 +120,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
+        this.msCdcCapturePollingInterval = metadataConnection.getMsCdcCapturePollingInterval();
+        this.transactionEndDetectionScheduler = Executors.newSingleThreadScheduledExecutor();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
@@ -304,6 +314,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         }
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                         anyData = true;
+                        stopTransactionEndDetection();
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                         if (!schemaChangeCheckpoints.isEmpty()) {
                             if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
@@ -348,6 +359,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         tableWithSmallestLsn.next();
                     }
                     streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
+                    startTransactionEndDetection(partition, offsetContext.getSourceTime());
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                     if (!anyData) {
@@ -562,6 +574,34 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         "Complete reading from change table {} as the committed change lsn ({}) is greater than the table's stop lsn ({})",
                         table, offset, table.getStopLsn().toString());
             }
+        }
+    }
+
+    private void startTransactionEndDetection(SqlServerPartition partition, Instant sourceTime) {
+        // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
+        if (connectorConfig.isReadOnlyDatabaseConnection()) {
+            return;
+        }
+
+        transactionEndDetectionFuture = transactionEndDetectionScheduler.scheduleAtFixedRate(() -> {
+            if (metadataConnection.didTransactionEnd()) {
+                try {
+                    dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                finally {
+                    stopTransactionEndDetection();
+                }
+            }
+        }, 0, 2 * msCdcCapturePollingInterval, SECONDS);
+    }
+
+    private void stopTransactionEndDetection() {
+        if (transactionEndDetectionFuture != null) {
+            transactionEndDetectionFuture.cancel(true);
+            transactionEndDetectionFuture = null;
         }
     }
 }
