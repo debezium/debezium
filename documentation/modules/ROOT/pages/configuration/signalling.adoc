@@ -186,13 +186,14 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 
 .Additional configuration available for the consumer
 
-* {link-prefix}:{link-db2-connector}#debezium-db2-connector-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
-* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-connector-kafka-signals-configuration-properties[MariaDB connector Kafka signal configuration properties]
-* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
-* {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
-* {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
-* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
-* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
+* {link-prefix}:{link-db2-connector}#debezium-db2-connector-pass-through-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
+* {link-prefix}:{link-informix-connector}#debezium-informix-connector-pass-through-kafka-signals-configuration-properties[Informix connector Kafka signal configuration properties]
+* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-connector-pass-through-kafka-signals-configuration-properties[MariaDB connector Kafka signal configuration properties]
+* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
+* {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-pass-through-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-pass-through-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
+* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-pass-through-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-pass-through-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
 
 [NOTE]
 ====
