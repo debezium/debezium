@@ -199,7 +199,7 @@ endif::community[]
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+Set the xref:informix-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
 If you use the `DebeziumEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
@@ -430,7 +430,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 
 // Type: concept
 // ModuleID: how-debezium-informix-connectors-stream-change-event-records
-// Title: How {prodname} Informix connectors read change stream records
+// Title: How {prodname} Informix connectors stream change event records
 [id="how-debezium-informix-connectors-read-change-stream-records"]
 === Change stream records
 
@@ -2022,7 +2022,7 @@ Always use the value `io.debezium.connector.informix.InformixConnector` for the 
 
 |[[informix-property-tasks-max]]<<informix-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that should be created for this connector.
+|The maximum number of tasks that this connector can create.
 The Informix connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
 |[[informix-property-database-hostname]]<<informix-property-database-hostname, `+database.hostname+`>>
@@ -2049,8 +2049,8 @@ The Informix connector always uses a single task and therefore does not use this
 |No default
 |Topic prefix that provides a namespace for the particular Informix database server that hosts the database for which {prodname} is capturing changes.
 The prefix should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
- +
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. 
+
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2063,20 +2063,22 @@ The connector is also unable to recover its database schema history topic.
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
 When this property is set, the connector captures changes only from the specified tables.
 Each identifier is of the form _databaseName_._schemaName_._tableName_.
-By default, the connector captures changes in every non-system table. +
+By default, the connector captures changes in every non-system table. 
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. +
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. 
+
 If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[informix-property-table-exclude-list]]<<informix-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
 The connector captures changes in each non-system table that is not included in the exclude list.
-Each identifier is of the form _databaseName_._schemaName_._tableName_. +
+Each identifier is of the form _databaseName_._schemaName_._tableName_. 
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire identifier for the table it does not match substrings that might be present in a table name. +
+That is, the specified expression is matched against the entire identifier for the table it does not match substrings that might be present in a table name. 
+
 If you include this property in the configuration, do not also set the `table.include.list` property.
 
 |[[informix-property-column-include-list]]<<informix-property-column-include-list, `+column.include.list+`>>
@@ -2197,14 +2199,16 @@ That is, the specified expression is matched against the entire name string of t
 |An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
 When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
 
-* `pass:[_]pass:[_]debezium.source.column.type` +
-* `pass:[_]pass:[_]debezium.source.column.length` +
-* `pass:[_]pass:[_]debezium.source.column.scale` +
+* `pass:[_]pass:[_]debezium.source.column.type`
+* `pass:[_]pass:[_]debezium.source.column.length`
+* `pass:[_]pass:[_]debezium.source.column.scale`
 
-These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+These parameters propagate a column's original type name and length (for variable-width types), respectively. 
+
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. 
+
 To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
 
@@ -2263,6 +2267,8 @@ For more information about Avro compatibility, see {link-prefix}:{link-avro-seri
 |===
 
 // Title: Advanced {prodname} Informix connector configuration properties
+// Type: reference
+// ModuleID: debezium-informix-conncector-advanced-configuration-properties
 [id="informix-advanced-configuration-properties"]
 ==== Advanced connector configuration properties
 
@@ -2328,7 +2334,7 @@ endif::community[]
 
 ifdef::community[]
 `custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+Set the xref:informix-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] configuration property to the name provided by the `name()` method of your implementation.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
@@ -2466,7 +2472,7 @@ Specify one of the following values:
 
 |[[informix-property-cdc-return-empty-transactions]]<<informix-property-cdc-return-empty-transactions, `+cdc.return.empty.transactions+`>>
 |`true`
-|Boolean value that specifies whether Informix should return and emit transaction records for empty transactions.
+|Boolean value that specifies whether the {prodname} Informix connector emits records for empty transactions.
 
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
@@ -2700,14 +2706,14 @@ For example, if the topic prefix is `fulfillment`, based on the default value of
 |Specifies the maximum number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
- +
+
 [NOTE]
 ====
 When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
 If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
 In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
-After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
- +
+After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data.
+
 If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
 
