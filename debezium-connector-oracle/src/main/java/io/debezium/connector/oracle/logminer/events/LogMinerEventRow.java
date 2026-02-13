@@ -16,6 +16,7 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
@@ -210,14 +211,14 @@ public class LogMinerEventRow {
      * of the JDBC result-set to avoid creating lots of intermediate objects.
      *
      * @param resultSet the result set to be read, should never be {@code null}
-     * @param catalogName the catalog name, should never be {@code null}
      * @param schema the relational schema, can be {@code null}
+     * @param connectorConfig the connector configuration, should not be {@code null}
      * @return a populated instance of a LogMinerEventRow object.
      * @throws SQLException if there was a problem reading the result set
      */
-    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, OracleDatabaseSchema schema) throws SQLException {
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, OracleDatabaseSchema schema, OracleConnectorConfig connectorConfig) throws SQLException {
         LogMinerEventRow row = new LogMinerEventRow();
-        row.initializeFromResultSet(resultSet, catalogName, schema);
+        row.initializeFromResultSet(resultSet, connectorConfig.getCatalogName(), schema, connectorConfig.isLogMiningBufferTrackRsId());
         return row;
     }
 
@@ -227,9 +228,10 @@ public class LogMinerEventRow {
      * @param resultSet the result set to be read, should never be {@code null}
      * @param catalogName the catalog name, should never be {@code null}
      * @param schema the relational schema, can be {@code null}
+     * @param trackRsId whether to track the rollback segment id
      * @throws SQLException if there was a problem reading the result set
      */
-    private void initializeFromResultSet(ResultSet resultSet, String catalogName, OracleDatabaseSchema schema) throws SQLException {
+    private void initializeFromResultSet(ResultSet resultSet, String catalogName, OracleDatabaseSchema schema, boolean trackRsId) throws SQLException {
         // Initialize the state from the result set
         this.scn = getScn(resultSet, SCN);
         this.tableName = resultSet.getString(TABLE_NAME);
@@ -241,7 +243,7 @@ public class LogMinerEventRow {
         this.userName = resultSet.getString(USERNAME);
         this.rowId = resultSet.getString(ROW_ID);
         this.rollbackFlag = resultSet.getInt(ROLLBACK_FLAG) == 1;
-        this.rsId = trim(resultSet.getString(RS_ID));
+        this.rsId = trackRsId ? trim(resultSet.getString(RS_ID)) : null;
         this.redoSql = getSqlRedo(resultSet);
         this.status = resultSet.getInt(STATUS);
         this.info = resultSet.getString(INFO);

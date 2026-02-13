@@ -402,12 +402,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             getMetrics().setLastDurationOfFetchQuery(Duration.between(queryStartTime, Instant.now()));
 
             final Instant startProcessTime = Instant.now();
-            final String catalogName = getConfig().getCatalogName();
 
             while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                 getBatchMetrics().rowObserved();
 
-                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName, schema);
+                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, schema, getConfig());
                 processEvent(event);
             }
 

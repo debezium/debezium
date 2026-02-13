@@ -387,6 +387,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     System.lineSeparator() +
                     "ehcache - Use ehcache in embedded mode to buffer transaction data and persist it to disk.");
 
+    public static final Field LOG_MINING_BUFFER_TRACK_RS_ID = Field.create("log.mining.buffer.track.rs_id")
+            .withDisplayName("Toggle whether the 'rs_id' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'RS_ID' column values are tracked. " +
+                    "When set to true (the default), the 'RS_ID' values are buffered and provided in events when available. " +
+                    "When set to false, the 'RS_ID' values are not buffered and can reduce the memory footprint.");
+
     public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
             .withDisplayName("The maximum number of events a transaction can have before being discarded.")
             .withType(Type.LONG)
@@ -835,6 +846,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
+                    LOG_MINING_BUFFER_TRACK_RS_ID,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
@@ -965,6 +977,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Long logMiningHashAreaSize;
     private final Long logMiningSortAreaSize;
     private final ArchiveDestinationNameResolver destinationNameResolver;
+    private final boolean logMiningBufferTrackRsId;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -1047,6 +1060,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
+        this.logMiningBufferTrackRsId = config.getBoolean(LOG_MINING_BUFFER_TRACK_RS_ID);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1942,6 +1956,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public LogMiningBufferType getLogMiningBufferType() {
         return logMiningBufferType;
+    }
+
+    /**
+     * @return determines whether {@code RS_ID} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackRsId() {
+        return logMiningBufferTrackRsId;
     }
 
     /**
