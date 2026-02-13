@@ -4343,6 +4343,13 @@ ifdef::community[]
 `infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
 endif::community[]
 
+|[[oracle-property-log-mining-buffer-track-rs-id]]<<oracle-property-log-mining-buffer-track-rs-id, `+log.mining.buffer.track.rs_id+`>>
+|`true`
+|Specifies whether the rollback segment identifier (`RS_ID`) values are provided in change events.
+
+When enabled, the transaction buffer will store rollback segment information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and excluding the field in the event's `source` information block.
+
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
 |The maximum number of events a transaction is capable of having in the transaction buffer.
