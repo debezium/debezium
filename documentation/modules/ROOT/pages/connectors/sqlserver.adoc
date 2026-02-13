@@ -3364,11 +3364,11 @@ User intervention is required to restart the connector.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
 |[[sqlserver-property-data-query-mode]]<<sqlserver-property-data-query-mode, `data.query.mode`>>
-|`function`
+|`direct`
 |Controls how the connector queries CDC data. The following modes are supported:
 
-* `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function. This is the default mode.
-* `direct`: Makes the connector to query change tables directly.
+* `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function.
+* `direct`: Makes the connector to query change tables directly. This is the default mode.
 
 |[[sqlserver-property-database-query-timeout-ms]]<<sqlserver-property-database-query-timeout-ms, `database.query.timeout.ms`>>
 |`600000` (10 minutes)
