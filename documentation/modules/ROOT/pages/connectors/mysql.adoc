@@ -180,7 +180,6 @@ endif::community[]
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
 ifdef::community[]
-ifdef::community[]
 // Type: procedure
 // ModuleID: debezium-mysql-using-the-set-binlog-position-signal-to-change-binlog-reading-position
 // Title: Using the set-binlog-position signal to change the binlog reading position
@@ -205,20 +204,24 @@ When GTID mode is disabled, specify the binlog filename and position in the sign
 ----
 
 GTID set format::
-When GTID mode is enabled, specify the GTID set in the signal, as in the following example:
+When GTID mode is enabled, specify the GTID set, for example:
 +
 [source,json]
 ----
 {"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}
 ----
 
-The signal is subject to the following rules:
+The following rules apply when sending `set-binlog-position` signals:
 
-* You cannot specify both binlog file/position and GTID set in the same signal.
-* When using binlog file and position format:
+* You cannot specify both a binlog file and position, and a GTID set in the same signal.
+
+* In signals that specify the binlog file and position, apply the following guidelines:
+
 ** The `binlog_filename` must match the MySQL binlog naming pattern (for example, `mysql-bin.000001`).
 ** The `binlog_position` must be a non-negative integer.
-* When using GTID set format:
+
+* In signals that use the GTID set format to specify the binlog position, apply the following guidelines:
+
 ** The `gtid_set` must be a valid GTID set string.
 
 .Prerequisites
@@ -237,7 +240,7 @@ Use this signal only when you are certain that the skipped events should not be 
 . Create a {prodname} `set-binlog-position` signal message that includes the standard `id`, `type`, and `data` properties in the format that is required for your preferred signaling channel.
 For the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
 +
-SQL to use when GTID is disabled (uses the binlog file and position)::
+SQL to use when GTID is disabled (uses the binlog file and position) ::
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
