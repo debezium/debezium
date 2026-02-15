@@ -2268,7 +2268,7 @@ For more information about Avro compatibility, see {link-prefix}:{link-avro-seri
 
 // Title: Advanced {prodname} Informix connector configuration properties
 // Type: reference
-// ModuleID: debezium-informix-conncector-advanced-configuration-properties
+// ModuleID: debezium-informix-connector-advanced-configuration-properties
 [id="informix-advanced-configuration-properties"]
 ==== Advanced connector configuration properties
 
@@ -2711,6 +2711,7 @@ In a parallel initial snapshot, the connector processes multiple tables concurre
 ====
 When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
 If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
+
 In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
 After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data.
 
