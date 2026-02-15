@@ -228,11 +228,31 @@ public class TypeRegistry {
      * @return type associated with the given type name
      */
     public PostgresType get(String schemaName, String typeName) {
+        switch (typeName) {
+            case "serial":
+                typeName = "int4";
+                break;
+            case "smallserial":
+                typeName = "int2";
+                break;
+            case "bigserial":
+                typeName = "int8";
+                break;
+            default:
+                break;
+        }
+
+        // Try schema-qualified lookup first
         String qualifiedName = schemaName + "." + typeName;
         PostgresType r = nameToType.get(qualifiedName);
         if (r != null) {
             return r;
         }
+
+        if (typeName != null && typeName.contains(".")) {
+            return get(typeName);
+        }
+
         String cleanName = stripQuotes(typeName);
         r = resolveUnknownType(cleanName);
         if (r == null) {
