@@ -13,7 +13,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
 import io.debezium.function.Predicates;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
@@ -27,7 +29,7 @@ import oracle.sql.NUMBER;
  *
  * @author Chris Cranford
  */
-public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NumberOneToBooleanConverter.class);
     private static final Boolean FALLBACK = Boolean.FALSE;
@@ -88,5 +90,10 @@ public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilde
             LOGGER.warn("Cannot convert '{}' to boolean", x.getClass());
             return FALLBACK;
         });
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(NumberOneToBooleanConverterConfig.SELECTOR);
     }
 }

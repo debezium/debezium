@@ -11,11 +11,10 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent;
 import io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb;
-import io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDbConfigDefinition;
 import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataProvider;
-import io.debezium.metadata.ComponentMetadataUtils;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * Aggregator for all PostgreSQL connector and transformation metadata.
@@ -26,24 +25,20 @@ public class PostgresMetadataProvider implements ComponentMetadataProvider {
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 new PostgresConnectorMetadata(),
-                createComponentMetadata(
-                        DecodeLogicalDecodingMessageContent.class,
-                        DecodeLogicalDecodingMessageContent.class),
-                createComponentMetadata(
-                        TimescaleDb.class,
-                        TimescaleDbConfigDefinition.class));
+                createComponentMetadata(new DecodeLogicalDecodingMessageContent<>()),
+                createComponentMetadata(new TimescaleDb<>()));
     }
 
-    private ComponentMetadata createComponentMetadata(Class<?> componentClass, Class<?>... configClasses) {
+    private <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(componentClass.getName(), Module.version());
+                return new ComponentDescriptor(component.getClass().getName(), Module.version());
             }
 
             @Override
             public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(configClasses);
+                return component.getConfigFields();
             }
         };
     }
