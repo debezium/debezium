@@ -8,6 +8,10 @@ package io.debezium.connector.mysql.metadata;
 import java.util.List;
 
 import io.debezium.config.Field;
+import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
+import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverterConfig;
+import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverterConfig;
 import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.transforms.ReadToInsertEvent;
 import io.debezium.metadata.ComponentDescriptor;
@@ -16,7 +20,7 @@ import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.metadata.ComponentMetadataUtils;
 
 /**
- * Aggregator for all MySQL connector and transformation metadata.
+ * Aggregator for all MySQL connector, transformation, and custom converter metadata.
  */
 public class MySqlMetadataProvider implements ComponentMetadataProvider {
 
@@ -24,19 +28,21 @@ public class MySqlMetadataProvider implements ComponentMetadataProvider {
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 new MySqlConnectorMetadata(),
-                createTransformMetadata(ReadToInsertEvent.class));
+                createComponentMetadata(ReadToInsertEvent.class, ReadToInsertEvent.class),
+                createComponentMetadata(TinyIntOneToBooleanConverter.class, TinyIntOneToBooleanConverterConfig.class),
+                createComponentMetadata(JdbcSinkDataTypesConverter.class, JdbcSinkDataTypesConverterConfig.class));
     }
 
-    private ComponentMetadata createTransformMetadata(Class<?> transformClass) {
+    private ComponentMetadata createComponentMetadata(Class<?> componentClass, Class<?>... configClasses) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(transformClass.getName(), Module.version());
+                return new ComponentDescriptor(componentClass.getName(), Module.version());
             }
 
             @Override
             public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(transformClass);
+                return ComponentMetadataUtils.extractFieldConstants(configClasses);
             }
         };
     }

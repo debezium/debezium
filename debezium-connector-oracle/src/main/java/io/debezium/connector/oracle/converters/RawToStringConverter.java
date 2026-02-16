@@ -37,7 +37,7 @@ public class RawToStringConverter implements CustomConverter<SchemaBuilder, Rela
     private static final Logger LOGGER = LoggerFactory.getLogger(RawToStringConverter.class);
     private static final String FALLBACK = "";
 
-    public static final String SELECTOR_PROPERTY = "selector";
+    public static final String SELECTOR_PROPERTY = RawToStringConverterConfig.SELECTOR.name();
 
     private Predicate<RelationalColumn> selector = x -> true;
 

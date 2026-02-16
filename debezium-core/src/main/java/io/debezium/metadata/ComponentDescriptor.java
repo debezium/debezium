@@ -19,6 +19,7 @@ public class ComponentDescriptor {
     private static final String SOURCE_CONNECTOR_TYPE = "source-connector";
     private static final String TRANSFORMATION_TYPE = "transformation";
     private static final String PREDICATE_TYPE = "predicate";
+    private static final String CUSTOM_CONVERTER_TYPE = "custom-converter";
     private static final String UNKNOWN_TYPE = "unknown";
 
     /**
@@ -29,7 +30,8 @@ public class ComponentDescriptor {
             "org.apache.kafka.connect.source.SourceConnector", SOURCE_CONNECTOR_TYPE,
             "org.apache.kafka.connect.sink.SinkConnector", SINK_CONNECTOR_TYPE,
             "org.apache.kafka.connect.transforms.Transformation", TRANSFORMATION_TYPE,
-            "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE);
+            "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE,
+            "io.debezium.spi.converter.CustomConverter", CUSTOM_CONVERTER_TYPE);
 
     private final String id;
     private final String displayName;

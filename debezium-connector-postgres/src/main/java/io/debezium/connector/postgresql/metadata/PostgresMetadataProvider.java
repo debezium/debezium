@@ -26,19 +26,19 @@ public class PostgresMetadataProvider implements ComponentMetadataProvider {
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 new PostgresConnectorMetadata(),
-                createTransformMetadata(
+                createComponentMetadata(
                         DecodeLogicalDecodingMessageContent.class,
                         DecodeLogicalDecodingMessageContent.class),
-                createTransformMetadata(
+                createComponentMetadata(
                         TimescaleDb.class,
                         TimescaleDbConfigDefinition.class));
     }
 
-    private ComponentMetadata createTransformMetadata(Class<?> transformClass, Class<?>... configClasses) {
+    private ComponentMetadata createComponentMetadata(Class<?> componentClass, Class<?>... configClasses) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(transformClass.getName(), Module.version());
+                return new ComponentDescriptor(componentClass.getName(), Module.version());
             }
 
             @Override

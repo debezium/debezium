@@ -38,10 +38,10 @@ public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder
     private static final Float FLOAT32_FALLBACK = 0f;
     private static final Double FLOAT64_FALLBACK = 0d;
 
-    public static final String SELECTOR_BOOLEAN_PROPERTY = "selector.boolean";
-    public static final String SELECTOR_REAL_PROPERTY = "selector.real";
-    public static final String SELECTOR_STRING_PROPERTY = "selector.string";
-    public static final String TREAT_REAL_AS_DOUBLE = "treat.real.as.double";
+    public static final String SELECTOR_BOOLEAN_PROPERTY = JdbcSinkDataTypesConverterConfig.SELECTOR_BOOLEAN.name();
+    public static final String SELECTOR_REAL_PROPERTY = JdbcSinkDataTypesConverterConfig.SELECTOR_REAL.name();
+    public static final String SELECTOR_STRING_PROPERTY = JdbcSinkDataTypesConverterConfig.SELECTOR_STRING.name();
+    public static final String TREAT_REAL_AS_DOUBLE = JdbcSinkDataTypesConverterConfig.TREAT_REAL_AS_DOUBLE.name();
 
     private Predicate<RelationalColumn> selectorBoolean = x -> false;
     private Predicate<RelationalColumn> selectorReal = x -> false;

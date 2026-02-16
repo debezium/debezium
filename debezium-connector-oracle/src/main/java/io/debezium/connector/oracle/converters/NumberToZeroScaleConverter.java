@@ -39,7 +39,7 @@ public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NumberToZeroScaleConverter.class);
 
-    public static final String DECIMAL_MODE_PROPERTY = "decimal.mode";
+    public static final String DECIMAL_MODE_PROPERTY = NumberToZeroScaleConverterConfig.DECIMAL_MODE.name();
 
     private JdbcValueConverters.DecimalMode decimalMode;
 

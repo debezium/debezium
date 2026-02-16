@@ -27,8 +27,8 @@ public class JdbcMetadataProvider implements ComponentMetadataProvider {
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 createSinkConnectorMetadata(),
-                createTransformMetadata(CollectionNameTransformation.class),
-                createTransformMetadata(FieldNameTransformation.class));
+                createComponentMetadata(CollectionNameTransformation.class),
+                createComponentMetadata(FieldNameTransformation.class));
     }
 
     private ComponentMetadata createSinkConnectorMetadata() {
@@ -45,16 +45,16 @@ public class JdbcMetadataProvider implements ComponentMetadataProvider {
         };
     }
 
-    private ComponentMetadata createTransformMetadata(Class<?> transformClass) {
+    private ComponentMetadata createComponentMetadata(Class<?> componentClass) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(transformClass.getName(), Module.version());
+                return new ComponentDescriptor(componentClass.getName(), Module.version());
             }
 
             @Override
             public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(transformClass);
+                return ComponentMetadataUtils.extractFieldConstants(componentClass);
             }
         };
     }
