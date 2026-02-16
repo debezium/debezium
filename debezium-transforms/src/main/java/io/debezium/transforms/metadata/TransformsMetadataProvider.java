@@ -32,28 +32,28 @@ public class TransformsMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                createTransformMetadata(ByLogicalTableRouter.class),
-                createTransformMetadata(ExtractChangedRecordState.class),
-                createTransformMetadata(ExtractNewRecordState.class),
-                createTransformMetadata(ExtractSchemaToNewRecord.class),
-                createTransformMetadata(GeometryFormatTransformer.class),
-                createTransformMetadata(HeaderToValue.class),
-                createTransformMetadata(SchemaChangeEventFilter.class),
-                createTransformMetadata(SwapGeometryCoordinates.class),
-                createTransformMetadata(TimezoneConverter.class),
-                createTransformMetadata(VectorToJsonConverter.class));
+                createComponentMetadata(ByLogicalTableRouter.class),
+                createComponentMetadata(ExtractChangedRecordState.class),
+                createComponentMetadata(ExtractNewRecordState.class),
+                createComponentMetadata(ExtractSchemaToNewRecord.class),
+                createComponentMetadata(GeometryFormatTransformer.class),
+                createComponentMetadata(HeaderToValue.class),
+                createComponentMetadata(SchemaChangeEventFilter.class),
+                createComponentMetadata(SwapGeometryCoordinates.class),
+                createComponentMetadata(TimezoneConverter.class),
+                createComponentMetadata(VectorToJsonConverter.class));
     }
 
-    private ComponentMetadata createTransformMetadata(Class<?> transformClass) {
+    private ComponentMetadata createComponentMetadata(Class<?> componentClass) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(transformClass.getName(), Module.version());
+                return new ComponentDescriptor(componentClass.getName(), Module.version());
             }
 
             @Override
             public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(transformClass);
+                return ComponentMetadataUtils.extractFieldConstants(componentClass);
             }
         };
     }

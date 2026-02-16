@@ -32,7 +32,7 @@ public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilde
     private static final Logger LOGGER = LoggerFactory.getLogger(NumberOneToBooleanConverter.class);
     private static final Boolean FALLBACK = Boolean.FALSE;
 
-    public static final String SELECTOR_PROPERTY = "selector";
+    public static final String SELECTOR_PROPERTY = NumberOneToBooleanConverterConfig.SELECTOR.name();
 
     private Predicate<RelationalColumn> selector = x -> true;
 

@@ -33,10 +33,10 @@ public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuild
 
     private static final Boolean FALLBACK = Boolean.FALSE;
 
-    public static final String SELECTOR_PROPERTY = "selector";
+    public static final String SELECTOR_PROPERTY = TinyIntOneToBooleanConverterConfig.SELECTOR.name();
     // recommend disabling this option for mysql8 since "show create table" not showing length of tinyint unsigned type,
     // and specify the columns that need to be converted to "selector" property instead of converting all columns based on type.
-    public static final String LENGTH_CHECKER = "length.checker";
+    public static final String LENGTH_CHECKER = TinyIntOneToBooleanConverterConfig.LENGTH_CHECKER.name();
 
     private static final List<String> TINYINT_FAMILY = Collect.arrayListOf("TINYINT", "TINYINT UNSIGNED");
 

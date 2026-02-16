@@ -29,21 +29,21 @@ public class MongoDbMetadataProvider implements ComponentMetadataProvider {
         return List.of(
                 new MongoDbConnectorMetadata(),
                 new MongoDbSinkConnectorMetadata(),
-                createTransformMetadata(
+                createComponentMetadata(
                         ExtractNewDocumentState.class,
                         ExtractNewDocumentState.class,
                         ExtractNewRecordStateConfigDefinition.class),
-                createTransformMetadata(
+                createComponentMetadata(
                         MongoEventRouter.class,
                         EventRouterConfigDefinition.class,
                         ActivateTracingSpan.class));
     }
 
-    private ComponentMetadata createTransformMetadata(Class<?> transformClass, Class<?>... configClasses) {
+    private ComponentMetadata createComponentMetadata(Class<?> componentClass, Class<?>... configClasses) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(transformClass.getName(), Module.version());
+                return new ComponentDescriptor(componentClass.getName(), Module.version());
             }
 
             @Override
