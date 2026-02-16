@@ -15,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.function.Predicates;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
@@ -32,7 +34,7 @@ import oracle.sql.RAW;
  *
  * @author Chris Cranford
  */
-public class RawToStringConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class RawToStringConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawToStringConverter.class);
     private static final String FALLBACK = "";
@@ -96,5 +98,10 @@ public class RawToStringConverter implements CustomConverter<SchemaBuilder, Rela
                 throw new DebeziumException("Failed to convert value for column" + field.name(), e);
             }
         });
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(RawToStringConverterConfig.SELECTOR);
     }
 }

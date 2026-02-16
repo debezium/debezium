@@ -9,14 +9,12 @@ import java.util.List;
 
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
-import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverterConfig;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
-import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverterConfig;
 import io.debezium.connector.mariadb.Module;
 import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataProvider;
-import io.debezium.metadata.ComponentMetadataUtils;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * Aggregator for all MariaDB connector and custom converter metadata.
@@ -27,20 +25,20 @@ public class MariaDbMetadataProvider implements ComponentMetadataProvider {
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 new MariaDbConnectorMetadata(),
-                createComponentMetadata(TinyIntOneToBooleanConverter.class, TinyIntOneToBooleanConverterConfig.class),
-                createComponentMetadata(JdbcSinkDataTypesConverter.class, JdbcSinkDataTypesConverterConfig.class));
+                createComponentMetadata(new TinyIntOneToBooleanConverter()),
+                createComponentMetadata(new JdbcSinkDataTypesConverter()));
     }
 
-    private ComponentMetadata createComponentMetadata(Class<?> componentClass, Class<?>... configClasses) {
+    private <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(componentClass.getName(), Module.version());
+                return new ComponentDescriptor(component.getClass().getName(), Module.version());
             }
 
             @Override
             public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(configClasses);
+                return component.getConfigFields();
             }
         };
     }

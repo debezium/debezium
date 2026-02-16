@@ -30,9 +30,12 @@ public final class ComponentMetadataUtils {
      * This ensures that new fields are automatically included without manual updates.
      * Uses setAccessible(true) to access private fields, so Field constants don't need to be public.
      *
+     * @deprecated Use {@link io.debezium.config.ConfigDescriptor} interface instead for explicit field declaration.
+     *             Components should implement ConfigDescriptor and provide their fields via getConfigFields() method.
      * @param classes one or more classes to extract Field constants from
      * @return Field.Set containing all discovered Field constants
      */
+    @Deprecated
     public static Field.Set extractFieldConstants(Class<?>... classes) {
         List<Field> fields = new ArrayList<>();
 

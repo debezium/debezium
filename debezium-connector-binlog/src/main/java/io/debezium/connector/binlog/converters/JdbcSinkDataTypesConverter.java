@@ -13,7 +13,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
 import io.debezium.function.Predicates;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
@@ -30,7 +32,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkDataTypesConverter.class);
 
@@ -189,6 +191,15 @@ public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder
 
     private static short toTinyInt(Boolean value) {
         return (short) (value ? 1 : 0);
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(
+                JdbcSinkDataTypesConverterConfig.SELECTOR_BOOLEAN,
+                JdbcSinkDataTypesConverterConfig.SELECTOR_REAL,
+                JdbcSinkDataTypesConverterConfig.SELECTOR_STRING,
+                JdbcSinkDataTypesConverterConfig.TREAT_REAL_AS_DOUBLE);
     }
 
 }

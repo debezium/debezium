@@ -12,8 +12,10 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
@@ -35,7 +37,7 @@ import io.debezium.util.Strings;
  *
  * @author vjuranek
  */
-public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NumberToZeroScaleConverter.class);
 
@@ -66,5 +68,10 @@ public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder
                             : SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal) x), decimalMode,
                                     field.name()));
         }
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(NumberToZeroScaleConverterConfig.DECIMAL_MODE);
     }
 }
