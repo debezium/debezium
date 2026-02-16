@@ -112,7 +112,9 @@ public class LogMinerEventSerializer extends AbstractEhcacheSerializer<LogMinerE
     }
 
     private Class<?>[] getParameterTypes(List<Object> values) {
-        return values.stream().map(Object::getClass).toArray(Class<?>[]::new);
+        return values.stream()
+                .map(value -> value == null ? null : value.getClass())
+                .toArray(Class<?>[]::new);
     }
 
     private Constructor<?> getMatchingConstructor(Class<?> clazz, Class<?>[] parameterTypes) {
@@ -121,6 +123,16 @@ public class LogMinerEventSerializer extends AbstractEhcacheSerializer<LogMinerE
             if (paramTypes.length == parameterTypes.length) {
                 boolean matches = true;
                 for (int i = 0; i < paramTypes.length; i++) {
+                    // Check if the resolved value array type is null.
+                    // When null, the value array entry was null, and therefore the constructor argument
+                    // must not be a primitive to permit the passing of a null value.
+                    if (parameterTypes[i] == null) {
+                        if (paramTypes[i].isPrimitive()) {
+                            matches = false;
+                            break;
+                        }
+                        continue;
+                    }
                     if (!paramTypes[i].isAssignableFrom(parameterTypes[i])
                             && !parameterTypes[i].isAssignableFrom(paramTypes[i])
                             && !isWrapperPrimitiveMatch(paramTypes[i], parameterTypes[i])) {
