@@ -102,7 +102,6 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
         return false;
     }
 
-    @Override
     public void assureNonEmptySchema() {
         if (collections.isEmpty()) {
             LOGGER.warn(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING);

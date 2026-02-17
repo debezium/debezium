@@ -24,18 +24,6 @@ public class MongoDbChangeEventSourceMetricsFactory extends DefaultChangeEventSo
     public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics getSnapshotMetrics(
                                                                                                        T taskContext,
                                                                                                        ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                       EventMetadataProvider eventMetadataProvider) {
-        if (snapshotMetrics == null) {
-            snapshotMetrics = new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics,
-                    eventMetadataProvider);
-        }
-        return snapshotMetrics;
-    }
-
-    @Override
-    public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics getSnapshotMetrics(
-                                                                                                       T taskContext,
-                                                                                                       ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                        EventMetadataProvider eventMetadataProvider,
                                                                                                        TaskStateMetrics taskStateMetrics) {
         if (snapshotMetrics == null) {
