@@ -167,7 +167,7 @@ public class SignalProcessorTest {
         Awaitility.await()
                 .atMost(40, TimeUnit.SECONDS)
                 .untilAsserted(
-                        () -> assertThat(log.containsMessage("Signal 'log1' has been received but the data '{\"message: \"signallog\"}' cannot be parsed")).isTrue());
+                        () -> assertThat(log.containsMessage("Signal 'log1' has been received but the data cannot be parsed")).isTrue());
 
         signalProcess.stop();
     }
