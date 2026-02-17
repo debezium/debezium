@@ -70,9 +70,9 @@ public class ChunkBoundaryCalculator {
                 .toList());
 
         for (int i = 1; i < numChunks; i++) {
-            final long offset = i * chunkSize;
+            final long position = i * chunkSize;
 
-            final Object[] boundaryValue = queryBoundaryAtOffset(tableId, keyColumnNames, keyColumns, offset);
+            final Object[] boundaryValue = queryBoundaryAtPosition(tableId, keyColumnNames, keyColumns, position);
             if (boundaryValue != null) {
                 boundaries.add(boundaryValue);
             }
@@ -82,10 +82,10 @@ public class ChunkBoundaryCalculator {
         return boundaries;
     }
 
-    private Object[] queryBoundaryAtOffset(TableId tableId, String keyColumnNames, List<Column> keyColumns, long offset) throws SQLException {
-        final String sql = jdbcConnection.buildSelectPrimaryKeyBoundaries(tableId, offset, keyColumnNames, keyColumnNames);
+    private Object[] queryBoundaryAtPosition(TableId tableId, String keyColumnNames, List<Column> keyColumns, long position) throws SQLException {
+        final String sql = jdbcConnection.buildSelectPrimaryKeyBoundaries(tableId, position, keyColumnNames, keyColumnNames);
 
-        LOGGER.debug("Boundary query at offset {}: {}", offset, sql);
+        LOGGER.debug("Boundary query at position {}: {}", position, sql);
 
         return jdbcConnection.queryAndMap(sql, rs -> {
             if (rs.next()) {
