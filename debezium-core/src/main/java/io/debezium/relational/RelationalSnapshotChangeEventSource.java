@@ -496,32 +496,27 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             throws Exception {
         tryStartingSnapshot(snapshotContext);
 
-        try {
-            final SnapshotReceiver<P> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
-            final int snapshotMaxThreads = connectionPool.size();
-            final Queue<O> offsets = createOffsetPool(snapshotContext, snapshotMaxThreads);
+        final SnapshotReceiver<P> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
+        final int snapshotMaxThreads = connectionPool.size();
+        final Queue<O> offsets = createOffsetPool(snapshotContext, snapshotMaxThreads);
 
-            // When legacy snapshot max threads is enabled, we fall back to the table per thread behavior. This provides
-            // a reasonable fallback for parallelism while the new chunked solution matures.
-            if (isUseNonChunkedSnapshots(snapshotMaxThreads)) {
-                createLegacyDataEvents(sourceContext, snapshotContext, connectionPool, snapshotSelectOverridesByTable, offsets, snapshotReceiver);
-            }
-            else {
-                createChunkedDataEvents(sourceContext, snapshotContext, connectionPool, snapshotSelectOverridesByTable, offsets, snapshotReceiver);
-            }
-
-            releaseDataSnapshotLocks(snapshotContext);
-
-            for (O offset : offsets) {
-                offset.preSnapshotCompletion();
-            }
-            snapshotReceiver.completeSnapshot();
-            for (O offset : offsets) {
-                offset.postSnapshotCompletion();
-            }
+        // When legacy snapshot max threads is enabled, we fall back to the table per thread behavior. This provides
+        // a reasonable fallback for parallelism while the new chunked solution matures.
+        if (isUseNonChunkedSnapshots(snapshotMaxThreads)) {
+            createLegacyDataEvents(sourceContext, snapshotContext, connectionPool, snapshotSelectOverridesByTable, offsets, snapshotReceiver);
         }
-        finally {
-            releaseDataSnapshotLocks(snapshotContext);
+        else {
+            createChunkedDataEvents(sourceContext, snapshotContext, connectionPool, snapshotSelectOverridesByTable, offsets, snapshotReceiver);
+        }
+
+        releaseDataSnapshotLocks(snapshotContext);
+
+        for (O offset : offsets) {
+            offset.preSnapshotCompletion();
+        }
+        snapshotReceiver.completeSnapshot();
+        for (O offset : offsets) {
+            offset.postSnapshotCompletion();
         }
     }
 
