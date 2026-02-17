@@ -244,7 +244,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
 
         if (snapshotMaxThreads > 1) {
-            Optional<String> firstQuery = getSnapshotConnectionFirstSelect(ctx, ctx.capturedTables.iterator().next());
+            final Optional<String> firstQuery = ctx.capturedTables
+                    .stream()
+                    .findFirst()
+                    .flatMap(tableId -> getSnapshotConnectionFirstSelect(ctx, tableId));
+
             for (int i = 1; i < snapshotMaxThreads; i++) {
                 JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
                 conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
@@ -256,7 +260,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
         }
 
-        LOGGER.info("Created connection pool with {} threads", snapshotMaxThreads);
+        LOGGER.info("Created connection pool with {} threads", connectionPool.size());
         return connectionPool;
     }
 
