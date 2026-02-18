@@ -1747,19 +1747,16 @@ public abstract class CommonConnectorConfig {
         return snapshotMaxThreadsMultiplier;
     }
 
-    public int getSnapshotMaxThreadsMultiplierForTable(TableId tableId) {
+    public int getSnapshotMaxThreadsTableMultiplierAsInteger(TableId tableId) {
         final String key = SNAPSHOT_MAX_THREADS_MULTIPLIER.name() + "." + tableId.identifier();
-        if (config.hasKey(key)) {
-            return config.getInteger(key);
-        }
-        return getSnapshotMaxThreadsMultiplier();
+        return getSnapshotMaxThreadsTableMultiplierAsInteger(config, key);
     }
 
     public int getMaxSnapshotMaxThreadsMultiplier() {
         final int tableMultiplierMax = config.asMap().keySet()
                 .stream()
                 .filter(k -> k.startsWith(SNAPSHOT_MAX_THREADS_MULTIPLIER.name() + "."))
-                .map(config::getInteger)
+                .map(key -> CommonConnectorConfig.getSnapshotMaxThreadsTableMultiplierAsInteger(config, key))
                 .max(Comparator.naturalOrder())
                 .orElse(0);
 
@@ -2084,6 +2081,18 @@ public abstract class CommonConnectorConfig {
 
         return CONFLUENT_AVRO_CONVERTER.equals(keyConverter) || CONFLUENT_AVRO_CONVERTER.equals(valueConverter)
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
+    }
+
+    private static int getSnapshotMaxThreadsTableMultiplierAsInteger(Configuration config, String configKey) {
+        if (config.hasKey(configKey)) {
+            final Integer value = config.getInteger(configKey);
+            if (value != null) {
+                return value;
+            }
+            LOGGER.warn("The value of '{}' is not a valid positive integer, using the value from '{}' as a fallback.",
+                    configKey, SNAPSHOT_MAX_THREADS_MULTIPLIER.name());
+        }
+        return config.getInteger(SNAPSHOT_MAX_THREADS_MULTIPLIER);
     }
 
     public String snapshotLockingModeCustomName() {
