@@ -51,8 +51,22 @@ public class MongoDbConnectorTest {
             assertThat(key.width).isNotNull();
             assertThat(key.group).isNotNull();
             assertThat(key.orderInGroup).isGreaterThan(0);
-            assertThat(key.validator).isNull();
-            assertThat(key.recommender).isNull();
+            if ((key.validator != null)) {
+                assertThat(key.validator)
+                        .withFailMessage("Validator should be instance of ConfigDef.Validator for field: %s", expected.name())
+                        .isInstanceOf(ConfigDef.Validator.class);
+            }
+            else {
+                assertThat(key.validator).isNull();
+            }
+            if ((key.recommender != null)) {
+                assertThat(key.recommender)
+                        .withFailMessage("Recommender should be instance of ConfigDef.Recommender for field: %s", expected.name())
+                        .isInstanceOf(ConfigDef.Recommender.class);
+            }
+            else {
+                assertThat(key.recommender).isNull();
+            }
         });
     }
 
