@@ -353,7 +353,15 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer.getAttribute(objectName, "SnapshotCompleted"));
+                .until(() -> {
+                    Object attribute = mbeanServer.getAttribute(objectName, "SnapshotCompleted");
+                    if (attribute instanceof Long) {
+                        return (Long) attribute == 1L;
+                    }
+                    else {
+                        return (Boolean) attribute;
+                    }
+                });
     }
 
     private static void waitForStreamingRunning(ObjectName objectName) {
@@ -363,7 +371,15 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer.getAttribute(objectName, "Connected"));
+                .until(() -> {
+                    Object attribute = mbeanServer.getAttribute(objectName, "Connected");
+                    if (attribute instanceof Long) {
+                        return (Long) attribute == 1L;
+                    }
+                    else {
+                        return (Boolean) attribute;
+                    }
+                });
     }
 
     private static ObjectName getMetricsObjectNameWithTags(String connector, Map<String, String> tags) {

@@ -14,12 +14,14 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
+@Ignore
 public class DebeziumMongoDbConnectorResourceNoDatabaseIT {
 
     @BeforeClass

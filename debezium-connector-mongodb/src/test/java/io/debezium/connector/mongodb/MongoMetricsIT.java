@@ -96,16 +96,16 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
 
         assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
         assertThat(mBeanServer.getAttribute(objectName, "RemainingTableCount")).isEqualTo(0);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(1L);
         assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(6L);
         assertThat(mBeanServer.getAttribute(objectName, "NumberOfEventsFiltered")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(objectName, "NumberOfErroneousEvents")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(new String[]{ "dbit.restaurants" });
         assertThat(mBeanServer.getAttribute(objectName, "LastEvent")).isNotNull();
         assertThat(mBeanServer.getAttribute(objectName, "NumberOfDisconnects")).isEqualTo(0L);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPaused")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPaused")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(objectName, "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
     }
 
