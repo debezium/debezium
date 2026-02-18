@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.metadata;
 import java.util.List;
 
 import io.debezium.connector.oracle.Module;
+import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.converters.NumberOneToBooleanConverter;
 import io.debezium.connector.oracle.converters.NumberToZeroScaleConverter;
 import io.debezium.connector.oracle.converters.RawToStringConverter;
@@ -25,8 +26,8 @@ public class OracleMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                new OracleConnectorMetadata(),
-                componentMetadataFactory.createComponentMetadata(new NumberToZeroScaleConverter(),Module.version()),
+                componentMetadataFactory.createComponentMetadata(new OracleConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new NumberToZeroScaleConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new RawToStringConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new NumberOneToBooleanConverter(), Module.version()));
     }

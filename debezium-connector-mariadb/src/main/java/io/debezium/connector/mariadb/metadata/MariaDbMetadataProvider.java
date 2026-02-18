@@ -9,6 +9,7 @@ import java.util.List;
 
 import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.Module;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
@@ -24,7 +25,7 @@ public class MariaDbMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                new MariaDbConnectorMetadata(),
+                componentMetadataFactory.createComponentMetadata(new MariaDbConnector(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TinyIntOneToBooleanConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()));
     }

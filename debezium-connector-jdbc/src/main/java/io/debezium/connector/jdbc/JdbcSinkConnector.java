@@ -18,13 +18,15 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.sink.SinkConnector;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.Field;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * The main connector class used to instantiate configuration and execution classes.
  *
  * @author Hossein Torabi
  */
-public class JdbcSinkConnector extends SinkConnector {
+public class JdbcSinkConnector extends SinkConnector implements ConfigDescriptor {
 
     @Immutable
     private Map<String, String> properties;
@@ -62,6 +64,11 @@ public class JdbcSinkConnector extends SinkConnector {
     @Override
     public ConfigDef config() {
         return JdbcSinkConnectorConfig.configDef();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return JdbcSinkConnectorConfig.ALL_FIELDS;
     }
 
 }
