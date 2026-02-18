@@ -38,6 +38,8 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
     public static final String SCANNED_COLLECTION = "scanned_collection";
     public static final String CURRENT_COLLECTION_IN_PROGRESS = "current_collection_in_progress";
     public static final String DATA_COLLECTIONS = "data_collections";
+    public static final String CHUNK_INDEX = "chunk_index";
+    public static final String TOTAL_CHUNKS = "total_chunks";
 
     private final NotificationService<P, O> notificationService;
     private final CommonConnectorConfig connectorConfig;
@@ -70,6 +72,22 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
 
     }
 
+    public <T extends DataCollectionId> void notifyTableChunkInProgress(P partition,
+                                                                        OffsetContext offsetContext,
+                                                                        String currentCollection,
+                                                                        int chunkIndex,
+                                                                        int totalChunks,
+                                                                        long totalRowsScanned) {
+        notificationService.notify(
+                buildNotificationWith(
+                        SnapshotStatus.TABLE_CHUNK_IN_PROGRESS.name(),
+                        Map.of(CURRENT_COLLECTION_IN_PROGRESS, currentCollection,
+                                CHUNK_INDEX, String.valueOf(chunkIndex),
+                                TOTAL_CHUNKS, String.valueOf(totalChunks),
+                                TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned))),
+                Offsets.of(partition, offsetContext));
+    }
+
     public <T extends DataCollectionId> void notifyCompletedTableSuccessfully(P partition,
                                                                               OffsetContext offsetContext,
                                                                               String currentCollection) {
@@ -95,6 +113,24 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
                         STATUS, TableScanCompletionStatus.SUCCEEDED.name())),
                 Offsets.of(partition, offsetContext));
 
+    }
+
+    public <T extends DataCollectionId> void notifyCompletedTableChunkSuccessfully(P partition,
+                                                                                   OffsetContext offsetContext,
+                                                                                   String currentCollection,
+                                                                                   int chunkIndex,
+                                                                                   int totalChunks,
+                                                                                   Set<TableId> tables) {
+        String dataCollections = tables.stream().map(TableId::identifier).collect(Collectors.joining(LIST_DELIMITER));
+        notificationService.notify(
+                buildNotificationWith(
+                        SnapshotStatus.TABLE_CHUNK_COMPLETED.name(),
+                        Map.of(SCANNED_COLLECTION, currentCollection,
+                                DATA_COLLECTIONS, dataCollections,
+                                CHUNK_INDEX, String.valueOf(chunkIndex),
+                                TOTAL_CHUNKS, String.valueOf(totalChunks),
+                                STATUS, TableScanCompletionStatus.SUCCEEDED.name())),
+                Offsets.of(partition, offsetContext));
     }
 
     public <T extends DataCollectionId> void notifyCompletedTableWithError(P partition,

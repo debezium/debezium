@@ -7,8 +7,11 @@ package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.management.ManagementFactory;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -16,13 +19,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.management.InstanceNotFoundException;
+import javax.management.IntrospectionException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import javax.management.ReflectionException;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -33,8 +49,11 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.notification.AbstractNotificationsIT;
+import io.debezium.pipeline.notification.Notification;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
+import io.debezium.util.Testing;
 
 /**
  * An abstract base class for the new chunked-based table snapshot feature.
@@ -275,6 +294,98 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
     @Test
     @FixFor("dbz#1220")
+    public void shouldSnapshotChunkedWithNotifications() throws Exception {
+        final int ROW_COUNT = 10_000;
+
+        final String tableName = getSingleKeyTableName();
+        createSingleKeyTable(tableName);
+        populateSingleKeyTable(tableName, ROW_COUNT);
+
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getSingleKeyCollectionName())
+                .with(CommonConnectorConfig.SNAPSHOT_DELAY_MS, 2000)
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT + 1)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        List<javax.management.Notification> jmxNotifications = registerJmxNotificationListener();
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted();
+
+        final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT);
+        assertThat(allRecords.recordsForTopic(getTableTopicName(tableName))).hasSize(ROW_COUNT);
+
+        MBeanNotificationInfo[] notifications = readJmxNotifications();
+        assertThat(notifications).allSatisfy(mBeanNotificationInfo -> assertThat(mBeanNotificationInfo.getName()).isEqualTo(Notification.class.getName()));
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        Testing.Print.enable();
+        if (Testing.Print.isEnabled()) {
+            jmxNotifications.forEach(o -> {
+                try {
+                    Testing.print(mapper.readValue(o.getUserData().toString(), Notification.class));
+                }
+                catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        // There should be at least a STARTED, COMPLETED, SCAN COMPLETED, and 4 chunks completed
+        assertThat(jmxNotifications).hasSizeGreaterThanOrEqualTo(7);
+
+        assertThat(jmxNotifications.get(0)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
+        Notification notification = mapper.readValue(jmxNotifications.get(0).getUserData().toString(), Notification.class);
+        assertThat(notification)
+                .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
+                .hasFieldOrPropertyWithValue("type", "STARTED")
+                .hasFieldOrPropertyWithValue("additionalData", Map.of("connector_name", server()));
+        assertThat(notification.getTimestamp()).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+
+        assertThat(jmxNotifications.get(jmxNotifications.size() - 1)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
+        notification = mapper.readValue(jmxNotifications.get(jmxNotifications.size() - 1).getUserData().toString(), Notification.class);
+        assertThat(notification)
+                .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
+                .hasFieldOrPropertyWithValue("type", "COMPLETED")
+                .hasFieldOrPropertyWithValue("additionalData", Map.of("connector_name", server()));
+        assertThat(notification.getTimestamp()).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+
+        assertThat(jmxNotifications.stream().skip(1).limit(jmxNotifications.size() - 1)
+                .map(entry -> {
+                    try {
+                        return mapper.readValue(entry.getUserData().toString(), Notification.class);
+                    }
+                    catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .map(Notification::getType)
+                .filter("TABLE_SCAN_COMPLETED"::equals)
+                .count()).isEqualTo(1L);
+
+        assertThat(jmxNotifications.stream().skip(1).limit(jmxNotifications.size() - 1)
+                .map(entry -> {
+                    try {
+                        return mapper.readValue(entry.getUserData().toString(), Notification.class);
+                    }
+                    catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .map(Notification::getType)
+                .filter("TABLE_CHUNK_COMPLETED"::equals)
+                .count()).isEqualTo(4L);
+    }
+
+    @Test
+    @FixFor("dbz#1220")
     @Disabled
     public void shouldSnapshotChunkedPerformanceTest() throws Exception {
         final int ROW_COUNT = 10_000_000;
@@ -408,6 +519,10 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
         return value.getStruct(Envelope.FieldName.SOURCE);
     }
 
+    protected String task() {
+        return null;
+    }
+
     protected abstract Class<T> getConnectorClass();
 
     protected abstract JdbcConnection getConnection();
@@ -435,4 +550,39 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
     protected abstract String getTableTopicName(String tableName);
 
     protected abstract String getFullyQualifiedTableName(String tableName);
+
+    protected abstract String connector();
+
+    protected abstract String server();
+
+    private ObjectName getObjectName() throws MalformedObjectNameException {
+        String objName = String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server());
+        if (task() != null) {
+            objName += ",task=" + task();
+        }
+        return new ObjectName(objName);
+    }
+
+    private List<javax.management.Notification> registerJmxNotificationListener()
+            throws MalformedObjectNameException, InstanceNotFoundException {
+
+        ObjectName notificationBean = getObjectName();
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        List<javax.management.Notification> receivedNotifications = new ArrayList<>();
+        server.addNotificationListener(notificationBean, new AbstractNotificationsIT.ClientListener(), null, receivedNotifications);
+
+        return receivedNotifications;
+    }
+
+    private MBeanNotificationInfo[] readJmxNotifications()
+            throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, IntrospectionException {
+
+        ObjectName notificationBean = getObjectName();
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        MBeanInfo mBeanInfo = server.getMBeanInfo(notificationBean);
+
+        return mBeanInfo.getNotifications();
+    }
 }

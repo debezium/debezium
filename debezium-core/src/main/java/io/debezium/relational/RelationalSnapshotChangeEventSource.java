@@ -600,7 +600,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
             else {
                 // Calculate chunk count and boundaries
-                final int multiplier = connectorConfig.getSnapshotMaxThreadsMultiplierForTable(tableId);
+                final int multiplier = connectorConfig.getSnapshotMaxThreadsTableMultiplierAsInteger(tableId);
                 final int numChunks = calculateChunkCount(rowCount, snapshotMaxThreads, multiplier);
                 LOGGER.info("Table '{}' calculating chunk boundaries using multiplier {} with {} chunks.", tableId, multiplier, numChunks);
                 final List<Object[]> boundaries = boundaryCalculator.calculateBoundaries(table, keyColumns, rowCount, numChunks);
@@ -932,6 +932,22 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 chunk.getChunkIndex() + 1, chunk.getTotalChunks(),
                 tableId, chunk.getTableOrder(), chunk.getTableCount());
 
+        if (chunk.isFirstChunk()) {
+            notificationService.initialSnapshotNotificationService().notifyTableInProgress(
+                    snapshotContext.partition,
+                    snapshotContext.offset,
+                    table.id().identifier(),
+                    progressMap.keySet());
+        }
+
+        notificationService.initialSnapshotNotificationService().notifyTableChunkInProgress(
+                snapshotContext.partition,
+                snapshotContext.offset,
+                table.id().identifier(),
+                chunk.getChunkIndex(),
+                chunk.getTotalChunks(),
+                progress.getTotalRowsScanned());
+
         // Get key columns for query building
         final List<Column> keyColumns = getKeyColumnsForChunking(table);
 
@@ -1000,6 +1016,25 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             snapshotProgressListener.rowsScanned(snapshotContext.partition, tableId,
                     progress.getTotalRowsScanned());
+
+            notificationService.initialSnapshotNotificationService()
+                    .notifyCompletedTableChunkSuccessfully(
+                            snapshotContext.partition,
+                            snapshotContext.offset,
+                            table.id().identifier(),
+                            chunk.getChunkIndex(),
+                            chunk.getTotalChunks(),
+                            snapshotContext.capturedTables);
+
+            if (chunk.isLastChunk()) {
+                notificationService.initialSnapshotNotificationService()
+                        .notifyCompletedTableSuccessfully(
+                                snapshotContext.partition,
+                                snapshotContext.offset,
+                                table.id().identifier(),
+                                progress.getTotalRowsScanned(),
+                                snapshotContext.capturedTables);
+            }
         }
     }
 

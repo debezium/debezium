@@ -24,4 +24,13 @@ public class MySqlChunkedSnapshotIT extends BinlogChunkedSnapshotIT<MySqlConnect
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
     }
 
+    @Override
+    protected String connector() {
+        return Module.name();
+    }
+
+    @Override
+    protected String server() {
+        return DATABASE.getServerName();
+    }
 }
