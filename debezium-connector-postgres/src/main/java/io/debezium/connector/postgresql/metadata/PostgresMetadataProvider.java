@@ -13,6 +13,7 @@ import io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageC
 import io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb;
 import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.metadata.ConfigDescriptor;
 
@@ -21,25 +22,13 @@ import io.debezium.metadata.ConfigDescriptor;
  */
 public class PostgresMetadataProvider implements ComponentMetadataProvider {
 
+    private final ComponentMetadataFactory componentMetadataFactory = new ComponentMetadataFactory();
+
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 new PostgresConnectorMetadata(),
-                createComponentMetadata(new DecodeLogicalDecodingMessageContent<>()),
-                createComponentMetadata(new TimescaleDb<>()));
-    }
-
-    private <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component) {
-        return new ComponentMetadata() {
-            @Override
-            public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(component.getClass().getName(), Module.version());
-            }
-
-            @Override
-            public Field.Set getComponentFields() {
-                return component.getConfigFields();
-            }
-        };
+                componentMetadataFactory.createComponentMetadata(new DecodeLogicalDecodingMessageContent<>(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new TimescaleDb<>(), Module.version()));
     }
 }

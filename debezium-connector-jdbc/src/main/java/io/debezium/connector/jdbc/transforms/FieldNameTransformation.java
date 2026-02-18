@@ -25,6 +25,7 @@ import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.NamingStyleUtils;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaUtil;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
@@ -45,7 +46,7 @@ import io.debezium.util.Strings;
  * @author Gustavo Lira
  * @param <R> The record type
  */
-public class FieldNameTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class FieldNameTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldNameTransformation.class);
 
@@ -315,6 +316,11 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public io.debezium.config.Field.Set getConfigFields() {
+        return io.debezium.config.Field.setOf(PREFIX, SUFFIX, NAMING_STYLE);
     }
 
 }

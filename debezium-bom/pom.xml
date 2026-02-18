@@ -734,7 +734,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-transforms</artifactId>
+                <artifactId>debezium-connect-plugins</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -939,7 +939,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-transforms</artifactId>
+                <artifactId>debezium-connect-plugins</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
