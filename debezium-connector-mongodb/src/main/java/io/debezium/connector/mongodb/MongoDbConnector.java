@@ -25,10 +25,12 @@ import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.util.Threads;
 
 /**
@@ -38,7 +40,7 @@ import io.debezium.util.Threads;
  * <p>
  * This connector is configured with the set of properties described in {@link io.debezium.connector.mongodb.MongoDbConnectorConfig}.
  */
-public class MongoDbConnector extends BaseSourceConnector {
+public class MongoDbConnector extends BaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
     public static final String DEPRECATED_SHARD_CS_PARAMS_FILED = "mongodb.connection.string.shard.params";
@@ -93,6 +95,11 @@ public class MongoDbConnector extends BaseSourceConnector {
     @Override
     public ConfigDef config() {
         return MongoDbConnectorConfig.configDef();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
     @Override
