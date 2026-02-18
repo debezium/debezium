@@ -7,15 +7,13 @@ package io.debezium.connector.postgresql.metadata;
 
 import java.util.List;
 
-import io.debezium.config.Field;
 import io.debezium.connector.postgresql.Module;
+import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent;
 import io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb;
-import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
-import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * Aggregator for all PostgreSQL connector and transformation metadata.
@@ -27,7 +25,7 @@ public class PostgresMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                new PostgresConnectorMetadata(),
+                componentMetadataFactory.createComponentMetadata(new PostgresConnector(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new DecodeLogicalDecodingMessageContent<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TimescaleDb<>(), Module.version()));
     }

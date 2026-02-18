@@ -8,6 +8,8 @@ package io.debezium.connector.mongodb.metadata;
 import java.util.List;
 
 import io.debezium.connector.mongodb.Module;
+import io.debezium.connector.mongodb.MongoDbConnector;
+import io.debezium.connector.mongodb.MongoDbSinkConnector;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter;
 import io.debezium.metadata.ComponentMetadata;
@@ -24,8 +26,8 @@ public class MongoDbMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                new MongoDbConnectorMetadata(),
-                new MongoDbSinkConnectorMetadata(),
+                componentMetadataFactory.createComponentMetadata(new MongoDbConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new MongoDbSinkConnector(), io.debezium.connector.mongodb.sink.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewDocumentState<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new MongoEventRouter<>(), Module.version()));
     }

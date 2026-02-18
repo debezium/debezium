@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import io.debezium.Module;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,6 +23,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
+import io.debezium.Module;
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Json;
 import io.debezium.data.SchemaUtil;
