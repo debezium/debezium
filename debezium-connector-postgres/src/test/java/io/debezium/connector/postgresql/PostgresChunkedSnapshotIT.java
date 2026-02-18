@@ -79,6 +79,16 @@ public class PostgresChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Postg
     }
 
     @Override
+    protected String connector() {
+        return "postgres";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER;
+    }
+
+    @Override
     protected String getSingleKeyCollectionName() {
         return "public\\.dbz1220";
     }
