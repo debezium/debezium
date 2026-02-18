@@ -15,20 +15,22 @@ import io.debezium.connector.jdbc.transforms.CollectionNameTransformation;
 import io.debezium.connector.jdbc.transforms.FieldNameTransformation;
 import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
-import io.debezium.metadata.ComponentMetadataUtils;
 
 /**
  * Aggregator for all JDBC connector and transformation metadata.
  */
 public class JdbcMetadataProvider implements ComponentMetadataProvider {
 
+    private final ComponentMetadataFactory componentMetadataFactory = new ComponentMetadataFactory();
+
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
                 createSinkConnectorMetadata(),
-                createComponentMetadata(CollectionNameTransformation.class),
-                createComponentMetadata(FieldNameTransformation.class));
+                componentMetadataFactory.createComponentMetadata(new CollectionNameTransformation<>(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new FieldNameTransformation<>(), Module.version()));
     }
 
     private ComponentMetadata createSinkConnectorMetadata() {
@@ -45,17 +47,4 @@ public class JdbcMetadataProvider implements ComponentMetadataProvider {
         };
     }
 
-    private ComponentMetadata createComponentMetadata(Class<?> componentClass) {
-        return new ComponentMetadata() {
-            @Override
-            public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(componentClass.getName(), Module.version());
-            }
-
-            @Override
-            public Field.Set getComponentFields() {
-                return ComponentMetadataUtils.extractFieldConstants(componentClass);
-            }
-        };
-    }
 }

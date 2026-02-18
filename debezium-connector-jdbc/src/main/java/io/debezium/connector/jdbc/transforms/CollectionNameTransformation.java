@@ -19,6 +19,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.jdbc.Module;
 import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.NamingStyleUtils;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * A Kafka Connect SMT (Single Message Transformation) that modifies collection (table) names
@@ -37,7 +38,7 @@ import io.debezium.connector.jdbc.util.NamingStyleUtils;
  * @author Gustavo Lira
  * @param <R> The record type
  */
-public class CollectionNameTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class CollectionNameTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CollectionNameTransformation.class);
 
@@ -160,6 +161,11 @@ public class CollectionNameTransformation<R extends ConnectRecord<R>> implements
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(PREFIX, SUFFIX, NAMING_STYLE);
     }
 
 }

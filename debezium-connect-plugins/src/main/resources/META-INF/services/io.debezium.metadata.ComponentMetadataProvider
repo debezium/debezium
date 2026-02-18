@@ -1,0 +1,2 @@
+io.debezium.transforms.metadata.TransformsMetadataProvider
+io.debezium.converters.metadata.ConverterMetadataProvider
