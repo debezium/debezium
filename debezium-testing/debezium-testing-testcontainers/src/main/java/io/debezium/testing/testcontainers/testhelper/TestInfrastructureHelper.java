@@ -215,7 +215,7 @@ public class TestInfrastructureHelper {
                 .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
-                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withKafka(NETWORK, KAFKA_HOSTNAME + ":9092")
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
