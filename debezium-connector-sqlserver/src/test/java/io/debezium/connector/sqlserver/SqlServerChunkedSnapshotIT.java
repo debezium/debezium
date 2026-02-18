@@ -78,6 +78,21 @@ public class SqlServerChunkedSnapshotIT extends AbstractChunkedSnapshotTest<SqlS
     }
 
     @Override
+    protected String connector() {
+        return "sql_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER_NAME;
+    }
+
+    @Override
+    protected String task() {
+        return "0";
+    }
+
+    @Override
     protected String getSingleKeyCollectionName() {
         return "dbo\\.dbz1220";
     }

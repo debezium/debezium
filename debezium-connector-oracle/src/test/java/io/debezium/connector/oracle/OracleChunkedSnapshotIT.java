@@ -76,7 +76,17 @@ public class OracleChunkedSnapshotIT extends AbstractChunkedSnapshotTest<OracleC
 
     @Override
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForSnapshotToBeCompleted(connector(), server());
+    }
+
+    @Override
+    protected String connector() {
+        return TestHelper.CONNECTOR_NAME;
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.SERVER_NAME;
     }
 
     @Override

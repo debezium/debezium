@@ -21,7 +21,16 @@ public class MariaDbChunkedSnapshotIT extends BinlogChunkedSnapshotIT<MariaDbCon
 
     @Override
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {
-        waitForSnapshotToBeCompleted("mariadb", DATABASE.getServerName());
+        waitForSnapshotToBeCompleted(connector(), server());
     }
 
+    @Override
+    protected String connector() {
+        return Module.name();
+    }
+
+    @Override
+    protected String server() {
+        return DATABASE.getServerName();
+    }
 }
