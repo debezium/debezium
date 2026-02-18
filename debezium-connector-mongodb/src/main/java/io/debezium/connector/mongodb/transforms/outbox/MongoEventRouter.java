@@ -31,6 +31,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.time.Timestamp;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
@@ -44,7 +45,7 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
  * @author Anisha Mohanty
  */
 @Incubating
-public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoEventRouter.class);
 
@@ -357,6 +358,27 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
     @VisibleForTesting
     EventRouterDelegate<R> getEventRouterDelegate() {
         return eventRouterDelegate;
+    }
+
+    @Override
+    public io.debezium.config.Field.Set getConfigFields() {
+        return io.debezium.config.Field.setOf(
+                MongoEventRouterConfigDefinition.FIELD_EVENT_ID,
+                MongoEventRouterConfigDefinition.FIELD_EVENT_KEY,
+                MongoEventRouterConfigDefinition.FIELD_EVENT_TYPE,
+                MongoEventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP,
+                MongoEventRouterConfigDefinition.FIELD_PAYLOAD,
+                MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT,
+                MongoEventRouterConfigDefinition.FIELD_SCHEMA_VERSION,
+                MongoEventRouterConfigDefinition.ROUTE_BY_FIELD,
+                MongoEventRouterConfigDefinition.ROUTE_TOPIC_REGEX,
+                MongoEventRouterConfigDefinition.ROUTE_TOPIC_REPLACEMENT,
+                MongoEventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
+                MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR,
+                MongoEventRouterConfigDefinition.EXPAND_JSON_PAYLOAD,
+                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD,
+                ActivateTracingSpan.TRACING_OPERATION_NAME,
+                ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED);
     }
 
 }
