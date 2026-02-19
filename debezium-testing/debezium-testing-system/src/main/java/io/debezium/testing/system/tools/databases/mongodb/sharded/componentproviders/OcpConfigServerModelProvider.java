@@ -37,10 +37,11 @@ public class OcpConfigServerModelProvider {
         return OcpMongoShardedConstants.MONGO_CONFIG_DEPLOYMENT_NAME + num;
     }
 
-    public static Deployment configServerDeployment(int num) {
+    public static Deployment configServerDeployment(int num, String project) {
         String name = getConfigServerName(num);
         ObjectMeta metaData = new ObjectMetaBuilder()
                 .withName(name)
+                .withNamespace(project)
                 .withLabels(Map.of("app", "mongo",
                         "deployment", name,
                         "role", OcpMongoShardedConstants.MONGO_CONFIG_ROLE))
@@ -100,13 +101,14 @@ public class OcpConfigServerModelProvider {
                 .build();
     }
 
-    public static Service configServerService(int num) {
+    public static Service configServerService(int num, String project) {
         String name = getConfigServerName(num);
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
                 .withMetadata(new ObjectMetaBuilder()
                         .withName(name)
+                        .withNamespace(project)
                         .build())
                 .withSpec(new ServiceSpecBuilder()
                         .withSelector(Map.of("app", "mongo",
