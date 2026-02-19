@@ -610,6 +610,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
 
             progressMap.put(tableId, new TableChunkProgress(tableId, tableChunks.size()));
+            snapshotProgressListener.chunkProgress(snapshotContext.partition, tableId, tableChunks.size(), 0);
+
             allChunks.addAll(tableChunks);
             tableOrder++;
         }
@@ -1003,6 +1005,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             if (!chunk.isLastChunk()) {
                 progress.signalChunkComplete();
             }
+
+            snapshotProgressListener.chunkProgress(snapshotContext.partition, tableId,
+                    progress.getTotalChunks(), progress.getCompletedChunks());
 
             LOGGER.info("\t Finished chunk {}/{} ({} records) for table '{}'; duration '{}'",
                     chunk.getChunkIndex() + 1, chunk.getTotalChunks(), rows, tableId,
