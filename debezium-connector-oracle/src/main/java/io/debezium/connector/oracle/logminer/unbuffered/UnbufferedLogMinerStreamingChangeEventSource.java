@@ -117,11 +117,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // except once per iteration.
             databaseOffset = getMetrics().getDatabaseOffset();
 
-            minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
-            getMetrics().setOffsetScn(minLogScn);
-
             Scn currentScn = getCurrentScn();
             getMetrics().setCurrentScn(currentScn);
+
+            collectLogs(minLogScn, getCurrentScn());
+
+            minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
+            getMetrics().setOffsetScn(minLogScn);
 
             upperBoundsScn = calculateUpperBounds(minLogScn, upperBoundsScn, currentScn);
             if (upperBoundsScn.isNull()) {
@@ -129,8 +131,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 pauseBetweenMiningSessions();
                 continue;
             }
-
-            collectLogs(minLogScn, getCurrentScn());
 
             if (firstBatch) {
                 applyLogsToSession(false);
