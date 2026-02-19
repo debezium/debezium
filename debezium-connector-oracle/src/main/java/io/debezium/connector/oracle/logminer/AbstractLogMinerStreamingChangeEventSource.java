@@ -836,7 +836,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
         else if (isNoDataProcessedInBatchAndAtEndOfArchiveLogs()) {
-            if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
+            if (endScn.compareTo(getMaximumArchiveLogsScn(startScn)) == 0) {
                 // Prior iteration mined up to the last entry in the archive logs and no data was returned.
                 return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
             }
@@ -862,7 +862,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception is thrown
      */
     protected Scn calculateUpperBounds(Scn lowerBoundsScn, Scn previousUpperBounds, Scn currentScn) throws SQLException {
-        final Scn maximumScn = getConfig().isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn() : currentScn;
+        final Scn maximumScn = getConfig().isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn(lowerBoundsScn) : currentScn;
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
@@ -1073,11 +1073,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @return the maximum SCN, never {@code null}
      */
-    protected Scn getMaximumArchiveLogsScn() {
-        final List<LogFile> archiveLogs = (currentLogFiles == null)
-                ? Collections.emptyList()
-                : currentLogFiles.stream().filter(LogFile::isArchive).toList();
-
+    protected Scn getMaximumArchiveLogsScn(Scn startScn) throws SQLException {
+        // It is safe to query these in real-time
+        final List<LogFile> archiveLogs = logCollector.getLogs(startScn).stream().filter(LogFile::isArchive).toList();
         if (archiveLogs.isEmpty()) {
             throw new DebeziumException("Cannot get maximum archive log SCN as no archive logs are present.");
         }
@@ -1168,11 +1166,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
 
             sessionLogFiles = sessionLogFilesToAdd;
-
-            currentRedoLogSequences = currentLogFiles.stream()
-                    .filter(LogFile::isCurrent)
-                    .map(LogFile::getSequence)
-                    .toList();
         }
 
         metrics.setRedoLogStatuses(jdbcConnection.queryAndMap(
@@ -1205,6 +1198,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             for (LogFile logFile : sessionLogFiles) {
                 sessionContext.addLogFile(logFile.getFileName());
             }
+
+            // These need to be updated when we prepare the session so that log switch check works
+            currentRedoLogSequences = currentLogFiles.stream()
+                    .filter(LogFile::isCurrent)
+                    .map(LogFile::getSequence)
+                    .toList();
 
             metrics.setMinedLogFileNames(sessionLogFiles.stream()
                     .map(LogFile::getFileName)
