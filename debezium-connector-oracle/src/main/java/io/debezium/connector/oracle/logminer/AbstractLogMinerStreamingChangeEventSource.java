@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +119,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
+    private List<LogFile> sessionLogFiles;
+    private boolean sessionLogFilesChanged = false;
     private List<BigInteger> currentRedoLogSequences;
     private OracleOffsetContext effectiveOffset;
     private OraclePartition partition;
@@ -308,6 +311,14 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     protected List<LogFile> getCurrentLogFiles() {
         return currentLogFiles;
+    }
+
+    protected List<LogFile> getSessionLogFiles() {
+        return sessionLogFiles;
+    }
+
+    protected boolean hasSessionLogFileSetChanged() {
+        return sessionLogFilesChanged;
     }
 
     protected OffsetActivityMonitor getOffsetActivityMonitor() {
@@ -1132,45 +1143,37 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Adds the logs to the LogMiner session context and updates the metrics and internal state.
+     * Collects all the log state for the given SCN window.
      *
-     * @param postMiningSessionEnded {@code true} if a prior session just ended
-     * @param lowerBoundsScn the lower read system change number boundary, should never be {@code null}
+     * @param lowerBoundsScn the lower SCN window boundary, should never be {@code null}
+     * @param upperBoundsScn the upper SCN window boundary, should never be {@code null}
      * @throws SQLException if a database exception occurs
      */
-    protected void prepareLogsForMining(boolean postMiningSessionEnded, Scn lowerBoundsScn) throws SQLException {
-        if (!useContinuousMining) {
-            sessionContext.removeAllLogFilesFromSession();
-        }
-
-        if ((!postMiningSessionEnded || !useContinuousMining) && isUsingCatalogInRedoStrategy()) {
-            sessionContext.writeDataDictionaryToRedoLogs();
-        }
-
+    protected void collectLogs(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
         currentLogFiles = logCollector.getLogs(lowerBoundsScn);
 
         if (!useContinuousMining) {
+            List<LogFile> sessionLogFilesToAdd = new ArrayList<>();
             for (LogFile logFile : currentLogFiles) {
-                sessionContext.addLogFile(logFile.getFileName());
+                if (logFile.getFirstScn().compareTo(upperBoundsScn) <= 0) {
+                    sessionLogFilesToAdd.add(logFile);
+                }
             }
+
+            if (sessionLogFiles != null) {
+                // This check is only required after first session pass
+                final Set<LogFile> oldSessionLogSet = new HashSet<>(sessionLogFiles);
+                final Set<LogFile> newSessionLogSet = new HashSet<>(sessionLogFilesToAdd);
+                this.sessionLogFilesChanged = !oldSessionLogSet.equals(newSessionLogSet);
+            }
+
+            sessionLogFiles = sessionLogFilesToAdd;
 
             currentRedoLogSequences = currentLogFiles.stream()
                     .filter(LogFile::isCurrent)
                     .map(LogFile::getSequence)
                     .toList();
-
         }
-
-        metrics.setMinedLogFileNames(currentLogFiles.stream()
-                .map(LogFile::getFileName)
-                .collect(Collectors.toSet()));
-
-        metrics.setCurrentLogFileNames(currentLogFiles.stream()
-                .filter(LogFile::isCurrent)
-                .map(LogFile::getFileName)
-                .collect(Collectors.toSet()));
-
-        LOGGER.trace("Current redo log filenames: {}", String.join(", ", metrics.getCurrentLogFileNames()));
 
         metrics.setRedoLogStatuses(jdbcConnection.queryAndMap(
                 SqlUtils.redoLogStatusQuery(),
@@ -1181,6 +1184,40 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     }
                     return results;
                 }));
+    }
+
+    /**
+     * Applies the current/session log state to the mining session.
+     *
+     * @param postMiningSessionEnded {@code true} if a prior session just ended
+     * @throws SQLException if a database exception occurs
+     */
+    protected void applyLogsToSession(boolean postMiningSessionEnded) throws SQLException {
+        if (!useContinuousMining) {
+            sessionContext.removeAllLogFilesFromSession();
+        }
+
+        if ((!postMiningSessionEnded || !useContinuousMining) && isUsingCatalogInRedoStrategy()) {
+            sessionContext.writeDataDictionaryToRedoLogs();
+        }
+
+        if (!useContinuousMining) {
+            for (LogFile logFile : sessionLogFiles) {
+                sessionContext.addLogFile(logFile.getFileName());
+            }
+
+            metrics.setMinedLogFileNames(sessionLogFiles.stream()
+                    .map(LogFile::getFileName)
+                    .collect(Collectors.toSet()));
+        }
+
+        metrics.setCurrentLogFileNames(currentLogFiles.stream()
+                .filter(LogFile::isCurrent)
+                .map(LogFile::getFileName)
+                .collect(Collectors.toSet()));
+
+        LOGGER.trace("Mined log filenames: {}", String.join(", ", metrics.getMinedLogFileNames()));
+        LOGGER.trace("Current redo log filenames: {}", String.join(", ", metrics.getCurrentLogFileNames()));
     }
 
     /**
