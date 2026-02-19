@@ -90,7 +90,7 @@ public class PostgresChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Postg
 
     @Override
     protected String getSingleKeyCollectionName() {
-        return "public\\.dbz1220";
+        return "public.dbz1220";
     }
 
     @Override
@@ -100,7 +100,7 @@ public class PostgresChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Postg
 
     @Override
     protected String getMultipleSingleKeyCollectionNames() {
-        return String.join(",", List.of("public\\.dbz1220a", "public\\.dbz1220b", "public\\.dbz1220c", "public\\.dbz1220d"));
+        return String.join(",", List.of("public.dbz1220a", "public.dbz1220b", "public.dbz1220c", "public.dbz1220d"));
     }
 
     @Override

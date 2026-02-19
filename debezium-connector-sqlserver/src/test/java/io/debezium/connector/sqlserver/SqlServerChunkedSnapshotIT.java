@@ -94,7 +94,7 @@ public class SqlServerChunkedSnapshotIT extends AbstractChunkedSnapshotTest<SqlS
 
     @Override
     protected String getSingleKeyCollectionName() {
-        return "dbo\\.dbz1220";
+        return "dbo.dbz1220";
     }
 
     @Override
@@ -104,7 +104,7 @@ public class SqlServerChunkedSnapshotIT extends AbstractChunkedSnapshotTest<SqlS
 
     @Override
     protected String getMultipleSingleKeyCollectionNames() {
-        return String.join(",", List.of("dbo\\.dbz1220a", "dbo\\.dbz1220b", "dbo\\.dbz1220c", "dbo\\.dbz1220d"));
+        return String.join(",", List.of("dbo.dbz1220a", "dbo.dbz1220b", "dbo.dbz1220c", "dbo.dbz1220d"));
     }
 
     @Override

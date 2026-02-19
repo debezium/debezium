@@ -547,7 +547,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             for (TableId tableId : prepared.rowCountTables.keySet()) {
                 boolean firstTable = tableOrder == 1 && snapshotMaxThreads == 1;
                 boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
-                String selectStatement = prepared.queryTables.get(tableId);
+                String selectStatement = prepared.queryTables.get(tableId).statement;
                 OptionalLong rowCount = prepared.rowCountTables.get(tableId);
                 Callable<Void> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                         snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement, rowCount, rowCountTablesKeySet,
@@ -565,12 +565,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         final int snapshotMaxThreads = connectionPool.size();
 
-        // todo: support snapshot select overrides
         final PreparedTables prepared = prepareTables(snapshotContext,
-                tableId -> {
-                    final List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
-                    return getSnapshotSelect(snapshotContext, tableId, columns);
-                },
+                tableId -> determineSnapshotSelect(snapshotContext, tableId, snapshotSelectOverridesByTable),
                 tableId -> OptionalLong.of(rowCountForTableChunked(tableId)));
 
         // Create progress tracking and chunks
@@ -588,7 +584,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         // Each snapshotted table, generate chunk details
         for (TableId tableId : prepared.rowCountTables.keySet()) {
             final Table table = snapshotContext.tables.forTable(tableId);
-            final String selectStatement = prepared.queryTables.get(tableId);
+            final SnapshotSelect snapshotSelect = prepared.queryTables.get(tableId);
             final OptionalLong rowCount = prepared.rowCountTables.get(tableId);
 
             final List<SnapshotChunk> tableChunks;
@@ -596,7 +592,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             if (keyColumns.isEmpty()) {
                 // Keyless table - single chunk
                 LOGGER.info("Table '{}' has no key columns, using single chunk.", tableId);
-                tableChunks = List.of(new SnapshotChunk(tableId, table, null, null, 0, 1, tableOrder, tableCount, selectStatement, rowCount));
+                tableChunks = List.of(new SnapshotChunk(tableId, table, null, null, 0, 1, tableOrder, tableCount, snapshotSelect.statement(), rowCount));
+            }
+            else if (snapshotSelect.selectOverride()) {
+                // ideally we'd like to chunk these but for now, given the complexity of the SQL generation,
+                // we decided in this first pass we will simply let these fall back to single chunks
+                LOGGER.info("Table '{}' uses a snapshot select override, using single chunk.", tableId);
+                tableChunks = List.of(new SnapshotChunk(tableId, table, null, null, 0, 1, tableOrder, tableCount, snapshotSelect.statement(), rowCount));
             }
             else {
                 // Calculate chunk count and boundaries
@@ -605,7 +607,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 LOGGER.info("Table '{}' calculating chunk boundaries using multiplier {} with {} chunks.", tableId, multiplier, numChunks);
                 final List<Object[]> boundaries = boundaryCalculator.calculateBoundaries(table, keyColumns, rowCount, numChunks);
 
-                tableChunks = boundaryCalculator.createChunks(table, boundaries, tableOrder, tableCount, selectStatement, rowCount);
+                tableChunks = boundaryCalculator.createChunks(table, boundaries, tableOrder, tableCount, snapshotSelect.statement(), rowCount);
                 LOGGER.info("Table '{}' will be processed in {} chunks.", tableId, tableChunks.size());
             }
 
@@ -1104,23 +1106,33 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      *
      * @param tableId the table to generate a query for
      * @param snapshotSelectOverridesByTable the select overrides by table
-     * @return a valid query string or empty if table will not be snapshotted
+     * @return a snapshot select record, never {@code null} valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
-                                                     Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
+    private SnapshotSelect determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
+                                                   Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
         if (tableId.equals(signalDataCollectionTableId)) {
             // Skip the signal data collection as data shouldn't be captured
-            return Optional.empty();
+            return new SnapshotSelect(null, false);
         }
 
         String overriddenSelect = getSnapshotSelectOverridesByTable(tableId, snapshotSelectOverridesByTable);
         if (overriddenSelect != null) {
-            return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
+            return new SnapshotSelect(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId), true);
         }
 
         List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
 
-        return getSnapshotSelect(snapshotContext, tableId, columns);
+        return new SnapshotSelect(getSnapshotSelect(snapshotContext, tableId, columns).orElse(null), false);
+    }
+
+    /**
+     * @param statement valid query string or null if table is not to be snapshot
+     * @param selectOverride if the query originates as a user-defined snapshot select override
+     */
+    private record SnapshotSelect(String statement, boolean selectOverride) {
+        public boolean hasSnapshotSelectQuery() {
+            return !Strings.isNullOrBlank(statement);
+        }
     }
 
     protected String getSnapshotSelectOverridesByTable(TableId tableId, Map<DataCollectionId, String> snapshotSelectOverrides) {
@@ -1296,7 +1308,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Holds the prepared table information for snapshot processing.
      */
-    private record PreparedTables(Map<TableId, String> queryTables, Map<TableId, OptionalLong> rowCountTables) {
+    private record PreparedTables(Map<TableId, SnapshotSelect> queryTables, Map<TableId, OptionalLong> rowCountTables) {
     }
 
     /**
@@ -1320,18 +1332,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @throws SQLException if row count retrieval fails
      */
     private PreparedTables prepareTables(RelationalSnapshotContext<P, O> snapshotContext,
-                                         Function<TableId, Optional<String>> selectGenerator,
+                                         Function<TableId, SnapshotSelect> selectGenerator,
                                          CheckedFunction<TableId, OptionalLong> rowCountProvider)
             throws SQLException {
 
-        final Map<TableId, String> queryTables = new LinkedHashMap<>();
+        final Map<TableId, SnapshotSelect> queryTables = new LinkedHashMap<>();
         Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
 
         for (TableId tableId : snapshotContext.capturedTables) {
-            final Optional<String> selectStatement = selectGenerator.apply(tableId);
-            if (selectStatement.isPresent()) {
-                LOGGER.info("For table '{}' using select statement: '{}'", tableId, selectStatement.get());
-                queryTables.put(tableId, selectStatement.get());
+            final SnapshotSelect snapshotSelect = selectGenerator.apply(tableId);
+            if (snapshotSelect.hasSnapshotSelectQuery()) {
+                LOGGER.info("For table '{}' using select statement: '{}'", tableId, snapshotSelect.statement);
+                queryTables.put(tableId, snapshotSelect);
                 rowCountTables.put(tableId, rowCountProvider.apply(tableId));
             }
             else {
