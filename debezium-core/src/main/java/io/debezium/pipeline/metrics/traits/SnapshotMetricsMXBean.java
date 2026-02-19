@@ -41,4 +41,8 @@ public interface SnapshotMetricsMXBean extends SchemaMetricsMXBean {
     String getTableFrom();
 
     String getTableTo();
+
+    Map<String, Long> getTableChunkCounts();
+
+    Map<String, Long> getTableChunksCompletedCounts();
 }

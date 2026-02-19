@@ -8,6 +8,7 @@ package io.debezium.pipeline.meters;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -52,6 +53,9 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
     private final AtomicReference<Object[]> tableTo = new AtomicReference<>();
 
     private final Set<String> capturedTables = Collections.synchronizedSet(new HashSet<>());
+
+    private final ConcurrentMap<String, Long> tableChunksTotal = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Long> tableChunksCompleted = new ConcurrentHashMap<>();
 
     private final Clock clock;
 
@@ -245,6 +249,22 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
         return arrayToString(tableTo.get());
     }
 
+    public void chunkProgress(TableId tableId, long totalChunks, long completedChunks) {
+        final String tableKey = tableId.identifier();
+        tableChunksTotal.put(tableKey, totalChunks);
+        tableChunksCompleted.put(tableKey, completedChunks);
+    }
+
+    @Override
+    public Map<String, Long> getTableChunkCounts() {
+        return Collections.unmodifiableMap(tableChunksTotal);
+    }
+
+    @Override
+    public Map<String, Long> getTableChunksCompletedCounts() {
+        return Collections.unmodifiableMap(tableChunksCompleted);
+    }
+
     private String arrayToString(Object[] array) {
         return (array == null) ? null : Arrays.toString(array);
     }
@@ -268,5 +288,7 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
         chunkTo.set(null);
         tableFrom.set(null);
         tableTo.set(null);
+        tableChunksTotal.clear();
+        tableChunksCompleted.clear();
     }
 }

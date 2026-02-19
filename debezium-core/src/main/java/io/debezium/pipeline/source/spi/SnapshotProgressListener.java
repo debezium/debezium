@@ -38,6 +38,8 @@ public interface SnapshotProgressListener<P extends Partition> {
 
     void currentChunk(P partition, String chunkId, Object[] chunkFrom, Object[] chunkTo, Object[] tableTo);
 
+    void chunkProgress(P partition, TableId tableId, long totalChunks, long completedChunks);
+
     static <P extends Partition> SnapshotProgressListener<P> NO_OP() {
         return new SnapshotProgressListener<P>() {
 
@@ -83,6 +85,10 @@ public interface SnapshotProgressListener<P extends Partition> {
 
             @Override
             public void currentChunk(P partition, String chunkId, Object[] chunkFrom, Object[] chunkTo, Object[] tableTo) {
+            }
+
+            @Override
+            public void chunkProgress(P partition, TableId tableId, long totalChunks, long completedChunks) {
             }
         };
     }
