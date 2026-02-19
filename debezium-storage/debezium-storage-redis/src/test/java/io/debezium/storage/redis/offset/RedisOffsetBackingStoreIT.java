@@ -72,8 +72,7 @@ class RedisOffsetBackingStoreIT {
     @BeforeAll
     static void initCluster() {
         try {
-            redisCluster = new ComposeContainer(new File("src/test/resources/docker-compose-redis-cluster.yml"))
-                    .withLocalCompose(true);
+            redisCluster = new ComposeContainer(new File("src/test/resources/docker-compose-redis-cluster.yml"));
             redisCluster.start();
             Thread.sleep(CLUSTER_INIT_WAIT_MS);
         }

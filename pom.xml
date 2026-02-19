@@ -191,6 +191,7 @@
         <publish.repository.id>central</publish.repository.id>
 
         <version.mockito>5.19.0</version.mockito>
+        <version.testcontainers>2.0.3</version.testcontainers>
     </properties>
 
     <modules>
