@@ -114,8 +114,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             Stopwatch watch = Stopwatch.accumulating().start();
             int miningStartAttempts = 1;
 
-            prepareLogsForMining(false, sessionStartScn);
-
+            boolean firstBatch = true;
             while (getContext().isRunning()) {
 
                 // Check if we should break when using archive log only mode
@@ -126,7 +125,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 }
 
                 final Instant batchStartTime = Instant.now();
-
                 updateDatabaseTimeDifference();
 
                 Scn currentScn = getCurrentScn();
@@ -141,27 +139,34 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 flushStrategy.flush(getCurrentScn());
 
-                final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
-                final boolean logSwitchOccurred = checkLogSwitchOccurredAndUpdate();
+                collectLogs(sessionStartScn, sessionEndScn);
 
-                if (miningSessionRestartRequired || logSwitchOccurred || sessionStartScnChanged) {
-                    // Mining session is active, so end the current session and restart if necessary
-                    endMiningSession();
+                if (firstBatch) {
+                    // This is the first execution of the streaming pass, so apply the logs
+                    applyLogsToSession(false);
+                    firstBatch = false;
+                }
+                else {
+                    final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
+                    final boolean logSwitchOccurred = checkLogSwitchOccurredAndUpdate();
+                    final boolean sessionLogSetChanged = hasSessionLogFileSetChanged();
 
-                    // Only restart the connection if mining session max time or log switch occurred
-                    final boolean restartRequired = miningSessionRestartRequired || logSwitchOccurred;
-                    if (restartRequired && getConfig().isLogMiningRestartConnection()) {
-                        prepareJdbcConnection(true);
+                    if (miningSessionRestartRequired || logSwitchOccurred || sessionLogSetChanged || sessionStartScnChanged) {
+                        // Mining session is active, so end the current session and restart if necessary
+                        endMiningSession();
+
+                        // Only restart the connection if mining session max time or log switch occurred
+                        final boolean restartRequired = miningSessionRestartRequired || logSwitchOccurred;
+                        if (restartRequired && getConfig().isLogMiningRestartConnection()) {
+                            prepareJdbcConnection(true);
+                        }
+
+                        applyLogsToSession(true);
+                        sessionStartScnChanged = false;
+
+                        // Recreate the stop watch
+                        watch = Stopwatch.accumulating().start();
                     }
-                    else if (!restartRequired) {
-                        LOGGER.debug("SCN start position advanced to a new set of logs, restart required.");
-                    }
-
-                    prepareLogsForMining(true, sessionStartScn);
-                    sessionStartScnChanged = false;
-
-                    // Recreate the stop watch
-                    watch = Stopwatch.accumulating().start();
                 }
 
                 if (startMiningSession(sessionStartScn, sessionEndScn, miningStartAttempts)) {

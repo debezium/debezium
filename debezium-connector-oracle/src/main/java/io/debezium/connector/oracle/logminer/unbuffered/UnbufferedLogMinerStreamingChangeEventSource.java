@@ -99,8 +99,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         Stopwatch watch = Stopwatch.accumulating().start();
         int miningStartAttempts = 1;
 
-        prepareLogsForMining(false, minLogScn);
-
+        boolean firstBatch = true;
         while (getContext().isRunning()) {
 
             // Check if we should break when using archive log only mode
@@ -111,7 +110,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             }
 
             final Instant batchStartTime = Instant.now();
-
             updateDatabaseTimeDifference();
 
             // This avoids the AtomicReference for each event as this value isn't updated
@@ -119,7 +117,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             databaseOffset = getMetrics().getDatabaseOffset();
 
             minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
-
             getMetrics().setOffsetScn(minLogScn);
 
             Scn currentScn = getCurrentScn();
@@ -132,19 +129,27 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 continue;
             }
 
-            if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
-                // Mining session is active, so end the current session and restart if necessary
-                endMiningSession();
+            collectLogs(minLogScn, getCurrentScn());
 
-                // Mining session reached max time or the log switch occurred
-                if (getConfig().isLogMiningRestartConnection()) {
-                    prepareJdbcConnection(true);
+            if (firstBatch) {
+                applyLogsToSession(false);
+                firstBatch = false;
+            }
+            else {
+                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
+                    // Mining session is active, so end the current session and restart if necessary
+                    endMiningSession();
+
+                    // Mining session reached max time or the log switch occurred
+                    if (getConfig().isLogMiningRestartConnection()) {
+                        prepareJdbcConnection(true);
+                    }
+
+                    applyLogsToSession(true);
+
+                    // Recreate the stop watch
+                    watch = Stopwatch.accumulating().start();
                 }
-
-                prepareLogsForMining(true, minLogScn);
-
-                // Recreate the stop watch
-                watch = Stopwatch.accumulating().start();
             }
 
             if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
