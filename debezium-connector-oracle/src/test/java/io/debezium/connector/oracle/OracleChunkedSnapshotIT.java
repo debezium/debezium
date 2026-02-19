@@ -91,7 +91,7 @@ public class OracleChunkedSnapshotIT extends AbstractChunkedSnapshotTest<OracleC
 
     @Override
     protected String getSingleKeyCollectionName() {
-        return "DEBEZIUM\\.DBZ1220";
+        return "DEBEZIUM.DBZ1220";
     }
 
     @Override
@@ -101,7 +101,7 @@ public class OracleChunkedSnapshotIT extends AbstractChunkedSnapshotTest<OracleC
 
     @Override
     protected String getMultipleSingleKeyCollectionNames() {
-        return String.join(",", List.of("DEBEZIUM\\.DBZ1220A", "DEBEZIUM\\.DBZ1220B", "DEBEZIUM\\.DBZ1220C", "DEBEZIUM\\.DBZ1220D"));
+        return String.join(",", List.of("DEBEZIUM.DBZ1220A", "DEBEZIUM.DBZ1220B", "DEBEZIUM.DBZ1220C", "DEBEZIUM.DBZ1220D"));
     }
 
     @Override
@@ -138,58 +138,5 @@ public class OracleChunkedSnapshotIT extends AbstractChunkedSnapshotTest<OracleC
     protected String getFullyQualifiedTableName(String tableName) {
         return "%s.DEBEZIUM.%s".formatted(TestHelper.getDatabaseName(), tableName.toUpperCase());
     }
-
-    // @Test
-    // @FixFor("dbz#1220")
-    // @Disabled
-    // public void shouldSnapshotTableAcrossMultipleThreads() throws Exception {
-    // TestHelper.dropTable(connection, "dbz1220");
-    // try {
-    // final int ROW_COUNT = 10_000_000;
-    //
-    // // Create table and populate
-    // connection.execute("CREATE TABLE dbz1220 (id numeric(9,0), data varchar2(50), PRIMARY KEY(id))");
-    // try (PreparedStatement st = connection.connection().prepareStatement("INSERT INTO dbz1220 VALUES (?,?)")) {
-    // for (int i = 0; i < ROW_COUNT; i++) {
-    // st.setInt(1, i);
-    // st.setString(2, String.valueOf(i));
-    // st.addBatch();
-    // }
-    // st.executeBatch();
-    // }
-    // connection.commit();
-    // TestHelper.streamTable(connection, "dbz1220");
-    //
-    // Configuration config = TestHelper.defaultConfig()
-    // .with(OracleConnectorConfig.SNAPSHOT_MAX_THREADS, 20)// 5)
-    // .with(OracleConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 5) // 2)
-    // .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
-    // .with(OracleConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * 2)
-    // .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1220")
-    // .build();
-    //
-    // final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
-    //
-    // start(OracleConnector.class, config);
-    // assertConnectorIsRunning();
-    //
-    // waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-    //
-    // final List<SourceRecord> data = new ArrayList<>();
-    // while (data.size() < ROW_COUNT) {
-    // data.addAll(consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1220"));
-    // }
-    //
-    // final Set<Integer> ids = data.stream().map(r -> {
-    // Struct after = ((Struct) r.value()).getStruct(Envelope.FieldName.AFTER);
-    // return after.getInt32("ID");
-    // }).collect(Collectors.toSet());
-    //
-    // assertThat(ids).hasSize(ROW_COUNT);
-    // }
-    // finally {
-    // TestHelper.dropTable(connection, "dbz1220");
-    // }
-    // }
 
 }
