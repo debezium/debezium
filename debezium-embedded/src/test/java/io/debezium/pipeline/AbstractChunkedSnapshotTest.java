@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
@@ -386,6 +387,49 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
     @Test
     @FixFor("dbz#1220")
+    public void shouldSnapshotChunkedWithSnapshotSelectOverride() throws Exception {
+        final int ROW_COUNT = 10_000;
+
+        final List<String> tableNames = new ArrayList<>(getMultipleSingleKeyTableNames());
+        tableNames.add(getSingleKeyTableName());
+
+        for (String tableName : tableNames) {
+            createSingleKeyTable(tableName);
+            populateSingleKeyTable(tableName, ROW_COUNT);
+        }
+
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .with(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, getSnapshotOverrideCollectionName())
+                .with(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + getSnapshotOverrideCollectionName(), getSnapshotSelectOverrideQuery())
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getMultipleSingleKeyCollectionNames() + "," + getSingleKeyCollectionName())
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * tableNames.size() + 1)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted();
+
+        final SourceRecords allRecords = consumeRecordsByTopic((ROW_COUNT * (tableNames.size() - 1)) + 1);
+        for (String tableName : tableNames) {
+            final int expectedCount = tableName.equals(getSingleKeyTableName()) ? 1 : ROW_COUNT;
+
+            final List<SourceRecord> records = allRecords.recordsForTopic(getTableTopicName(tableName));
+            assertThat(records).hasSize(expectedCount);
+
+            final Collection<?> keys = getRecordKeysForSingleKeyTable(records, getSingleKeyTableKeyColumnName());
+            assertThat(keys).hasSize(expectedCount);
+        }
+
+        assertThat(logInterceptor.containsMessage("Creating chunked snapshot worker pool with 2 worker thread(s)")).isTrue();
+        assertThat(logInterceptor.containsMessage("Table '%s' uses a snapshot select override, using single chunk.".formatted(
+                getFullyQualifiedTableName(getSingleKeyTableName())))).isTrue();
+    }
+
+    @Test
+    @FixFor("dbz#1220")
     @Disabled
     public void shouldSnapshotChunkedPerformanceTest() throws Exception {
         final int ROW_COUNT = 10_000_000;
@@ -521,6 +565,14 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
     protected String task() {
         return null;
+    }
+
+    protected String getSnapshotOverrideCollectionName() {
+        return getFullyQualifiedTableName(getSingleKeyTableName());
+    }
+
+    protected String getSnapshotSelectOverrideQuery() {
+        return "SELECT * FROM %s WHERE id = 0".formatted(getSingleKeyCollectionName());
     }
 
     protected abstract Class<T> getConnectorClass();
