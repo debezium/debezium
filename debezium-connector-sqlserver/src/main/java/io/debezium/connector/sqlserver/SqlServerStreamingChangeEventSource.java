@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -24,9 +22,6 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -79,6 +74,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private static final Duration DEFAULT_INTERVAL_BETWEEN_COMMITS = Duration.ofMinutes(1);
     private static final int INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR = 3;
+    private static final int INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_MS_CDC_CAPTURE_POLL_FACTOR = 2;
 
     /**
      * Connection used for reading CDC tables.
@@ -91,15 +87,13 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      * @link https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
     private final SqlServerConnection metadataConnection;
-    private final long msCdcCapturePollingInterval;
-    private final ScheduledExecutorService transactionEndDetectionScheduler;
-    private ScheduledFuture transactionEndDetectionFuture = null;
 
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
     private final Duration pollInterval;
+    private final Duration endTransactionTimerDelay;
     private final SnapshotterService snapshotterService;
     private final SqlServerConnectorConfig connectorConfig;
 
@@ -107,6 +101,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
     private final Map<SqlServerPartition, Set<SqlServerChangeTable>> changeTablesWithKnownStopLsn = new HashMap<>();
 
+    private ElapsedTimeStrategy endTransactionTimer;
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
@@ -120,14 +115,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
-        this.msCdcCapturePollingInterval = metadataConnection.getMsCdcCapturePollingInterval();
-        this.transactionEndDetectionScheduler = Executors.newSingleThreadScheduledExecutor();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
         this.notificationService = notificationService;
         this.pollInterval = connectorConfig.getPollInterval();
+        this.endTransactionTimerDelay = metadataConnection.getMsCdcCapturePollingInterval()
+                .multipliedBy(INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_MS_CDC_CAPTURE_POLL_FACTOR);
         this.snapshotterService = snapshotterService;
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
         this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
@@ -187,6 +182,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
             if (context.isRunning()) {
                 commitTransaction();
+                endTransaction(partition, offsetContext.getSourceTime());
                 final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
@@ -314,7 +310,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         }
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                         anyData = true;
-                        stopTransactionEndDetection();
+                        updateEndTransactionTimer();
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                         if (!schemaChangeCheckpoints.isEmpty()) {
                             if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
@@ -359,7 +355,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         tableWithSmallestLsn.next();
                     }
                     streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
-                    startTransactionEndDetection(partition, offsetContext.getSourceTime());
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                     if (!anyData) {
@@ -577,31 +572,27 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
     }
 
-    private void startTransactionEndDetection(SqlServerPartition partition, Instant sourceTime) {
+    private void updateEndTransactionTimer() {
         // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
-        if (connectorConfig.isReadOnlyDatabaseConnection()) {
-            return;
+        if (endTransactionTimer == null && !connectorConfig.isReadOnlyDatabaseConnection()) {
+            endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
         }
-
-        transactionEndDetectionFuture = transactionEndDetectionScheduler.scheduleAtFixedRate(() -> {
-            if (metadataConnection.didTransactionEnd()) {
-                try {
-                    dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                finally {
-                    stopTransactionEndDetection();
-                }
-            }
-        }, 0, 2 * msCdcCapturePollingInterval, SECONDS);
+        else {
+            endTransactionTimer.hasElapsed();
+        }
     }
 
-    private void stopTransactionEndDetection() {
-        if (transactionEndDetectionFuture != null) {
-            transactionEndDetectionFuture.cancel(true);
-            transactionEndDetectionFuture = null;
+    private void endTransaction(SqlServerPartition partition, Instant sourceTime) {
+        if (endTransactionTimer != null && endTransactionTimer.hasElapsed() && metadataConnection.didTransactionEnd()) {
+            try {
+                dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            finally {
+                endTransactionTimer = null;
+            }
         }
     }
 }

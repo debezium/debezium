@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -88,6 +89,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_MS_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
+    private static final String MS_CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
+    private static final String MS_CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
+    private static final String MS_CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME = "pollinginterval";
     private static final String GET_START_LSN_FOR_LAST_BATCH_SCANNED = "SELECT TOP 1 start_lsn from sys.dm_cdc_log_scan_sessions ORDER BY session_id DESC";
     private static final String START_LSN_INDICATING_EMPTY_BATCH = "00000000:00000000:0000\u0000";
 
@@ -803,13 +807,13 @@ public class SqlServerConnection extends JdbcConnection {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
     }
 
-    public long getMsCdcCapturePollingInterval() {
+    public Duration getMsCdcCapturePollingInterval() {
         AtomicLong msCdcCapturePollingInterval = new AtomicLong(5); // default
         try {
             call(GET_MS_CDC_JOB_INFO, null, rs -> {
                 while (rs.next()) {
-                    if (rs.getString("job_type").equals("capture")) {
-                        msCdcCapturePollingInterval.set(rs.getLong("pollinginterval"));
+                    if (rs.getString(MS_CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME).equals(MS_CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE)) {
+                        msCdcCapturePollingInterval.set(rs.getLong(MS_CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME));
                     }
                 }
             });
@@ -817,7 +821,7 @@ public class SqlServerConnection extends JdbcConnection {
         catch (SQLException e) {
             LOGGER.warn("Exception caught while calling sys.sp_cdc_help_jobs", e);
         }
-        return msCdcCapturePollingInterval.get();
+        return Duration.ofSeconds(msCdcCapturePollingInterval.get());
     }
 
     public boolean didTransactionEnd() {
