@@ -1,3 +1,5 @@
+@Library("dbz-libs") _
+
 if (
     !params.DEBEZIUM_REPOSITORY ||
     !params.DEBEZIUM_BRANCH ||
