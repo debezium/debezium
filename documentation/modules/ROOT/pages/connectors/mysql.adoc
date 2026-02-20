@@ -180,7 +180,7 @@ endif::community[]
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
 ifdef::community[]
-// Type: procedure
+// Type: assembly
 // ModuleID: debezium-mysql-using-the-set-binlog-position-signal-to-change-binlog-reading-position
 // Title: Using the set-binlog-position signal to change the binlog reading position
 [id="mysql-set-binlog-position-signal"]
