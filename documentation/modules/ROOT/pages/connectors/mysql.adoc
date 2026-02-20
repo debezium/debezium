@@ -181,9 +181,8 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 
 ifdef::community[]
 // Type: assembly
-// ModuleID: debezium-mysql-using-the-set-binlog-position-signal-to-change-binlog-reading-position
-// Title: Using the set-binlog-position signal to change the binlog reading position
-[id="mysql-set-binlog-position-signal"]
+// ModuleID: debezium-mysql-connector-send-a-signal-to-reset-the-binlog-reading-position
+// Title: Send a signal to reset the binlog reading position
 === Setting the binlog position via a signal
 
 You can use {prodname} signaling to send a `set-binlog-position` signal to the connector at run time to dynamically change the binlog reading position.
