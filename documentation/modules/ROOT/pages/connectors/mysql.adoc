@@ -184,7 +184,7 @@ ifdef::community[]
 // ModuleID: debezium-mysql-using-the-set-binlog-position-signal-to-change-binlog-reading-position
 // Title: Using the set-binlog-position signal to change the binlog reading position
 [id="mysql-set-binlog-position-signal"]
-=== Setting binlog position via signal
+=== Setting the binlog position via a signal
 
 You can use {prodname} signaling to send a `set-binlog-position` signal to the connector at run time to dynamically change the binlog reading position.
 Changing the binlog reading position can be useful in the following scenarios:
