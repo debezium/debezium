@@ -69,7 +69,7 @@
         <version.assertj>3.27.7</version.assertj>
         <version.jmh>1.37</version.jmh>
         <version.awaitility>4.3.0</version.awaitility>
-        <version.testcontainers>2.0.2</version.testcontainers>
+        <version.testcontainers>2.0.3</version.testcontainers>
         <version.jsonpath>2.10.0</version.jsonpath>
         <version.jsonassert>1.5.3</version.jsonassert>
         <version.json.schema.validator>1.5.3</version.json.schema.validator>
