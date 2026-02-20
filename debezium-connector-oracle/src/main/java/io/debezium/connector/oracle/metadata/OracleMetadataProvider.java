@@ -7,41 +7,28 @@ package io.debezium.connector.oracle.metadata;
 
 import java.util.List;
 
-import io.debezium.config.Field;
 import io.debezium.connector.oracle.Module;
+import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.converters.NumberOneToBooleanConverter;
 import io.debezium.connector.oracle.converters.NumberToZeroScaleConverter;
 import io.debezium.connector.oracle.converters.RawToStringConverter;
-import io.debezium.metadata.ComponentDescriptor;
 import io.debezium.metadata.ComponentMetadata;
+import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
-import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * Aggregator for all Oracle connector and custom converter metadata.
  */
 public class OracleMetadataProvider implements ComponentMetadataProvider {
 
+    private final ComponentMetadataFactory componentMetadataFactory = new ComponentMetadataFactory();
+
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                new OracleConnectorMetadata(),
-                createComponentMetadata(new NumberToZeroScaleConverter()),
-                createComponentMetadata(new RawToStringConverter()),
-                createComponentMetadata(new NumberOneToBooleanConverter()));
-    }
-
-    private <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component) {
-        return new ComponentMetadata() {
-            @Override
-            public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(component.getClass().getName(), Module.version());
-            }
-
-            @Override
-            public Field.Set getComponentFields() {
-                return component.getConfigFields();
-            }
-        };
+                componentMetadataFactory.createComponentMetadata(new OracleConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new NumberToZeroScaleConverter(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new RawToStringConverter(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new NumberOneToBooleanConverter(), Module.version()));
     }
 }
