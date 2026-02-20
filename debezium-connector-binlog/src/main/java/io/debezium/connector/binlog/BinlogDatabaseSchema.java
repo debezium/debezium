@@ -12,12 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
@@ -28,6 +30,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.Tables;
 import io.debezium.relational.ValueConverterProvider;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
@@ -98,6 +101,12 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
         this.connectorConfig = connectorConfig;
         this.filters = connectorConfig.getTableFilters();
+    }
+
+    @Override
+    public void recover(Offsets<?, ?> offsets) throws InterruptedException {
+        // Use filtered recovery with the data collection filter for memory optimization
+        recover(offsets, filters.dataCollectionFilter());
     }
 
     @Override
@@ -301,6 +310,30 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         tableIds().forEach(id -> buildAndRegisterSchema(tableFor(id)));
     }
 
+    /**
+     * Removes tables from memory that are not included in the current filter configuration.
+     * This should be called after parsing DDL to ensure memory optimization during streaming.
+     * <p>
+     * Storage is NOT affected - all schemas remain persisted in the history topic.
+     * This only affects the in-memory representation to reduce memory usage when
+     * dealing with databases containing many tables but only a subset are being captured.
+     */
+    protected void removeNonIncludedTablesFromMemory() {
+        Tables.TableFilter dataCollectionFilter = filters.dataCollectionFilter();
+        Set<TableId> tablesToRemove = tables().tableIds().stream()
+                .filter(tableId -> !dataCollectionFilter.isIncluded(tableId))
+                .collect(Collectors.toSet());
+
+        for (TableId tableId : tablesToRemove) {
+            LOGGER.debug("Removing table '{}' from memory (not in include list)", tableId);
+            tables().removeTable(tableId);
+        }
+
+        if (!tablesToRemove.isEmpty()) {
+            LOGGER.info("Removed {} non-included tables from memory to optimize memory usage", tablesToRemove.size());
+        }
+    }
+
     private List<SchemaChangeEvent> parseDdl(P partition, String ddlStatements, String databaseName, O offset,
                                              Instant sourceTime, boolean snapshot) {
         final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>(3);
@@ -392,6 +425,10 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         else {
             LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
         }
+
+        // Memory optimization: remove non-included tables after DDL parsing
+        removeNonIncludedTablesFromMemory();
+
         return schemaChangeEvents;
     }
 

@@ -72,6 +72,35 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         }
     }
 
+    /**
+     * Recover the schema with memory optimization.
+     * Only tables matching the provided filter will be loaded into memory,
+     * while all schema changes are still read from the history storage.
+     * This reduces memory usage when dealing with databases containing many tables
+     * but only a subset are being captured.
+     *
+     * @param offsets the connector offsets
+     * @param memoryFilter filter for tables to keep in memory; if null, all tables are kept
+     * @throws InterruptedException if interrupted
+     */
+    public void recover(Offsets<?, ?> offsets, Tables.TableFilter memoryFilter) throws InterruptedException {
+        final boolean hasNonNullOffsets = offsets.getOffsets()
+                .values()
+                .stream()
+                .anyMatch(Objects::nonNull);
+
+        if (!hasNonNullOffsets) {
+            // there is nothing to recover
+            return;
+        }
+
+        schemaHistory.recover(offsets, tables(), getDdlParser(), memoryFilter);
+        recoveredTables = !tableIds().isEmpty();
+        for (TableId tableId : tableIds()) {
+            buildAndRegisterSchema(tableFor(tableId));
+        }
+    }
+
     @Override
     public void close() {
         schemaHistory.stop();

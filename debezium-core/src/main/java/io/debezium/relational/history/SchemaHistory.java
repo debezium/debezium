@@ -22,6 +22,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 
 /**
@@ -214,6 +215,37 @@ public interface SchemaHistory {
      */
     @Deprecated
     void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException;
+
+    /**
+     * Recover the database schema with memory optimization by filtering tables.
+     * Only tables matching the filter will be loaded into memory (Tables object),
+     * while ALL schema changes are still read from the history storage.
+     * This reduces memory usage when dealing with databases containing many tables
+     * but only a subset are being captured.
+     *
+     * @param offsets the map of information about the source database to corresponding point in history
+     * @param schema the table definitions that should be populated; may not be null
+     * @param ddlParser the DDL parser that can be used to apply DDL statements; may not be null
+     * @param memoryFilter filter determining which tables to keep in memory;
+     *                     if null, all tables are kept (backward compatible behavior)
+     */
+    default void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser,
+                         TableFilter memoryFilter)
+            throws InterruptedException {
+        // Default implementation delegates to non-filtered version for backward compatibility
+        recover(offsets, schema, ddlParser);
+    }
+
+    /**
+     * @deprecated Use {@link #recover(Offsets, Tables, DdlParser, TableFilter)} instead.
+     */
+    @Deprecated
+    default void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema,
+                         DdlParser ddlParser, TableFilter memoryFilter)
+            throws InterruptedException {
+        // Default implementation delegates to non-filtered version for backward compatibility
+        recover(offsets, schema, ddlParser);
+    }
 
     /**
      * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, SchemaHistoryListener, boolean)}.
