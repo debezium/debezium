@@ -1844,11 +1844,7 @@ index_partition_description
     ;
 
 modify_index_subpartition
-    : MODIFY SUBPARTITION subpartition_name (
-        UNUSABLE
-        | allocate_extent_clause
-        | deallocate_unused_clause
-    )
+    : MODIFY SUBPARTITION subpartition_name (UNUSABLE | modify_index_partitions_ops)
     ;
 
 partition_name_old
