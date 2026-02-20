@@ -2463,7 +2463,7 @@ Specify one of the following values:
 `>=1`:: Specifies the number of seconds that the connector waits for data before it times out.
 
 |[[informix-property-cdc-buffersize]]<<informix-property-cdc-buffersize, `+cdc.buffersize+`>>
-|`0x100000`
+|`65536`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
 |[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
