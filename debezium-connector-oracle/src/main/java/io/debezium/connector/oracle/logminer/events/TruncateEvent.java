@@ -18,7 +18,7 @@ public class TruncateEvent extends DmlEvent {
     }
 
     public TruncateEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId,
-                         Instant changeTime, LogMinerDmlEntry dmlEntry) {
-        super(eventType, scn, tableId, rowId, rsId, changeTime, dmlEntry);
+                         Instant changeTime, Object[] oldValues, Object[] newValues) {
+        super(eventType, scn, tableId, rowId, rsId, changeTime, oldValues, newValues);
     }
 }

@@ -18,9 +18,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -365,8 +368,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(rs.getString(1)).thenReturn("101");
             Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
             Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
+            Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
             Mockito.when(rs.getString(7)).thenReturn("ABC");
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
+            Mockito.when(rs.getString(11)).thenReturn("AAAAAAAAAAAAAAAAAB");
 
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
@@ -656,7 +661,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
-        Mockito.when(row.getRowId()).thenReturn("1234567890");
+        Mockito.when(row.getRowId()).thenReturn("AAAAAAAAAAAAAAAAAB");
         Mockito.when(row.getOperation()).thenReturn("INSERT");
         Mockito.when(row.getTableName()).thenReturn("TEST_TABLE");
         Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"));

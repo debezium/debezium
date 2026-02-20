@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
 
 /**
@@ -47,15 +46,25 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
-     * @param entry the parsed SQL statement entry
+     * @param oldValues old column values
+     * @param newValues new column values
      * @param columnName the column name references by the SelectLobLocatorEvent
      * @param binary whether the data is binary- or character- based
      * @return the constructed SelectLobLocatorEvent
      */
     @ProtoFactory
-    public SelectLobLocatorEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, LogMinerDmlEntryImpl entry,
-                                         String columnName, Boolean binary) {
-        return new SelectLobLocatorEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), entry, columnName,
+    public SelectLobLocatorEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime,
+                                         String[] oldValues, String[] newValues, String columnName, Boolean binary) {
+        return new SelectLobLocatorEvent(
+                EventType.from(eventType),
+                Scn.valueOf(scn),
+                TableId.parse(tableId),
+                rowId,
+                rsId,
+                Instant.parse(changeTime),
+                oldValues,
+                newValues,
+                columnName,
                 binary);
     }
 
@@ -65,7 +74,7 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the column name
      */
-    @ProtoField(number = 8)
+    @ProtoField(number = 9)
     public String getColumnName(SelectLobLocatorEvent event) {
         return event.getColumnName();
     }
@@ -76,7 +85,7 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the binary data flag
      */
-    @ProtoField(number = 9)
+    @ProtoField(number = 10)
     public Boolean getBinary(SelectLobLocatorEvent event) {
         return event.isBinary();
     }

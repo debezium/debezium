@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
 
 /**
@@ -46,22 +45,42 @@ public class DmlEventAdapter extends LogMinerEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
-     * @param entry the parsed SQL statement entry
+     * @param oldValues old column values
+     * @param newValues new column values
      * @return the constructed DmlEvent
      */
     @ProtoFactory
-    public DmlEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, LogMinerDmlEntryImpl entry) {
-        return new DmlEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), entry);
+    public DmlEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String[] oldValues, String[] newValues) {
+        return new DmlEvent(
+                EventType.from(eventType),
+                Scn.valueOf(scn),
+                TableId.parse(tableId),
+                rowId,
+                rsId,
+                Instant.parse(changeTime),
+                ObjectArrayMarshaller.stringArrayToObjectArray(oldValues),
+                ObjectArrayMarshaller.stringArrayToObjectArray(newValues));
     }
 
     /**
-     * A ProtoStream handler to extract the {@code entry} field from the {@link DmlEvent}.
+     * A ProtoStream handler to extract the {@code oldValues} field from the {@link DmlEvent}.
      *
      * @param event the event instance, must not be {@code null}
-     * @return the LogMinerDmlEntryImpl instance
+     * @return the old, before column values
      */
     @ProtoField(number = 7)
-    public LogMinerDmlEntryImpl getEntry(DmlEvent event) {
-        return (LogMinerDmlEntryImpl) event.getDmlEntry();
+    public String[] getOldValues(DmlEvent event) {
+        return ObjectArrayMarshaller.objectArrayToStringArray(event.getOldValues());
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code newValues} field from the {@link DmlEvent}.
+     *
+     * @param event the event instance, must not be {@code null}
+     * @return the new, after column values
+     */
+    @ProtoField(number = 8)
+    public String[] getNewValues(DmlEvent event) {
+        return ObjectArrayMarshaller.objectArrayToStringArray(event.getNewValues());
     }
 }

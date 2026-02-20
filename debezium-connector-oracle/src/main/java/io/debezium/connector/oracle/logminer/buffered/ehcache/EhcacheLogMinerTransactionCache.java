@@ -21,6 +21,7 @@ import org.ehcache.Cache;
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Ehcache.
@@ -150,11 +151,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public boolean removeTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
+        final long encodedRowId = RowIdCodec.encode(rowId);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId().equals(rowId)) {
+            if (event != null && event.getRowId() == encodedRowId) {
                 eventCache.remove(eventKey);
                 eventIds.remove(eventId);
                 return true;
