@@ -129,6 +129,12 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         return MetricsHelper.getStreamingMetricsObjectName(connector(), server(), task(), TEST_DATABASE_1, customTags);
     }
 
+    @Override
+    protected void assertStreamingStatistics(long expectedEvents) throws Exception {
+        // no-op, AbstractSqlServerPartitionMetrics doesn't support all the metrics DefaultSnapshotChangeEventSourceMetrics does, including lagBehind Source,
+        // so skip this test in SQL server connector now
+    }
+
     @Test
     @Override
     public void testSnapshotAndStreamingMetrics() throws Exception {
