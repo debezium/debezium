@@ -185,61 +185,100 @@ ifdef::community[]
 // Title: Send a signal to reset the binlog reading position
 === Setting the binlog position via a signal
 
-You can use {prodname} signaling to send a `set-binlog-position` signal to the connector at run time to dynamically change the binlog reading position.
-Changing the binlog reading position can be useful in the following scenarios:
+In certain situations it can be useful to precisely control the point in the binlog from which the connector begins to capture database changes.
+You can send a {prodname} `set-binlog-position` signal at run time to dynamically specify where the MySQL connector begins reading from the database binlog (binary log).
 
-Disaster recovery:: Skip to a known good position in the log after a system failure.
-Partial replication:: Start CDC from recent data, skipping historical events.
-Testing:: Test with a specific subset of data, excluding the full history captured by snapshots.
+[IMPORTANT]
+====
+Resetting the binlog position causes the connector to skip change events in the history between the current position and the new position. 
+The connector does not capture or stream changes in the skipped range.
+Use this signal only when you ayou intentionally want to exclude certain historical changes. 
+====
 
-Use one of the following formats in the signal, depending on whether GTID mode is enabled:
+You might want to reset the connector's binlog position under the following circumstances:
+ 
+Disaster recovery:: Direct the connector to resume streaming from the last known good position in the log after a system failure.
+Restarting from a specified position helps to maintain data consistency across the pipeline by ensuring that data is not lost or duplicated.
+Corrupted data:: You detect corrupted or incorrect data in the database or in the destination Kafka topics, and want to skip the corrupted data and resume from a known good position.
+Avoid replaying old data after a database refresh:: After you refresh a database from another source, such as a backup, the connector might attempt to replay all historical events from an old binlog position, which can result in duplicate topic data, and lead to heavy resource consumption.
+By resuming streaming from a specific recent point, you skip historical events that you don't need, and can help save cost and time.
+Partial replication:: When diverting captured data to a new Kafka topic, you want the connector to process the log from a specific point to exclude the full event history and send only a specific subset of database changes.
+By using this approach, you prevent the connector from processing obsolete, older data so that the connector captures only the relevant recent changes.
+Testing:: Test the connector with a specific subset of data, excluding the full history captured by snapshots.
+
+
+// Type: concept
+// ModuleID: debezium-mysql-connector-format-of-a-set-binlog-position-signal
+[id="format-of-a-set-binlog-position-signal"]
+== Format of a `set-binlog-position` signal
+
+A {prodname} `set-binlog-position` signal message includes the standard `id`, `type`, and `data` properties.
+The exact format of the message depends on which signaling channel you use.
+For more information about the format of {prodname} signals, see {link-prefix}:{link-signaling}#debezium-signaling-overview}[Sending signals to a {prodname} connector].
+
+To designate the binlog position in a `set-binlog-position` signal, in the data portion of the signal, you specify either the binlog file and position, or a GTID set, depending on whether GTID (Global Transaction Identifier) mode is enabled.
+You cannot use both formats in the same signal.
+
+The following examples illustrate the two formats for specifying the binlog position in a signal:
 
 Binlog file and position format::
 When GTID mode is disabled, specify the binlog filename and position in the signal, as in the following example:
 +
+[example]
+====
 [source,json]
 ----
 {"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}
 ----
+====
+The `binlog_filename` must match the MySQL binlog naming pattern (for example, `mysql-bin.000001`).
++
+The `binlog_position` must be a non-negative integer.
+
 
 GTID set format::
 When GTID mode is enabled, specify the GTID set, for example:
 +
+[example]
+====
 [source,json]
 ----
-{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}
+{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:23"}
 ----
+====
+The value of the `gtid_set` attribute must be a valid GTID set string.
 
-The following rules apply when sending `set-binlog-position` signals:
+// Type: procedure
+// ModuleID: debezium-mysql-connector-send-a-signal-to-change-the-binlog-reading-position
+// Title: Send a signal to change the binlog reading position
+[id="proc-setting-binlog-position-via-signal_{context}"]
+== Send a signal to reposition the stream
 
-* You cannot specify both a binlog file and position, and a GTID set in the same signal.
+Send a {prodname} `set-binlog-position` signal at run time to specify the binlog reading position for  the MySQL connector.
 
-* In signals that specify the binlog file and position, apply the following guidelines:
-
-** The `binlog_filename` must match the MySQL binlog naming pattern (for example, `mysql-bin.000001`).
-** The `binlog_position` must be a non-negative integer.
-
-* In signals that use the GTID set format to specify the binlog position, apply the following guidelines:
-
-** The `gtid_set` must be a valid GTID set string.
+[NOTE]
+====
+Resetting the binlog position causes the connector to skip change events in the history between the current position and the new position. 
+The connector does not capture or stream changes in the skipped range.
+Use this signal only when you intentionally want to exclude certain historical changes. 
+====
 
 .Prerequisites
+
 * The connector is configured to use one of the available {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
 * A {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signaling data collection] exists on the source database.
 * The connector configuration property `heartbeat.interval.ms` is set to ensure that offset changes are persisted.
 
-[IMPORTANT]
-====
-Changing the binlog position causes the connector to skip change events in the binlog range between the current position and the new position.
-The connector does not capture changes in the skipped range.
-Use this signal only when you are certain that the skipped events should not be processed.
-====
-
 .Procedure
-. Create a {prodname} `set-binlog-position` signal message that includes the standard `id`, `type`, and `data` properties in the format that is required for your preferred signaling channel.
-For the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
+
+1. Determine the target position in your database history (binlog file and position, or GTID set).
+2. Send a `set-binlog-position` signal that includes the standard `id`, `type`, and `data` properties in the format that is required for your preferred signaling channel.
 +
-SQL to use when GTID is disabled (uses the binlog file and position) ::
+In the data portion of the signal specify the target position, as determined in step 1.
++
+For example, for the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
++
+SQL to use when GTID is disabled (uses the binlog file and position)::
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
@@ -249,6 +288,7 @@ INSERT INTO debezium_signal (id, type, data) VALUES (
   '{"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}'
 );
 ----
+
 +
 SQL to use when GTID is enabled (specifies GTID set)::
 +
@@ -260,7 +300,9 @@ INSERT INTO debezium_signal (id, type, data) VALUES (
   '{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}'
 );
 ----
-. After the signal is processed, restart the connector so that it begins reading from the specified position.
+
+3. Restart the connector to begin streaming from the new position.
+
 endif::community[]
 
 // Type: concept
