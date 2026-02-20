@@ -573,9 +573,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     private void updateEndTransactionTimer() {
-        // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
-        if (endTransactionTimer == null && !connectorConfig.isReadOnlyDatabaseConnection()) {
-            endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
+        if (endTransactionTimer == null) {
+            // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
+            if (!connectorConfig.isReadOnlyDatabaseConnection()) {
+                endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
+            }
         }
         else {
             endTransactionTimer.hasElapsed();
