@@ -9,20 +9,20 @@ import io.debezium.config.Field;
 import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
 import io.debezium.connector.mariadb.Module;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 
 /**
  * @author Chris Cranford
  */
-public class MariaDbConnectorMetadata implements ConnectorMetadata {
+public class MariaDbConnectorMetadata implements ComponentMetadata {
     @Override
-    public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(MariaDbConnector.class.getName(), Module.version());
+    public ComponentDescriptor getComponentDescriptor() {
+        return new ComponentDescriptor(MariaDbConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getConnectorFields() {
+    public Field.Set getComponentFields() {
         return MariaDbConnectorConfig.ALL_FIELDS;
     }
 }

@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
@@ -63,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
@@ -95,7 +98,10 @@ import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
+import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.spi.converter.CustomConverter;
+import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -6264,6 +6270,62 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz9660");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1508")
+    public void shouldFailWhenConverterThrowsExceptionForValue() throws Exception {
+        TestHelper.dropTable(connection, "dbz1508");
+        try {
+            connection.execute("CREATE TABLE dbz1508 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1508");
+
+            LogInterceptor logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
+
+            // Intentionally test that if the converter failure handling is set to FAIL, the connector
+            // will fail and not emit any messages.
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1508")
+                    .with(OracleConnectorConfig.EVENT_CONVERTING_FAILURE_HANDLING_MODE, EventConvertingFailureHandlingMode.FAIL)
+                    .with("converters", "fail-error")
+                    .with("fail-error.type", ErrorCausingCustomConverter.class.getName())
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz1508 (id,data) values (1, 'test')");
+            connection.executeWithoutCommitting("INSERT INTO dbz1508 (id,data) values (2, 'test')");
+            connection.commit();
+
+            Awaitility.await()
+                    .atMost(waitTimeForRecords(), TimeUnit.MINUTES)
+                    .until(() -> logInterceptor.containsErrorMessage(
+                            "Failed to properly convert data value for '%s.DEBEZIUM.DBZ1508.DATA' of type VARCHAR2".formatted(
+                                    TestHelper.getDatabaseName())));
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1508");
+        }
+    }
+
+    public static class ErrorCausingCustomConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+        @Override
+        public void configure(Properties props) {
+        }
+
+        @Override
+        public void converterFor(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
+            if ("DATA".equals(field.name())) {
+                registration.register(SchemaBuilder.string(), (x) -> {
+                    throw new IllegalStateException("This should fail");
+                });
+            }
         }
     }
 }

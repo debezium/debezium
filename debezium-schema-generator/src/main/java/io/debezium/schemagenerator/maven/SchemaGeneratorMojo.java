@@ -53,8 +53,8 @@ public class SchemaGeneratorMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}${file.separator}generated-sources", required = true)
     private File outputDirectory;
 
-    @Parameter(defaultValue = "false")
-    private boolean groupDirectoryPerConnector;
+    @Parameter(defaultValue = "true")
+    private boolean groupDirectoryPerComponent;
 
     @Parameter(defaultValue = "")
     private String filenamePrefix = "";
@@ -85,8 +85,9 @@ public class SchemaGeneratorMojo extends AbstractMojo {
 
         try {
             int result = exec(SchemaGenerator.class.getName(), classPath, Collections.emptyList(),
-                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerConnector),
-                            quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix)));
+                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerComponent),
+                            quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix),
+                            project.getArtifact().getFile().getAbsolutePath()));
 
             if (result != 0) {
                 throw new MojoExecutionException("Couldn't generate API spec; please see the logs for more details");

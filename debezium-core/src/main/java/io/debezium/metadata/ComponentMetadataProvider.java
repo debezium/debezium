@@ -5,11 +5,9 @@
  */
 package io.debezium.metadata;
 
-import io.debezium.config.Field;
+import java.util.List;
 
-public interface ConnectorMetadata {
+public interface ComponentMetadataProvider {
 
-    ConnectorDescriptor getConnectorDescriptor();
-
-    Field.Set getConnectorFields();
+    List<ComponentMetadata> getConnectorMetadata();
 }

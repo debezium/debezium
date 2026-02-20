@@ -364,4 +364,5 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     private BsonDocument getFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
     }
+
 }

@@ -161,4 +161,5 @@ public class CollectionNameTransformation<R extends ConnectRecord<R>> implements
     public String version() {
         return Module.version();
     }
+
 }

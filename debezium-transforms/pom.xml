@@ -116,6 +116,10 @@
         </resources>
         <plugins>
             <plugin>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-schema-generator</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>

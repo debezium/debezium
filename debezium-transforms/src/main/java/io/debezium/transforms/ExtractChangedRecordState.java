@@ -33,14 +33,14 @@ import io.debezium.util.Strings;
  */
 public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
-    public static final Field HEADER_CHANGED_NAME = Field.create("header.changed.name")
+    private static final Field HEADER_CHANGED_NAME = Field.create("header.changed.name")
             .withDisplayName("Header change name.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Specify the header changed name, default is null which means not send changes to header.");
 
-    public static final Field HEADER_UNCHANGED_NAME = Field.create("header.unchanged.name")
+    private static final Field HEADER_UNCHANGED_NAME = Field.create("header.unchanged.name")
             .withDisplayName("Header unchanged name.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)

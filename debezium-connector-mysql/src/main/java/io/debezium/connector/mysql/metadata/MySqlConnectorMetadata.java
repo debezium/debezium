@@ -9,18 +9,18 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 
-public class MySqlConnectorMetadata implements ConnectorMetadata {
+public class MySqlConnectorMetadata implements ComponentMetadata {
 
     @Override
-    public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(MySqlConnector.class.getName(), Module.version());
+    public ComponentDescriptor getComponentDescriptor() {
+        return new ComponentDescriptor(MySqlConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getConnectorFields() {
+    public Field.Set getComponentFields() {
         return MySqlConnectorConfig.ALL_FIELDS;
     }
 }

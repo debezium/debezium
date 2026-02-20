@@ -316,4 +316,5 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
     public String version() {
         return Module.version();
     }
+
 }

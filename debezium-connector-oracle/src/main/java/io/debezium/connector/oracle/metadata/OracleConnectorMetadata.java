@@ -9,18 +9,18 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.Module;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 
-public class OracleConnectorMetadata implements ConnectorMetadata {
+public class OracleConnectorMetadata implements ComponentMetadata {
 
     @Override
-    public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(OracleConnector.class.getName(), Module.version());
+    public ComponentDescriptor getComponentDescriptor() {
+        return new ComponentDescriptor(OracleConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getConnectorFields() {
+    public Field.Set getComponentFields() {
         return OracleConnectorConfig.ALL_FIELDS;
     }
 

@@ -8,9 +8,11 @@ package io.debezium.schemagenerator.schema.debezium;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -20,8 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.schemagenerator.model.debezium.ConnectorDescriptor;
+import io.debezium.metadata.ComponentMetadata;
+import io.debezium.schemagenerator.model.debezium.ComponentDescriptor;
 import io.debezium.schemagenerator.model.debezium.Display;
 import io.debezium.schemagenerator.model.debezium.Group;
 import io.debezium.schemagenerator.model.debezium.Metadata;
@@ -37,31 +39,38 @@ public class DebeziumDescriptorSchemaCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumDescriptorSchemaCreator.class);
 
-    private final ConnectorMetadata connectorMetadata;
+    private final ComponentMetadata componentMetadata;
     private final FieldFilter fieldFilter;
 
-    public DebeziumDescriptorSchemaCreator(ConnectorMetadata connectorMetadata, FieldFilter fieldFilter) {
-        this.connectorMetadata = connectorMetadata;
+    public DebeziumDescriptorSchemaCreator(ComponentMetadata componentMetadata, FieldFilter fieldFilter) {
+        this.componentMetadata = componentMetadata;
         this.fieldFilter = fieldFilter;
     }
 
-    public ConnectorDescriptor buildDescriptor() {
+    public ComponentDescriptor buildDescriptor() {
 
         Metadata metadata = new Metadata(
-                "Captures changes from a " + connectorMetadata.getConnectorDescriptor().getDisplayName(),
+                // TODO provide a mechanism to get a meaningful description
+                componentMetadata.getComponentDescriptor().getDisplayName(),
                 null);
 
-        List<Property> properties = StreamSupport.stream(connectorMetadata.getConnectorFields().spliterator(), false)
+        List<Property> properties = new ArrayList<>();
+        Set<String> usedGroups = new LinkedHashSet<>();
+        StreamSupport.stream(componentMetadata.getConfigDefinition().all().spliterator(), false)
                 .map(this::buildProperty)
-                .filter(Objects::nonNull).toList();
+                .filter(Objects::nonNull)
+                .forEach(property -> {
+                    usedGroups.add(property.display().group().toLowerCase());
+                    properties.add(property);
+                });
 
-        return new ConnectorDescriptor(
-                connectorMetadata.getConnectorDescriptor().getDisplayName(),
-                "source-connector",
-                connectorMetadata.getConnectorDescriptor().getVersion(),
+        return new ComponentDescriptor(
+                componentMetadata.getComponentDescriptor().getDisplayName(),
+                componentMetadata.getComponentDescriptor().getType(),
+                componentMetadata.getComponentDescriptor().getVersion(),
                 metadata,
                 properties,
-                buildGroups());
+                buildGroups(usedGroups));
     }
 
     private Property buildProperty(Field field) {
@@ -155,18 +164,19 @@ public class DebeziumDescriptorSchemaCreator {
         return (Number) field.get(validator);
     }
 
-    private List<Group> buildGroups() {
+    private List<Group> buildGroups(Set<String> usedGroups) {
 
         return IntStream.range(0, Field.Group.values().length)
                 .mapToObj(groupPosition -> new Group(
                         formatGroupName(Field.Group.values()[groupPosition]),
                         groupPosition,
                         getGroupDescription(Field.Group.values()[groupPosition])))
+                .filter(group -> usedGroups.contains(group.name().toLowerCase()))
                 .collect(Collectors.toList());
     }
 
     private String formatGroupName(Field.Group group) {
-        // Convert enum name to readable format: CONNECTION_ADVANCED_SSL -> Connection Advanced SSL
+
         return Arrays.stream(group.name().split("_"))
                 .map(word -> word.charAt(0) + word.substring(1).toLowerCase())
                 .collect(Collectors.joining(" "));

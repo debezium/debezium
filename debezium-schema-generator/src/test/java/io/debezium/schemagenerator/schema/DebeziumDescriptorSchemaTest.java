@@ -23,8 +23,8 @@ import com.networknt.schema.ValidationMessage;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.DependentFieldMatcher;
 import io.debezium.config.Field;
-import io.debezium.metadata.ConnectorDescriptor;
-import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.metadata.ComponentDescriptor;
+import io.debezium.metadata.ComponentMetadata;
 import io.debezium.schemagenerator.schema.debezium.DebeziumDescriptorSchema;
 
 /**
@@ -37,10 +37,10 @@ class DebeziumDescriptorSchemaTest {
 
     @Test
     void testGeneratedDescriptorMatchesSchema() throws Exception {
-        ConnectorMetadata connectorMetadata = createMockConnectorMetadata();
+        ComponentMetadata componentMetadata = createMockConnectorMetadata();
 
         DebeziumDescriptorSchema schema = new DebeziumDescriptorSchema();
-        String descriptorJson = schema.getSpec(connectorMetadata);
+        String descriptorJson = schema.getSpec(componentMetadata);
 
         JsonNode descriptorNode = objectMapper.readTree(descriptorJson);
 
@@ -63,10 +63,10 @@ class DebeziumDescriptorSchemaTest {
 
     @Test
     void testDescriptorStructure() throws Exception {
-        ConnectorMetadata connectorMetadata = createMockConnectorMetadata();
+        ComponentMetadata componentMetadata = createMockConnectorMetadata();
 
         DebeziumDescriptorSchema schema = new DebeziumDescriptorSchema();
-        String descriptorJson = schema.getSpec(connectorMetadata);
+        String descriptorJson = schema.getSpec(componentMetadata);
 
         JsonNode descriptorNode = objectMapper.readTree(descriptorJson);
 
@@ -115,10 +115,10 @@ class DebeziumDescriptorSchemaTest {
     @Test
     void testValueDependantsStructure() throws Exception {
         // Using ConfigDefinition ensures matchers are resolved just like in real connectors
-        ConnectorMetadata connectorMetadata = createMockConnectorWithDependants();
+        ComponentMetadata componentMetadata = createMockConnectorWithDependants();
 
         DebeziumDescriptorSchema schema = new DebeziumDescriptorSchema();
-        String descriptorJson = schema.getSpec(connectorMetadata);
+        String descriptorJson = schema.getSpec(componentMetadata);
 
         JsonNode descriptorNode = objectMapper.readTree(descriptorJson);
         JsonNode properties = descriptorNode.get("properties");
@@ -150,10 +150,10 @@ class DebeziumDescriptorSchemaTest {
 
     @Test
     void testInternalPropertiesFiltered() throws Exception {
-        ConnectorMetadata connectorMetadata = createMockConnectorWithInternalProperties();
+        ComponentMetadata componentMetadata = createMockConnectorWithInternalProperties();
 
         DebeziumDescriptorSchema schema = new DebeziumDescriptorSchema();
-        String descriptorJson = schema.getSpec(connectorMetadata);
+        String descriptorJson = schema.getSpec(componentMetadata);
 
         JsonNode descriptorNode = objectMapper.readTree(descriptorJson);
         JsonNode properties = descriptorNode.get("properties");
@@ -166,10 +166,10 @@ class DebeziumDescriptorSchemaTest {
 
     @Test
     void testValidationExtraction() throws Exception {
-        ConnectorMetadata connectorMetadata = createMockConnectorWithValidations();
+        ComponentMetadata componentMetadata = createMockConnectorWithValidations();
 
         DebeziumDescriptorSchema schema = new DebeziumDescriptorSchema();
-        String descriptorJson = schema.getSpec(connectorMetadata);
+        String descriptorJson = schema.getSpec(componentMetadata);
 
         JsonNode descriptorNode = objectMapper.readTree(descriptorJson);
         JsonNode properties = descriptorNode.get("properties");
@@ -220,15 +220,15 @@ class DebeziumDescriptorSchemaTest {
         assertThat(minValidation.get("min").asInt()).isEqualTo(0);
     }
 
-    private ConnectorMetadata createMockConnectorMetadata() {
-        return new ConnectorMetadata() {
+    private ComponentMetadata createMockConnectorMetadata() {
+        return new ComponentMetadata() {
             @Override
-            public ConnectorDescriptor getConnectorDescriptor() {
-                return new ConnectorDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
             }
 
             @Override
-            public Field.Set getConnectorFields() {
+            public Field.Set getComponentFields() {
                 Field topicPrefix = Field.create("topic.prefix")
                         .withDisplayName("Topic prefix")
                         .withType(ConfigDef.Type.STRING)
@@ -251,15 +251,15 @@ class DebeziumDescriptorSchemaTest {
         };
     }
 
-    private ConnectorMetadata createMockConnectorWithDependants() {
-        return new ConnectorMetadata() {
+    private ComponentMetadata createMockConnectorWithDependants() {
+        return new ComponentMetadata() {
             @Override
-            public ConnectorDescriptor getConnectorDescriptor() {
-                return new ConnectorDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
             }
 
             @Override
-            public Field.Set getConnectorFields() {
+            public Field.Set getComponentFields() {
                 Field adapterField = Field.create("connection.adapter")
                         .withDisplayName("Connection Adapter")
                         .withType(ConfigDef.Type.STRING)
@@ -288,15 +288,15 @@ class DebeziumDescriptorSchemaTest {
         };
     }
 
-    private ConnectorMetadata createMockConnectorWithInternalProperties() {
-        return new ConnectorMetadata() {
+    private ComponentMetadata createMockConnectorWithInternalProperties() {
+        return new ComponentMetadata() {
             @Override
-            public ConnectorDescriptor getConnectorDescriptor() {
-                return new ConnectorDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
             }
 
             @Override
-            public Field.Set getConnectorFields() {
+            public Field.Set getComponentFields() {
                 Field normalField = Field.create("normal.property")
                         .withDisplayName("Normal Property")
                         .withType(ConfigDef.Type.STRING)
@@ -318,15 +318,15 @@ class DebeziumDescriptorSchemaTest {
         };
     }
 
-    private ConnectorMetadata createMockConnectorWithValidations() {
-        return new ConnectorMetadata() {
+    private ComponentMetadata createMockConnectorWithValidations() {
+        return new ComponentMetadata() {
             @Override
-            public ConnectorDescriptor getConnectorDescriptor() {
-                return new ConnectorDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
             }
 
             @Override
-            public Field.Set getConnectorFields() {
+            public Field.Set getComponentFields() {
                 java.util.Set<String> snapshotModes = new java.util.LinkedHashSet<>();
                 snapshotModes.add("always");
                 snapshotModes.add("initial");

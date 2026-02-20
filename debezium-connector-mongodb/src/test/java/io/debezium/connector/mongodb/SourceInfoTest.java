@@ -97,6 +97,7 @@ public class SourceInfoTest {
                 CHANGE_RESUME_TOKEN, // resumeToken
                 BsonDocument.parse("{db: \"test\", coll: \"names\"}"), // namespaceDocument
                 null, // destinationNamespaceDocument
+                null,
                 null, // fullDocument
                 null, // fullDocumentBeforeChange
                 new BsonDocument("_id", new BsonObjectId(new ObjectId("635019a078be67426d7cf4d2"))), // documentKey
@@ -291,6 +292,7 @@ public class SourceInfoTest {
                 CHANGE_RESUME_TOKEN, // resumeToken
                 BsonDocument.parse("{db: \"test\", coll: \"names\"}"), // namespaceDocument
                 null, // destinationNamespaceDocument
+                null,
                 null, // fullDocument
                 null, // fullDocumentBeforeChange
                 new BsonDocument("_id", new BsonObjectId(new ObjectId("635019a078be67426d7cf4d2"))), // documentKey
