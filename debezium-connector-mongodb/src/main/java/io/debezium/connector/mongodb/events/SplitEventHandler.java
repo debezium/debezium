@@ -77,12 +77,13 @@ public class SplitEventHandler<TResult> {
         var wallTime = firstOrNull(events, ChangeStreamDocument::getWallTime);
         var extraElements = firstOrNull(events, ChangeStreamDocument::getExtraElements);
         var namespaceType = firstOrNull(events, ChangeStreamDocument::getNamespaceType);
+        var namespaceTypeValue = namespaceType == null ? null : namespaceType.getValue();
 
         return new ChangeStreamDocument<TResult>(
                 operationTypeString,
                 resumeToken,
                 namespaceDocument,
-                namespaceType.getValue(),
+                namespaceTypeValue,
                 destinationNamespaceDocument,
                 fullDocument,
                 fullDocumentBeforeChange,

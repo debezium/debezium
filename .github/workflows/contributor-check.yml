@@ -1,16 +1,6 @@
 name: Contributor Check
 on:
-  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
-  # re security implications of using this trigger; in particular, no code from PR branches must
-  # be executed in any flows triggered by it
-  pull_request_target:
-    branches:
-      - main
-      - 1.*
-      - 2.*
-      - 3.*
-      - 4.*
-    types: [ opened ]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest

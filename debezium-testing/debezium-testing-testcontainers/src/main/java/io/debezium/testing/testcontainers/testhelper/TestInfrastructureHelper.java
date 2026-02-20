@@ -5,18 +5,21 @@
  */
 package io.debezium.testing.testcontainers.testhelper;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.awaitility.Awaitility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MariaDBContainer;
@@ -38,6 +41,8 @@ import io.debezium.testing.testcontainers.util.MoreStartables;
 public class TestInfrastructureHelper {
 
     public static final String KAFKA_HOSTNAME = "kafka-dbz";
+    public static final String LEGACY_KAFKA_HOSTNAME = "kafka";
+    public static final String KAFKA_BOOTSTRAP_SERVERS = KAFKA_HOSTNAME + ":9092," + LEGACY_KAFKA_HOSTNAME + ":9092";
     public static final int CI_CONTAINER_STARTUP_TIME = 90;
     private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST = "latest";
 
@@ -60,7 +65,7 @@ public class TestInfrastructureHelper {
 
     private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
             DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
-            .withNetworkAliases(KAFKA_HOSTNAME)
+            .withNetworkAliases(KAFKA_HOSTNAME, LEGACY_KAFKA_HOSTNAME)
             .withNetwork(NETWORK)
             .withEnv("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@" + KAFKA_HOSTNAME + ":9093")
             .withEnv("CLUSTER_ID", "5Yr1SIgYQz-b-dgRabWx4g")
@@ -121,8 +126,8 @@ public class TestInfrastructureHelper {
         return NETWORK;
     }
 
-    private static Supplier<Stream<Startable>> getContainers(DATABASE database) {
-        final Startable dbStartable = switch (database) {
+    private static Startable getDatabaseStartable(DATABASE database) {
+        return switch (database) {
             case POSTGRES -> POSTGRES_CONTAINER;
             case MYSQL -> MYSQL_CONTAINER;
             case MONGODB -> MONGODB_REPLICA;
@@ -131,14 +136,6 @@ public class TestInfrastructureHelper {
             case MARIADB -> MARIADB_CONTAINER;
             default -> null;
         };
-
-        if (null != dbStartable) {
-            return () -> Stream.of(KAFKA_CONTAINER, dbStartable, DEBEZIUM_CONTAINER);
-        }
-        if (DATABASE.DEBEZIUM_ONLY.equals(database)) {
-            return () -> Stream.of(DEBEZIUM_CONTAINER);
-        }
-        return () -> Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER);
     }
 
     public static String parseDebeziumVersion(String connectorVersion) {
@@ -161,16 +158,74 @@ public class TestInfrastructureHelper {
     }
 
     public static void startContainers(DATABASE database) {
-        final Supplier<Stream<Startable>> containers = getContainers(database);
+        final Startable dbStartable = getDatabaseStartable(database);
 
         if ("true".equals(System.getenv("CI"))) {
-            containers.get().forEach(container -> {
+            Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER, dbStartable).forEach(container -> {
                 if (container instanceof GenericContainer<?> && !(container instanceof OracleContainer)) {
                     ((GenericContainer<?>) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
                 }
             });
+            KAFKA_CONTAINER.withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
         }
-        MoreStartables.deepStartSync(containers.get());
+
+        // In CI, parallel startup may start Connect before Kafka is attached to the network,
+        // resulting in intermittent DNS failures for bootstrap servers.
+        if (!KAFKA_CONTAINER.isRunning()) {
+            KAFKA_CONTAINER.start();
+        }
+
+        if (dbStartable != null) {
+            MoreStartables.deepStartSync(Stream.of(dbStartable));
+        }
+
+        logContainersBeforeConnectStartup();
+
+        MoreStartables.deepStartSync(Stream.of(DEBEZIUM_CONTAINER));
+    }
+
+    private static void logContainersBeforeConnectStartup() {
+        final var dockerClient = DockerClientFactory.lazyClient();
+        final var dockerContainers = dockerClient.listContainersCmd().withShowAll(true).exec();
+
+        LOGGER.info("Container inventory before Kafka Connect startup: {} container(s)", dockerContainers.size());
+        for (var container : dockerContainers) {
+            final String containerId = container.getId();
+            final String shortContainerId = containerId.length() > 12 ? containerId.substring(0, 12) : containerId;
+            final String names = container.getNames() == null ? "" : Arrays.toString(container.getNames());
+            LOGGER.info("Container id={}, image={}, state={}, status={}, names={}",
+                    shortContainerId, container.getImage(), container.getState(), container.getStatus(), names);
+
+            try {
+                final Process process = new ProcessBuilder("docker", "logs", "--tail", "200", containerId)
+                        .redirectErrorStream(true)
+                        .start();
+                boolean completed = process.waitFor(15, TimeUnit.SECONDS);
+                if (!completed) {
+                    process.destroyForcibly();
+                    LOGGER.warn("Timed out while reading logs for container {}", shortContainerId);
+                    continue;
+                }
+                final String logs;
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    StringBuilder logsBuilder = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        logsBuilder.append(line).append(System.lineSeparator());
+                    }
+                    logs = logsBuilder.toString().trim();
+                }
+                if (logs.isBlank()) {
+                    LOGGER.info("Container {} logs: <empty>", shortContainerId);
+                }
+                else {
+                    LOGGER.info("Container {} logs:\n{}", shortContainerId, logs);
+                }
+            }
+            catch (Exception e) {
+                LOGGER.warn("Unable to read logs for container {}", shortContainerId, e);
+            }
+        }
     }
 
     private static void waitForDebeziumContainerIsStopped() {
@@ -194,7 +249,7 @@ public class TestInfrastructureHelper {
                 .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
-                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_BOOTSTRAP_SERVERS)
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
@@ -229,7 +284,7 @@ public class TestInfrastructureHelper {
         DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse(imageName))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
-                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_BOOTSTRAP_SERVERS)
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);

@@ -37,6 +37,17 @@
                 <artifactId>mockito-core</artifactId>
                 <version>${version.mockito}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${version.testcontainers}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-junit-jupiter</artifactId>
+                <version>${version.testcontainers}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -193,4 +204,3 @@
         </profile>
     </profiles>
 </project>
-
