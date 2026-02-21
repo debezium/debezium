@@ -310,7 +310,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         }
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                         anyData = true;
-                        updateEndTransactionTimer();
+                        resetEndTransactionTimer();
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                         if (!schemaChangeCheckpoints.isEmpty()) {
                             if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
@@ -572,15 +572,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
     }
 
-    private void updateEndTransactionTimer() {
-        if (endTransactionTimer == null) {
-            // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
-            if (!connectorConfig.isReadOnlyDatabaseConnection()) {
-                endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
-            }
-        }
-        else {
-            endTransactionTimer.hasElapsed();
+    private void resetEndTransactionTimer() {
+        // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
+        if (!connectorConfig.isReadOnlyDatabaseConnection()) {
+            endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
         }
     }
 
