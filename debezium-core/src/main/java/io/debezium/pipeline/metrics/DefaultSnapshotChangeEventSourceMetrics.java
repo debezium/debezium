@@ -176,6 +176,21 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     }
 
     @Override
+    public void chunkProgress(P partition, TableId tableId, long totalChunks, long completedChunks) {
+        snapshotMeter.chunkProgress(tableId, totalChunks, completedChunks);
+    }
+
+    @Override
+    public Map<String, Long> getTableChunkCounts() {
+        return snapshotMeter.getTableChunkCounts();
+    }
+
+    @Override
+    public Map<String, Long> getTableChunksCompletedCounts() {
+        return snapshotMeter.getTableChunksCompletedCounts();
+    }
+
+    @Override
     public void reset() {
         super.reset();
         snapshotMeter.reset();

@@ -84,6 +84,14 @@ If the snapshot is interrupted, and the connector task restarts, the metric coun
 Tables are incrementally added to the Map during processing.
 Updates every 10,000 rows scanned and upon completing a table.
 
+|[[connectors-snaps-metric-tablechunkcounts_{context}]]<<connectors-snaps-metric-tablechunkcounts_{context}, `+TableChunkCounts+`>>
+|`Map<String, Long>`
+|Map containing the number of chunks for each table in the snapshot when using chunk-based multithreaded snapshots.
+
+|[[connectors-snaps-metric-tablechunkscompletedcounts_{context}]]<<connectors-snaps-metric-tablechunkscompletedcounts_{context}, `+TableChunksCompletedCounts+`>>
+|`Map<String, Long>`
+|Map containing the number of chunks that have completed for each table in the snapshot when using chunk-based multithreaded snapshots.
+
 |[[connectors-snaps-metric-maxqueuesizeinbytes_{context}]]<<connectors-snaps-metric-maxqueuesizeinbytes_{context}, `MaxQueueSizeInBytes`>>
 |`long`
 |The maximum buffer of the queue in bytes. This metric is available if xref:{context}-property-max-queue-size-in-bytes[`max.queue.size.in.bytes`] is set to a positive long value.
