@@ -27,6 +27,8 @@ import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.document.Document;
+import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -364,6 +366,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                             "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                             "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_DATA_MAP = Field.create("snapshot.select.statement.overrides.data.map")
+            .withDisplayName("Snapshot select statement overrides map")
+            .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 9))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "This property contains a map of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME) and their select statements to use during snapshotting. " +
+                            "The format is a JSON object where keys are table names and values are the select queries.");
+
     /**
      * A comma-separated list of regular expressions that match schema names to be monitored.
      * Must not be used with {@link #SCHEMA_EXCLUDE_LIST}.
@@ -555,6 +567,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SCHEMA_EXCLUDE_LIST,
                     MSG_KEY_COLUMNS,
                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_DATA_MAP,
                     MASK_COLUMN_WITH_HASH,
                     MASK_COLUMN,
                     TRUNCATE_COLUMN,
@@ -752,11 +765,28 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             return Collections.emptyMap();
         }
 
+        Map<String, String> overridesFromMap = new HashMap<>();
+        String overridesJson = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_DATA_MAP);
+        LOGGER.debug("Snapshot select statement overrides data map: {}", overridesJson);
+        if (overridesJson != null) {
+            try {
+                Document document = DocumentReader.defaultReader().read(overridesJson);
+                for (Document.Field field : document) {
+                    overridesFromMap.put(field.getName().toString(), field.getValue().asString());
+                }
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to parse snapshot.select.statement.overrides.data.map as JSON", e);
+            }
+        }
+
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableValues) {
-
-            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            String statementOverride = overridesFromMap.get(table);
+            if (statementOverride == null) {
+                statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            }
             if (statementOverride == null) {
                 LOGGER.warn("Detected snapshot.select.statement.overrides for {} but no statement property {} defined",
                         SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
@@ -765,8 +795,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table),
-                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
-
+                    statementOverride);
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
