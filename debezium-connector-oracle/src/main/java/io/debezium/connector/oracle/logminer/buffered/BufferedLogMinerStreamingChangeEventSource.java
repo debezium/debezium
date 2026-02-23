@@ -54,7 +54,6 @@ import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrat
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -455,7 +454,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             final boolean skipEvents = isTransactionSkippedAtCommit(transaction);
             dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = getMetrics().getDatabaseOffset();
-            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventsProcessed) -> {
+            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventTrxId, eventTrxSeq, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
                     getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
@@ -540,7 +539,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         return false;
                     }
                     LOGGER.trace("Dispatching event {}", event.getEventType());
-                    commitConsumer.accept(event);
+                    commitConsumer.accept(event, null, 0L);
                     return true;
                 });
             }
@@ -645,13 +644,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.warn("Failed to process truncate event", e);
             getMetrics().incrementWarningCount();
         }
-    }
-
-    @Override
-    protected LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent) {
-        return getConfig().isLogMiningIncludeRedoSql()
-                ? new RedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
-                : new DmlEvent(event, parsedEvent);
     }
 
     @Override
