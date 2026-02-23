@@ -82,7 +82,7 @@
 
         <version.maven>3.9.8</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.1.0</version.source.plugin>
+        <version.source.plugin>3.4.0</version.source.plugin>
         <version.assembly.plugin>3.8.0</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
