@@ -89,7 +89,7 @@
         <version.docker.maven.plugin>0.48.1</version.docker.maven.plugin>
         <version.central.publishing.plugin>0.7.0</version.central.publishing.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
-        <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
+        <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
         <version.code.formatter>2.26.0</version.code.formatter>
         <version.surefire.plugin>3.5.5</version.surefire.plugin>
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
