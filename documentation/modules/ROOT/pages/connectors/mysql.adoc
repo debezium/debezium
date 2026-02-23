@@ -258,9 +258,12 @@ Send a {prodname} `set-binlog-position` signal at run time to specify the binlog
 
 [NOTE]
 ====
-Resetting the binlog position causes the connector to skip change events in the history between the current position and the new position. 
+Depending on the position that you specify in the `set-binlog-position` signal, the connector either excludes events from the log, or sends duplicate events. 
+
+If you specify a binlog position that is later than the current position, the connector skips change events in the history between the current position and the new position. 
 The connector does not capture or stream changes in the skipped range.
-Use this signal only when you intentionally want to exclude certain historical changes. 
+
+On the other hand, if the signal directs the connector to resume reading from a point earlier than the current position, the connector replays log entries that it previously sent, emitting duplicate events to the destination topic.
 ====
 
 .Prerequisites
