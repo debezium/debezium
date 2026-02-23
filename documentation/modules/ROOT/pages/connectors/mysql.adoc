@@ -192,7 +192,7 @@ You can send a {prodname} `set-binlog-position` signal at run time to dynamicall
 ====
 Resetting the binlog position causes the connector to skip change events in the history between the current position and the new position. 
 The connector does not capture or stream changes in the skipped range.
-Use this signal only when you ayou intentionally want to exclude certain historical changes. 
+Use this signal only when you you intentionally want to exclude certain historical changes. 
 ====
 
 You might want to reset the connector's binlog position under the following circumstances:
