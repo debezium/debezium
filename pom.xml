@@ -100,7 +100,7 @@
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
         <!-- Should be aligned with the jandex version used in quarkus version quarkus.version.runtime -->
         <version.jandex>3.4.0</version.jandex>
-        <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
+        <version.revapi-java.plugin>0.28.4</version.revapi-java.plugin>
         <version.build-helper.plugin>3.6.1</version.build-helper.plugin>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
