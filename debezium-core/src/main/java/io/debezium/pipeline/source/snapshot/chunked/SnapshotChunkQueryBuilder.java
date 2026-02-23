@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
 import io.debezium.relational.Column;
 
 /**
@@ -59,90 +60,23 @@ public class SnapshotChunkQueryBuilder {
 
     /**
      * Add lower bound condition: (k1, k2, ...) >= (?, ?, ...)
-     * For composite keys, uses row value constructor syntax or cascading OR conditions
-     * depending on database support.
+     * For composite keys, uses cascading OR conditions.
      */
     protected void addLowerBound(List<Column> keyColumns, StringBuilder sql) {
-        if (keyColumns.size() == 1) {
-            final String colName = jdbcConnection.quoteIdentifier(keyColumns.get(0).name());
-            sql.append(colName).append(" >= ?");
-        }
-        else {
-            addCompositeLowerBound(keyColumns, sql);
-        }
+        final List<String> quotedCols = keyColumns.stream()
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
+                .toList();
+        CascadingOrBoundaryConditions.buildLowerBound(quotedCols, sql, true);
     }
 
     /**
      * Add upper bound condition: (k1, k2, ...) < (?, ?, ...)
      */
     protected void addUpperBound(List<Column> keyColumns, StringBuilder sql, boolean inclusive) {
-        if (keyColumns.size() == 1) {
-            final String colName = jdbcConnection.quoteIdentifier(keyColumns.get(0).name());
-            sql.append(colName).append(inclusive ? " <= ?" : " < ?");
-        }
-        else {
-            addCompositeUpperBound(keyColumns, sql, inclusive);
-        }
-    }
-
-    /**
-     * Build composite key lower bound using cascading OR conditions.
-     * Pattern: (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 >= ?)
-     */
-    private void addCompositeLowerBound(List<Column> keyColumns, StringBuilder sql) {
-        final List<String> quotedColumnNames = keyColumns.stream()
+        final List<String> quotedCols = keyColumns.stream()
                 .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .toList();
-
-        sql.append('(');
-        for (int i = 0; i < keyColumns.size(); i++) {
-            if (i > 0) {
-                sql.append(" OR ");
-            }
-            sql.append('(');
-            for (int j = 0; j <= i; j++) {
-                if (j > 0) {
-                    sql.append(" AND ");
-                }
-                final String colName = quotedColumnNames.get(j);
-                if (j == i) {
-                    // Last column in this term: use > (or >= for final term)
-                    final String operator = (i == keyColumns.size() - 1) ? " >= ?" : " > ?";
-                    sql.append(colName).append(operator);
-                }
-                else {
-                    sql.append(colName).append(" = ?");
-                }
-            }
-            sql.append(')');
-        }
-        sql.append(')');
-    }
-
-    /**
-     * Build composite key upper bound using cascading OR conditions.
-     * Pattern: (k1 < ?) OR (k1 = ? AND k2 < ?) OR (k1 = ? AND k2 = ? AND k3 < ?)
-     */
-    private void addCompositeUpperBound(List<Column> keyColumns, StringBuilder sql, boolean inclusive) {
-        final List<String> quotedColumnNames = keyColumns.stream()
-                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
-                .toList();
-
-        final String operator = inclusive ? " <= ?" : " < ?";
-
-        sql.append('(');
-        for (int i = 0; i < keyColumns.size(); i++) {
-            if (i > 0) {
-                sql.append(" OR ");
-            }
-            sql.append('(');
-            for (int j = 0; j < i; j++) {
-                sql.append(quotedColumnNames.get(j)).append(" = ? AND ");
-            }
-            sql.append(quotedColumnNames.get(i)).append(operator);
-            sql.append(')');
-        }
-        sql.append(')');
+        CascadingOrBoundaryConditions.buildUpperBound(quotedCols, sql, inclusive);
     }
 
     /**
@@ -203,39 +137,17 @@ public class SnapshotChunkQueryBuilder {
 
         // Bind lower bound parameters
         if (chunk.hasLowerBound()) {
-            paramIndex = bindCompositeBoundary(statement, keyColumns, chunk.getLowerBounds(), paramIndex);
+            paramIndex = CascadingOrBoundaryConditions.bindTriangularParams(
+                    statement, keyColumns, chunk.getLowerBounds(), paramIndex, jdbcConnection);
         }
 
         // Bind upper bound parameters
         if (chunk.hasUpperBound()) {
-            bindCompositeBoundary(statement, keyColumns, chunk.getUpperBounds(), paramIndex);
+            CascadingOrBoundaryConditions.bindTriangularParams(
+                    statement, keyColumns, chunk.getUpperBounds(), paramIndex, jdbcConnection);
         }
 
         return statement;
-    }
-
-    /**
-     * Bind parameters for composite key boundary.
-     * Pattern: (k1 > ?) OR (k1 = ? AND k2 > ?) OR ...
-     * Params: v1, v1, v2, v1, v2, v3, ...
-     */
-    private int bindCompositeBoundary(PreparedStatement statement, List<Column> keyColumns, Object[] boundaryValues, int startIndex) throws SQLException {
-        int paramIndex = startIndex;
-
-        if (keyColumns.size() == 1) {
-            // Single column: just one parameter
-            jdbcConnection.setQueryColumnValue(statement, keyColumns.get(0), paramIndex++, boundaryValues[0]);
-        }
-        else {
-            // Composite: bind for each term in the OR pattern
-            for (int i = 0; i < keyColumns.size(); i++) {
-                for (int j = 0; j <= i; j++) {
-                    jdbcConnection.setQueryColumnValue(statement, keyColumns.get(j), paramIndex++, boundaryValues[j]);
-                }
-            }
-        }
-
-        return paramIndex;
     }
 
 }
