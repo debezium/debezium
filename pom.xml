@@ -96,7 +96,7 @@
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.12.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
-        <version.checkstyle>10.1</version.checkstyle>
+        <version.checkstyle>13.2.0</version.checkstyle>
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
         <!-- Should be aligned with the jandex version used in quarkus version quarkus.version.runtime -->
         <version.jandex>3.4.0</version.jandex>
