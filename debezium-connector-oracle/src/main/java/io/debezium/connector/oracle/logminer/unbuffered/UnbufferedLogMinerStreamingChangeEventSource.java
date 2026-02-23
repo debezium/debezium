@@ -31,12 +31,12 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.unbuffered.events.UnbufferedDmlEvent;
-import io.debezium.connector.oracle.logminer.unbuffered.events.UnbufferedRedoSqlDmlEvent;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -193,7 +193,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
         getMetrics().calculateLagFromSource(event.getChangeTime());
-        accumulator.accept(dispatchedEvent);
+        accumulator.accept(dispatchedEvent, event.getTransactionId(), event.getTransactionSequence());
     }
 
     @Override
@@ -493,13 +493,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
-    protected LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent) {
-        return getConfig().isLogMiningIncludeRedoSql()
-                ? new UnbufferedRedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
-                : new UnbufferedDmlEvent(event, parsedEvent);
-    }
-
-    @Override
     protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
         return !getMetrics().getBatchMetrics().hasProcessedAnyTransactions();
     }
@@ -509,31 +502,33 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      *
      * @param event the event to be dispatched, never {@code null}
      * @param eventIndex the event's index in the transaction
+     * @param eventTrxId the event's transaction identifier
+     * @param eventTrxSeq the event's transaction sequence
      * @param eventsProcessed the number of events dispatched thus far
      * @throws InterruptedException if the thread is interrupted
      */
-    protected void dispatchEvent(LogMinerEvent event, long eventIndex, long eventsProcessed) throws InterruptedException {
+    protected void dispatchEvent(LogMinerEvent event, long eventIndex, String eventTrxId, long eventTrxSeq, long eventsProcessed) throws InterruptedException {
         // NOTE:
         // When using the unbuffered mode, we rely on the LogMinerEvent's TransactionSequence value, which is
         // guaranteed to have the right value rather than using the synthetic eventIndex Debezium generates.
         // This makes sure that if the connector configuration is changed, such as a table added or removed
         // from the include list, the sequence is unaffected and the restart position is always the same.
 
-        if (event instanceof UnbufferedDmlEvent dmlEvent) {
+        if (event instanceof DmlEvent dmlEvent) {
             final int databaseOffsetSeconds = databaseOffset.getTotalSeconds();
 
             getMetrics().calculateLagFromSource(dmlEvent.getChangeTime());
 
             // Set per-event details
             getOffsetContext().setEventScn(dmlEvent.getScn());
-            getOffsetContext().setTransactionId(dmlEvent.getTransactionId());
-            getOffsetContext().setTransactionSequence(dmlEvent.getTransactionSequence());
+            getOffsetContext().setTransactionId(eventTrxId);
+            getOffsetContext().setTransactionSequence(eventTrxSeq);
             getOffsetContext().setSourceTime(dmlEvent.getChangeTime().minusSeconds(databaseOffsetSeconds));
             getOffsetContext().setTableId(dmlEvent.getTableId());
             getOffsetContext().setRsId(dmlEvent.getRsId());
             getOffsetContext().setRowId(dmlEvent.getRowIdAsString());
 
-            if (event instanceof UnbufferedRedoSqlDmlEvent redoDmlEvent) {
+            if (event instanceof RedoSqlDmlEvent redoDmlEvent) {
                 getOffsetContext().setRedoSql(redoDmlEvent.getRedoSql());
             }
 

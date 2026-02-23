@@ -38,6 +38,7 @@ import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
+import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
 import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
@@ -45,6 +46,7 @@ import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
@@ -243,15 +245,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws InterruptedException if the thread is interrupted
      */
     protected abstract void handleTruncateEvent(LogMinerEventRow event) throws InterruptedException;
-
-    /**
-     * Create the data change event object from the row and parsed data.
-     *
-     * @param event the data change event row, should not be {@code null}
-     * @param parsedEvent the parsed DML details, should not be {@code null}
-     * @return the resolved event, never {@code null}
-     */
-    protected abstract LogMinerEvent createDataChangeEvent(LogMinerEventRow event, LogMinerDmlEntry parsedEvent);
 
     protected ChangeEventSourceContext getContext() {
         return context;
@@ -1330,7 +1323,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             parsedEvent.setObjectName(event.getTableName());
             parsedEvent.setObjectOwner(event.getTablespaceName());
 
-            enqueueEvent(event, createDataChangeEvent(event, parsedEvent));
+            enqueueEvent(event, getConfig().isLogMiningIncludeRedoSql()
+                    ? new RedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
+                    : new DmlEvent(event, parsedEvent));
 
             getMetrics().incrementTotalChangesCount();
         }
