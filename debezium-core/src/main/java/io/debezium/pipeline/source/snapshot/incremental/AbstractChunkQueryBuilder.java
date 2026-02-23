@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
 import io.debezium.relational.Column;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -198,24 +199,11 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         if (context.isNonInitialChunk()) {
             final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
-            // Fill boundaries placeholders
-            int pos = 0;
             final List<Column> queryColumns = getQueryColumns(context, table);
-            for (int i = 0; i < chunkEndPosition.length; i++) {
-                for (int j = 0; j < i + 1; j++) {
-                    if (chunkEndPosition[j] != null) {
-                        jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, chunkEndPosition[j]);
-                    }
-                }
-            }
-            // Fill maximum key placeholders
-            for (int i = 0; i < maximumKey.length; i++) {
-                for (int j = 0; j < i + 1; j++) {
-                    if (maximumKey[j] != null) {
-                        jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, maximumKey[j]);
-                    }
-                }
-            }
+
+            // Fill lower-bound (chunk end) and upper-bound (maximum key) placeholders
+            int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, jdbcConnection);
+            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, maximumKey, pos, jdbcConnection);
         }
         return statement;
     }
