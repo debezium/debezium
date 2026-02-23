@@ -185,7 +185,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             LOGGER.info("No previous offset found");
         }
         else {
-            LOGGER.info("Found previous offset {}", previousOffset);
+            LOGGER.info("Found previous offset {}", previousOffset.getOffset());
         }
 
         try {
