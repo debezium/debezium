@@ -1,0 +1,18 @@
+{
+    "name": "#CONNECTOR_NAME#",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "database.hostname": "postgres",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname" : "postgres",
+        "database.server.name": "dbserver-#TEST_ID#",
+        "plugin.name": "pgoutput",
+        "schema.include.list": "#CAPTURED_SCHEMA#",
+        "table.include.list": "#CAPTURED_SCHEMA#.#CAPTURED_TABLE#,#CAPTURED_SCHEMA#.finish",
+        "max.queue.size": "131072",
+        "max.batch.size": "98304"
+    }
+}
