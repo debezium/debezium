@@ -25,6 +25,11 @@ public class MySqlChunkedSnapshotIT extends BinlogChunkedSnapshotIT<MySqlConnect
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning("mysql", DATABASE.getServerName());
+    }
+
+    @Override
     protected String connector() {
         return Module.name();
     }

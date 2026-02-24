@@ -78,6 +78,11 @@ public class SqlServerChunkedSnapshotIT extends AbstractChunkedSnapshotTest<SqlS
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        TestHelper.waitForStreamingStarted();
+    }
+
+    @Override
     protected String connector() {
         return "sql_server";
     }

@@ -79,6 +79,11 @@ public class PostgresChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Postg
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+    }
+
+    @Override
     protected String connector() {
         return "postgres";
     }

@@ -80,6 +80,11 @@ public class OracleChunkedSnapshotIT extends AbstractChunkedSnapshotTest<OracleC
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning(connector(), server());
+    }
+
+    @Override
     protected String connector() {
         return TestHelper.CONNECTOR_NAME;
     }

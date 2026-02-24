@@ -25,6 +25,11 @@ public class MariaDbChunkedSnapshotIT extends BinlogChunkedSnapshotIT<MariaDbCon
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning(connector(), server());
+    }
+
+    @Override
     protected String connector() {
         return Module.name();
     }
