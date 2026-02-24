@@ -319,7 +319,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
         List<javax.management.Notification> jmxNotifications = registerJmxNotificationListener();
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted();
+        waitForStreamingRunning();
 
         final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT);
         assertThat(allRecords.recordsForTopic(getTableTopicName(tableName))).hasSize(ROW_COUNT);
@@ -402,7 +402,6 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
                 .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
                 .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getMultipleSingleKeyCollectionNames())
-                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx")
                 .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
                 .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * tableNames.size() + 1024)
                 .build();
@@ -416,7 +415,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
         insertSingleKeyTableRow(ROW_COUNT + 1, tableNames.get(0));
 
-        waitForStreamingRunning(connector(), server());
+        waitForStreamingRunning();
 
         final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT * tableNames.size() + 1);
         for (String tableName : tableNames) {
@@ -457,7 +456,6 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
                 .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
                 .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getMultipleSingleKeyCollectionNames())
-                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx")
                 .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
                 .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * tableNames.size() + 1024)
                 .build();
@@ -471,7 +469,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
         insertSingleKeyTableRow(ROW_COUNT + 1, tableNames.get(tableNames.size() - 1));
 
-        waitForStreamingRunning(connector(), server());
+        waitForStreamingRunning();
 
         final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT * tableNames.size() + 1);
         for (String tableName : tableNames) {
@@ -589,7 +587,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
         connection.commit();
     }
 
-    @SuppressWarnings("SqlSourceToSinkFlow")
+    @SuppressWarnings({ "SqlSourceToSinkFlow", "SameParameterValue" })
     protected void insertSingleKeyTableRow(int keyValue, String tableName) throws SQLException {
         final JdbcConnection connection = getConnection();
         try (PreparedStatement st = connection.connection().prepareStatement("INSERT INTO " + tableName + " VALUES (?,?)")) {
@@ -706,6 +704,8 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
     protected abstract Configuration.Builder getConfig();
 
     protected abstract void waitForSnapshotToBeCompleted() throws InterruptedException;
+
+    protected abstract void waitForStreamingRunning() throws InterruptedException;
 
     protected abstract String getSingleKeyCollectionName();
 
