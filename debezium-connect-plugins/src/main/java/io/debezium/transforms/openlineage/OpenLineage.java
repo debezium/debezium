@@ -23,7 +23,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
@@ -31,7 +33,7 @@ import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
 
-public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLineage.class);
 
@@ -92,5 +94,10 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf();
     }
 }
