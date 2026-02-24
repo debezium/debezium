@@ -8,7 +8,9 @@ package io.debezium.pipeline.source.snapshot.chunked;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,17 +88,7 @@ public class ChunkBoundaryCalculator {
         final String sql = jdbcConnection.buildSelectPrimaryKeyBoundaries(tableId, position, keyColumnNames, keyColumnNames);
 
         LOGGER.debug("Boundary query at position {}: {}", position, sql);
-
-        return jdbcConnection.queryAndMap(sql, rs -> {
-            if (rs.next()) {
-                final Object[] values = new Object[keyColumns.size()];
-                for (int i = 0; i < keyColumns.size(); i++) {
-                    values[i] = rs.getObject(i + 1);
-                }
-                return values;
-            }
-            return null;
-        });
+        return queryColumnValues(keyColumns, sql);
     }
 
     /**
@@ -104,7 +96,7 @@ public class ChunkBoundaryCalculator {
      */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public List<SnapshotChunk> createChunks(Table table, List<Object[]> boundaries, int tableOrder, int tableCount, String baseSelectStatement,
-                                            OptionalLong totalRowCount) {
+                                            OptionalLong totalRowCount, Object[] maximumKey) {
         final List<SnapshotChunk> chunks = new ArrayList<>();
         final int numChunks = boundaries.size() + 1;
         final OptionalLong chunkRowEstimate = totalRowCount.isPresent()
@@ -113,7 +105,7 @@ public class ChunkBoundaryCalculator {
 
         for (int i = 0; i < numChunks; i++) {
             final Object[] lowerBound = (i == 0) ? null : boundaries.get(i - 1);
-            final Object[] upperBound = (i == numChunks - 1) ? null : boundaries.get(i);
+            final Object[] upperBound = (i == numChunks - 1) ? maximumKey : boundaries.get(i);
 
             chunks.add(new SnapshotChunk(
                     table.id(),
@@ -130,4 +122,33 @@ public class ChunkBoundaryCalculator {
 
         return chunks;
     }
+
+    public Object[] calculateMaxKey(Table table, List<Column> keyColumns) throws SQLException {
+        final String projection = String.join(", ", keyColumns.stream()
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
+                .toList());
+
+        final String orderBy = keyColumns.stream()
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
+                .collect(Collectors.joining(" DESC, ")) + " DESC";
+
+        final String sql = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, projection, Optional.empty(), Optional.empty(), orderBy);
+        LOGGER.debug("Max key query for table {}: {}", table.id(), sql);
+
+        return queryColumnValues(keyColumns, sql);
+    }
+
+    private Object[] queryColumnValues(List<Column> columns, String sql) throws SQLException {
+        return jdbcConnection.queryAndMap(sql, rs -> {
+            if (rs.next()) {
+                final Object[] values = new Object[columns.size()];
+                for (int i = 0; i < columns.size(); i++) {
+                    values[i] = rs.getObject(i + 1);
+                }
+                return values;
+            }
+            return null;
+        });
+    }
+
 }
