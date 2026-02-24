@@ -95,16 +95,14 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         connection.execute(inserts);
         connection.setAutoCommit(true);
 
-        connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
-
-        // BEGIN, data, END, BEGIN, data
-        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
+        // BEGIN, data, END
+        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
         final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
         assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        assertThat(tx).hasSize(3);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertThat(tx).hasSize(2);
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));

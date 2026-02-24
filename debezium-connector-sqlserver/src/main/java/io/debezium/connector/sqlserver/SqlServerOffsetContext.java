@@ -152,4 +152,8 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
     public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
         return incrementalSnapshotContext;
     }
+
+    public Instant getSourceTime() {
+        return sourceInfo.timestamp();
+    }
 }
