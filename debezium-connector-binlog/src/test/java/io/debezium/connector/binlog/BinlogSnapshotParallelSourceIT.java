@@ -31,7 +31,9 @@ public abstract class BinlogSnapshotParallelSourceIT<C extends SourceConnector> 
 
     @Override
     protected Configuration.Builder simpleConfig() {
-        return super.simpleConfig().with(BinlogConnectorConfig.SNAPSHOT_MAX_THREADS, 3);
+        return super.simpleConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MAX_THREADS, 3)
+                .with(BinlogConnectorConfig.LEGACY_SNAPSHOT_MAX_THREADS, Boolean.TRUE);
     }
 
     @Disabled
