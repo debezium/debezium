@@ -21,6 +21,7 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.transforms.SmtManager;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -38,7 +39,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
-public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpan.class);
 
@@ -162,5 +163,10 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             // ignored
         }
         return false;
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_OPERATION_NAME, TRACING_CONTEXT_FIELD_REQUIRED);
     }
 }
