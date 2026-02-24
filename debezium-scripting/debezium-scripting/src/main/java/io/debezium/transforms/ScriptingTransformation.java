@@ -20,6 +20,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.scripting.Engine;
 import io.debezium.transforms.scripting.GraalJsEngine;
 import io.debezium.transforms.scripting.Jsr223Engine;
@@ -39,7 +40,7 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  */
 @Incubating
-public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
@@ -222,5 +223,10 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(TOPIC_REGEX, LANGUAGE, expressionField(), NULL_HANDLING);
     }
 }
