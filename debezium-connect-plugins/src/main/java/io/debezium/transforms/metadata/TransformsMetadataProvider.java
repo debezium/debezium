@@ -20,6 +20,10 @@ import io.debezium.transforms.SchemaChangeEventFilter;
 import io.debezium.transforms.SwapGeometryCoordinates;
 import io.debezium.transforms.TimezoneConverter;
 import io.debezium.transforms.VectorToJsonConverter;
+import io.debezium.transforms.openlineage.OpenLineage;
+import io.debezium.transforms.outbox.EventRouter;
+import io.debezium.transforms.partitions.PartitionRouting;
+import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
  * Aggregator for all Debezium transformation metadata.
@@ -31,12 +35,16 @@ public class TransformsMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
+                componentMetadataFactory.createComponentMetadata(new ActivateTracingSpan<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ByLogicalTableRouter<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new EventRouter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractChangedRecordState<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewRecordState<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractSchemaToNewRecord<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new GeometryFormatTransformer<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new HeaderToValue<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new OpenLineage<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new PartitionRouting<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new SchemaChangeEventFilter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new SwapGeometryCoordinates<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TimezoneConverter<>(), io.debezium.Module.version()),
