@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
@@ -33,6 +34,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.data.Percentage;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -387,6 +389,116 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
     @Test
     @FixFor("dbz#1220")
+    public void shouldStreamInsertedRowDuringSnapshotOfSameTable() throws Exception {
+        final int ROW_COUNT = 30_000;
+
+        final List<String> tableNames = getMultipleSingleKeyTableNames();
+        for (String tableName : tableNames) {
+            createSingleKeyTable(tableName);
+            populateSingleKeyTable(tableName, ROW_COUNT);
+        }
+
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getMultipleSingleKeyCollectionNames())
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * tableNames.size() + 1024)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("Exporting chunk 1/4 from table '%s'".formatted(
+                        getFullyQualifiedTableName(tableNames.get(0)))));
+
+        insertSingleKeyTableRow(ROW_COUNT + 1, tableNames.get(0));
+
+        waitForStreamingRunning(connector(), server());
+
+        final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT * tableNames.size() + 1);
+        for (String tableName : tableNames) {
+            int expectedSize = ROW_COUNT;
+            if (tableName.equals(tableNames.get(0))) {
+                expectedSize += 1;
+            }
+
+            final List<SourceRecord> records = allRecords.recordsForTopic(getTableTopicName(tableName));
+            assertThat(records).hasSize(expectedSize);
+
+            final Collection<?> keys = getRecordKeysForSingleKeyTable(records, getSingleKeyTableKeyColumnName());
+            assertThat(keys).hasSize(expectedSize);
+
+            if (expectedSize > ROW_COUNT) {
+                // Make sure last entry for the table is the insert.
+                final SourceRecord lastRecord = records.get(records.size() - 1);
+                final Struct envelope = (Struct) lastRecord.value();
+                assertThat(envelope.getString(Envelope.FieldName.OPERATION)).isEqualTo("c");
+            }
+        }
+
+        assertThat(logInterceptor.containsMessage("Creating chunked snapshot worker pool with 2 worker thread(s)")).isTrue();
+    }
+
+    @Test
+    @FixFor("dbz#1220")
+    public void shouldStreamInsertedRowDuringSnapshotWhileTableIsWaitingForSnapshot() throws Exception {
+        final int ROW_COUNT = 30_000;
+
+        final List<String> tableNames = getMultipleSingleKeyTableNames();
+        for (String tableName : tableNames) {
+            createSingleKeyTable(tableName);
+            populateSingleKeyTable(tableName, ROW_COUNT);
+        }
+
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, getMultipleSingleKeyCollectionNames())
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT * tableNames.size() + 1024)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("Exporting chunk 1/4 from table '%s'".formatted(
+                        getFullyQualifiedTableName(tableNames.get(0)))));
+
+        insertSingleKeyTableRow(ROW_COUNT + 1, tableNames.get(tableNames.size() - 1));
+
+        waitForStreamingRunning(connector(), server());
+
+        final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT * tableNames.size() + 1);
+        for (String tableName : tableNames) {
+            int expectedSize = ROW_COUNT;
+            if (tableName.equals(tableNames.get(tableNames.size() - 1))) {
+                expectedSize += 1;
+            }
+
+            final List<SourceRecord> records = allRecords.recordsForTopic(getTableTopicName(tableName));
+            assertThat(records).hasSize(expectedSize);
+
+            final Collection<?> keys = getRecordKeysForSingleKeyTable(records, getSingleKeyTableKeyColumnName());
+            assertThat(keys).hasSize(expectedSize);
+
+            if (expectedSize > ROW_COUNT) {
+                // Make sure last entry for the table is the insert.
+                final SourceRecord lastRecord = records.get(records.size() - 1);
+                final Struct envelope = (Struct) lastRecord.value();
+                assertThat(envelope.getString(Envelope.FieldName.OPERATION)).isEqualTo("c");
+            }
+        }
+
+        assertThat(logInterceptor.containsMessage("Creating chunked snapshot worker pool with 2 worker thread(s)")).isTrue();
+    }
+
+    @Test
+    @FixFor("dbz#1220")
     public void shouldSnapshotChunkedWithSnapshotSelectOverride() throws Exception {
         final int ROW_COUNT = 10_000;
 
@@ -473,6 +585,18 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
                 st.addBatch();
             }
             st.executeBatch();
+        }
+        connection.commit();
+    }
+
+    @SuppressWarnings("SqlSourceToSinkFlow")
+    protected void insertSingleKeyTableRow(int keyValue, String tableName) throws SQLException {
+        final JdbcConnection connection = getConnection();
+        try (PreparedStatement st = connection.connection().prepareStatement("INSERT INTO " + tableName + " VALUES (?,?)")) {
+            st.setInt(1, keyValue);
+            st.setString(2, String.valueOf(keyValue));
+            st.execute();
+            System.out.printf("Inserted row into %s with key '%d' during snapshot.%n", tableName, keyValue);
         }
         connection.commit();
     }
