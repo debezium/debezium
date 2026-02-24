@@ -74,6 +74,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private static final Duration DEFAULT_INTERVAL_BETWEEN_COMMITS = Duration.ofMinutes(1);
     private static final int INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR = 3;
+    private static final int INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR = 2;
 
     /**
      * Connection used for reading CDC tables.
@@ -92,6 +93,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
     private final Duration pollInterval;
+    private final Duration endTransactionTimerDelay;
     private final SnapshotterService snapshotterService;
     private final SqlServerConnectorConfig connectorConfig;
 
@@ -99,6 +101,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
     private final Map<SqlServerPartition, Set<SqlServerChangeTable>> changeTablesWithKnownStopLsn = new HashMap<>();
 
+    private ElapsedTimeStrategy endTransactionTimer;
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
@@ -118,6 +121,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.schema = schema;
         this.notificationService = notificationService;
         this.pollInterval = connectorConfig.getPollInterval();
+        this.endTransactionTimerDelay = metadataConnection.getCdcCapturePollingInterval()
+                .multipliedBy(INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR);
         this.snapshotterService = snapshotterService;
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
         this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
@@ -177,6 +182,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
             if (context.isRunning()) {
                 commitTransaction();
+                endTransaction(partition, offsetContext.getSourceTime());
                 final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
@@ -246,6 +252,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     }
 
                     boolean anyData = false;
+                    resetEndTransactionTimer();
                     for (;;) {
                         SqlServerChangeTablePointer tableWithSmallestLsn = null;
                         for (SqlServerChangeTablePointer changeTable : changeTables) {
@@ -561,6 +568,27 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 LOGGER.info(
                         "Complete reading from change table {} as the committed change lsn ({}) is greater than the table's stop lsn ({})",
                         table, offset, table.getStopLsn().toString());
+            }
+        }
+    }
+
+    private void resetEndTransactionTimer() {
+        // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
+        if (!connectorConfig.isReadOnlyDatabaseConnection()) {
+            endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
+        }
+    }
+
+    private void endTransaction(SqlServerPartition partition, Instant sourceTime) {
+        if (endTransactionTimer != null && endTransactionTimer.hasElapsed() && metadataConnection.didTransactionEnd()) {
+            try {
+                dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            finally {
+                endTransactionTimer = null;
             }
         }
     }
