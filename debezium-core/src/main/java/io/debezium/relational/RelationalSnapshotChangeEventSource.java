@@ -72,6 +72,7 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -618,7 +619,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             tableOrder++;
         }
 
-        final long exportStart = clock.currentTimeInMillis();
+        final Stopwatch exportTimer = Stopwatch.accumulating();
         try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads, "chunked snapshot")) {
             for (SnapshotChunk chunk : allChunks) {
                 final Callable<Void> callable = createDataEventsForChunkedTableCallable(sourceContext, snapshotContext, snapshotReceiver,
@@ -627,9 +628,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
             executor.awaitCompletion();
         }
+        finally {
+            exportTimer.stop();
+        }
 
         LOGGER.info("Finished chunk snapshot of {} tables ({} chunks); duration '{}'",
-                tableCount, allChunks.size(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+                tableCount, allChunks.size(), Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
     }
 
     /**
@@ -931,7 +935,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Table table = chunk.getTable();
         final TableChunkProgress progress = progressMap.get(tableId);
 
-        final long exportStart = clock.currentTimeInMillis();
+        final Stopwatch exportTimer = Stopwatch.accumulating();
         LOGGER.info("Exporting chunk {}/{} from table '{}' ({}/{} tables)",
                 chunk.getChunkIndex() + 1, chunk.getTotalChunks(),
                 tableId, chunk.getTableOrder(), chunk.getTableCount());
@@ -978,10 +982,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
 
                     if (logTimer.expired()) {
-                        long stop = clock.currentTimeInMillis();
+                        exportTimer.stop();
                         LOGGER.info("\t Chunk {}: Exported {} records for table '{}' after {}",
                                 chunk.getChunkIndex() + 1, rows, tableId,
-                                Strings.duration(stop - exportStart));
+                                Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
+                        exportTimer.start();
                         logTimer = getTableScanLogTimer();
                     }
 
@@ -1001,6 +1006,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
 
             // Update progress
+            exportTimer.stop();
             progress.markChunkComplete(rows);
 
             // Signal chunk completion for non-last chunks
@@ -1013,7 +1019,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.info("\t Finished chunk {}/{} ({} records) for table '{}'; duration '{}'",
                     chunk.getChunkIndex() + 1, chunk.getTotalChunks(), rows, tableId,
-                    Strings.duration(clock.currentTimeInMillis() - exportStart));
+                    Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
 
             // Report table completion when all chunks done
             if (progress.isTableComplete()) {
