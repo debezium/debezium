@@ -607,8 +607,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 final int numChunks = calculateChunkCount(rowCount, snapshotMaxThreads, multiplier);
                 LOGGER.info("Table '{}' calculating chunk boundaries using multiplier {} with {} chunks.", tableId, multiplier, numChunks);
                 final List<Object[]> boundaries = boundaryCalculator.calculateBoundaries(table, keyColumns, rowCount, numChunks);
+                final Object[] maximumKey = boundaryCalculator.calculateMaxKey(table, keyColumns);
 
-                tableChunks = boundaryCalculator.createChunks(table, boundaries, tableOrder, tableCount, snapshotSelect.statement(), rowCount);
+                tableChunks = boundaryCalculator.createChunks(table, boundaries, tableOrder, tableCount, snapshotSelect.statement(), rowCount, maximumKey);
                 LOGGER.info("Table '{}' will be processed in {} chunks.", tableId, tableChunks.size());
             }
 
