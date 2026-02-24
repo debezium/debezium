@@ -264,7 +264,6 @@ If you specify a binlog position that is later than the current position, the co
 The connector does not capture or stream changes in the skipped range.
 
 On the other hand, if the signal directs the connector to resume reading from a point earlier than the current position, the connector replays log entries that it previously sent, emitting duplicate events to the destination topic.
-====
 
 .Prerequisites
 
