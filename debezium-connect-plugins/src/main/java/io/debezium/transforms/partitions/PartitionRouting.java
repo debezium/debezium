@@ -33,6 +33,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.MurmurHash3;
 
@@ -42,7 +43,7 @@ import io.debezium.util.MurmurHash3;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Mario Fiore Vitale
  */
-public class PartitionRouting<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class PartitionRouting<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRouting.class);
     private static final MurmurHash3 MURMUR_HASH_3 = MurmurHash3.getInstance();
@@ -257,5 +258,10 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD);
     }
 }
