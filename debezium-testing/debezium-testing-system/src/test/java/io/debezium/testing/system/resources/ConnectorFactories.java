@@ -209,4 +209,23 @@ public class ConnectorFactories {
                 .put("use.time.zone", "UTC")
                 .put("topics", "jdbc_sink_test");
     }
+
+    public ConnectorConfigBuilder informix(SqlDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
+        return cb
+                .put("topic.prefix", cb.getDbServerName())
+                .put("connector.class", "io.debezium.connector.informix.InformixConnector")
+                .put("task.max", 1)
+                .put("database.hostname", dbHost)
+                .put("database.port", dbPort)
+                .put("database.user", ConfigProperties.DATABASE_INFORMIX_DBZ_USERNAME)
+                .put("database.password", ConfigProperties.DATABASE_INFORMIX_DBZ_PASSWORD)
+                .put("database.dbname", ConfigProperties.DATABASE_INFORMIX_DBZ_DBNAME)
+                .put("schema.history.internal.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.internal.kafka.topic", "schema-changes.inventory")
+                .addOperationRouterForTable("u", "customers");
+    }
 }

@@ -50,7 +50,8 @@ public class NamespacePreparationListener implements TestExecutionListener {
                     ConfigProperties.OCP_PROJECT_MARIADB,
                     ConfigProperties.OCP_PROJECT_POSTGRESQL,
                     ConfigProperties.OCP_PROJECT_REGISTRY,
-                    ConfigProperties.OCP_PROJECT_SQLSERVER);
+                    ConfigProperties.OCP_PROJECT_SQLSERVER,
+                    ConfigProperties.OCP_PROJECT_INFORMIX);
 
             validateSystemParameters();
             if (ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {

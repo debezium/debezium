@@ -42,6 +42,7 @@
     <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
     <docker.image.db2>quay.io/rh_integration/dbz-db2-cdc:latest</docker.image.db2>
     <docker.image.oracle>quay.io/rh_integration/dbz-oracle:19.3.0</docker.image.oracle>
+    <docker.image.informix>quay.io/rh_integration/dbz-informix:14</docker.image.informix>
 
     <!--OCP configuration-->
     <ocp.request.retry.backoff.limit>5</ocp.request.retry.backoff.limit>
@@ -54,6 +55,7 @@
     <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
     <ocp.project.db2>${ocp.project.debezium}-db2</ocp.project.db2>
     <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
+    <ocp.project.informix>${ocp.project.debezium}-informix</ocp.project.informix>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
     <ocp.image.mariadb>${docker.image.mariadb}</ocp.image.mariadb>
@@ -64,6 +66,7 @@
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
     <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
+    <ocp.image.informix>${docker.image.informix}</ocp.image.informix>
 
     <!--Strimzi configuration-->
     <strimzi.operator.channel>stable</strimzi.operator.channel>
@@ -133,6 +136,14 @@
     <database.db2.dbz.password>${database.db2.password}</database.db2.dbz.password>
     <database.db2.dbname>TESTDB</database.db2.dbname>
     <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
+
+    <!--Informix configuration -->
+    <database.informix.port>9088</database.informix.port>
+    <database.informix.username>informix</database.informix.username>
+    <database.informix.password>in4mix</database.informix.password>
+    <database.informix.dbz.username>${database.informix.username}</database.informix.dbz.username>
+    <database.informix.dbz.password>${database.informix.password}</database.informix.dbz.password>
+    <database.informix.dbname>testdb</database.informix.dbname>
 
     <!-- Oracle configuration-->
     <database.oracle.username>debezium</database.oracle.username>
@@ -427,7 +438,6 @@
     </dependency>
 
     <dependency>
-
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
@@ -445,6 +455,11 @@
     <dependency>
       <groupId>com.ibm.db2</groupId>
       <artifactId>jcc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.ibm.informix</groupId>
+      <artifactId>jdbc</artifactId>
     </dependency>
 
     <dependency>
@@ -572,6 +587,7 @@
                 <test.docker.image.sqlserver>${docker.image.sqlserver}</test.docker.image.sqlserver>
                 <test.docker.image.db2>${docker.image.db2}</test.docker.image.db2>
                 <test.docker.image.oracle>${docker.image.oracle}</test.docker.image.oracle>
+                <test.docker.image.informix>${docker.image.informix}</test.docker.image.informix>
 
                 <!--OCP Configuration-->
                 <test.ocp.url>${ocp.url}</test.ocp.url>
@@ -662,6 +678,16 @@
                 <test.database.db2.dbz.password>${database.db2.dbz.password}</test.database.db2.dbz.password>
                 <test.database.db2.dbname>${database.db2.dbname}</test.database.db2.dbname>
                 <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
+
+                <!--Informix configuration-->
+                <test.database.informix.host>${database.informix.host}</test.database.informix.host>
+                <test.database.informix.port>${database.informix.port}</test.database.informix.port>
+                <test.database.informix.username>${database.informix.username}</test.database.informix.username>
+                <test.database.informix.password>${database.informix.password}</test.database.informix.password>
+                <test.database.informix.dbz.username>${database.informix.dbz.username}</test.database.informix.dbz.username>
+                <test.database.informix.dbz.password>${database.informix.dbz.password}</test.database.informix.dbz.password>
+                <test.database.informix.dbname>${database.informix.dbname}</test.database.informix.dbname>
+                <test.database.informix.cdc.schema>${database.informix.cdc.schema}</test.database.informix.cdc.schema>
 
                 <!-- Oracle configuration-->
                 <test.database.oracle>${database.oracle}</test.database.oracle>
