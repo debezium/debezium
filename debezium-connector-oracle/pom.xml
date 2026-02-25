@@ -874,5 +874,86 @@
                 <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
             </properties>
         </profile>
+        <profile>
+            <id>oracle-26</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
+                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
+                <oracle.image>container-registry.oracle.com/database/free:23.26.0.0</oracle.image>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-oracle</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-oracle</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <imagePullPolicy>IfNotPresent</imagePullPolicy>
+                            <images>
+                                <image>
+                                    <name>${oracle.image}</name>
+                                    <alias>oracle</alias>
+                                    <run>
+                                        <ports>
+                                            <port>1521:1521</port>
+                                        </ports>
+                                        <env>
+                                            <ORACLE_PWD>top_secret</ORACLE_PWD>
+                                            <ENABLE_ARCHIVELOG>true</ENABLE_ARCHIVELOG>
+                                        </env>
+                                        <log>
+                                            <prefix>oracle26</prefix>
+                                            <enabled>true</enabled>
+                                            <color>blue</color>
+                                        </log>
+                                        <wait>
+                                            <log>.*DONE: Executing user defined scripts.*</log>
+                                            <time>60000</time>
+                                        </wait>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${project.basedir}/src/test/docker/23.26.0.0:/opt/oracle/scripts/startup</volume>
+                                            </bind>
+                                        </volumes>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration combine.self="append">
+                            <systemPropertyVariables>
+                                <database.dbname>FREEPDB1</database.dbname>
+                                <database.pdb.name>FREEPDB1</database.pdb.name>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
