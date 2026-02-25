@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
@@ -62,6 +63,7 @@ public class PostgresEnumIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Test exercises type resolution by schema and type name used by pgoutput relation messages; decoderbufs resolves types by OID")
     public void shouldReproduceTypeRegistryDuplicateEnumNameBug() throws Exception {
 
         TestHelper.execute(
