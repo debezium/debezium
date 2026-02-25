@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-CONNECTORS="db2 mongodb mysql mariadb oracle postgres sqlserver jdbc"
+CONNECTORS="db2 mongodb mysql mariadb oracle postgres sqlserver jdbc informix"
 OPTS=$(getopt -o d:o:c: --long dir:,output:,connectors: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
@@ -69,6 +69,16 @@ for jackson_lib in **/jackson/*.jar; do
     fi
     echo "$artifact"
     echo "$artifact::$jackson_lib" >> "$OUTPUT"
+done
+
+for informix_lib in **/ifx/*.jar; do
+    name=$(echo "$informix_lib" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    artifact="$name"
+    if [[ ! $artifact ]]; then
+        continue
+    fi
+    echo "$artifact"
+    echo "$artifact::$informix_lib" >> "$OUTPUT"
 done
 
 popd || exit
