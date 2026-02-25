@@ -38,6 +38,7 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
     public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
+    public static final String DOCKER_IMAGE_INFORMIX = System.getProperty("test.docker.image.informix", "quay.io/rh_integration/dbz-informix:14");
 
     // OpenShift configuration
     public static final Optional<String> OCP_URL = stringOptionalProperty("test.ocp.url");
@@ -53,6 +54,7 @@ public final class ConfigProperties {
     public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", OCP_PROJECT_DBZ + "-mongo");
     public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", OCP_PROJECT_DBZ + "-db2");
     public static final String OCP_PROJECT_ORACLE = System.getProperty("test.ocp.project.oracle", OCP_PROJECT_DBZ + "-oracle");
+    public static final String OCP_PROJECT_INFORMIX = System.getProperty("test.ocp.project.informix", OCP_PROJECT_DBZ + "-informix");
 
     public static final Optional<String> OCP_PULL_SECRET_PATH = stringOptionalProperty("test.ocp.pull.secret.paths");
 
@@ -125,6 +127,14 @@ public final class ConfigProperties {
     public static final String DATABASE_DB2_CDC_SCHEMA = System.getProperty("test.database.db2.cdc.schema", "ASNCDC");
     public static final Optional<String> DATABASE_DB2_HOST = stringOptionalProperty("test.database.sqlserver.host");
     public static final int DATABASE_DB2_PORT = Integer.parseInt(System.getProperty("test.database.db2.port", "50000"));
+
+    // INFORMIX CONFIGURATION
+    public static final String DATABASE_INFORMIX_USERNAME = System.getProperty("test.database.informix.username", "informix");
+    public static final String DATABASE_INFORMIX_PASSWORD = System.getProperty("test.database.informix.password", "in4mix");
+    public static final String DATABASE_INFORMIX_DBZ_USERNAME = System.getProperty("test.database.informix.dbz.username", DATABASE_INFORMIX_USERNAME);
+    public static final String DATABASE_INFORMIX_DBZ_PASSWORD = System.getProperty("test.database.informix.dbz.password", DATABASE_INFORMIX_PASSWORD);
+    public static final String DATABASE_INFORMIX_DBZ_DBNAME = System.getProperty("test.database.informix.dbz.dbname", "testdb");
+    public static final int DATABASE_INFORMIX_PORT = Integer.parseInt(System.getProperty("test.database.informix.port", "9088"));
 
     // Oracle Configuration
     public static final boolean DATABASE_ORACLE = booleanProperty("test.database.oracle", true);
