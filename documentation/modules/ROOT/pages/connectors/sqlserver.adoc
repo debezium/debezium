@@ -1523,9 +1523,10 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 [WARNING]
 ====
-There is no way for {prodname} to reliably identify when a transaction has ended.
-The transaction `END` marker is thus emitted only after the first event of another transaction arrives.
-This can lead to the delayed delivery of `END` marker in case of a low-traffic system.
+When the {prodname} SQL Server connector captures changes from an Always On read-only replica, it does not reliably emit an `END` transaction marker immediately after a transaction completes.
+In other configurations, the connector can query link:https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/change-data-capture-sys-dm-cdc-log-scan-sessions[sys.dm_cdc_log_scan_sessions] to confirm that the most recent log scan session has concluded, but this dynamic management view (DMV) is not available for Always On read-only replicas.
+When {prodname} captures changes from an Always On read-only replica, the connector emits a transaction `END` event only after it detects the arrival of the first event from a subsequent transaction in the change tables.
+This behavior can cause {prodname} to delay delivery of the `END` markers in environments with low or infrequent traffic.
 ====
 
 The following example shows a typical transaction boundary message:
