@@ -324,10 +324,25 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
         final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT);
         assertThat(allRecords.recordsForTopic(getTableTopicName(tableName))).hasSize(ROW_COUNT);
 
+        final ObjectMapper mapper = new ObjectMapper();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final List<javax.management.Notification> list = new ArrayList<>(jmxNotifications);
+            return list.stream()
+                    .map(v -> {
+                        try {
+                            return mapper.readValue(v.getUserData().toString(), Notification.class);
+                        }
+                        catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .filter(n -> "TABLE_CHUNK_COMPLETED".equals(n.getType()))
+                    .count() == 4;
+        });
+
         MBeanNotificationInfo[] notifications = readJmxNotifications();
         assertThat(notifications).allSatisfy(mBeanNotificationInfo -> assertThat(mBeanNotificationInfo.getName()).isEqualTo(Notification.class.getName()));
-
-        ObjectMapper mapper = new ObjectMapper();
 
         Testing.Print.enable();
         if (Testing.Print.isEnabled()) {
