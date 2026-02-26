@@ -1519,9 +1519,9 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 [WARNING]
 ====
-There is no way for {prodname} to reliably identify when a transaction has ended.
-The transaction `END` marker is thus emitted only after the first event of another transaction arrives.
-This can lead to the delayed delivery of `END` marker in case of a low-traffic system.
+When capturing changes from an Always On read-only replica, there is no way for {prodname} to reliably identify if change tables contain all data for a given transaction.
+The transaction `END` marker is thus emitted only after the first event of another transaction arrives under these circumstances.
+This can lead to the delayed delivery of `END` markers in case of a low-traffic system.
 ====
 
 The following example shows a typical transaction boundary message:
