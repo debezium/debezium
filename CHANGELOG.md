@@ -2,6 +2,102 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+
+================================================================================
+                               CHANGELOG.md
+================================================================================
+## 3.5.0.Beta1
+February 26th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Beta1)
+
+### New features since 3.5.0.Alpha1
+
+* Add first time guided walk-thru tour of Stage(UI) [DBZ-9461] [debezium/dbz#1244](https://github.com/debezium/dbz/issues/1244)
+* Support for configuring binlog file and position to start CDC from [DBZ-3829] [debezium/dbz#1156](https://github.com/debezium/dbz/issues/1156)
+* Multi-threaded single table snapshots [DBZ-8783] [debezium/dbz#1220](https://github.com/debezium/dbz/issues/1220)
+* Debezium Extensions for Quarkus: support for oracle [DBZ-9383] [debezium/dbz#1389](https://github.com/debezium/dbz/issues/1389)
+* Reduce the Oracle memory/heap cache footprint to support longer/larger transactions [DBZ-9636] [debezium/dbz#1425](https://github.com/debezium/dbz/issues/1425)
+* Manage batch processing in Debezium Extensions for Quarkus [debezium/dbz#1484](https://github.com/debezium/dbz/issues/1484)
+* Add support for IBMi dialect in JDBC sink [debezium/dbz#1497](https://github.com/debezium/dbz/issues/1497)
+* postgres unnest insert way [debezium/dbz#1525](https://github.com/debezium/dbz/issues/1525)
+* vitess-connector: Add connector generation config & state [debezium/dbz#1530](https://github.com/debezium/dbz/issues/1530)
+* Allow mining session lower bound to advance when time threshold reached [debezium/dbz#1553](https://github.com/debezium/dbz/issues/1553)
+* Add support for managed identity in the SQL Server connector [DBZ-9746] [debezium/dbz#1153](https://github.com/debezium/dbz/issues/1153)
+* debezium-server/make the nats-jetstream name configurable [debezium/dbz#1581](https://github.com/debezium/dbz/issues/1581)
+* Make returnEmptyTransactions in InformixCdcTransactionEngine configurable [debezium/dbz#1587](https://github.com/debezium/dbz/issues/1587)
+* Allow incremental snapshot using physical row identifier ROWID for Oracle [DBZ-9582] [debezium/dbz#1108](https://github.com/debezium/dbz/issues/1108)
+* Use dm_cdc_log_scan_sessions for identifying transaction ends in SQL Server databases [debezium/dbz#1604](https://github.com/debezium/dbz/issues/1604)
+* Update Quarkus Extensions to Quarkus 3.31.3 [debezium/dbz#1606](https://github.com/debezium/dbz/issues/1606)
+* Update `mongodb-driver-sync` to 5.6.2 [debezium/dbz#1608](https://github.com/debezium/dbz/issues/1608)
+* CockroachDB connector enhancements and security fixes [debezium/dbz#1620](https://github.com/debezium/dbz/issues/1620)
+* NodeSelector and tolerations is not supported in Debezium-server CRDs defination of debezium-operator [debezium/dbz#1621](https://github.com/debezium/dbz/issues/1621)
+* Uppdate Informix JDBC Driver to v4.50.13 [debezium/dbz#1623](https://github.com/debezium/dbz/issues/1623)
+* Add snapshot support using CockroachDB changefeed initial_scan [debezium/dbz#1627](https://github.com/debezium/dbz/issues/1627)
+* CockroachDB connector: Multi-table concurrent changefeed support [debezium/dbz#1628](https://github.com/debezium/dbz/issues/1628)
+
+
+### Breaking changes since 3.5.0.Alpha1
+
+* Add key to `CapturingEvent` class [debezium/dbz#35](https://github.com/debezium/dbz/issues/35)
+
+
+### Fixes since 3.5.0.Alpha1
+
+* Incremental snapshot fails intermittently [DBZ-8273] [debezium/dbz#49](https://github.com/debezium/dbz/issues/49)
+* Avoid storing irrelevant DDL statement "REPLACE INTO" in schema history topic  [DBZ-9428] [debezium/dbz#1396](https://github.com/debezium/dbz/issues/1396)
+* Connector cannot handle uncompressed transaction payloads beyond 2GB [debezium/dbz#1503](https://github.com/debezium/dbz/issues/1503)
+* Use platform add Destination has error type [debezium/dbz#1505](https://github.com/debezium/dbz/issues/1505)
+* When using default value for event.processing.failure.handling.mode (fail), data conversion exceptions are swallowed and the connector keeps on running [debezium/dbz#1508](https://github.com/debezium/dbz/issues/1508)
+* EventDeserializer composition in mysql-binlog-connector-java library should be fixed [debezium/dbz#1518](https://github.com/debezium/dbz/issues/1518)
+* Oracle database PDB name in lowercase not collecting DML operation [DBZ-9054] [debezium/dbz#1057](https://github.com/debezium/dbz/issues/1057)
+* Avoid overfetching of data for multi-tenant use cases [debezium/dbz#1534](https://github.com/debezium/dbz/issues/1534)
+* Bug in TransactionPayloadIntegrationTest in mysql-binlog-connector-java repo [debezium/dbz#1539](https://github.com/debezium/dbz/issues/1539)
+* multi-engine support test step missed in debezium-quarkus workflow [debezium/dbz#1551](https://github.com/debezium/dbz/issues/1551)
+* Log mining lower boundary does not update until a log switch [debezium/dbz#1560](https://github.com/debezium/dbz/issues/1560)
+* Stuck transaction when using CTE query with Oracle connector [debezium/dbz#1564](https://github.com/debezium/dbz/issues/1564)
+* Oracle Create Table DDL fails to parse when using `AUTOMATIC` keyword in partition list [debezium/dbz#1566](https://github.com/debezium/dbz/issues/1566)
+* Implicit nullability in DDL (ALTER TABLE ... CHANGE ...) not respected by MySQL connector [debezium/dbz#1568](https://github.com/debezium/dbz/issues/1568)
+* SqlServerMetricsIT tests are unstable [debezium/dbz#1572](https://github.com/debezium/dbz/issues/1572)
+* "No enum constant io.debezium.connector.postgresql.connection.ReplicationMessage.Operation.NOOP" error when upgrading to Debezium 3.4.0 [debezium/dbz#1574](https://github.com/debezium/dbz/issues/1574)
+* ORA-03049 raised when querying archive logs [debezium/dbz#1579](https://github.com/debezium/dbz/issues/1579)
+* Oracle DDL fails to parse [debezium/dbz#1594](https://github.com/debezium/dbz/issues/1594)
+* Debezium platform: Make the password field to mask the user entered text [debezium/dbz#1598](https://github.com/debezium/dbz/issues/1598)
+* Event loss when Kafka producer fails (e.g. delivery.timeout.ms exceeded) [debezium/dbz#1610](https://github.com/debezium/dbz/issues/1610)
+* Oracle Alter index Modify Subpartition Shrink DDL fails [debezium/dbz#1637](https://github.com/debezium/dbz/issues/1637)
+* A rolled back transaction mined in two steps sometimes leads to partial transaction id [DBZ-9686] [debezium/dbz#1145](https://github.com/debezium/dbz/issues/1145)
+
+
+### Other changes since 3.5.0.Alpha1
+
+* Update the Governance section on the website [debezium/dbz#6](https://github.com/debezium/dbz/issues/6)
+* Remove unused quarkus.version.extension pom property  [debezium/dbz#39](https://github.com/debezium/dbz/issues/39)
+* Add support for ORIGIN Message in Postgresql Connector [debezium/dbz#1528](https://github.com/debezium/dbz/issues/1528)
+* Document custom.sanitize.pattern configuration property [debezium/dbz#1535](https://github.com/debezium/dbz/issues/1535)
+* Upgrade React Hooks ESLint rules and update codebase accordingly [debezium/dbz#1538](https://github.com/debezium/dbz/issues/1538)
+* Implement value-based field dependencies in configuration API [debezium/dbz#1542](https://github.com/debezium/dbz/issues/1542)
+* Migrate schema generator to produce new descriptor format [debezium/dbz#1543](https://github.com/debezium/dbz/issues/1543)
+* Generate configuration descriptors for transforms, predicates, and sinks [debezium/dbz#1544](https://github.com/debezium/dbz/issues/1544)
+* Debezium Platform: Update Platform UI dev workflow to target backend URL at compile time [debezium/dbz#1549](https://github.com/debezium/dbz/issues/1549)
+* Change XStream outbound server property with adapter prefix [debezium/dbz#1559](https://github.com/debezium/dbz/issues/1559)
+* Create Debezium performance first commit [debezium/dbz#1565](https://github.com/debezium/dbz/issues/1565)
+* Add banner support for the website [debezium/dbz#1571](https://github.com/debezium/dbz/issues/1571)
+* FAQ link to "embed" is broken [debezium/dbz#1575](https://github.com/debezium/dbz/issues/1575)
+* Duplicate line in FAQ [debezium/dbz#1576](https://github.com/debezium/dbz/issues/1576)
+* Update to AssertJ 3.27.7 [debezium/dbz#1577](https://github.com/debezium/dbz/issues/1577)
+* GHA push workflow should run all connector steps [debezium/dbz#1578](https://github.com/debezium/dbz/issues/1578)
+* Move transformations and predicates to a dedicated module [debezium/dbz#1583](https://github.com/debezium/dbz/issues/1583)
+* Add FAQ entry to oracle.adoc about ORA-01013 [debezium/dbz#1584](https://github.com/debezium/dbz/issues/1584)
+* Document and/or rework Redo Thread inconsistency log messages [debezium/dbz#1590](https://github.com/debezium/dbz/issues/1590)
+* Debezium Platform: Improvement to UI walk through [debezium/dbz#1592](https://github.com/debezium/dbz/issues/1592)
+* Add Podman example [debezium/dbz#1609](https://github.com/debezium/dbz/issues/1609)
+* Upgrade Testcontainers to 2.0.3 [debezium/dbz#1615](https://github.com/debezium/dbz/issues/1615)
+* Parallelized github worflow for debezium-quarkus repository [debezium/dbz#1625](https://github.com/debezium/dbz/issues/1625)
+* Use 65536 rather than 0x100000 in Informix `cdc.buffersize` [debezium/dbz#1635](https://github.com/debezium/dbz/issues/1635)
+* Update maven plugins [debezium/dbz#1641](https://github.com/debezium/dbz/issues/1641)
+* Update debezium operator base image [debezium/dbz#1645](https://github.com/debezium/dbz/issues/1645)
+* Debezium operator CI workflow fails for DCO check on main [debezium/dbz#1646](https://github.com/debezium/dbz/issues/1646)
+
+
+
 ## 3.5.0.Alpha1
 January 20th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Alpha1)
 

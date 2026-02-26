@@ -231,9 +231,9 @@ enum IssueType {
 
 @ToString
 class GitHubIssue {
-    def LABEL_COMPONENT = 'component/'
-    def LABEL_ISSUE_TYPE = 'type/'
-    def LABEL_RESOLUTION = 'resolution/'
+    static def LABEL_COMPONENT = 'component/'
+    static def LABEL_ISSUE_TYPE = 'type/'
+    static def LABEL_RESOLUTION = 'resolution/'
 
     def itemId
     def issueId
@@ -251,6 +251,10 @@ class GitHubIssue {
         catch (e) {
             throw new Exception("Error while getting issue type for ${this.url}", e)
         }
+    }
+
+    def hasType() {
+        labels.findAll({ it.startsWith(LABEL_ISSUE_TYPE) }).size() == 1
     }
 
     def getComponents() {
@@ -373,7 +377,8 @@ def checkIterationIsReadyForRelease() {
     def issues = getProjectIssuesForIteration(iterationTitle)
 
     def issuesWithoutComponentSet = issues.findAll { !it.components }
-    def issuesNotDone = issues.findAll { it.status != 'Done' }
+    def issuesNotDone = issues.findAll { it.status != 'Done' && it.status != 'Released' }
+    def issuesWithWrongTypeSet = issues.findAll { !it.hasType() }
 
     if (issuesWithoutComponentSet) {
         println '======================================================================'
@@ -389,6 +394,14 @@ def checkIterationIsReadyForRelease() {
         println '=========================================================================='
         checkFailed = true
     }
+    if (issuesWithWrongTypeSet) {
+        println '=========================================================================='
+        println 'All issues must have correct type set                                     '
+        issuesWithWrongTypeSet.each { println it.url }
+        println '=========================================================================='
+        checkFailed = true
+    }
+
 
     if (checkFailed) {
         System.exit(8)
@@ -452,7 +465,7 @@ def asciidocPlaceholderSection(section, issues) {
         println "There are no ${section.toLowerCase()} in this release."
     }
     else {
-        issues.each { issue -> println "[Placeholder for $section text] (${ISSUE_BASE_URL}${issue.key}[$issue.key]).\n" }
+        issues.each { issue -> println "[Placeholder for $section text] (${issue.url}[debezium/dbz#${issue.number}]).\n" }
     }
 
     println '\n'
@@ -466,8 +479,8 @@ def generateReleaseNotes() {
     }
 
     def issues = getProjectIssuesForIteration(iterationTitle)
-    if (issues.findAll { it.status != 'Done' }) {
-        System.err.println 'All issues must have Done status'
+    if (issues.findAll { it.status != 'Done' && it.status != 'Released' }) {
+        System.err.println 'All issues must have Done/Released status'
         System.exit(6)
     }
 

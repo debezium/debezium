@@ -332,3 +332,6 @@ rishabh singh,Rishabh Singh
 maarten.vercruysse,Maarten Vercruysse
 ARepin,Anton Repin
 jw-itq,Shiwanming
+archiedx,Archie David
+shinsj4653,Seongjun Shin
+redboyben,Benoit Audigier

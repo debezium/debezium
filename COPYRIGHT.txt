@@ -41,7 +41,9 @@ Andreas Bergmeier
 Andreas Martens
 Andras Istvan Nagy
 Andrei Leibovski
+Andrew Love
 Andrew Garrett
+Andrew Ofisher
 Andrew Tongen
 Andrew Walker
 Andrey Ignatenko
@@ -77,6 +79,7 @@ Attila Szucs
 Atsushi Torikoshi
 Auke van Leeuwen
 Avinash Vishwakarma
+Aviral Srivastava
 Aykut Farsak
 Aziza Kalmasova
 baabgai
@@ -90,6 +93,7 @@ Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
 Ben Williams
+Benoit Audigier
 Bertrand Paquet
 Bhagyashree Goyal
 Bhumika Bayani
@@ -179,6 +183,7 @@ Dmitry Volontyr
 Dominique Chanet
 Dou Pengwei
 Duc Le Tu
+Duncan Prince
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -245,6 +250,8 @@ Guy Pascarella
 Grzegorz Kołakowski
 Haydar Miezanie Abdul Jamil
 ibnubay
+Ian Muge
+Issam El Nasiri
 Jacob Barrieault
 Jacob Gminder
 Jakub Zalas
@@ -585,6 +592,7 @@ Sebastian Bruckner
 Seo Jae-kwon
 Seokjae Lee
 Seongjoon Jeong
+Seongjun Shin
 Sergei Kazakov
 Sergei Morozov
 Sergei Nikolaev
@@ -597,6 +605,7 @@ Shantanu Sharma
 Sherafudheen PM
 Sheldon Fuchs
 Shichao An
+Shishir Sharma
 Shivam Sharma
 Shubham Kalla
 Shubham Rawat
