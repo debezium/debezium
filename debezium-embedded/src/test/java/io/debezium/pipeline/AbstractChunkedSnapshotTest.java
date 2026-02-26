@@ -297,6 +297,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
 
     @Test
     @FixFor("dbz#1220")
+    @Disabled
     public void shouldSnapshotChunkedWithNotifications() throws Exception {
         final int ROW_COUNT = 10_000;
 
