@@ -2138,6 +2138,24 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    void shouldNotWarnAboutMissingSelectSelectStatementForSignalDataCollection() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
+
+        TestHelper.execute(SETUP_TABLES_STMT + "CREATE TABLE s1.debezium_signal (id varchar(32), type varchar(32), data varchar(2048));");
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        assertThat(consumeRecordsByTopic(1).recordsForTopic(topicName("s2.a")).size()).isEqualTo(1);
+        assertThat(logInterceptor.containsWarnMessage("For table 's1.debezium_signal' the select statement was not provided, skipping table"))
+                .as("There should be no warning that the signal data collection is skipped").isFalse();
+    }
+
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
         final String lsn = connection.prepareQueryAndMap(
                 "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
