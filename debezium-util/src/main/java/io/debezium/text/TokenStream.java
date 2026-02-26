@@ -6,6 +6,7 @@
 package io.debezium.text;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -13,11 +14,11 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.LongConsumer;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.function.BooleanConsumer;
-import io.debezium.util.Strings;
 
 /**
  * A foundation for basic parsers that tokenize input content and allows parsers to easily access and use those tokens. A
@@ -752,7 +753,7 @@ public class TokenStream {
     public String consumeAnyOf(int... typeOptions) throws IllegalStateException {
         if (completed) {
             throw new ParsingException(tokens.get(tokens.size() - 1).position(),
-                    "No more content but was expecting one token of type " + Strings.join("|", typeOptions));
+                    "No more content but was expecting one token of type " + Arrays.stream(typeOptions).mapToObj(String::valueOf).collect(Collectors.joining("|")));
         }
         for (int typeOption : typeOptions) {
             if (typeOption == ANY_TYPE || matches(typeOption)) {
@@ -763,7 +764,8 @@ public class TokenStream {
         String found = currentToken().value();
         Position pos = currentToken().position();
         String fragment = generateFragment();
-        String msg = "Expecting " + Strings.join("|", typeOptions) + " at line " + pos.line() + ", column " + pos.column() + " but found '"
+        String msg = "Expecting " + Arrays.stream(typeOptions).mapToObj(String::valueOf).collect(Collectors.joining("|")) + " at line " + pos.line() + ", column "
+                + pos.column() + " but found '"
                 + found + "': " + fragment;
         throw new ParsingException(pos, msg);
     }
