@@ -21,6 +21,12 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Align Kafka version with Debezium to resolve NoSuchMethodError in schema generator -->
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
