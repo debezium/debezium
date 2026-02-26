@@ -13,7 +13,7 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>

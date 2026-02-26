@@ -206,6 +206,7 @@
         <module>debezium-config</module>
         <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
+        <module>debezium-connector-common</module>
         <module>debezium-core</module>
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
@@ -228,6 +229,7 @@
         <module>debezium-sink</module>
         <module>debezium-ai</module>
         <module>debezium-openlineage</module>
+        <module>debezium-common</module>
     </modules>
 
     <distributionManagement>
