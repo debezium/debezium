@@ -9,29 +9,29 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-common</artifactId>
-    <name>Debezium Common</name>
+    <name>Debezium Common (Relocated to debezium-util)</name>
+    <packaging>pom</packaging>
+
+    <description>
+        This module has been relocated to debezium-util.
+        Please update your dependencies to use io.debezium:debezium-util instead.
+    </description>
+
+    <distributionManagement>
+        <relocation>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-util</artifactId>
+            <version>${project.version}</version>
+            <message>debezium-common has been split into debezium-util and debezium-config. Most utilities are now in debezium-util.</message>
+        </relocation>
+    </distributionManagement>
 
     <dependencies>
+        <!-- Transitively provide debezium-util for backward compatibility -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-util</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
-
-    <build>
-        <resources>
-            <!-- Apply the properties set in the POM to the resource files -->
-            <resource>
-                <filtering>true</filtering>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/build.properties</include>
-                    <include>**/*</include>
-                </includes>
-            </resource>
-        </resources>
-        <plugins>
-
-        </plugins>
-    </build>
 </project>
