@@ -24,6 +24,8 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.transforms.Module;
 import io.debezium.transforms.SmtManager;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
 
 /**
  * This SMT enables integration with a tracing system.
@@ -72,16 +74,29 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             .withDefault(false)
             .withDescription("Set to `true` when only events that have serialized context field should be traced.");
 
+    public static final Field TRACING_KEEP_SCOPE_ACTIVE = Field.create("tracing.keep.scope.active")
+            .withDisplayName("Keep OTel span scope active after processing")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("When true, keeps the OTel span scope active after processing, "
+                    + "so downstream HTTP calls (e.g. schema registry) are traced as child spans.");
+
     private String spanContextField;
     private String operationName;
     private boolean requireContextField;
+    private boolean keepScopeActive;
+
+    private Span activeSpan;
+    private Scope activeScope;
 
     private SmtManager<R> smtManager;
 
     @Override
     public void configure(Map<String, ?> props) {
         Configuration config = Configuration.from(props);
-        final Field.Set configFields = Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_OPERATION_NAME);
+        final Field.Set configFields = Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_OPERATION_NAME, TRACING_KEEP_SCOPE_ACTIVE);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -90,6 +105,7 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         spanContextField = config.getString(TRACING_SPAN_CONTEXT_FIELD);
         operationName = config.getString(TRACING_OPERATION_NAME);
         requireContextField = config.getBoolean(TRACING_CONTEXT_FIELD_REQUIRED);
+        keepScopeActive = config.getBoolean(TRACING_KEEP_SCOPE_ACTIVE);
 
         smtManager = new SmtManager<>(config);
     }
@@ -121,7 +137,17 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         }
 
         try {
-            return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
+            if (keepScopeActive) {
+                closeActiveScope();
+                TracingSpanUtil.TracingResult<R> result = TracingSpanUtil.traceRecordKeepingScope(
+                        connectRecord, envelope, source, propagatedSpanContext, operationName);
+                activeSpan = result.getSpan();
+                activeScope = result.getScope();
+                return result.getRecord();
+            }
+            else {
+                return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
+            }
         }
         catch (NoClassDefFoundError e) {
             throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
@@ -130,6 +156,18 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
 
     @Override
     public void close() {
+        closeActiveScope();
+    }
+
+    private void closeActiveScope() {
+        if (activeScope != null) {
+            activeScope.close();
+            activeScope = null;
+        }
+        if (activeSpan != null) {
+            activeSpan.end();
+            activeSpan = null;
+        }
     }
 
     @Override
@@ -140,7 +178,8 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
                 null,
                 TRACING_SPAN_CONTEXT_FIELD,
                 TRACING_OPERATION_NAME,
-                TRACING_CONTEXT_FIELD_REQUIRED);
+                TRACING_CONTEXT_FIELD_REQUIRED,
+                TRACING_KEEP_SCOPE_ACTIVE);
         return config;
     }
 

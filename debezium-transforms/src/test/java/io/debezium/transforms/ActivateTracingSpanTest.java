@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.javaagent.testing.common.AgentTestingExporterAccess;
 import io.opentelemetry.sdk.trace.data.SpanData;
 
@@ -204,5 +205,122 @@ public class ActivateTracingSpanTest {
 
         final Headers headers = transformedRecord.headers();
         assertThat(headers).isEmpty();
+    }
+
+    @Test
+    public void whenKeepScopeActiveIsTrueSpanContextRemainsActive() {
+        AgentTestingExporterAccess.reset();
+        final ActivateTracingSpan<SourceRecord> keepScopeTransform = new ActivateTracingSpan<>();
+        final Map<String, String> props = new HashMap<>();
+        props.put(ActivateTracingSpan.TRACING_KEEP_SCOPE_ACTIVE.name(), "true");
+        keepScopeTransform.configure(props);
+
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        after.put("id", (byte) 1);
+        after.put("name", "test");
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(after, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(record, true);
+        final SourceRecord transformedRecord = keepScopeTransform.apply(record);
+        VerifyRecord.isValid(transformedRecord, true);
+
+        // After apply, the span context should still be active
+        assertThat(Span.current().getSpanContext().isValid()).isTrue();
+
+        final Headers headers = transformedRecord.headers();
+        assertThat(headers).isNotEmpty();
+        assertThat(headers.lastWithName("traceparent")).isNotNull();
+
+        // Clean up: close the transform to end the active scope
+        keepScopeTransform.close();
+
+        // After close, the span should no longer be the current span
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
+    }
+
+    @Test
+    public void whenKeepScopeActiveIsTruePreviousScopeIsClosedOnNextApply() {
+        AgentTestingExporterAccess.reset();
+        final ActivateTracingSpan<SourceRecord> keepScopeTransform = new ActivateTracingSpan<>();
+        final Map<String, String> props = new HashMap<>();
+        props.put(ActivateTracingSpan.TRACING_KEEP_SCOPE_ACTIVE.name(), "true");
+        keepScopeTransform.configure(props);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        // First apply
+        final Struct after1 = new Struct(recordSchema);
+        final Struct source1 = new Struct(sourceSchema);
+        source1.put("table", "mytable");
+        source1.put("lsn", 1);
+        source1.put("ts_ms", 1588252618953L);
+        after1.put("id", (byte) 1);
+        after1.put("name", "test1");
+
+        final Struct payload1 = envelope.create(after1, source1, Instant.now());
+        SourceRecord record1 = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload1);
+
+        final SourceRecord transformedRecord1 = keepScopeTransform.apply(record1);
+        final String firstSpanId = Span.current().getSpanContext().getSpanId();
+        assertThat(Span.current().getSpanContext().isValid()).isTrue();
+
+        // Second apply — should close the previous scope first
+        final Struct after2 = new Struct(recordSchema);
+        final Struct source2 = new Struct(sourceSchema);
+        source2.put("table", "mytable");
+        source2.put("lsn", 2);
+        source2.put("ts_ms", 1588252619953L);
+        after2.put("id", (byte) 2);
+        after2.put("name", "test2");
+
+        final Struct payload2 = envelope.create(after2, source2, Instant.now());
+        SourceRecord record2 = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload2);
+
+        final SourceRecord transformedRecord2 = keepScopeTransform.apply(record2);
+        assertThat(Span.current().getSpanContext().isValid()).isTrue();
+
+        // The span should be different from the first one
+        final String secondSpanId = Span.current().getSpanContext().getSpanId();
+        assertThat(secondSpanId).isNotEqualTo(firstSpanId);
+
+        // Both records should have tracing headers
+        assertThat(transformedRecord1.headers().lastWithName("traceparent")).isNotNull();
+        assertThat(transformedRecord2.headers().lastWithName("traceparent")).isNotNull();
+
+        keepScopeTransform.close();
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
     }
 }

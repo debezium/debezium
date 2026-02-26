@@ -327,7 +327,8 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Tracing",
-                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD, ActivateTracingSpan.TRACING_OPERATION_NAME, ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED);
+                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD, ActivateTracingSpan.TRACING_OPERATION_NAME, ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED,
+                ActivateTracingSpan.TRACING_KEEP_SCOPE_ACTIVE);
         return config;
     }
 
