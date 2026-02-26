@@ -5014,6 +5014,7 @@ alter_table_properties
     | READ ONLY
     | READ WRITE
     | REKEY CHAR_STRING
+    | NO? ROW ARCHIVAL
     | annotations_clause? // todo: not upstream
     ;
 
