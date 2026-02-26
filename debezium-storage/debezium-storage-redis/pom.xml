@@ -59,7 +59,7 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -99,7 +99,7 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
