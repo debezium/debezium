@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -468,13 +469,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
+    protected void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
-        final OffsetContext offsetContext = signalPayload.offsetContext;
-        final P partition = signalPayload.partition;
         final String correlationId = signalPayload.id;
 
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
@@ -565,8 +563,109 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context.requestSnapshotStop(dataCollectionIds);
     }
 
+    @Override
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        LOGGER.info("Request data collections {}", signalPayload);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
+    }
+
+    /**
+     * Template method for processing heartbeat events.
+     * This method is final to ensure the common workflow is always executed:
+     * 1. Check and add data collections (common behavior)
+     * 2. Execute connector-specific heartbeat processing (via hook method)
+     *
+     * Subclasses should override {@link #doProcessHeartbeat(Partition, OffsetContext)}
+     * instead of this method to add their specific logic.
+     */
+    @Override
+    public final void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
+        doProcessHeartbeat(partition, offsetContext);
+    }
+
+    /**
+     * Template method for processing filtered events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
+    @Override
+    public final void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+        doProcessFilteredEvent(partition, offsetContext);
+    }
+
+    /**
+     * Template method for processing transaction started events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
+    @Override
+    public final void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+        doProcessTransactionStartedEvent(partition, offsetContext);
+    }
+
+    /**
+     * Template method for processing transaction committed events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
+    @Override
+    public final void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+        doProcessTransactionCommittedEvent(partition, offsetContext);
+    }
+
+    /**
+     * Hook method for subclasses to implement heartbeat-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement filtered event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement transaction started event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement transaction committed event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    protected void checkAndAddDataCollections(P partition, OffsetContext offsetContext) throws InterruptedException {
+        if (context == null) {
+            LOGGER.warn("Context is null, skipping check and add data collections");
+            return;
+        }
+        LOGGER.debug("Check and add data collections");
+        Queue<SignalDataCollection> queue = context.getDataCollectionsToAdd();
+        SignalDataCollection dataCollectionToAdd;
+        while ((dataCollectionToAdd = queue.poll()) != null) {
+            SignalPayload signalPayload = dataCollectionToAdd.getSignalPayload();
+            SnapshotConfiguration snapshotConfiguration = dataCollectionToAdd.getSnapshotConfiguration();
+            addDataCollectionNamesToSnapshot(partition, offsetContext, signalPayload, snapshotConfiguration);
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
+    protected void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
         if (dataCollectionsToStop.isEmpty()) {

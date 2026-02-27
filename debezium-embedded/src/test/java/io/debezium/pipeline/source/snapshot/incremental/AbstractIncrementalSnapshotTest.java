@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -495,10 +496,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         Map<String, List<SourceRecord>> recordsByTopic = dbChanges.stream().collect(Collectors.groupingBy(SourceRecord::topic,
                 Collectors.mapping(Function.identity(), Collectors.toList())));
 
-        Map<Integer, Integer> dbChangesA = recordsByTopic.get(topicNames().get(0)).stream()
+        Map<Integer, Integer> dbChangesA = recordsByTopic.getOrDefault(topicNames().get(0), Collections.emptyList()).stream()
                 .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
                         record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
-        Map<Integer, Integer> dbChangesB = recordsByTopic.get(topicNames().get(1)).stream()
+        Map<Integer, Integer> dbChangesB = recordsByTopic.getOrDefault(topicNames().get(1), Collections.emptyList()).stream()
                 .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
                         record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
 
@@ -1275,13 +1276,19 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 .distinct()
                 .collect(Collectors.toList())).contains("ad-hoc");
 
-        Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
+        Struct inProgress = incrementalSnapshotNotification.stream()
+                .filter(s -> s.getString("type").equals("IN_PROGRESS"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Expected an IN_PROGRESS incremental snapshot notification"));
         assertThat(inProgress.getMap("additional_data"))
                 .containsEntry("current_collection_in_progress", tableDataCollectionId())
                 .containsEntry("maximum_key", "1000")
                 .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()));
 
-        Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
+        Struct completed = incrementalSnapshotNotification.stream()
+                .filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a TABLE_SCAN_COMPLETED incremental snapshot notification"));
         assertThat(completed.getMap("additional_data"))
                 .containsEntry("total_rows_scanned", "1000");
     }

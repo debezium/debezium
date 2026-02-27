@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +60,7 @@ import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalDataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.WatermarkWindowCloser;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -385,14 +387,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         return key.get() != null ? new Object[]{ key.get() } : null;
     }
 
-    @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<MongoDbPartition> signalPayload,
-                                                 SnapshotConfiguration snapshotConfiguration)
+    protected void addDataCollectionNamesToSnapshot(MongoDbPartition partition, OffsetContext offsetContext, SignalPayload<MongoDbPartition> signalPayload,
+                                                    SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
-        final MongoDbPartition partition = signalPayload.partition;
-        final OffsetContext offsetContext = signalPayload.offsetContext;
         final String correlationId = signalPayload.id;
 
         if (!Strings.isNullOrEmpty(snapshotConfiguration.getSurrogateKey())) {
@@ -434,6 +433,32 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     public void requestStopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         context.requestSnapshotStop(dataCollectionPatterns);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload<MongoDbPartition> signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        LOGGER.info("Request data collections {}", signalPayload);
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
+    }
+
+    // No need to override process* methods - they're handled by the template method pattern in the abstract class
+
+    private void checkAndAddDataCollections(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        if (context == null) {
+            LOGGER.warn("Context is null, skipping check and add data collections");
+            return;
+        }
+        LOGGER.debug("Check and add data collections");
+        Queue<SignalDataCollection> queue = context.getDataCollectionsToAdd();
+        SignalDataCollection dataCollectionToAdd;
+        while ((dataCollectionToAdd = queue.poll()) != null) {
+            SignalPayload signalPayload = dataCollectionToAdd.getSignalPayload();
+            SnapshotConfiguration snapshotConfiguration = dataCollectionToAdd.getSnapshotConfiguration();
+            addDataCollectionNamesToSnapshot(partition, offsetContext, signalPayload, snapshotConfiguration);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -743,6 +768,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);

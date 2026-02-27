@@ -95,12 +95,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     @SuppressWarnings("unchecked")
-    public void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) {
+    public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, maybeRedactSensitiveData(key), window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);

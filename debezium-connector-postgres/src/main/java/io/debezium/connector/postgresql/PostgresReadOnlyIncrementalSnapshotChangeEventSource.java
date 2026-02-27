@@ -115,7 +115,8 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
 
     @Override
     public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
-
+        checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -136,8 +137,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-
+    protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -149,8 +149,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
-
+    protected void doProcessHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
