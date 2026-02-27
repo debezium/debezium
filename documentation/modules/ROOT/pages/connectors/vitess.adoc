@@ -262,6 +262,27 @@ The following example shows a data change event with ordered transaction metadat
 }
 ----
 
+[[vitess-connector-generation]]
+=== Connector Generation
+
+When you make changes to the connector configuration that affect transaction ordering semantics, you must increment the connector generation to ensure that downstream consumers can correctly determine event order.
+The connector generation is a configuration property that, when increased, triggers an automatic increment of the `transaction_epoch` for all shards.
+
+.When to Increment Connector Generation
+
+Increment the connector generation when you enable or disable features that change how the `transaction_rank` field is computed.
+For example, when enabling transaction chunking, the `transaction_rank` is computed differently because the VGTID is not available until the final chunk of a transaction.
+Without incrementing the connector generation, downstream consumers might incorrectly determine event order when comparing events produced before and after the configuration change.
+
+.How Connector Generation Works
+
+When the connector starts and detects that the configured generation is higher than the generation stored in the offset, it increments the `transaction_epoch` for all shards by one.
+This ensures that events produced after the configuration change have a higher epoch than events produced before, allowing consumers to correctly apply the ordering logic described in xref:vitess-ordered-transaction-metadata[Ordered Transaction Metadata].
+
+The connector also increments epochs if the configured generation is lower than the stored generation (a downgrade scenario), as a safety measure.
+
+To configure the connector generation, set the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+
 [[vitess-efficient-transaction-metadata]]
 === Efficient Transaction Metadata
 
@@ -1799,6 +1820,14 @@ That is, the connector streams all `insert`, `update`, and `delete` operations.
 `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory` provides additional transaction metadata that can help consumers to interpret the correct order of two events, regardless of the order in which they are consumed.
 For more information, see xref:vitess-ordered-transaction-metadata[Ordered transaction metadata].
 
+|[[vitess-property-connector-generation]]<<vitess-property-connector-generation, `+vitess.connector.generation+`>>
+|`0`
+|Generation number for transaction ordering semantics.
+Increment this value when making configuration changes that affect how transaction ordering metadata is computed, such as enabling transaction chunking.
+When the connector detects that the configured generation differs from the generation stored in the offset, it increments the `transaction_epoch` for all shards.
+This setting only takes effect when `transaction.metadata.factory` is set to `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory`.
+For more information, see xref:vitess-connector-generation[Connector Generation].
+
 |[[vitess-property-keepalive-interval-ms]]<<vitess-property-keepalive-interval-ms, `+vitess.keepalive.interval.ms+`>>
 |`Long.MAX_VALUE`
 |Control the interval between periodic gPRC keepalive pings for VStream. Defaults to `Long.MAX_VALUE` (disabled).
@@ -1876,7 +1905,7 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
