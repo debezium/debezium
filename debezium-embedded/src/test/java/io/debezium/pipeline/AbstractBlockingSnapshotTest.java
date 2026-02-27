@@ -33,6 +33,7 @@ import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
@@ -412,9 +413,53 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         waitForAvailableRecords();
 
-        assertRecordsWithValuesPresent(2001, IntStream.rangeClosed(1000, 2000).boxed().collect(Collectors.toList()), topicName(), consumeRecordsByTopic(2101, 20));
+        // 2000 + 1 from table A, 1 from signalling and 99 from table B
+        List<SourceRecord> records = consumeRecordsByTopic(2101, 20).recordsForTopic(topicName());
+        int recordCount = records.size();
+        if (recordCount != 2001) {
+            // The signal record is likely reprocessed so we need to consume 200 records more + 1 signalling record
+            List<SourceRecord> additionalRecords = consumeRecordsByTopic(201, 20).recordsForTopic(topicName());
+            records.addAll(additionalRecords);
+            recordCount += additionalRecords.size();
+        }
+
+        List<Integer> actual = records.stream()
+                .map(s -> ((Struct) s.value()).getStruct("after").getInt32(valueFieldName()))
+                .collect(Collectors.toList());
+
+        assertThat(recordCount).isEqualTo(2001);
+        assertThat(actual).containsAll(IntStream.rangeClosed(1000, 2000).boxed().collect(Collectors.toList()));
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-9494")
+    public void anErrorDuringBlockingSnapshotShouldNotLeaveTheStreamingPaused() throws Exception {
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 1));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        insertRecords(ROW_COUNT, ROW_COUNT);
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 20);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                String.format("{\"data-collection\": \"%s\"}", tableDataCollectionIds().get(1)), "", BLOCKING,
+                tableDataCollectionIds().get(1));
+
+        waitForLogMessage("Error while executing requested blocking snapshot.", ChangeEventSourceCoordinator.class);
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        signalingRecords = 1;
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
     }
 
     protected int expectedDdlsCount() {
