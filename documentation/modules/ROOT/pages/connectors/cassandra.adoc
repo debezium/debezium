@@ -836,7 +836,7 @@ varint.handling.mode=precise::
 
 |`varint`
 |`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
+a|`org.apache.kafka.connect.data.Decimal`
 The `scale` schema parameter is set to zero.
 
 |===
@@ -880,7 +880,7 @@ decimal.handling.mode=precise::
 
 |`decimal`
 |`STRUCT`
-a|`io.debezium.data.VariableScaleDecimal` +
+a|`io.debezium.data.VariableScaleDecimal`
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
@@ -1186,24 +1186,24 @@ Users are supposed to implement their own customized commit log transfer class i
 |[[cassandra-property-converters]]<<cassandra-property-converters, `converters`>>
 |No default
 |Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
-For example, +
+For example,
 
 `isbn`
 
 You must set the `converters` property to enable the connector to use a custom converter.
 
 For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
-The `.type` property uses the following format: +
+The `.type` property uses the following format:
 
-`_<converterSymbolicName>_.type` +
+`_<converterSymbolicName>_.type`
 
-For example, +
+For example,
 
  isbn.type: io.debezium.test.IsbnConverter
 
 If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
 To associate any additional configuration parameter with a converter, prefix the parameter names with the symbolic name of the converter.
-For example, +
+For example,
 
  isbn.schema.name: io.debezium.cassandra.type.Isbn
 
@@ -1236,7 +1236,7 @@ The capacity of the queue to hold deserialized records before they are converted
 |`0`
 |A long integer value that specifies the maximum volume of the blocking queue in bytes.
 By default, volume limits are not specified for the blocking queue.
-To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+To specify the number of bytes that the queue can consume, set this property to a positive long value.
 If xref:cassandra-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
@@ -1290,8 +1290,8 @@ By default, truncate operations are skipped (not emitted by this connector).
 
 |[[cassandra-property-topic-prefix]]<<cassandra-property-topic-prefix, `topic.prefix`>>
 |No default
-|The name of the prefix to be used for all topics. +
- +
+|The name of the prefix to be used for all topics.
+
 [WARNING]
 ====
 Do not change the value of this property.
@@ -1307,47 +1307,47 @@ This cache helps to determine the topic name corresponding to a given data colle
 |[[cassandra-property-topic-heartbeat-prefix]]<<cassandra-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
 |`__debezium-heartbeat`
 |Controls the name of the topic to which the connector sends heartbeat messages.
-The topic name has the following pattern: +
- +
-_topic.heartbeat.prefix_._topic.prefix_ +
- +
+The topic name has the following pattern:
+
+_topic.heartbeat.prefix_._topic.prefix_
+
 For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[cassandra-property-varint-handling-mode]]<<cassandra-property-varint-handling-mode, `varint.handling.mode`>>
 |`long`
-|Specifies how `varint` columns should be represented in change events. Possible settings are: +
- +
-`long` (the default) represents values by using Java's `long`, which might not offer the precision but which is easy to use in consumers. +
- +
-`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type. +
- +
+|Specifies how `varint` columns should be represented in change events. Possible settings are:
+
+`long` (the default) represents values by using Java's `long`, which might not offer the precision but which is easy to use in consumers.
+
+`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type.
+
 `string` encodes values as formatted strings, which is easy to consume.
 
 |[[cassandra-property-decimal-handling-mode]]<<cassandra-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`double`
-|Specifies how `decimal` columns should be represented in change events. Possible settings are: +
- +
-`double` (the default) represents values by using Java's `double`, which might not offer the precision but which is easy to use in consumers. +
- +
-`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.VariableScaleDecimal` type. +
- +
+|Specifies how `decimal` columns should be represented in change events. Possible settings are:
+
+`double` (the default) represents values by using Java's `double`, which might not offer the precision but which is easy to use in consumers.
+
+`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.VariableScaleDecimal` type.
+
 `string` encodes values as formatted strings, which is easy to consume.
 
 |[[cassandra-property-schema-name-adjustment-mode]]<<cassandra-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 |[[cassandra-property-field-name-adjustment-mode]]<<cassandra-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
@@ -1378,7 +1378,7 @@ The pattern that you specify for the `custom.sanitize.pattern` property override
 
 |[[cassandra-property-errors-max-retires]]<<cassandra-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|Specifies how the connector responds after an operation fails with a retriable error, such as a connection error. +
+|Specifies how the connector responds after an operation fails with a retriable error, such as a connection error.
 Set one of the following options:
 
 `-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.

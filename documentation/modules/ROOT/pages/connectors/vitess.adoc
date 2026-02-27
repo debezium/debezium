@@ -337,8 +337,8 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 
 |1
 |`schema`
-|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the first single-column unique key if the table does not have a primary key, for the table that was changed. Multi-column unique key is not supported. +
- +
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the first single-column unique key if the table does not have a primary key, for the table that was changed. Multi-column unique key is not supported.
+
 It is possible to override the table's primary key by setting the xref:vitess-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
@@ -435,10 +435,10 @@ If the `topic.prefix` connector configuration property has the value `Vitess_ser
 
 |2
 |`Vitess_server.commerce.customers.Key`
-a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._keyspace-name_._table-name_.`Key`. In this example: +
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._keyspace-name_._table-name_.`Key`. In this example:
 
-* `Vitess_server` is the name of the connector that generated this event. +
-* `commerce` is the keyspace that contains the table that was changed. +
+* `Vitess_server` is the name of the connector that generated this event.
+* `commerce` is the keyspace that contains the table that was changed.
 * `customers` is the table that was updated.
 
 |3
@@ -702,10 +702,10 @@ The following example shows the value portion of a change event that the connect
 
 |2
 |`name`
-a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
- +
-`Vitess_server.commerce.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. +
- +
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload.
+
+`Vitess_server.commerce.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table.
+
 Names of schemas for `before` and `after` fields are of the form `_logicalName_._keyspaceName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the xref:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
 |3
@@ -718,8 +718,8 @@ a|`Vitess_server.commerce.customers.Envelope` is the schema for the overall stru
 
 |5
 |`payload`
-|The value's actual data. This is the information that the change event is providing. +
- +
+|The value's actual data. This is the information that the change event is providing.
+
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
 However, by using the xref:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
@@ -753,8 +753,8 @@ a|Mandatory string that describes the type of operation that caused the connecto
 |10
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
@@ -836,8 +836,8 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
@@ -928,8 +928,8 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
@@ -1063,17 +1063,17 @@ a|_n/a_
 
 |`JSON`
 |`STRING`
-a|`io.debezium.data.Json` +
+a|`io.debezium.data.Json`
 Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
 |`STRING`
-a|`io.debezium.data.Enum` +
+a|`io.debezium.data.Enum`
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |`STRING`
-a|`io.debezium.data.EnumSet` +
+a|`io.debezium.data.EnumSet`
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
@@ -1082,7 +1082,7 @@ The `allowed` schema parameter contains the comma-separated list of allowed valu
 
 |`TIMESTAMP[(M)]`
 |`STRING`
-a|_n/a_ +
+a|_n/a_
 In `yyyy-MM-dd HH:mm:ss.SSS` format with microsecond precision based on UTC. MySQL allows `M` to be in the range of `0-6`.
 
 |`NUMERIC[(M[,D])]`
@@ -1093,12 +1093,12 @@ a|_n/a_
 |`STRING`
 a|_n/a_
 
-|`GEOMETRY, +
-LINESTRING, +
-POLYGON, +
-MULTIPOINT, +
-MULTILINESTRING, +
-MULTIPOLYGON, +
+|`GEOMETRY,
+LINESTRING,
+POLYGON,
+MULTIPOINT,
+MULTILINESTRING,
+MULTIPOLYGON,
 GEOMETRYCOLLECTION`
 |Unsupported yet
 a|_n/a_
@@ -1143,23 +1143,23 @@ Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59
 
 |`DATE`
 |`INT32`
-a|`io.debezium.time.Date` +
+a|`io.debezium.time.Date`
 Represents the number of days elapsed since the UNIX epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a|`io.debezium.time.MicroTime` +
+a|`io.debezium.time.MicroTime`
 Represents the time value in microseconds and does not include time zone information.
 MySQL allows `M` to be in the range of `0-6`.
 
 |`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
 |`INT64`
-a|`io.debezium.time.Timestamp` +
+a|`io.debezium.time.Timestamp`
 Represents the number of milliseconds elapsed since the UNIX epoch and does not include time zone information.
 
 |`DATETIME(4), DATETIME(5), DATETIME(6)`
 |`INT64`
-a|`io.debezium.time.MicroTimestamp` +
+a|`io.debezium.time.MicroTimestamp`
 Represents the number of microseconds elapsed since the UNIX epoch and does not include time zone information.
 
 |===
@@ -1178,17 +1178,17 @@ The `connect` setting is expected to be removed in a future version of {prodname
 
 |`DATE`
 |`INT32`
-a|`org.apache.kafka.connect.data.Date` +
+a|`org.apache.kafka.connect.data.Date`
 Represents the number of days elapsed since the UNIX epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a|`org.apache.kafka.connect.data.Time` +
+a|`org.apache.kafka.connect.data.Time`
 Represents the time value in microseconds since midnight and does not include time zone information.
 
 |`DATETIME[(M)]`
 |`INT64`
-a|`org.apache.kafka.connect.data.Timestamp` +
+a|`org.apache.kafka.connect.data.Timestamp`
 Represents the number of milliseconds elapsed since the UNIX epoch, and does not include time zone information.
 
 |===
@@ -1516,21 +1516,21 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[vitess-property-stop-on-reshard]]<<vitess-property-stop-on-reshard, `+vitess.stop_on_reshard+`>>
 |`false`
-|Controls Vitess flag stop_on_reshard. +
- +
-`true` - the stream will be stopped after a reshard operation.  +
- +
-`false` - the stream will be automatically migrated for the new shards after a reshard operation. +
- +
+|Controls Vitess flag stop_on_reshard.
+
+`true` - the stream will be stopped after a reshard operation. 
+
+`false` - the stream will be automatically migrated for the new shards after a reshard operation.
+
 If set to `true`, you should also consider setting `vitess.gtid` in the configuration.
 
 |[[vitess-property-stream-keyspace-heartbeats]]<<vitess-property-stream-keyspace-heartbeats, `+vitess.stream_keyspace_heartbeats+`>>
 |`false`
-|Controls Vitess flag `StreamKeyspaceHeartbeats`. +
+|Controls Vitess flag `StreamKeyspaceHeartbeats`.
 +
-`true` - the stream will receive events from `_vt.heartbeat` tables (must also be enabled for the tablets).  +
+`true` - the stream will receive events from `_vt.heartbeat` tables (must also be enabled for the tablets). 
 +
-`false` - the stream will not receive events from the `_vt.heartbeat` tables. +
+`false` - the stream will not receive events from the `_vt.heartbeat` tables.
 If set to `true`, you may also want to add `<keyspace>.heartbeat` to the table include list in order to output the events.
 
 |[[vitess-property-database-user]]<<vitess-property-database-user, `+vitess.database.user+`>>
@@ -1543,12 +1543,12 @@ If set to `true`, you may also want to add `<keyspace>.heartbeat` to the table i
 
 |[[vitess-property-tablet-type]]<<vitess-property-tablet-type, `+vitess.tablet.type+`>>
 |`MASTER`
-|The type of Tablet (hence MySQL) from which to stream the changes: +
- +
-`MASTER` represents streaming from the master MySQL instance +
- +
-`REPLICA` represents streaming from the replica slave MySQL instance +
- +
+|The type of Tablet (hence MySQL) from which to stream the changes:
+
+`MASTER` represents streaming from the master MySQL instance
+
+`REPLICA` represents streaming from the replica slave MySQL instance
+
 `RDONLY`  represents streaming from the read-only slave MySQL instance.
 
 |[[vitess-property-topic-prefix]]<<vitess-property-topic-prefix, `+topic.prefix+`>>
@@ -1593,22 +1593,22 @@ You can specify multiple properties with different lengths in a single configura
 
 |[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event. +
- +
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
- +
-`false` - only a _delete_ event is emitted. +
- +
+|Controls whether a _delete_ event is followed by a tombstone event.
+
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event. 
+
+`false` - only a _delete_ event is emitted.
+
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[vitess-property-offset-storage-per-task]]<<vitess-property-offset-storage-per-task, `+vitess.offset.storage.per.task+`>>
 |`false`
-|Specify whether to turn on offset-storage-per-task mode launch multiple connector tasks and persist offsets partitioned by task. +
- +
-`true` - turn on offset-storage-per-task mode.  +
- +
-`false` - do not use offset-storage-per-task mode. +
- +
+|Specify whether to turn on offset-storage-per-task mode launch multiple connector tasks and persist offsets partitioned by task.
+
+`true` - turn on offset-storage-per-task mode. 
+
+`false` - do not use offset-storage-per-task mode.
+
 You will also you also need to specify vitess.offset.storage.task.key.gen and vitess.prev.num.tasks params if you turn on offset-storage-per-task mode.
 
 |[[vitess-property-offset-storage-task-key-gen]]<<vitess-property-offset-storage-task-key-gen, `+vitess.offset.storage.task.key.gen+`>>
@@ -1621,33 +1621,33 @@ You will also you also need to specify vitess.offset.storage.task.key.gen and vi
 
 |[[vitess-property-message-key-columns]]<<vitess-property-message-key-columns, `+message.key.columns+`>>
 |_empty string_
-|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
- +
-Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format is: +
- +
-_keyspace-name_._table-name_:_regexp_;... +
- +
-For example, +
- +
-`keyspaceA.table_a:regex_1;keyspaceA.table_b:regex_2;keyspaceA.table_c:regex_3` +
- +
+|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key.
+
+Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format is:
+
+_keyspace-name_._table-name_:_regexp_;...
+
+For example,
+
+`keyspaceA.table_a:regex_1;keyspaceA.table_b:regex_2;keyspaceA.table_c:regex_3`
+
 If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in ``table_a``'s `id` column to a key field in change events that the connector sends to Kafka.
 
 |[[vitess-property-schema-name-adjustment-mode]]<<vitess-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 |[[vitess-property-field-name-adjustment-mode]]<<vitess-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
@@ -1664,7 +1664,7 @@ When the connector starts, it skips the snapshot process and immediately begins 
 
 |[[vitess-property-snapshot-include-collection-list]]<<vitess-property-snapshot-include-collection-list,`+snapshot.include.collection.list+`>>
 |none
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy. +
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy.
 
 The connector uses this property to determine which tables should be copied during the snapshot phase (VStream when starting from an empty GTID.
 Table names must be specified in the format `keyspace.table`. You can use regular expressions to match multiple tables. For example:
@@ -1679,7 +1679,7 @@ the copy phase is skipped regardless of this setting.
 
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
-|You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values: +
+|You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values:
 
 
 `adaptive_time_microseconds`::
@@ -1694,16 +1694,16 @@ Temporal types are represented as strings. For certain temporal values that cann
 
 |[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
 |string
-|Specify how BIGINT UNSIGNED columns should be represented in change events. +
-Set the property to one of the following values: +
- +
-`string`:: +
-represent values using Java's `string` +
- +
-`long`:: +
-represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. +
- +
-`precise`:: +
+|Specify how BIGINT UNSIGNED columns should be represented in change events.
+Set the property to one of the following values:
+
+`string`::
+represent values using Java's `string`
+
+`long`::
+represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers.
+
+`precise`::
 represents values as precise (Java's 'BigDecimal') values. This is precise but difficult to use.
 |===
 
@@ -1720,35 +1720,35 @@ The following _advanced_ configuration properties have defaults that work in mos
 |[[vitess-property-converters]]<<vitess-property-converters, `converters`>>
 |No default
 |Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
-For example, +
+For example,
 
 `isbn`
 
 You must set the `converters` property to enable the connector to use a custom converter.
 
 For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
-The `.type` property uses the following format: +
+The `.type` property uses the following format:
 
-`_<converterSymbolicName>_.type` +
+`_<converterSymbolicName>_.type`
 
-For example, +
+For example,
 
  isbn.type: io.debezium.test.IsbnConverter
 
 If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
 To associate any additional configuration parameter with a converter, prefix the parameter names with the symbolic name of the converter.
-For example, +
+For example,
 
  isbn.schema.name: io.debezium.vitess.type.Isbn
 
 |[[vitess-property-event-processing-failure-handling-mode]]<<vitess-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
-| Specifies how the connector should react to exceptions during processing of events: +
- +
-`fail` propagates the exception, indicates the offset of the problematic event, and causes the connector to stop. +
- +
-`warn` logs the offset of the problematic event, skips that event, and continues processing. +
- +
+| Specifies how the connector should react to exceptions during processing of events:
+
+`fail` propagates the exception, indicates the offset of the problematic event, and causes the connector to stop.
+
+`warn` logs the offset of the problematic event, skips that event, and continues processing.
+
 `skip` skips the problematic event and continues processing.
 
 |[[vitess-property-max-queue-size]]<<vitess-property-max-queue-size, `+max.queue.size+`>>
@@ -1768,7 +1768,7 @@ Always set the value of `max.queue.size` to be larger than the value of xref:{co
 |`0`
 |A long integer value that specifies the maximum volume of the blocking queue in bytes.
 By default, volume limits are not specified for the blocking queue.
-To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+To specify the number of bytes that the queue can consume, set this property to a positive long value.
 If xref:vitess-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
@@ -1805,18 +1805,18 @@ For more information, see xref:vitess-ordered-transaction-metadata[Ordered trans
 
 |[[vitess-property-grpc-headers]]<<vitess-property-grpc-headers, `+vitess.grpc.headers+`>>
 |No default
-|Specify a comma-separated list of gRPC headers. Defaults to empty. The format is: +
- +
-_key1:value1,key2:value2_,... +
- +
-For example, +
- +
+|Specify a comma-separated list of gRPC headers. Defaults to empty. The format is:
+
+_key1:value1,key2:value2_,...
+
+For example,
+
 `x-envoy-upstream-rq-timeout-ms:0,x-envoy-max-retries:2`
 
 |[[vitess-property-grpc-max-inbound-message-size]]<<vitess-property-grpc-max-inbound-message-size, `+vitess.grpc.max_inbound_message_size+`>>
 |No default
-|Specify the maximum message size in bytes allowed to be received on the channel. +
- +
+|Specify the maximum message size in bytes allowed to be received on the channel.
+
 Default is 4MiB
 
 |[[vitess-property-column-propagate-source-type]]<<vitess-property-column-propagate-source-type, `+column.propagate.source.type+`>>
@@ -1861,10 +1861,10 @@ The connector uses the value of this property instead of the specified xref:vite
 
 |[[vitess-property-topic-transaction]]<<vitess-property-topic-transaction, `topic.transaction`>>
 |`transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
- +
-_topic.prefix_._topic.transaction_ +
- +
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern:
+
+_topic.prefix_._topic.transaction_
+
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |[[vitess-property-custom-metric-tags]]<<vitess-property-custom-metric-tags, `custom.metric.tags`>>
@@ -1894,7 +1894,7 @@ The pattern that you specify for the `custom.sanitize.pattern` property override
 
 |[[vitess-property-errors-max-retires]]<<vitess-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error.
 Set one of the following options:
 
 `-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.

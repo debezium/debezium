@@ -300,7 +300,7 @@ Currently, the {prodname} {connector-name} connector supports the following vect
 
 |`VECTOR`
 |`ARRAY (FLOAT32)`
-|`io.debezium.data.FloatVector` +
+|`io.debezium.data.FloatVector`
 
 |===
 
