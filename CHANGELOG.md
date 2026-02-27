@@ -2,6 +2,31 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.7.Final
+February 27th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.2.7.Final)
+
+### New features since 3.2.6.Final
+
+* Support Oracle 26ai (23.26.x) [debezium/dbz#1649](https://github.com/debezium/dbz/issues/1649)
+
+
+### Breaking changes since 3.2.6.Final
+
+None
+
+
+### Fixes since 3.2.6.Final
+
+None
+
+
+### Other changes since 3.2.6.Final
+
+* Backport informix connector pom changes from 3.3 and 3.4 into 3.2 branch. [debezium/dbz#1603](https://github.com/debezium/dbz/issues/1603)
+* Update to com.mchange:c3p0 to 0.12.0 [debezium/dbz#1654](https://github.com/debezium/dbz/issues/1654)
+
+
+
 ## 3.2.6.Final
 January 26th 2026
 
