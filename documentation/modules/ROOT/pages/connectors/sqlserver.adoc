@@ -230,6 +230,10 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
+|`when_needed_no_data`
+|After the connector starts, it performs a snapshot like `when_needed` options. Like `no_data` options, it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+
 ifdef::community[]
 |`configuration_based`
 |Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
@@ -2917,6 +2921,8 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
+
+|`when_needed_no_data`:: After the connector starts, it performs a snapshot like `when_needed` options. Like `no_data` options, it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
 
 ifdef::community[]
 `configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
