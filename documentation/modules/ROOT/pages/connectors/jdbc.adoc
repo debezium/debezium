@@ -129,21 +129,21 @@ a|The primary key consists of the following three columns:
 The values for these columns are sourced from the coordinates of the Kafka event.
 
 |`record_key`
-|The primary key is composed of the Kafka event's key. +
- +
+|The primary key is composed of the Kafka event's key.
+
 If the primary key is a primitive type, specify the name of the column to be used by setting the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property.
 If the primary key is a struct type, the fields in the struct are mapped as columns of the primary key.
 You can use the `primary.key.fields` property to restrict the primary key to a subset of columns.
 
 |`record_value`
-|The primary key is composed of the Kafka event's value. +
- +
+|The primary key is composed of the Kafka event's value.
+
 Because the value of a Kafka event is always a `Struct`, by default, all of the fields in the value become columns of the primary key.
 To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
 
 |`record_header`
-|The primary key is composed of the Kafka event's headers. +
- +
+|The primary key is composed of the Kafka event's headers.
+
 Kafka event's headers contains could contain multiple header that each one could be `Struct` or primitives data types,
 the connectors makes a  `Struct` of these headers. Hence, all fields in this `Struct` become columns of the primary key.
 To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
@@ -885,7 +885,7 @@ You can use either of the following methods to deploy a {prodname} JDBC connecto
 * xref:debezium-jdbc-connector-openshift-streams-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:debezium-jdbc-connector-deploying-custom-image-from-a-containerfile[Build a custom Kafka Connect container image from a Containerfile]. +
+* xref:debezium-jdbc-connector-deploying-custom-image-from-a-containerfile[Build a custom Kafka Connect container image from a Containerfile].
 This Containerfile deployment method is deprecated.
 The instructions for this method are scheduled for removal in future versions of the documentation.
 
@@ -954,7 +954,7 @@ For more information about ImageStreams, see link:{LinkCreatingManagingOpenShift
 .Procedure
 
 1. Log in to the OpenShift cluster.
-2. Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one. +
+2. Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one.
 For example, create a `KafkaConnect` CR with the name `dbz-jdbc-connect.yaml` that specifies the `annotations` and `image` properties, as shown in the following excerpt.
 In the example that follows, the custom resource is configured to download the following artifacts:
 +
@@ -1042,11 +1042,11 @@ The Db2 JDBC driver is available at the following Maven location: `https://repo1
 oc create -f dbz-jdbc-connect.yaml
 ----
 +
-Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy. +
+Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy.
 After the build completes, the Operator pushes the image to the specified registry or ImageStream, and starts the Kafka Connect cluster.
 The connector artifacts that you listed in the configuration are available in the cluster.
 
-4. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy. +
+4. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy.
 For example, create the following `KafkaConnector` CR, and save it as `orders-to-postgresql-jdbc-connector.yaml`
 +
 .`orders-to-postgresql-jdbc-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
@@ -1162,7 +1162,7 @@ For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployMan
 
 .. Create a Containerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
- +
+
 =====================================================================
 
 [source,shell,subs="+attributes,+quotes"]
@@ -1181,7 +1181,7 @@ USER 1001
 EOF
 ----
 =====================================================================
- +
+
 .Descriptions of Containerfile settings for building a custom Kafka Connect container image
 [cols="1,7",options="header"]
 |===
@@ -1228,7 +1228,7 @@ docker push _<myregistry.io>_/debezium-jdbc-connector-container:latest
 
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -1272,9 +1272,9 @@ The command adds a Kafka Connect instance that specifies the name of the image t
 +
 You configure a {prodname} JDBC connector in a `.yaml` file that specifies the configuration properties for the connector.
 +
-The following example shows an excerpt from a `dbz-connect.yaml` file that sets a few of the key properties for a `KafkaConnect` custom resource. +
-The connector establishes a JDBC connection to a PostgreSQL server sink on port `5432`. +
- +
+The following example shows an excerpt from a `dbz-connect.yaml` file that sets a few of the key properties for a `KafkaConnect` custom resource.
+The connector establishes a JDBC connection to a PostgreSQL server sink on port `5432`.
+
 For information about the full range of available connector properties, see xref:debezium-jdbc-connector-descriptions-of-connector-configuration-properties[Descriptions of {prodname} JDBC connector configuration properties].
 +
 .`jdbc-connector.yaml`
@@ -1609,10 +1609,10 @@ You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] prop
 
 |[[jdbc-property-primary-key-fields]]<<jdbc-property-primary-key-fields, `+primary.key.fields+`>>
 |No default
-|Either the name of the primary key column or a comma-separated list of fields to derive the primary key from. +
- +
-When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key. +
- +
+|Either the name of the primary key column or a comma-separated list of fields to derive the primary key from.
+
+When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key.
+
 When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
 If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specified, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
 
@@ -1633,12 +1633,12 @@ The connector adds missing columns to the table by comparing the incoming event'
 
 |[[jdbc-property-collection-name-format]]<<jdbc-property-collection-name-format, `+collection.name.format+`>>
 |`+${topic}+`
-|Specifies a string pattern that the connector uses to construct the names of destination tables. +
-When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic. +
- +
+|Specifies a string pattern that the connector uses to construct the names of destination tables.
+When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic.
+
 You can also configure this property to extract values from specific fields in incoming event records and then use those values to dynamically generate the names of target tables.
-This ability to generate table names from values in the message source would otherwise require the use of a custom Kafka Connect single message transformation (SMT). +
- +
+This ability to generate table names from values in the message source would otherwise require the use of a custom Kafka Connect single message transformation (SMT).
+
 To configure the property to dynamically generate the names of destination tables, set its value to a pattern such as `+${source._field_}+`.
 When you specify this type of pattern, the connector extracts values from the `source` block of the {prodname} change event, and then uses those values to construct the table name.
 For example, you might set the value of the property to the pattern `+${source.schema}_${source.table}+`.
@@ -1681,7 +1681,7 @@ Choose one of the following settings:
 
 `false`:: (default) The connector writes each change event that it consumes from Kafka as a separate logical SQL change.
 `true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
-That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record. +
+That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record.
 Choose this option to reduce the SQL load on the target database.
 
 To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
@@ -1689,15 +1689,15 @@ To optimize query processing in a PostgreSQL sink database when the reduction bu
 |[[jdbc-property-field-include-list]]<<jdbc-property-field-include-list, `+field.include.list+`>>
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
-Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
- +
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`.
+
 If you include this property in the configuration, do not set the `field.exclude.list` property.
 
 |[[jdbc-property-field-exclude-list]]<<jdbc-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to exclude from the change event value.
-Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
- +
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`.
+
 If you include this property in the configuration, do not set the `field.include.list` property.
 
 |[[jdbc-property-flush-max-retries]]<<jdbc-property-flush-max-retries, `+flush.max.retries+`>>
@@ -1725,15 +1725,15 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 
 |[[jdbc-property-column-naming-strategy]]<<jdbc-property-column-naming-strategy, `+column.naming.strategy+`>>
 |`io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy`
-|Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from incoming event field names. +
- +
+|Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from incoming event field names.
+
 The default behavior is to use the field name as the column name without any transformation.
 
 |[[jdbc-property-collection-naming-strategy]]<<jdbc-property-collection-naming-strategy, `+collection.naming.strategy+`>>
 |`io.debezium.connector.jdbc.nnaming.DefaultCollectionNamingStrategy`
-|Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
- +
-The default behavior is to: +
+|Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names.
+
+The default behavior is to:
 
 * Sanitize the topic name by replacing dots (`.`) with underscores (`_`).
 * Replace the `+${topic}+` placeholder in the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property with the event's topic.
