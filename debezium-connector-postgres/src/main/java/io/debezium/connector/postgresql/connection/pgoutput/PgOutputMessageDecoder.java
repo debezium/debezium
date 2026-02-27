@@ -756,7 +756,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final io.debezium.relational.Column column = table.columns().get(i);
             final String columnName = column.name();
             final String typeName = column.typeName();
-            final PostgresType columnType = typeRegistry.get(typeName);
+            final PostgresType columnType = typeRegistry.get(table.id().schema(), typeName);
             final String typeExpression = column.typeExpression();
             final boolean optional = column.isOptional();
 
