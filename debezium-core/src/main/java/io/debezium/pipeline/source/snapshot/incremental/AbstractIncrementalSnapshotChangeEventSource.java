@@ -604,6 +604,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
             tableScanCompleted(partition);
             stopped.add(stopCurrentTableId.identifier());
+            notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
             // If snapshot has no more collections, abort; otherwise advance to the next collection.
             if (!context.snapshotRunning()) {
                 LOGGER.info("Incremental snapshot has stopped.");
@@ -614,7 +615,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 nextDataCollection(partition, offsetContext);
             }
         }
-        notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+        else {
+            notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+        }
         if (!context.snapshotRunning()) {
             context.unsetCorrelationId();
         }
