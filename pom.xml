@@ -56,20 +56,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Required Java versions -->
-        <debezium.java.source>21</debezium.java.source>
+        <debezium.java.source>17</debezium.java.source>
 
-        <!-- Java version used for connectors and core libraries -->
-        <debezium.java.connector.target>17</debezium.java.connector.target>
-
-        <!-- Java version used for Debezium spcific components - Server, Operator, Outbox -->
+        <!-- Java version used for Debezium specific components - Server, Operator, Outbox -->
         <debezium.java.specific.target>21</debezium.java.specific.target>
 
-
-        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
-        <maven.compiler.target>${debezium.java.connector.target}</maven.compiler.target>
-
-        <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
-        <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
+        <maven.compiler.release>${debezium.java.source}</maven.compiler.release>
+        <maven.compiler.testRelease>21</maven.compiler.testRelease>
 
         <!-- Minimum JDK version required for building the project -->
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
@@ -345,8 +338,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
+                    <testRelease>${maven.compiler.testRelease}</testRelease>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
