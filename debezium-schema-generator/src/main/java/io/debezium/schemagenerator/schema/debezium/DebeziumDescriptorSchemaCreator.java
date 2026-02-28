@@ -84,7 +84,7 @@ public class DebeziumDescriptorSchemaCreator {
 
         Display display = new Display(
                 field.displayName(),
-                field.description(),
+                enrichDescriptionWithDefault(field),
                 groupName,
                 groupOrder,
                 mapWidth(field.width()),
@@ -101,6 +101,18 @@ public class DebeziumDescriptorSchemaCreator {
                 display,
                 validations,
                 valueDependants);
+    }
+
+    private String enrichDescriptionWithDefault(Field field) {
+        String desc = field.description();
+        Object defaultValue = field.defaultValue();
+        if (defaultValue == null) {
+            return desc;
+        }
+
+        desc = desc.replaceAll("(?i)default\\s*(value)?\\s*(is|:)\\s*[^.]*\\.", "").trim();
+
+        return desc + " Default: " + defaultValue.toString();
     }
 
     private static List<ValueDependant> buildValueDependants(Field field) {
