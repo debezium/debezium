@@ -35,3 +35,5 @@ gen/
 
 jenkins-jobs/docker/rhel_kafka/plugins
 jenkins-jobs/docker/artifact-server/plugins
+
+.mvn/wrapper/maven-wrapper.jar

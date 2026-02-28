@@ -77,7 +77,6 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-
         return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, lazilyRetrieveAndCacheLatestStable()));
     }
 
