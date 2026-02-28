@@ -99,7 +99,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
-        CUSTOM("custom");
+        CUSTOM("custom"),
+
+        /**
+         * Combine when_needed + no_data mode
+         */
+        WHEN_NEEDED_NO_DATA("when_needed_no_data");
 
         private final String value;
 
