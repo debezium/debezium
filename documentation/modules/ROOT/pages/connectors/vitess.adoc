@@ -1813,6 +1813,14 @@ For example, +
  +
 `x-envoy-upstream-rq-timeout-ms:0,x-envoy-max-retries:2`
 
+|[[vitess-property-connector-generation]]<<vitess-property-connector-generation, `+vitess.connector.generation+`>>
+|`0`
+|Specify the generation number for transaction ordering semantics.
+Increment this when making changes that affect transaction ordering.
+The epoch will be automatically incremented when the generation increases. +
+ +
+This setting only takes effect when transaction.metadata.factory is set to `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory`.
+
 |[[vitess-property-grpc-max-inbound-message-size]]<<vitess-property-grpc-max-inbound-message-size, `+vitess.grpc.max_inbound_message_size+`>>
 |No default
 |Specify the maximum message size in bytes allowed to be received on the channel. +
