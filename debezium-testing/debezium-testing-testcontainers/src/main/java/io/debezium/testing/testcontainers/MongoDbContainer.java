@@ -22,6 +22,7 @@ import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.ImagePullPolicy;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.utility.DockerImageName;
@@ -97,6 +98,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         private Network network = Network.SHARED;
         private boolean skipDockerDesktopLogWarning = false;
         private boolean authEnabled = false;
+        private ImagePullPolicy imagePullPolicy;
         private String typeFlag = null;
         private String configAddress = null;
         private String process = "mongod";
@@ -159,6 +161,11 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
             return this;
         }
 
+        public Builder withImagePullPolicy(ImagePullPolicy imagePullPolicy) {
+            this.imagePullPolicy = imagePullPolicy;
+            return this;
+        }
+
         public MongoDbContainer build() {
             return new MongoDbContainer(this);
         }
@@ -167,6 +174,9 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
     private MongoDbContainer(Builder builder) {
         super(builder.imageName);
+        if (null != builder.imagePullPolicy) {
+            this.withImagePullPolicy(builder.imagePullPolicy);
+        }
         this.process = builder.process;
         this.typeFlag = builder.typeFlag;
         this.name = builder.name;

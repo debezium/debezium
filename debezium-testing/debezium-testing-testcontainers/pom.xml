@@ -6,6 +6,7 @@
         <version>3.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-testing-testcontainers</artifactId>
     <name>Debezium Testing Testcontainers</name>
@@ -19,6 +20,10 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>

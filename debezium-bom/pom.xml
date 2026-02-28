@@ -54,8 +54,8 @@
         <!-- Azure Identity -->
         <version.azure.identity>1.15.4</version.azure.identity>
 
-        <!-- K8s Config Map Storage -->
-        <version.kubernetes.client>6.13.4</version.kubernetes.client>
+        <!-- k8s Config Map Storage -->
+        <version.kubernetes.client>7.6.1</version.kubernetes.client>
 
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
@@ -64,7 +64,7 @@
         <version.openlineage>1.31.0</version.openlineage>
 
         <!-- Testing -->
-        <version.junit>6.0.1</version.junit>
+        <version.junit>6.0.3</version.junit>
         <version.junit.platform.launcher>${version.junit}</version.junit.platform.launcher>
         <version.assertj>3.27.7</version.assertj>
         <version.jmh>1.37</version.jmh>

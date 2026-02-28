@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
+import org.testcontainers.images.ImagePullPolicy;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.utility.DockerImageName;
@@ -60,6 +61,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     private final String rootUser;
     private final String rootPassword;
     private final Duration startupTimeout;
+    private final ImagePullPolicy imagePullPolicy;
     private final Supplier<MongoDbContainer.Builder> nodeSupplier;
 
     private boolean started = false;
@@ -93,6 +95,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         private String rootUser = "root";
         private String rootPassword = "secret";
         private Duration startupTimeout;
+        private ImagePullPolicy imagePullPolicy;
         private Supplier<MongoDbContainer.Builder> nodeSupplier = MongoDbContainer::node;
 
         public Builder nodeSupplier(Supplier<MongoDbContainer.Builder> nodeSupplier) {
@@ -156,6 +159,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             return this;
         }
 
+        public Builder withImagePullPolicy(ImagePullPolicy imagePullPolicy) {
+            this.imagePullPolicy = imagePullPolicy;
+            return this;
+        }
+
         public MongoDbReplicaSet build() {
             return new MongoDbReplicaSet(this);
         }
@@ -173,6 +181,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         this.rootUser = builder.rootUser;
         this.rootPassword = builder.rootPassword;
         this.startupTimeout = builder.startupTimeout;
+        this.imagePullPolicy = builder.imagePullPolicy;
 
         for (int i = 1; i <= memberCount; i++) {
             MongoDbContainer mongoDbContainer = nodeSupplier.get()
@@ -183,6 +192,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                     .skipDockerDesktopLogWarning(true)
                     .imageName(imageName)
                     .authEnabled(authEnabled)
+                    .withImagePullPolicy(imagePullPolicy)
                     .build();
             if (startupTimeout != null) {
                 mongoDbContainer.withStartupTimeout(startupTimeout);
