@@ -419,6 +419,103 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     }
 
+    @Test
+    @FixFor("DBZ-1586")
+    public void shouldOnlyKeepIncludedTablesInMemoryAfterDdlParsing() throws InterruptedException {
+        // Configure with table.include.list for only one table
+        final Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.products")
+                .build();
+        schema = getSchema(config);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
+
+        // Parse DDL that creates multiple tables
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
+                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+
+        // Only included table should be in memory
+        assertTableIncluded("connector_test.products");
+        assertTableExcluded("connector_test.customers");
+        assertTableExcluded("connector_test.orders");
+        assertTableExcluded("connector_test.products_on_hand");
+
+        // Verify the count of tables in memory
+        assertThat(schema.tableIds().size()).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-1586")
+    public void shouldRecoverPreviouslyExcludedTablesWhenIncludeListExpands() throws InterruptedException {
+        // First run: capture only products table
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.products")
+                .build();
+        schema = getSchema(config);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
+
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
+                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+        schema.close();
+
+        // Second run: expand include list to also capture customers
+        Configuration configExpanded = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.products,connector_test.customers")
+                .build();
+        schema = getSchema(configExpanded);
+        schema.recover(Offsets.of(partition, offset));
+
+        // Both tables should now be in memory
+        assertTableIncluded("connector_test.products");
+        assertTableIncluded("connector_test.customers");
+        // Other tables still excluded
+        assertTableExcluded("connector_test.orders");
+        assertTableExcluded("connector_test.products_on_hand");
+    }
+
+    @Test
+    @FixFor("DBZ-1586")
+    public void shouldFilterTablesFromMemoryDuringRecovery() throws InterruptedException {
+        // First: store ALL tables (no filtering on storage)
+        final Configuration configFull = DATABASE.defaultConfigWithoutDatabaseFilter().build();
+        schema = getSchema(configFull);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, configFull);
+        final O offset = initializeOffset(connectorConfig);
+
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
+                offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+
+        // All tables should be stored (verify before close)
+        assertTableIncluded("connector_test.products");
+        assertTableIncluded("connector_test.customers");
+        assertTableIncluded("connector_test.orders");
+        assertTableIncluded("connector_test.products_on_hand");
+        schema.close();
+
+        // Second: recover with filtered include list
+        final Configuration configFiltered = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.products")
+                .build();
+        schema = getSchema(configFiltered);
+        schema.recover(Offsets.of(partition, offset));
+
+        // Only included table in memory
+        assertTableIncluded("connector_test.products");
+        assertTableExcluded("connector_test.customers");
+        assertTableExcluded("connector_test.orders");
+        assertTableExcluded("connector_test.products_on_hand");
+
+        // Verify memory optimization
+        assertThat(schema.tableIds().size()).isEqualTo(1);
+    }
+
     protected void assertTableSchemaComments(String tableName, String column, String comments) {
         TableId tableId = TableId.parse(tableName);
         TableSchema tableSchema = schema.schemaFor(tableId);
