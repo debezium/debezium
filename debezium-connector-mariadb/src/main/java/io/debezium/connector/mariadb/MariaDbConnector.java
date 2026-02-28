@@ -12,10 +12,12 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnector;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
 import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * A Debezium source connector that creates tasks and reads changes from MariaDB's binary transaction logs,
@@ -23,7 +25,7 @@ import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
  *
  * @author Chris Cranford
  */
-public class MariaDbConnector extends BinlogConnector<MariaDbConnectorConfig> {
+public class MariaDbConnector extends BinlogConnector<MariaDbConnectorConfig> implements ConfigDescriptor {
 
     public MariaDbConnector() {
     }
@@ -56,5 +58,10 @@ public class MariaDbConnector extends BinlogConnector<MariaDbConnectorConfig> {
     @Override
     protected MariaDbConnectorConfig createConnectorConfig(Configuration config) {
         return new MariaDbConnectorConfig(config);
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return MariaDbConnectorConfig.ALL_FIELDS;
     }
 }

@@ -58,6 +58,12 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
@@ -158,6 +164,10 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_${version.kafka.scala}</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
     </dependencies>
 

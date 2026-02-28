@@ -24,9 +24,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
@@ -40,7 +42,7 @@ import io.debezium.util.Threads;
  *
  * @author Horia Chiorean
  */
-public class PostgresConnector extends RelationalBaseSourceConnector {
+public class PostgresConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnector.class);
     public static final int READ_ONLY_SUPPORTED_VERSION = 13;
@@ -79,6 +81,11 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     @Override
     public ConfigDef config() {
         return PostgresConnectorConfig.configDef();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return PostgresConnectorConfig.ALL_FIELDS;
     }
 
     @Override

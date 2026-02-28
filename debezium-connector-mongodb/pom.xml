@@ -18,7 +18,7 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-transforms</artifactId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -48,6 +48,12 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>

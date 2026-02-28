@@ -12,10 +12,12 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnector;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -27,7 +29,7 @@ import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
  *
  * @author Randall Hauch
  */
-public class MySqlConnector extends BinlogConnector<MySqlConnectorConfig> {
+public class MySqlConnector extends BinlogConnector<MySqlConnectorConfig> implements ConfigDescriptor {
 
     public MySqlConnector() {
     }
@@ -62,5 +64,10 @@ public class MySqlConnector extends BinlogConnector<MySqlConnectorConfig> {
     @Override
     protected MySqlConnectorConfig createConnectorConfig(Configuration config) {
         return new MySqlConnectorConfig(config);
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return MySqlConnectorConfig.ALL_FIELDS;
     }
 }

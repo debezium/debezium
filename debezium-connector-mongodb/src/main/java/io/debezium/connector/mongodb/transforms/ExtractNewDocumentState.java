@@ -35,6 +35,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
@@ -49,7 +50,7 @@ import io.debezium.transforms.ConnectRecordUtil;
  * @author Sairam Polavarapu
  * @author Renato mefi
  */
-public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> {
+public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> implements ConfigDescriptor {
 
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
@@ -363,6 +364,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
     private BsonDocument getFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return configFields.with(REWRITE_TOMBSTONE_DELETES_WITH_ID);
     }
 
 }

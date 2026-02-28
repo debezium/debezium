@@ -23,13 +23,15 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
-public class OracleConnector extends RelationalBaseSourceConnector {
+public class OracleConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnector.class);
 
@@ -66,6 +68,11 @@ public class OracleConnector extends RelationalBaseSourceConnector {
     @Override
     public ConfigDef config() {
         return OracleConnectorConfig.configDef();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return OracleConnectorConfig.ALL_FIELDS;
     }
 
     @Override

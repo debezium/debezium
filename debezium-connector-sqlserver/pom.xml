@@ -68,6 +68,12 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
@@ -154,6 +160,10 @@
             <artifactId>debezium-openlineage-core</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
     </dependencies>
 
