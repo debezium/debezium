@@ -728,7 +728,17 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
+                <artifactId>debezium-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-config</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -922,17 +932,10 @@
                 <artifactId>debezium-openlineage-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-
             <!-- Debezium test artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
+                <artifactId>debezium-connector-common</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>

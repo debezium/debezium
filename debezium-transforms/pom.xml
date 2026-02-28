@@ -16,7 +16,7 @@
         <!-- Debezium dependencies -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
         </dependency>
 
         <!-- Kafka Connect API -->
@@ -46,7 +46,7 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>

@@ -15,7 +15,7 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
