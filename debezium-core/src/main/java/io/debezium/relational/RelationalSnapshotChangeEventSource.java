@@ -1117,11 +1117,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     private SnapshotSelect determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
                                                    Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
-        if (tableId.equals(signalDataCollectionTableId)) {
-            // Skip the signal data collection as data shouldn't be captured
-            return new SnapshotSelect(null, false);
-        }
-
         String overriddenSelect = getSnapshotSelectOverridesByTable(tableId, snapshotSelectOverridesByTable);
         if (overriddenSelect != null) {
             return new SnapshotSelect(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId), true);
@@ -1347,6 +1342,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
 
         for (TableId tableId : snapshotContext.capturedTables) {
+            if (tableId.equals(signalDataCollectionTableId)) {
+                // Skip the signal data collection as data shouldn't be captured
+                continue;
+            }
             final SnapshotSelect snapshotSelect = selectGenerator.apply(tableId);
             if (snapshotSelect.hasSnapshotSelectQuery()) {
                 LOGGER.info("For table '{}' using select statement: '{}'", tableId, snapshotSelect.statement);
