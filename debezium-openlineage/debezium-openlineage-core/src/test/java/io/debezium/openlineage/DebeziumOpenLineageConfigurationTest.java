@@ -70,6 +70,7 @@ public class DebeziumOpenLineageConfigurationTest {
         DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
                 .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
+        assertEquals("Debezium CDC job for test-connector", result.job().description());
         assertFalse(result.enabled());
         assertTrue(result.job().tags().isEmpty());
         assertTrue(result.job().owners().isEmpty());
@@ -88,5 +89,18 @@ public class DebeziumOpenLineageConfigurationTest {
         assertThrows(ArrayIndexOutOfBoundsException.class, () -> {
             DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
         });
+
+    }
+
+    @Test
+    void testMissingJobDescriptionUsesDefault() {
+        Map<String, String> config = Map.of(
+                OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
+                OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml");
+
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(
+                new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
+
+        assertEquals("Debezium CDC job for test-connector", result.job().description());
     }
 }

@@ -49,9 +49,17 @@ public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, J
                 new Config(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)),
                 new Job(
                         connectorContext.config().getOrDefault(OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, connectorContext.connectorLogicalName()),
-                        connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION),
+                        getJobDescription(connectorContext),
                         tags,
                         owners));
+    }
+
+    private static String getJobDescription(ConnectorContext connectorContext) {
+        String description = connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION);
+        if (description == null || description.isBlank()) {
+            return "Debezium CDC job for " + connectorContext.connectorLogicalName();
+        }
+        return description;
     }
 
     public static <T> List<T> getList(Map<String, String> configuration, String key, String separator, Function<String, T> converter) {
