@@ -583,8 +583,8 @@ a|Mandatory string that describes the type of operation that caused the connecto
 |10
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -693,8 +693,8 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -797,8 +797,8 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -1150,19 +1150,19 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[spanner-property-schema-name-adjustment-mode]]<<spanner-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 |[[spanner-property-field-name-adjustment-mode]]<<spanner-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `none` does not apply any adjustment.
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
@@ -1266,7 +1266,7 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example, 
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
@@ -1297,7 +1297,7 @@ The pattern that you specify for the `custom.sanitize.pattern` property override
 
 |[[spanner-property-errors-max-retires]]<<spanner-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error.
 Set one of the following options:
 
 `-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
