@@ -155,6 +155,21 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean removeTransactionEventWithRowId(T transaction, String rowId);
 
     /**
+     * Removes a specific transaction event by event key. This method is intended for
+     * providers that can tombstone or otherwise remove an event given its eventKey
+     * without scanning by rowId. Implementations that cannot efficiently remove by
+     * eventKey may return {@code false}.
+     *
+     * @param transaction the transaction, should not be {@code null}
+     * @param eventKey the event's unique assigned id
+     * @return {@code true} if the event was found and removed, {@code false} if it was not found
+     */
+    default boolean removeTransactionEventWithEventKey(T transaction, int eventKey) {
+        // Default implementation falls back to not supported. Providers should override
+        return false;
+    }
+
+    /**
      * Checks whether a specific transaction's event with the event key is cached.
      *
      * @param transaction the transaction, should not be {@code null}

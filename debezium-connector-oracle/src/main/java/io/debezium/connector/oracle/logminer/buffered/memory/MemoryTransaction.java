@@ -24,6 +24,15 @@ public class MemoryTransaction extends AbstractTransaction {
         start();
     }
 
+    /**
+     * Copy constructor that creates a MemoryTransaction from any Transaction implementation
+     */
+    public MemoryTransaction(io.debezium.connector.oracle.logminer.buffered.Transaction source) {
+        this(source.getTransactionId(), source.getStartScn(), source.getChangeTime(),
+                source.getUserName(), Integer.valueOf(source.getRedoThreadId()),
+                source.getClientId());
+    }
+
     @Override
     public int getNumberOfEvents() {
         return numberOfEvents;
