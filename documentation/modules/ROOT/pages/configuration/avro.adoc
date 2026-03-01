@@ -192,7 +192,7 @@ The following example uses a non-production, in-memory, {registry} instance:
 [source,subs="attributes+"]
 ----
 docker run -it --rm --name apicurio \
-    -p 8080:8080 apicurio/apicurio-registry-mem:{apicurio-version}
+    -p 8080:8080 apicurio/apicurio-registry:{apicurio-version}
 ----
 
 . Run the {prodname} container image for Kafka Connect, configuring it to provide the Avro converter by enabling Apicurio via `ENABLE_APICURIO_CONVERTERS=true` environment variable:

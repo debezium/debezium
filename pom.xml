@@ -130,7 +130,7 @@
         <quarkus.version.runtime>3.27.1</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.6.13.Final</version.apicurio>
+        <version.apicurio>3.1.1</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.7.7</version.postgresql.driver>
