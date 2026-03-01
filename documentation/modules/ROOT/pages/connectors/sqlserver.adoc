@@ -1302,7 +1302,7 @@ a|Mandatory string that describes the type of operation that caused the connecto
 |`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task.
-
+ +
 In the `source` object, `ts_ms` indicates the time when a change was committed in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 

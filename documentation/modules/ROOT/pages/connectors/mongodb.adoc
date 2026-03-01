@@ -52,7 +52,8 @@ endif::product[]
 [[mongodb-overview]]
 == Overview
 
-MongoDB's replication mechanism provides redundancy and high availability, and is the preferred way to run MongoDB in production.MongoDB connector captures the changes in a replica set or sharded cluster.
+MongoDB's replication mechanism provides redundancy and high availability, and is the preferred way to run MongoDB in production.
+The MongoDB connector captures the changes in a replica set or sharded cluster.
 
 
 A MongoDB _replica set_ consists of a set of servers that all have copies of the same data, and replication ensures that all changes made by clients to documents on the replica set's _primary_ are correctly applied to the other replica set's servers, called _secondaries_.
