@@ -79,6 +79,8 @@ For example,
 +
 For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
 
+NOTE: If you use the `debezium.source.table.include.list` property, make sure to include the signaling data collection in it. Also, if you use the `debezium.source.column.include.list` property, include the columns of the signaling table (`id`, `type`, and `data`) as well.
+
 .Additional resources
 * xref:format-for-specifying-fully-qualified-names-for-data-collections[Formats for specifying fully qualified names for data collections].
 
@@ -175,6 +177,8 @@ The following example shows a `CREATE TABLE` command that creates a three-column
 ----
 CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
 ----
+
+NOTE: The {prodname} database user must have the `INSERT` privilege on the `debezium_signal` table.
 
 // Type: procedure
 // Title: Enabling the {prodname} Kafka signaling channel
