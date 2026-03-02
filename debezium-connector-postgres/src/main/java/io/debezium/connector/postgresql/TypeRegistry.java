@@ -259,6 +259,9 @@ public class TypeRegistry {
             LOGGER.warn("Unknown type named {} in schema {} requested", cleanName, schemaName);
             r = PostgresType.UNKNOWN;
         }
+        if (r == PostgresType.UNKNOWN) {
+            return get(typeName);
+        }
         return r;
     }
 
