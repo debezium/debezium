@@ -5,21 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.connector.sqlserver.util.TestHelper.SCHEMA_HISTORY_PATH;
-import static io.debezium.connector.sqlserver.util.TestHelper.TEST_DATABASE_2;
-import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
-import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
-import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
-import static io.debezium.connector.sqlserver.util.TestHelper.waitForStreamingStarted;
-import static io.debezium.data.Envelope.FieldName.AFTER;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.fail;
-
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -48,9 +33,14 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -60,7 +50,14 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import static io.debezium.connector.sqlserver.util.TestHelper.SCHEMA_HISTORY_PATH;
+import static io.debezium.connector.sqlserver.util.TestHelper.TEST_DATABASE_2;
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
+import static io.debezium.connector.sqlserver.util.TestHelper.waitForStreamingStarted;
 import io.debezium.data.Envelope;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.data.VerifyRecord;
@@ -72,6 +69,8 @@ import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
@@ -1812,7 +1811,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     /**
-     * Passing the "applicationName" property which can be asserted from the connected sessions".
+     * Passing the "applicationName" property which can be asserted from the
+     * connected sessions".
      */
     @Test
     @FixFor("DBZ-964")
@@ -2656,19 +2656,19 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-2793")
     public void shouldApplySchemaFilters() throws Exception {
         connection.setAutoCommit(false);
-        String statements = "DROP TABLE IF EXISTS s1.tablea;" +
-                "DROP TABLE IF EXISTS s1.tableb;" +
-                "DROP TABLE IF EXISTS s2.tablea;" +
-                "DROP TABLE IF EXISTS s2.tableb;";
+        String statements = "DROP TABLE IF EXISTS s1.tablea;"
+                + "DROP TABLE IF EXISTS s1.tableb;"
+                + "DROP TABLE IF EXISTS s2.tablea;"
+                + "DROP TABLE IF EXISTS s2.tableb;";
         connection.execute(statements);
         connection.execute("DROP SCHEMA IF EXISTS s1");
         connection.execute("DROP SCHEMA IF EXISTS s2");
         connection.execute("CREATE SCHEMA s1");
         connection.execute("CREATE SCHEMA s2");
-        statements = "CREATE TABLE s1.tablea (id int PRIMARY KEY, vala integer);" +
-                "CREATE TABLE s1.tableb (id int PRIMARY KEY, valb integer);" +
-                "CREATE TABLE s2.tablea (id int PRIMARY KEY, vala integer);" +
-                "CREATE TABLE s2.tableb (id int PRIMARY KEY, valb integer);";
+        statements = "CREATE TABLE s1.tablea (id int PRIMARY KEY, vala integer);"
+                + "CREATE TABLE s1.tableb (id int PRIMARY KEY, valb integer);"
+                + "CREATE TABLE s2.tablea (id int PRIMARY KEY, vala integer);"
+                + "CREATE TABLE s2.tableb (id int PRIMARY KEY, valb integer);";
         connection.execute(statements);
         connection.setAutoCommit(true);
         TestHelper.enableTableCdc(connection, new TableId(null, "s1", "tablea"));
@@ -3145,6 +3145,58 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeededNoData() throws SQLException, InterruptedException {
+
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+
+        // Use the DB configuration to define the connector's configuration ...
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .build();
+
+        // Start the connector ...
+        start(SqlServerConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        SourceRecords records = consumeRecordsByTopic(1 + 1); // CREATE 1 tables
+        // no data records, so size is null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        stopConnector();
+
+        // insert two data records
+        connection.execute(
+                "INSERT INTO tablea VALUES(100,'100')",
+                "INSERT INTO tablea VALUES(200,'200')");
+
+        purgeDatabaseLogs();
+
+        start(SqlServerConnector.class, config);
+
+        // consume the records
+        records = consumeRecordsByTopic(1 + 2);
+        // data records should be null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+    }
+
+    @Test
     void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         final String pkField = "id";
@@ -3465,6 +3517,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @FunctionalInterface
     interface SqlRunnable {
+
         void run() throws SQLException;
     }
 
