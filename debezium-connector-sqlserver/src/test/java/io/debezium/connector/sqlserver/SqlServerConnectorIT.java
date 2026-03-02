@@ -1812,8 +1812,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     /**
-     * Passing the "applicationName" property which can be asserted from the
-     * connected sessions".
+     * Passing the "applicationName" property which can be asserted from the connected sessions".
      */
     @Test
     @FixFor("DBZ-964")
@@ -2657,19 +2656,19 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-2793")
     public void shouldApplySchemaFilters() throws Exception {
         connection.setAutoCommit(false);
-        String statements = "DROP TABLE IF EXISTS s1.tablea;"
-                + "DROP TABLE IF EXISTS s1.tableb;"
-                + "DROP TABLE IF EXISTS s2.tablea;"
-                + "DROP TABLE IF EXISTS s2.tableb;";
+        String statements = "DROP TABLE IF EXISTS s1.tablea;" +
+                "DROP TABLE IF EXISTS s1.tableb;" +
+                "DROP TABLE IF EXISTS s2.tablea;" +
+                "DROP TABLE IF EXISTS s2.tableb;";
         connection.execute(statements);
         connection.execute("DROP SCHEMA IF EXISTS s1");
         connection.execute("DROP SCHEMA IF EXISTS s2");
         connection.execute("CREATE SCHEMA s1");
         connection.execute("CREATE SCHEMA s2");
-        statements = "CREATE TABLE s1.tablea (id int PRIMARY KEY, vala integer);"
-                + "CREATE TABLE s1.tableb (id int PRIMARY KEY, valb integer);"
-                + "CREATE TABLE s2.tablea (id int PRIMARY KEY, vala integer);"
-                + "CREATE TABLE s2.tableb (id int PRIMARY KEY, valb integer);";
+        statements = "CREATE TABLE s1.tablea (id int PRIMARY KEY, vala integer);" +
+                "CREATE TABLE s1.tableb (id int PRIMARY KEY, valb integer);" +
+                "CREATE TABLE s2.tablea (id int PRIMARY KEY, vala integer);" +
+                "CREATE TABLE s2.tableb (id int PRIMARY KEY, valb integer);";
         connection.execute(statements);
         connection.setAutoCommit(true);
         TestHelper.enableTableCdc(connection, new TableId(null, "s1", "tablea"));
