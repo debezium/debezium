@@ -340,6 +340,103 @@ class DebeziumDescriptorSchemaCreatorTest {
                 .containsOnly("Connection");
     }
 
+    @Test
+    void shouldAppendDefaultValueToDescription() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("test.field")
+                        .withDisplayName("Test Field")
+                        .withType(ConfigDef.Type.INT)
+                        .withImportance(ConfigDef.Importance.HIGH)
+                        .withDescription("Some description")
+                        .withDefault(42)
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "test.field");
+
+        assertThat(property).isNotNull();
+        assertThat(property.display().description())
+                .contains("Default: 42");
+    }
+
+    @Test
+    void shouldReplaceExistingDefaultText() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("replace.field")
+                        .withDisplayName("Replace Field")
+                        .withType(ConfigDef.Type.STRING)
+                        .withImportance(ConfigDef.Importance.HIGH)
+                        .withDescription("Value used by connector. Default value is foo.")
+                        .withDefault("bar")
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "replace.field");
+
+        assertThat(property.display().description())
+                .doesNotContain("foo")
+                .contains("Default: bar");
+    }
+
+    @Test
+    void shouldKeepDescriptionWhenNoDefaultValue() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("nodefault.field")
+                        .withDisplayName("No Default Field")
+                        .withType(ConfigDef.Type.STRING)
+                        .withImportance(ConfigDef.Importance.HIGH)
+                        .withDescription("Plain description")
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "nodefault.field");
+
+        assertThat(property.display().description())
+                .isEqualTo("Plain description");
+    }
+
     private Property findProperty(io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor, String name) {
         return descriptor.properties().stream()
                 .filter(p -> p.name().equals(name))
