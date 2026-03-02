@@ -39,6 +39,8 @@ public class DebeziumDescriptorSchemaCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumDescriptorSchemaCreator.class);
 
+    private static final String DEFAULT_VALUE_REGEX = "(?i)default\\s*(value)?\\s*(is|:)\\s*[^.]*\\.";
+
     private final ComponentMetadata componentMetadata;
     private final FieldFilter fieldFilter;
 
@@ -110,7 +112,7 @@ public class DebeziumDescriptorSchemaCreator {
             return desc;
         }
 
-        desc = desc.replaceAll("(?i)default\\s*(value)?\\s*(is|:)\\s*[^.]*\\.", "").trim();
+        desc = desc.replaceAll(DEFAULT_VALUE_REGEX, "").trim();
 
         return desc + " Default: " + defaultValue.toString();
     }
