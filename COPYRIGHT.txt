@@ -41,7 +41,9 @@ Andreas Bergmeier
 Andreas Martens
 Andras Istvan Nagy
 Andrei Leibovski
+Andrew Love
 Andrew Garrett
+Andrew Ofisher
 Andrew Tongen
 Andrew Walker
 Andrey Ignatenko
@@ -61,7 +63,7 @@ Anton Kondratev
 Anton Martynov
 Anton Repin
 Aravind Pedapudi
-archiedx
+Archie David
 Arik Cohen
 Aristofanis Lekkos
 Arkoprabho Chakraborti
@@ -77,6 +79,7 @@ Attila Szucs
 Atsushi Torikoshi
 Auke van Leeuwen
 Avinash Vishwakarma
+Aviral Srivastava
 Aykut Farsak
 Aziza Kalmasova
 baabgai
@@ -180,6 +183,7 @@ Dmitry Volontyr
 Dominique Chanet
 Dou Pengwei
 Duc Le Tu
+Duncan Prince
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -218,6 +222,7 @@ Farid Uyar
 Fatih Güçlü Akkaya
 Fándly Gergő
 Felix Eckhardt
+Filip Leski
 Fintan Bolton
 Frank Koornstra
 Frank Mormino
@@ -246,6 +251,8 @@ Guy Pascarella
 Grzegorz Kołakowski
 Haydar Miezanie Abdul Jamil
 ibnubay
+Ian Muge
+Issam El Nasiri
 Jacob Barrieault
 Jacob Gminder
 Jakub Zalas
@@ -586,6 +593,7 @@ Sebastian Bruckner
 Seo Jae-kwon
 Seokjae Lee
 Seongjoon Jeong
+Seongjun Shin
 Sergei Kazakov
 Sergei Morozov
 Sergei Nikolaev
@@ -598,6 +606,7 @@ Shantanu Sharma
 Sherafudheen PM
 Sheldon Fuchs
 Shichao An
+Shishir Sharma
 Shivam Sharma
 Shubham Kalla
 Shubham Rawat
@@ -772,3 +781,4 @@ j88753452-lab
 Pierre-Yves Péton
 Jiang Zhu
 William Xiang
+Shiwanming

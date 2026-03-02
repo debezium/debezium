@@ -2,6 +2,43 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.2.Final
+March 2nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.2.Final)
+
+### New features since 3.4.1.Final
+
+* Uppdate Informix JDBC Driver to v4.50.13 [debezium/dbz#1623](https://github.com/debezium/dbz/issues/1623)
+* Support Oracle 26ai (23.26.x) [debezium/dbz#1649](https://github.com/debezium/dbz/issues/1649)
+
+
+### Breaking changes since 3.4.1.Final
+
+None
+
+
+### Fixes since 3.4.1.Final
+
+* Avoid storing irrelevant DDL statement "REPLACE INTO" in schema history topic  [DBZ-9428] [debezium/dbz#1396](https://github.com/debezium/dbz/issues/1396)
+* Stuck transaction when using CTE query with Oracle connector [debezium/dbz#1564](https://github.com/debezium/dbz/issues/1564)
+* Implicit nullability in DDL (ALTER TABLE ... CHANGE ...) not respected by MySQL connector [debezium/dbz#1568](https://github.com/debezium/dbz/issues/1568)
+* SqlServerMetricsIT tests are unstable [debezium/dbz#1572](https://github.com/debezium/dbz/issues/1572)
+* "No enum constant io.debezium.connector.postgresql.connection.ReplicationMessage.Operation.NOOP" error when upgrading to Debezium 3.4.0 [debezium/dbz#1574](https://github.com/debezium/dbz/issues/1574)
+* ORA-03049 raised when querying archive logs [debezium/dbz#1579](https://github.com/debezium/dbz/issues/1579)
+* Oracle DDL fails to parse [debezium/dbz#1594](https://github.com/debezium/dbz/issues/1594)
+* Oracle Alter index Modify Subpartition Shrink DDL fails [debezium/dbz#1637](https://github.com/debezium/dbz/issues/1637)
+* A rolled back transaction mined in two steps sometimes leads to partial transaction id [DBZ-9686] [debezium/dbz#1145](https://github.com/debezium/dbz/issues/1145)
+* Unable to parse ROW ARCHIVAL DDL and corresponding DML with hidden ORA_ARCHIVE_STATE column [debezium/dbz#1650](https://github.com/debezium/dbz/issues/1650)
+* InformixStreamingChangeEventSource can cause NullPointerException [debezium/dbz#1653](https://github.com/debezium/dbz/issues/1653)
+
+
+### Other changes since 3.4.1.Final
+
+* Add FAQ entry to oracle.adoc about ORA-01013 [debezium/dbz#1584](https://github.com/debezium/dbz/issues/1584)
+* Use 65536 rather than 0x100000 in Informix `cdc.buffersize` [debezium/dbz#1635](https://github.com/debezium/dbz/issues/1635)
+* Update to com.mchange:c3p0 to 0.12.0 [debezium/dbz#1654](https://github.com/debezium/dbz/issues/1654)
+
+
+
 January 27th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+stable-iteration%3A3.4.1.Final)
 
 ### New features since 3.4.0.Final
