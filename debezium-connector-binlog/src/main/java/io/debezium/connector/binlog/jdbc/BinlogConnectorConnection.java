@@ -276,11 +276,11 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
-     * Determines whether the binlog format used by the database server is {@code binlog_row_image='FULL'}.
+     * Determines whether the binlog format used by the database server is {@code binlog_row_image='FULL' or 'NOBLOB'}.
      *
      * @return {@code true} if the {@code binlog_row_image} is set to {@code FULL}, {@code false} otherwise
      */
-    public boolean isBinlogRowImageFull() {
+    public boolean isBinlogRowImageFullOrNoblob() {
         try {
             final String rowImage = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_row_image'", rs -> {
                 if (rs.next()) {
@@ -291,7 +291,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
                 return "FULL";
             });
             LOGGER.debug("binlog_row_image={}", rowImage);
-            return "FULL".equalsIgnoreCase(rowImage);
+            return "NOBLOB".equalsIgnoreCase(rowImage) || "FULL".equalsIgnoreCase(rowImage);
         }
         catch (SQLException e) {
             throw new DebeziumException("Unexpected error while connecting to the database and looking at BINLOG_ROW_IMAGE mode: ", e);
