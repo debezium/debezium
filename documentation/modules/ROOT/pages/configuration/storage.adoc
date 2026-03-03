@@ -822,6 +822,13 @@ Typically, you would use Azure Blob storage when you deploy {prodname} in the li
 |No default
 |The name of the account that {prodname} uses to connect to Azure.
 
+|[[schema-history-internal-azure-storage-account-endpoint]]<<schema-history-internal-azure-storage-account-endpoint,`schema.history.internal.azure.storage.account.blob.endpoint`>>
+|No default
+|An optional Azure Blob Storage account endpoint URL.
+Use this to override the default public endpoint (`https://<account>.blob.core.windows.net`) for sovereign clouds such as Azure Government (`https://<account>.blob.core.usgovcloudapi.net`) or Azure China (`https://<account>.blob.core.chinacloudapi.cn`).
+Only used when `schema.history.internal.azure.storage.account.connectionstring` is not set.
+Should not be set together with `schema.history.internal.azure.storage.account.name`.
+
 |[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`schema.history.internal.azure.storage.account.container.name`>>
 |No default
 |The name of the Azure container in which {prodname} stores data. 

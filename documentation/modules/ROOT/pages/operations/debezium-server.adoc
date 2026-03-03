@@ -450,6 +450,13 @@ data during recovery.
 |
 |Azure Blob Storage account name. This should be set if and only if `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is empty, which will then use Azure Active Directory authentication.
 
+|[[schema-history-internal-azure-storage-account-endpoint]]<<schema-history-internal-azure-storage-account-endpoint,`debezium.source.schema.history.internal.azure.storage.account.blob.endpoint`>>
+|
+|An optional Azure Blob Storage account endpoint URL.
+Use this to override the default public endpoint (`https://<account>.blob.core.windows.net`) for sovereign clouds such as Azure Government (`https://<account>.blob.core.usgovcloudapi.net`) or Azure China (`https://<account>.blob.core.chinacloudapi.cn`).
+Only used when `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is not set.
+Should not be set together with `debezium.source.schema.history.internal.azure.storage.account.name`.
+
 |[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`debezium.source.schema.history.internal.azure.storage.account.container.name`>>
 |
 |Azure Blob Storage account container name.
