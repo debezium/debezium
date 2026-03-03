@@ -569,6 +569,24 @@ public class SqlServerConnectionIT {
     }
 
     @Test
+    @FixFor("DBZ-9336")
+    public void shouldReturnTrueWhenCdcEnabledOnDatabaseButNoTablesTracked() throws Exception {
+        // Setup: create the database (the @BeforeEach drops it, so we must recreate it)
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            connection.execute("CREATE DATABASE " + TestHelper.TEST_DATABASE_1);
+            connection.execute("USE " + TestHelper.TEST_DATABASE_1);
+
+            // 1. Enable CDC at the DATABASE level only — do NOT enable on any table
+            TestHelper.enableDbCdc(connection, TestHelper.TEST_DATABASE_1);
+
+            // 2. This should return TRUE (CDC schema is accessible, user has access)
+            assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1))
+                    .isTrue();
+        }
+    }
+
+    @Test
     @FixFor("DBZ-5496")
     public void shouldConnectToASingleDatabase() throws Exception {
         TestHelper.createTestDatabase();

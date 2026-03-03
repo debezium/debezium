@@ -483,6 +483,24 @@ public class SqlServerConnection extends JdbcConnection {
         final AtomicBoolean userHasAccess = new AtomicBoolean();
         final String query = replaceDatabaseNamePlaceholder("EXEC #db.sys.sp_cdc_help_change_data_capture", databaseName);
         this.query(query, rs -> userHasAccess.set(rs.next()));
+        if (!userHasAccess.get()) {
+            LOGGER.info("No CDC-tracked tables found via sp_cdc_help_change_data_capture for database '{}'. Performing fallback access check via cdc.change_tables.",
+                    databaseName);
+            try {
+                final String cdcTablesQuery = replaceDatabaseNamePlaceholder(
+                        "SELECT COUNT(*) FROM #db.cdc.change_tables", databaseName);
+                queryAndMap(cdcTablesQuery, rs -> {
+                    // query succeeded → user can access the CDC schema
+                    // (0 rows means no tables tracked yet, but access is valid)
+                    userHasAccess.set(true);
+                    return null;
+                });
+            }
+            catch (SQLException e) {
+                // query failed → user cannot access the CDC schema
+                LOGGER.debug("User does not have access to CDC schema in database '{}'", databaseName, e);
+            }
+        }
         return userHasAccess.get();
     }
 
