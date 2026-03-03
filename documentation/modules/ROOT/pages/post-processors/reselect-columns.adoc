@@ -37,7 +37,8 @@ You can configure the post processor to reselect the following column types:
  * Columns that contain the `unavailable.value.placeholder` sentinel value.
 
 
-NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} source connectors. +
+NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} source connectors.
+
 The post processor is not designed to work with the {prodname} JDBC sink connector.
 
 ifdef::product[]
@@ -131,7 +132,7 @@ The following table lists the configuration options that you can set for the Res
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+post.processors.reselect.columns.include.list+`>>
 |No default
 |Comma-separated list of column names to reselect from the source database.
-Use the following format to specify column names: +
+Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
 
@@ -140,7 +141,7 @@ Do not set this property if you set the `post.processors.reselect.columns.exclud
 |[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+post.processors.reselect.columns.exclude.list+`>>
 |No default
 |Comma-separated list of column names in the source database to exclude from reselection.
-Use the following format to specify column names: +
+Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
 
@@ -156,18 +157,18 @@ Do not set this property if you set the `post.processors.reselect.columns.includ
 
 |[[reselect-columns-post-processor-property-reselect-use-event-key]]<<reselect-columns-post-processor-property-reselect-use-event-key, `+post.processors.reselect.use.event.key+`>>
 |`false`
-|Specifies whether the post processor reselects based on the event's key field names or uses the relational table's primary key column names. +
- +
+|Specifies whether the post processor reselects based on the event's key field names or uses the relational table's primary key column names.
+
 By default, the reselection query is based on the relational table's primary key columns or unique key index.
 For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
 The post processor then uses the specified key field names as the primary key in the SQL reselection query.
 
 |[[reselect-columns-post-processor-property-reselect-error-handling-mode]]<<reselect-columns-post-processor-property-reselect-error-handling-mode, `+post.processors.reselect.error.handling.mode+`>>
 |`WARN`
-|Specifies how the reselect post processor reacts to certain conditions. +
- +
-By default, the post-processor logs a warning message when the row cannot be found or if there is a database selection error. +
- +
+|Specifies how the reselect post processor reacts to certain conditions.
+
+By default, the post-processor logs a warning message when the row cannot be found or if there is a database selection error.
+
 When set to `FAIL`, the connector will stop processing changes if the row no longer exists at the time of reselection or if there is a database failure when reselecting the row.
 
 

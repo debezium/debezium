@@ -257,14 +257,14 @@ You can include any {link-kafka-docs}/#topicconfigs[Kafka topic-level configurat
 
 |1
 |`topic.creation.default.replication.factor` defines the replication factor for topics created by
-the default group.{empty} +
+the default group.
 `replication.factor` is mandatory for the `default` group but optional for custom groups. Custom
 groups will fall back to the `default` group's value if not set. Use `-1` to use the Kafka
 broker's default value.
 
 |2
 |`topic.creation.default.partitions` defines the number of partitions for topics created by
-the default group.{empty} +
+the default group.
 `partitions` is mandatory for the `default` group but optional for custom groups. Custom
 groups will fall back to the `default` group's value if not set. Use `-1` to use the Kafka
 broker's default value.
@@ -367,7 +367,7 @@ endif::product[]
 |Item |Description
 
 |1
-|Defines the configuration for the `inventory` group.{empty} +
+|Defines the configuration for the `inventory` group.
 The `replication.factor` and `partitions` properties are optional for custom groups. If no value is set, custom
 groups fall back to the value set for the `default` group. Set the value to `-1` to use the value that is set for the Kafka broker.
 
@@ -377,7 +377,7 @@ groups fall back to the value set for the `default` group. Set the value to `-1`
 topics with names that match the specified regular expression.
 
 |3
-|Defines the configuration for the `applicationlogs` group.{empty} +
+|Defines the configuration for the `applicationlogs` group.
 The `replication.factor` and `partitions` properties are optional for custom groups. If no value is set,
 custom groups fall back to the value set for the `default` group. Set the value to `-1` to use the value that is set for the Kafka broker.
 

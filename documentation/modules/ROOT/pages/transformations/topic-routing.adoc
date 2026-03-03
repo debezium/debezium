@@ -75,9 +75,9 @@ transforms.Reroute.topic.replacement=$1customers_all_shards
 +
 In the example, the regular expression, `pass:[(.*)customers_shard(.*)]` matches records for changes to tables whose names include the `customers_shard` string. This would re-route records for tables with the following names:
 +
-`myserver.mydb.customers_shard1` +
-`myserver.mydb.customers_shard2` +
-`myserver.mydb.customers_shard3`
+* `myserver.mydb.customers_shard1`
+* `myserver.mydb.customers_shard2`
+* `myserver.mydb.customers_shard3`
 
 `topic.replacement`:: Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. In this example, records for the three sharded tables listed above would be routed to the `myserver.mydb.customers_all_shards` topic.
 
@@ -125,9 +125,9 @@ transforms.Reroute.key.field.replacement=$2
 
 With this configuration, suppose that the default destination topic names are:
 
-`myserver.mydb.customers_shard1` +
-`myserver.mydb.customers_shard2` +
-`myserver.mydb.customers_shard3`
+* `myserver.mydb.customers_shard1`
+* `myserver.mydb.customers_shard2`
+* `myserver.mydb.customers_shard3`
 
 The transformation uses the values in the second captured group, the shard numbers, as the value of the key's new field. In this example, the inserted key field's values would be `1`, `2`, or `3`.
 
@@ -182,8 +182,8 @@ The following table describes topic routing SMT configuration options.
 
 |[[by-logical-table-router-key-enforce-uniqueness]]xref:by-logical-table-router-key-enforce-uniqueness[`key.enforce{zwsp}.uniqueness`]
 |`true`
-|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables. +
- +
+|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables.
+
 Specify `false` if you do not want the transformation to add a key field.  For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables.
 
 |[[by-logical-table-router-key-field-name]]xref:by-logical-table-router-key-field-name[`key.field.name`]

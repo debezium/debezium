@@ -272,12 +272,11 @@ Use the `TopicNameMatches` predicate to filter records by topic.
 |[[partition-routing-partition-hash-function]]<<partition-routing-partition-hash-function, `partition.hash.function`>>
 | `java`
 |Hash function to be used when computing hash of the fields which would determine number of the destination partition.
-Possible values are: +
- +
-`java` - standard Java `Object::hashCode` function +
- +
-`murmur` - latest version of http://en.wikipedia.org/wiki/MurmurHash[MurmurHash] function, MurmurHash3 +
- +
+Possible values are:
+
+* `java` - standard Java `Object::hashCode` function
+* `murmur` - latest version of http://en.wikipedia.org/wiki/MurmurHash[MurmurHash] function, MurmurHash3
+
 This configuration is optional.
 If not specified or invalid value is used, the default value will be used.
 
