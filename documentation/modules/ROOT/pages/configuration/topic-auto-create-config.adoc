@@ -251,33 +251,31 @@ endif::product[]
 You can include any {link-kafka-docs}/#topicconfigs[Kafka topic-level configuration property] in the configuration for the `default` group.
 
 .Connector configuration for the `default` topic creation group
-[cols="1,9",options="header"]
+[cols="1,9a",options="header"]
 |===
 |Item |Description
 
 |1
-|`topic.creation.default.replication.factor` defines the replication factor for topics created by
-the default group.
-`replication.factor` is mandatory for the `default` group but optional for custom groups. Custom
-groups will fall back to the `default` group's value if not set. Use `-1` to use the Kafka
-broker's default value.
+|`topic.creation.default.replication.factor` defines the replication factor for topics created by the default group.
+
+Specifying the `replication.factor` is mandatory for the `default` group but optional for custom groups.
+Custom groups use the value of the `default` group, unless otherwise specified.
+Set the value to `-1` to use the default replication factor of the Kafka broker.
 
 |2
-|`topic.creation.default.partitions` defines the number of partitions for topics created by
-the default group.
-`partitions` is mandatory for the `default` group but optional for custom groups. Custom
-groups will fall back to the `default` group's value if not set. Use `-1` to use the Kafka
-broker's default value.
+|`topic.creation.default.partitions` defines the number of partitions for topics created by the default group.
+
+Specifying the `partitions` value is mandatory for the `default` group but optional for custom groups.
+Custom groups use the value of the `default` group, unless otherwise specifie.
+Set the value to `-1` to use default number of partitions specified for the Kafka broker.
 
 |3
 |`topic.creation.default.cleanup.policy` is mapped to the {link-kafka-docs}/#cleanup.policy[`cleanup.policy`]
-property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and
-defines the log retention policy.
+property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and defines the log retention policy.
 
 |4
 |`topic.creation.default.compression.type` is mapped to the {link-kafka-docs}/#compression.type[`compression.type`]
-property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and
-defines how messages are compressed on hard disk.
+property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and defines how messages are compressed on hard disk.
 |===
 
 [NOTE]
@@ -362,39 +360,38 @@ spec:
 endif::product[]
 
 .Connector configuration for custom `inventory` and `applicationlogs` topic creation groups
-[cols="1,9",options="header"]
+[cols="1,9a",options="header"]
 |===
 |Item |Description
 
 |1
 |Defines the configuration for the `inventory` group.
-The `replication.factor` and `partitions` properties are optional for custom groups. If no value is set, custom
-groups fall back to the value set for the `default` group. Set the value to `-1` to use the value that is set for the Kafka broker.
+
+The `replication.factor` and `partitions` properties are optional for custom groups.
+If no value is set, custom groups fall back to the value set for the `default` group.
+Set the value to `-1` to use the value that is set for the Kafka broker.
 
 |2
-|`topic.creation.inventory.include` defines a regular expression to match all topics that start with
-`dbserver1.inventory.`. The configuration that is defined for the `inventory` group is applied only to
-topics with names that match the specified regular expression.
+|`topic.creation.inventory.include` defines a regular expression to match all topics that start with `dbserver1.inventory.`.
+The configuration that is defined for the `inventory` group is applied only to topics with names that match the specified regular expression.
 
 |3
 |Defines the configuration for the `applicationlogs` group.
-The `replication.factor` and `partitions` properties are optional for custom groups. If no value is set,
-custom groups fall back to the value set for the `default` group. Set the value to `-1` to use the value that is set for the Kafka broker.
+
+The `replication.factor` and `partitions` properties are optional for custom groups.
+If no value is set, custom groups fall back to the value set for the `default` group.
+Set the value to `-1` to use the value that is set for the Kafka broker.
 
 |4
-|`topic.creation.applicationlogs.include` defines a regular expression to match all topics that start
-with `dbserver1.logs.applog-`. The configuration that is defined for the `applicationlogs` group is
-applied only to topics with names that match the specified regular expression. Because an `exclude`
-property is also defined for this group, the topics that match the `include` regular expression might be
-further restricted by the that `exclude` property.
+|`topic.creation.applicationlogs.include` defines a regular expression to match all topics that start with `dbserver1.logs.applog-`.
+The configuration that is defined for the `applicationlogs` group is applied only to topics with names that match the specified regular expression.
+Because an `exclude` property is also defined for this group, the topics that match the `include` regular expression might be further restricted by that `exclude` property.
 
 |5
-|`topic.creation.applicationlogs.exclude` defines a regular expression to match all topics that start
-with `dbserver1.logs.applog-old-`. The configuration that is defined for the `applicationlogs` group is
-applied only to topics with name that do *not* match the given regular expression. Because an
-`include` property is also defined for this group, the configuration of the `applicationlogs` group is applied only to topics
-with names that match the specified `include` regular expressions *and* that do _not_ match the specified `exclude` regular
-expressions.
+|`topic.creation.applicationlogs.exclude` defines a regular expression to match all topics that start with `dbserver1.logs.applog-old-`.
+The configuration that is defined for the `applicationlogs` group is applied only to topics with name that do *not* match the given regular expression.
+Because an `include` property is also defined for this group, the configuration of the `applicationlogs` group is applied only to topics
+with names that match the specified `include` regular expressions *and* that do _not_ match the specified `exclude` regular expressions.
 |===
 
 // Type: procedure

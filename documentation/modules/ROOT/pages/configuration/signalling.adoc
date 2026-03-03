@@ -116,10 +116,10 @@ The structure of the signaling table must conform to the following standard form
 |Field | Type | Description
 
 |`id`
-(required)
+
 |`string`
 
-|An arbitrary unique string that identifies a signal instance.
+|(Required) An arbitrary unique string that identifies a signal instance.
 You assign an `id` to each signal that you submit to the signaling table.
 Typically, the ID is a UUID string.
 You can use signal instances for logging, debugging, or de-duplication.
@@ -127,17 +127,17 @@ When a signal triggers {prodname} to perform an incremental snapshot, it generat
 The `id` string that the generated message contains is unrelated to the `id` string in the submitted signal.
 
 |`type`
-(required)
+
 |`string`
 
-|Specifies the type of signal to send.
+|(Required) Specifies the type of signal to send.
 You can use some signal types with any connector for which signaling is available, while other signal types are available for specific connectors only.
 
 |`data`
-(optional)
+
 |`string`
 
-|Specifies JSON-formatted parameters to pass to a signal action.
+|(Optional) Specifies JSON-formatted parameters to pass to a signal action.
 Each signal type requires a specific set of data.
 
 |===
@@ -160,11 +160,13 @@ You create a signaling table by submitting a standard SQL DDL query to the sourc
 .Procedure
 
 * Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example:
++
 `CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);`
 
 [NOTE]
 ====
 The amount of space that you allocate to the `VARCHAR` parameter of the `id` variable must be sufficient to accommodate the size of the ID strings of signals sent to the signaling table.
+
 If the size of an ID exceeds the available space, the connector cannot process the signal.
 ====
 
@@ -234,6 +236,7 @@ You can set the following properties for each additional condition:
 `data-collection`:: The fully-qualified name of the data collection that the filter applies to.
 You can apply different filters to each data collection.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`.
++
 The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values.
 
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
@@ -296,8 +299,9 @@ You can set the following properties for each additional condition:
 You can apply different filters to each data collection.
 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`.
++
 The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values.
-
++
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
 * For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
@@ -348,8 +352,9 @@ You can set the following properties for each additional condition:
 `data-collection`:: The fully-qualified name of the data collection that the filter applies to.
 You can apply different filters to each data collection.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`.
++
 The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values.
-
++
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
 * For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
@@ -444,7 +449,7 @@ Declare your implementation in the `META-INF/services/io.debezium.pipeline.signa
 
 .Procedure
 * To use a custom signaling channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with.
-
++
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 
 NOTE: To use a custom signaling channel with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
@@ -483,7 +488,7 @@ Optionally, you can configure the signal so that the resulting message includes 
 
 [id="debezium-signaling-example-of-a-logging-record"]
 .Example of a signaling record for adding a log message
-[cols="1,9,9",options="header"]
+[cols="1,9a,9a",options="header"]
 |===
 |Column | Value | Description
 
@@ -496,12 +501,12 @@ Optionally, you can configure the signal so that the resulting message includes 
 |The action type of the signal.
 
 |data
-a|
-[source,json]
+|[source,json]
 ----
 {"message": "Signal message at offset {}"}
 ----
 | The `message` parameter specifies the string to print to the log.
+
 If you add a placeholder (`{}`) to the message, it is replaced with streaming coordinates.
 |===
 
@@ -874,7 +879,7 @@ Declare your provider implementation in the `META-INF/services/io.debezium.pipel
 
 .Procedure
 * To use a custom action with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with.
-
++
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 
 NOTE: To use a custom action with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
