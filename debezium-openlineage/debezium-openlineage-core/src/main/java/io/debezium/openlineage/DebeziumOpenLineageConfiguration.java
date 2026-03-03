@@ -28,6 +28,7 @@ public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, J
 
     private static final String KEY_VALUE_SEPARATOR = "=";
     private static final String LIST_SEPARATOR = ",";
+    private static final String DEFAULT_JOB_DESCRIPTION_TEMPLATE = "Debezium CDC job for %s";
 
     public record Config(String path) {
     }
@@ -49,7 +50,8 @@ public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, J
                 new Config(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)),
                 new Job(
                         connectorContext.config().getOrDefault(OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, connectorContext.connectorLogicalName()),
-                        connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION),
+                        connectorContext.config().getOrDefault(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
+                                DEFAULT_JOB_DESCRIPTION_TEMPLATE.formatted(connectorContext.connectorLogicalName())),
                         tags,
                         owners));
     }
