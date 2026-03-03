@@ -1176,8 +1176,8 @@ public interface Configuration {
      * Get the long value associated with the given key.
      *
      * @param key the key for the configuration property
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, or the value
-     *         could not be parsed as an integer
+     * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, or the value
+     *         could not be parsed as a long
      */
     default Long getLong(String key) {
         return getLong(key, null);
@@ -1200,7 +1200,7 @@ public interface Configuration {
      *
      * @param key the key for the configuration property
      * @param defaultValue the default value
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, or the value
+     * @return the integer value, or the default value if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as an integer
      */
     default int getInteger(String key, int defaultValue) {
@@ -1213,7 +1213,7 @@ public interface Configuration {
      *
      * @param key the key for the configuration property
      * @param defaultValue the default value
-     * @return the long value, or null if the key is null, there is no such key-value pair in the configuration, or the value
+     * @return the long value, or the default value if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as a long
      */
     default long getLong(String key, long defaultValue) {
@@ -1226,7 +1226,7 @@ public interface Configuration {
      *
      * @param key the key for the configuration property
      * @param defaultValue the default value
-     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration, or the value
+     * @return the boolean value, or the default value if the key is null, there is no such key-value pair in the configuration, or the value
      *         could not be parsed as a boolean value
      */
     default boolean getBoolean(String key, boolean defaultValue) {
@@ -1335,8 +1335,8 @@ public interface Configuration {
      * key-value pair.
      *
      * @param field the field
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
-     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     * @return the integer value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as an integer, or there is a key-value pair in
      *         the configuration but the value could not be parsed as an integer value
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
@@ -1349,7 +1349,7 @@ public interface Configuration {
      * key-value pair.
      *
      * @param field the field
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     * @return the long value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a long value
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
@@ -1363,8 +1363,8 @@ public interface Configuration {
      * not have a name-value pair with the same name as the field, then the field's default value.
      *
      * @param field the field
-     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
-     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     * @return the boolean value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a boolean, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a boolean value
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
@@ -1378,8 +1378,8 @@ public interface Configuration {
      *
      * @param field the field
      * @param defaultValue the default value
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
-     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     * @return the integer value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as an integer, or there is a key-value pair in
      *         the configuration but the value could not be parsed as an integer value
      */
     default int getInteger(Field field, int defaultValue) {
@@ -1392,7 +1392,7 @@ public interface Configuration {
      *
      * @param field the field
      * @param defaultValue the default value
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     * @return the long value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a long value
      */
@@ -1406,8 +1406,8 @@ public interface Configuration {
      *
      * @param field the field
      * @param defaultValue the default value
-     * @return the boolean value, or null if the key is null, there is no such key-value pair in the configuration and there is
-     *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
+     * @return the boolean value, or the default value if the key is null, there is no such key-value pair in the configuration and there is
+     *         no default value in the field or the default value could not be parsed as a boolean, or there is a key-value pair in
      *         the configuration but the value could not be parsed as a boolean value
      */
     default boolean getBoolean(Field field, boolean defaultValue) {
