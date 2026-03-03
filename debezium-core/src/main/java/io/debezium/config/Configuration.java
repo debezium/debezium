@@ -1239,9 +1239,9 @@ public interface Configuration {
      *
      * @param key the key for the configuration property
      * @param defaultValueSupplier the supplier for the default value; may be null
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration, the
+     * @return the number value, or null if the key is null, there is no such key-value pair in the configuration, the
      *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
-     *         could not be parsed as an integer
+     *         could not be parsed as a number
      */
     default Number getNumber(String key, Supplier<Number> defaultValueSupplier) {
         String value = getString(key);
@@ -1509,12 +1509,12 @@ public interface Configuration {
      * The instance is created using {@code Instance(Configuration)} constructor.
      *
      * @param key the key for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param configuration {@link Configuration} object that is passed as a parameter to the constructor
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
+    default <T> T getInstance(String key, Class<T> type, Configuration configuration) {
         return Instantiator.getInstance(getString(key), configuration);
     }
 
@@ -1535,12 +1535,12 @@ public interface Configuration {
      * The instance is created using {@code Instance(Configuration)} constructor.
      *
      * @param field the field for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param configuration the {@link Configuration} object that is passed as a parameter to the constructor
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
+    default <T> T getInstance(Field field, Class<T> type, Configuration configuration) {
         return Instantiator.getInstance(getString(field), configuration);
     }
 
@@ -1549,12 +1549,12 @@ public interface Configuration {
      * The instance is created using {@code Instance(Configuration)} constructor.
      *
      * @param field the field for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
      * @param props the {@link Properties} object that is passed as a parameter to the constructor
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(Field field, Class<T> clazz, Properties props) {
+    default <T> T getInstance(Field field, Class<T> type, Properties props) {
         return Instantiator.getInstanceWithProperties(getString(field), props);
     }
 
