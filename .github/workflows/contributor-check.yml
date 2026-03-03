@@ -25,7 +25,8 @@ jobs:
         id: check
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
-        run: |        
+        run: |
+          USER_NOT_FOUND=false
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/COPYRIGHT.txt >> COPYRIGHT_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES_MAIN.txt
@@ -41,10 +42,13 @@ jobs:
               if ! grep -qi "$AUTHOR" ALIASES_CHECK.txt; then
                 if ! grep -qi "$AUTHOR" FILTEREDNAMES_CHECK.txt; then
                   echo "USER_NOT_FOUND=true"
+                  USER_NOT_FOUND=true
+                  break
                 fi
               fi
             fi
           done < AUTHOR_NAME.txt
+          echo "USER_NOT_FOUND=$USER_NOT_FOUND" >> $GITHUB_OUTPUT
       - name: Create comment
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
         uses: peter-evans/create-or-update-comment@v5
