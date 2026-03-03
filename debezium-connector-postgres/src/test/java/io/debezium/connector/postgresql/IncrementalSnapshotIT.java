@@ -12,13 +12,17 @@ import static org.assertj.core.api.Assertions.entry;
 
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.debezium.util.Testing;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -508,6 +512,126 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         final var data = records.recordsForTopic(topicName);
         assertThat(data).hasSize(1);
         assertThat(data.get(0).valueSchema().field("gencol")).isNull();
+    }
+
+    /**
+     * Tests that incremental snapshot works correctly for a newly created table
+     * that is not yet in the connector's in-memory schema cache.
+     * <p>
+     * This test validates the fix for the NPE bug where PostgreSQL tables have
+     * null catalog in their TableId, causing a NullPointerException when
+     * createAndDispatchSchemaChangeEvent() attempts to create a SchemaChangeEvent.
+     * <p>
+     * KEY: Use filtered publication so INSERT events are NOT captured until
+     * publication is modified. This ensures schema is NOT loaded by streaming
+     * before the incremental snapshot runs.
+     */
+    @Test
+    @FixFor("debezium/dbz#1540")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication filtering only works with pgoutput")
+    public void shouldSnapshotNewlyCreatedTableNotInSchemaCache() throws Exception {
+        Testing.Print.enable();
+
+        final String publicationName = "test_filtered_pub";
+        final String slotName = "test_filtered_slot";
+        final String newTableName = "s1.third_table";
+
+        // Cleanup from any previous runs
+        try {
+            TestHelper.execute("SELECT pg_drop_replication_slot('" + slotName + "');");
+        }
+        catch (Exception e) {
+            // Slot may not exist, ignore
+        }
+        TestHelper.execute("DROP TABLE IF EXISTS s1.third_table;");
+        TestHelper.execute("DROP PUBLICATION IF EXISTS " + publicationName + ";");
+
+        // Step 1: Create FILTERED publication with only initial tables (NOT the new table)
+        TestHelper.execute("CREATE PUBLICATION " + publicationName + " FOR TABLE s1.a, s1.debezium_signal;");
+
+        // Step 2: Build config for pgoutput with filtered publication
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.getValue())
+                .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, publicationName)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER, getStreamingNamespace(), null);
+
+        // Step 3: Trigger a streaming event FIRST to force schema refresh
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (999);");
+
+        Awaitility.await()
+                .atMost(10, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> {
+                    final int[] count = {0};
+                    consumeAvailableRecords(record -> {
+                        if (record.topic().equals("test_server.s1.a")) {
+                            count[0]++;
+                        }
+                    });
+                    return count[0] >= 1;
+                });
+
+        // Step 4: NOW create the NEW table AFTER schema refresh is complete
+        TestHelper.execute(
+                "CREATE TABLE s1.third_table (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        // Step 5: Insert data - NOT captured yet because table is not in publication
+        TestHelper.execute(
+                "INSERT INTO s1.third_table (data) VALUES ('row1'), ('row2'), ('row3');");
+
+        // Step 6: Add table to publication - now events can be captured
+        TestHelper.execute("ALTER PUBLICATION " + publicationName + " ADD TABLE s1.third_table;");
+
+        // Step 8: Send incremental snapshot signal
+        // At this point:
+        // - Table matches schema filter (s1)
+        // - Table is now in publication
+        // - BUT schema is NOT in cache (created AFTER schema refresh completed)
+        // This triggers: isTableInvalid -> retrieveAndRefreshSchema -> createAndDispatchSchemaChangeEvent
+        // Without fix: NPE because PostgreSQL TableId.catalog() returns null
+        sendAdHocSnapshotSignal(newTableName);
+
+        // Step 9: Wait for snapshot to complete
+        final int expectedRecordCount = 3;
+        final Map<Integer, Integer> dbChanges = new LinkedHashMap<>();
+
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    consumeAvailableRecords(record -> {
+                        if (record.topic().equals("test_server.s1.third_table")) {
+                            final Struct value = (Struct) record.value();
+                            final Struct after = value.getStruct("after");
+                            final int pk = after.getInt32("pk");
+                            dbChanges.put(pk, pk);
+                        }
+                    });
+                    return dbChanges.size() >= expectedRecordCount;
+                });
+
+        // Verify all 3 records were captured - if we reach here, no NPE occurred
+        assertThat(dbChanges).hasSize(3);
+
+        // Cleanup
+        stopConnector();
+        TestHelper.execute("DROP TABLE IF EXISTS s1.third_table;");
+        TestHelper.dropPublication(publicationName);
+        try {
+            TestHelper.execute("SELECT pg_drop_replication_slot('" + slotName + "');");
+        }
+        catch (Exception e) {
+            // Slot may have been dropped already, ignore
+        }
     }
 
     protected void populate4PkTable() throws SQLException {
