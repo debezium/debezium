@@ -113,7 +113,7 @@ Implementations of the `CustomConverter` interface must include the following me
 `configure()`::
 Passes the properties specified in the connector configuration to the converter instance.
 The `configure` method runs when the connector is initialized.
-You can use a converter with multiple connectors and modify its behavior based on the connector's property settings. +
+You can use a converter with multiple connectors and modify its behavior based on the connector's property settings.
 The `configure` method accepts the following argument:
 
 `props`::: Contains the properties to pass to the converter instance.
@@ -122,7 +122,7 @@ Each property specifies the format for converting the values of a particular typ
 `converterFor()`::
 Registers the converter to process specific columns or fields in the data source.
 {prodname} invokes the `converterFor()` method to prompt the converter to call `registration` for the conversion.
-The `converterFor` method runs once for each column. +
+The `converterFor` method runs once for each column.
 The method accepts the following arguments:
 
 `field`:::
@@ -233,8 +233,8 @@ You cannot configure either the {prodname} MongoDB connector, or the {prodname} 
 * You have a custom converter Java program.
 
 .Procedure
-* To use a custom converter with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
- +
+* To use a custom converter with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with.
+
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 To use a converter with a connector, add the converter JAR file to the connector's subdirectory.
 
