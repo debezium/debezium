@@ -61,6 +61,7 @@
 ** xref:integrations/openlineage.adoc[OpenLineage]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
 ** xref:integrations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
+** xref:integrations/hibernate-cache.adoc[Hibernate Cache Invalidation]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Debezium AI
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
