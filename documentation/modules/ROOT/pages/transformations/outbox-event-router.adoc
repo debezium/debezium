@@ -137,16 +137,21 @@ payload       | jsonb                  |
 |Effect
 
 |`id`
-|Contains the unique ID of the event. In an outbox message, this value is a header. You can use this ID, for example, to remove duplicate messages.
+|Contains the unique ID of the event. In an outbox message, this value is a header.
+You can use this ID, for example, to remove duplicate messages.
 
 To obtain the unique ID of the event from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-id[`table.field.event.id`]  SMT option in the connector configuration.
 
 |[[route-by-field-example]]`aggregatetype`
-|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option.
+|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message.
+The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option.
 
 For example, in a default configuration, the xref:outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
-Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`.
+
+Suppose that your application adds two records to the outbox table.
+In the first record, the value in the `aggregatetype` column is `customers`.
 In the second record, the value in the `aggregatetype` column is `orders`.
+
 The connector emits the first record to the `outbox.event.customers` topic.
 The connector emits the second record to the `outbox.event.orders` topic.
 
@@ -164,6 +169,7 @@ To obtain the event key from a different outbox table column, set the xref:outbo
 The default structure is JSON.
 By default, the Kafka message value is solely comprised of the `payload` value.
 However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
+
 For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
 
 To obtain the event payload from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-payload[`table.field.event.payload`] SMT option in the connector configuration.
@@ -228,7 +234,7 @@ The default serialization format for the outbox event router SMT is JSON.
 To use this format, the data type of the source column must be JSON (for example, `jsonb` in PostgreSQL).
 
 // Type: concept
-// Title: Producing Expanding escaped JSON String as JSON
+// Title: Expand escaped JSON String as JSON
 // ModuleID: outbox-event-router-expanding-escaped-json-string-as-json
 [[expanding-escaped-json-string-as-json]]
 ==== Expanding escaped JSON String as JSON
@@ -441,7 +447,7 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |Table
 a|Specifies whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is".
 
-Fore more details, please see the xref:expanding-escaped-json-string-as-json[expanding escaped json] section.
+For more details, see xref:expanding-escaped-json-string-as-json[Expanding escaped JSON String as JSON].
 
 |[[outbox-event-router-property-table-json-payload-null-behavior]]<<outbox-event-router-property-table-json-payload-null-behavior, `table.json.payload.null.behavior`>>
 |`ignore`
@@ -492,7 +498,9 @@ The default behavior is that the SMT replaces the default `pass:[${routedByValue
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
 |Router
 a|Specifies the name of the topic to which the connector emits outbox messages.
-The default topic name is `outbox.event.` followed by the `aggregatetype` column value in the outbox table record. For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`.
+The default topic name is `outbox.event.` followed by the `aggregatetype` column value in the outbox table record.
+
+For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`.
 
 To change the topic name, you can:
 

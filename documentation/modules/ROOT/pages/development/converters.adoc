@@ -114,6 +114,7 @@ Implementations of the `CustomConverter` interface must include the following me
 Passes the properties specified in the connector configuration to the converter instance.
 The `configure` method runs when the connector is initialized.
 You can use a converter with multiple connectors and modify its behavior based on the connector's property settings.
++
 The `configure` method accepts the following argument:
 
 `props`::: Contains the properties to pass to the converter instance.
@@ -123,6 +124,7 @@ Each property specifies the format for converting the values of a particular typ
 Registers the converter to process specific columns or fields in the data source.
 {prodname} invokes the `converterFor()` method to prompt the converter to call `registration` for the conversion.
 The `converterFor` method runs once for each column.
++
 The method accepts the following arguments:
 
 `field`:::
@@ -132,7 +134,6 @@ The column metadata can include the name of the column or field, the name of the
 `registration`:::
 An object of type `io.debezium.spi.converter.CustomConverter.ConverterRegistration` that provides the target schema definition and the code for converting the column data.
 The converter calls the `registration` parameter when the source column matches the type that the converter should process.
-  calls the `register` method to define the converter for each column in the schema.
 Schemas are represented using the Kafka Connect link:https://kafka.apache.org/31/javadoc/org/apache/kafka/connect/data/SchemaBuilder.html[`SchemaBuilder`] API.
 ifdef::community[]
 In the future, an independent schema definition API will be added.

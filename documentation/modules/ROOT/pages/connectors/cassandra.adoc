@@ -836,7 +836,8 @@ varint.handling.mode=precise::
 
 |`varint`
 |`BYTES`
-a|`org.apache.kafka.connect.data.Decimal`
+|`org.apache.kafka.connect.data.Decimal`
+
 The `scale` schema parameter is set to zero.
 
 |===
@@ -880,7 +881,8 @@ decimal.handling.mode=precise::
 
 |`decimal`
 |`STRUCT`
-a|`io.debezium.data.VariableScaleDecimal`
+|`io.debezium.data.VariableScaleDecimal`
+
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
@@ -1335,7 +1337,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
 
 |[[cassandra-property-schema-name-adjustment-mode]]<<cassandra-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -1343,7 +1345,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
 
 |[[cassandra-property-field-name-adjustment-mode]]<<cassandra-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -1360,7 +1362,7 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 

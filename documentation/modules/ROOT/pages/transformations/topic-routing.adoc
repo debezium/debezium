@@ -178,25 +178,35 @@ The following table describes topic routing SMT configuration options.
 
 |[[by-logical-table-router-topic-replacement]]xref:by-logical-table-router-topic-replacement[`topic.replacement`]
 |
-|Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. This expression can refer to groups captured by the regular expression that you specify for `topic.regex`. To refer to a group, specify `$1`, `$2`, and so on.
+|Specifies a regular expression that represents the destination topic name.
+The transformation routes each matching record to the topic identified by this expression.
+This expression can refer to groups captured by the regular expression that you specify for `topic.regex`.
+To refer to a group, specify `$1`, `$2`, and so on.
 
 |[[by-logical-table-router-key-enforce-uniqueness]]xref:by-logical-table-router-key-enforce-uniqueness[`key.enforce{zwsp}.uniqueness`]
 |`true`
-|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables.
+|Indicates whether to add a field to the record's change event key.
+Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic.
+This helps to prevent collisions of change events for records that have the same key but that originate from different source tables.
 
-Specify `false` if you do not want the transformation to add a key field.  For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables.
+Specify `false` if you do not want the transformation to add a key field.
+For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables.
 
 |[[by-logical-table-router-key-field-name]]xref:by-logical-table-router-key-field-name[`key.field.name`]
 |`+__dbz__physicalTableIdentifier+`
-|Name of a field to be added to the change event key. The value of this field identifies the original table name. For the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default.
+|Name of a field to be added to the change event key.
+The value of this field identifies the original table name.
+or the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default.
 
 |[[by-logical-table-router-key-field-regex]]xref:by-logical-table-router-key-field-regex[`key.field.regex`]
 |
-|Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
+|Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters.
+For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
 
 |[[by-logical-table-router-key-field-replacement]]xref:by-logical-table-router-key-field-replacement[`key.field{zwsp}.replacement`]
 |
-|Specifies a regular expression for determining the value of the inserted key field in terms of the groups captured by the expression specified for `key.field.regex`. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
+|Specifies a regular expression for determining the value of the inserted key field in terms of the groups captured by the expression specified for `key.field.regex`.
+For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
 
 |[[by-logical-table-router-schema-name-adjustment-mode]]xref:by-logical-table-router-schema-name-adjustment-mode[`schema.name.adjustment.mode`]
 |none

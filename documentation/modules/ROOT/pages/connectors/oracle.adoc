@@ -4069,7 +4069,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -4077,7 +4077,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-field-name-adjustment-mode]]<<oracle-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -4233,7 +4233,7 @@ When this property is set, for columns with matching data types, the connector e
 These parameters propagate a column's original type name and length (for variable-width types), respectively.
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`. 
+The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`.
 To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
 
@@ -4480,7 +4480,7 @@ By advancing the session bounds, the connector can reduce the mining session win
 Setting this value may increase the risk of edge cases involving missed commits or unsupported transactions.
 
 Carefully evaluate the risk of these edge cases occurring in your environment relative to the performance benefits of preventing mining window growth.
-=====
+====
 endif::community[]
 
 |[[oracle-property-archive-destination-name]]<<oracle-property-archive-destination-name, `+archive.destination.name+`>>
@@ -4698,7 +4698,7 @@ By default, no additional retries will be performed.
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example, 
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
@@ -4711,7 +4711,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
