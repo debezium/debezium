@@ -23,6 +23,7 @@ import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -125,6 +126,215 @@ public class AnyLogMinerAdapterIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz9636");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void shouldTrackUsername() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.USERNAME_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.USERNAME_KEY)).isNotNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void shouldNotTrackUsername() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.USERNAME_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.USERNAME_KEY)).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void shouldTrackCommitTimestamp() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED, reason = "Buffered adapter populates commit_ts_ms from CHANGE_TIME regardless of tracking flag")
+    public void shouldNotTrackCommitTimestamp() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void shouldTrackStartTimestamp() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED, reason = "Buffered adapter populates start_ts_ms from CHANGE_TIME regardless of tracking flag")
+    public void shouldNotTrackStartTimestamp() throws Exception {
+        TestHelper.dropTable(connection, "dbz1663");
+        try {
+            connection.execute("CREATE TABLE dbz1663 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1663");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1663")
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1663 (id,data) values (1, 'test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1663");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+            Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.schema().field(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.START_TIMESTAMP_KEY)).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1663");
         }
     }
 }
