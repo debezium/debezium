@@ -2165,16 +2165,7 @@ public interface Configuration {
      *            be null
      */
     default <T> void forEachMatchingFieldNameWithBoolean(Pattern regex, int groupNumber, BiConsumer<String, Boolean> function) {
-        BiFunction<String, String, Boolean> extractor = (fieldName, strValue) -> {
-            try {
-                return Boolean.parseBoolean(strValue);
-            }
-            catch (NumberFormatException e) {
-                LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
-                        strValue, fieldName, regex);
-                return null;
-            }
-        };
+        BiFunction<String, String, Boolean> extractor = (fieldName, strValue) -> Boolean.parseBoolean(strValue);
         forEachMatchingFieldName(regex, groupNumber, extractor, function);
     }
 
