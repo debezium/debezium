@@ -342,8 +342,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                         return;
                     }
 
-                    String sourceInfo = offset.getSourceInfo() != null ? offset.getSourceInfo().toString() : "unknown offset";
-                    throw new DebeziumException("The connector is trying to read change stream starting at " + sourceInfo + ", but this is no longer "
+                    String offsetInfo;
+                    try {
+                        offsetInfo = offset.getSourceInfo() != null ? offset.getSourceInfo().toString() : "unknown offset";
+                    }
+                    catch (Exception e) {
+                        offsetInfo = offset.getOffset() != null ? offset.getOffset().toString() : "unknown offset";
+                    }
+                    throw new DebeziumException("The connector is trying to read change stream starting at " + offsetInfo + ", but this is no longer "
                             + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
                 }
             }
