@@ -66,9 +66,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             query.append("/*+ ORDERED USE_NL(R) */ ");
         }
 
-        query.append("SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ")
-                .append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, ")
-                .append("CLIENT_ID, START_SCN, COMMIT_SCN, START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# ")
+        query.append(buildColumnList())
                 .append("FROM ")
                 .append(LOGMNR_CONTENTS_VIEW).append(" ");
 
@@ -77,6 +75,70 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         }
 
         return query.append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "").toString();
+    }
+
+    /**
+     * Builds the comma-separated list of columns for the SELECT clause. Optional tracking columns
+     * are included only when their corresponding configuration flag is enabled. When a tracking flag
+     * is disabled, the column is omitted from the query entirely, reducing query bandwidth.
+     *
+     * <p><strong>IMPORTANT:</strong> The column ordering here is the single source of truth for the
+     * LogMiner query projection. {@link LogMinerColumnIndexes#fromConfig(io.debezium.connector.oracle.OracleConnectorConfig)}
+     * mirrors this ordering exactly to pre-compute the 1-based JDBC {@link java.sql.ResultSet} ordinal
+     * for every column. Any change to column order, addition, or removal here <em>must</em> be
+     * reflected in {@link LogMinerColumnIndexes} and its tests.
+     *
+     * @return the column list string, ending with a trailing space
+     */
+    private String buildColumnList() {
+        final List<String> columns = new ArrayList<>();
+        // Mandatory columns (positions 1-9, always present)
+        columns.add("SCN");
+        columns.add("SQL_REDO");
+        columns.add("OPERATION_CODE");
+        columns.add("TIMESTAMP");
+        columns.add("XID");
+        columns.add("CSF");
+        columns.add("TABLE_NAME");
+        columns.add("SEG_OWNER");
+        columns.add("OPERATION");
+        // Optional column: USERNAME
+        if (connectorConfig.isLogMiningBufferTrackUsername()) {
+            columns.add("USERNAME");
+        }
+        // Mandatory columns
+        columns.add("ROW_ID");
+        columns.add("ROLLBACK");
+        // Optional column: RS_ID
+        if (connectorConfig.isLogMiningBufferTrackRsId()) {
+            columns.add("RS_ID");
+        }
+        // Mandatory columns
+        columns.add("STATUS");
+        columns.add("INFO");
+        columns.add("SSN");
+        columns.add("THREAD#");
+        columns.add("DATA_OBJ#");
+        columns.add("DATA_OBJV#");
+        columns.add("DATA_OBJD#");
+        // Optional column: CLIENT_ID
+        if (connectorConfig.isLogMiningBufferTrackClientId()) {
+            columns.add("CLIENT_ID");
+        }
+        // Mandatory columns
+        columns.add("START_SCN");
+        columns.add("COMMIT_SCN");
+        // Optional column: START_TIMESTAMP
+        if (connectorConfig.isLogMiningBufferTrackStartTimestamp()) {
+            columns.add("START_TIMESTAMP");
+        }
+        // Optional column: COMMIT_TIMESTAMP
+        if (connectorConfig.isLogMiningBufferTrackCommitTimestamp()) {
+            columns.add("COMMIT_TIMESTAMP");
+        }
+        // Mandatory column
+        columns.add("SEQUENCE#");
+        return String.join(", ", columns) + " ";
     }
 
     /**
