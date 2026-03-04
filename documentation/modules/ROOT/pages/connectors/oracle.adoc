@@ -4350,6 +4350,34 @@ endif::community[]
 When enabled, the transaction buffer will store rollback segment information for all change events, populating the value in the event's `source` information block.
 When disabled, the transaction buffer will not store the information, reducing the memory footprint, and excluding the field in the event's `source` information block.
 
+|[[oracle-property-log-mining-buffer-track-client-id]]<<oracle-property-log-mining-buffer-track-client-id, `+log.mining.buffer.track.client_id+`>>
+|`true`
+|Specifies whether the client identifier (`CLIENT_ID`) values are provided in change events.
+
+When enabled, the transaction buffer will store client identifier information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-username]]<<oracle-property-log-mining-buffer-track-username, `+log.mining.buffer.track.username+`>>
+|`true`
+|Specifies whether the username (`USERNAME`) values are provided in change events.
+
+When enabled, the transaction buffer will store username information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-commit-timestamp]]<<oracle-property-log-mining-buffer-track-commit-timestamp, `+log.mining.buffer.track.commit_timestamp+`>>
+|`true`
+|Specifies whether the commit timestamp (`COMMIT_TIMESTAMP`) values are provided in change events.
+
+When enabled, the transaction buffer will store commit timestamp information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-start-timestamp]]<<oracle-property-log-mining-buffer-track-start-timestamp, `+log.mining.buffer.track.start_timestamp+`>>
+|`true`
+|Specifies whether the start timestamp (`START_TIMESTAMP`) values are provided in change events.
+
+When enabled, the transaction buffer will store start timestamp information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
 |The maximum number of events a transaction is capable of having in the transaction buffer.

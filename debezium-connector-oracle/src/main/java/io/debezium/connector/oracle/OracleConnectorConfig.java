@@ -396,7 +396,56 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isRequired)
             .withDescription("This controls whether the 'RS_ID' column values are tracked. " +
                     "When set to true (the default), the 'RS_ID' values are buffered and provided in events when available. " +
-                    "When set to false, the 'RS_ID' values are not buffered and can reduce the memory footprint.");
+                    "When set to false, the 'RS_ID' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_CLIENT_ID = Field.create("log.mining.buffer.track.client_id")
+            .withDisplayName("Toggle whether the 'client_id' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'CLIENT_ID' column values are tracked. " +
+                    "When set to true (the default), the 'CLIENT_ID' values are buffered and provided in events when available. " +
+                    "When set to false, the 'CLIENT_ID' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_USERNAME = Field.create("log.mining.buffer.track.username")
+            .withDisplayName("Toggle whether the 'username' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'USERNAME' column values are tracked. " +
+                    "When set to true (the default), the 'USERNAME' values are buffered and provided in events when available. " +
+                    "When set to false, the 'USERNAME' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP = Field.create("log.mining.buffer.track.commit_timestamp")
+            .withDisplayName("Toggle whether the 'commit_timestamp' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'COMMIT_TIMESTAMP' column values are tracked. " +
+                    "When set to true (the default), the 'COMMIT_TIMESTAMP' values are buffered and provided in events when available. " +
+                    "When set to false, the 'COMMIT_TIMESTAMP' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_START_TIMESTAMP = Field.create("log.mining.buffer.track.start_timestamp")
+            .withDisplayName("Toggle whether the 'start_timestamp' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'START_TIMESTAMP' column values are tracked. " +
+                    "When set to true (the default), the 'START_TIMESTAMP' values are buffered and provided in events when available. " +
+                    "When set to false, the 'START_TIMESTAMP' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
 
     public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
             .withDisplayName("The maximum number of events a transaction can have before being discarded.")
@@ -858,6 +907,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_TRACK_RS_ID,
+                    LOG_MINING_BUFFER_TRACK_CLIENT_ID,
+                    LOG_MINING_BUFFER_TRACK_USERNAME,
+                    LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP,
+                    LOG_MINING_BUFFER_TRACK_START_TIMESTAMP,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
@@ -991,6 +1044,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Long logMiningSortAreaSize;
     private final ArchiveDestinationNameResolver destinationNameResolver;
     private final boolean logMiningBufferTrackRsId;
+    private final boolean logMiningBufferTrackClientId;
+    private final boolean logMiningBufferTrackUsername;
+    private final boolean logMiningBufferTrackCommitTimestamp;
+    private final boolean logMiningBufferTrackStartTimestamp;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -1086,6 +1143,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
         this.logMiningBufferTrackRsId = config.getBoolean(LOG_MINING_BUFFER_TRACK_RS_ID);
+        this.logMiningBufferTrackClientId = config.getBoolean(LOG_MINING_BUFFER_TRACK_CLIENT_ID);
+        this.logMiningBufferTrackUsername = config.getBoolean(LOG_MINING_BUFFER_TRACK_USERNAME);
+        this.logMiningBufferTrackCommitTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP);
+        this.logMiningBufferTrackStartTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_START_TIMESTAMP);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1988,6 +2049,34 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferTrackRsId() {
         return logMiningBufferTrackRsId;
+    }
+
+    /**
+     * @return determines whether {@code CLIENT_ID} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackClientId() {
+        return logMiningBufferTrackClientId;
+    }
+
+    /**
+     * @return determines whether {@code USERNAME} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackUsername() {
+        return logMiningBufferTrackUsername;
+    }
+
+    /**
+     * @return determines whether {@code COMMIT_TIMESTAMP} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackCommitTimestamp() {
+        return logMiningBufferTrackCommitTimestamp;
+    }
+
+    /**
+     * @return determines whether {@code START_TIMESTAMP} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackStartTimestamp() {
+        return logMiningBufferTrackStartTimestamp;
     }
 
     /**
