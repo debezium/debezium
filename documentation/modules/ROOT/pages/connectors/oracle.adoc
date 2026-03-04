@@ -1268,6 +1268,45 @@ There is at least one required configuration property that must be supplied when
 
 `log.mining.buffer.infinispan.client.hotrod.server_list`::
 Specifies the list of Infinispan server hostname and port combinations, using `<hostname>:<port>` format.
+
+[[oracle-event-buffering-ehcache]]
+==== Ehcache
+The {prodname} connector can also be configured to use Ehcache as its cache provider, supporting locally embedded cache stores.
+In order to use Ehcache, the `log.mining.buffer.type` must be configured using `ehcache`.
+
+In order to allow flexibility with ehcache cache configurations, the connector expects a series of cache configuration properties to be uspplied when using ehcache to buffer event data.
+See the xref:oracle-connector-properties[configuration properties] in the `log.mining.buffer.ehcache` namespace.
+
+For example, the following illustrates what an embedded `log.mining.buffer.ehcache.global.config` global configuration would look like:
+
+[source,xml]
+----
+<persistence directory="./data" />
+----
+
+Additionally, the following illustrates what the specific embedded cache configurations would look like:
+
+[source,xml]
+----
+<resources>
+    <heap unit="entries">512</heap>
+    <disk unit="B">1024000000</disk>
+</resources>
+----
+
+.Example configuration
+[source,json]
+----
+{
+  "log.mining.buffer.type": "ehcache",
+  "log.mining.buffer.ehcache.global.config": "<persistence directory=\"./data\"/>",
+  "log.mining.buffer.ehcache.transactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
+  "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
+  "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
+  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
+
+}
+----
 endif::community[]
 
 // Type: concept
@@ -4402,6 +4441,31 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>
 |No default
 |The XML configuration for the Infinispan schema changes cache.
+
+|[[oracle-property-log-mining-buffer-ehcache-global-config]]<<oracle-property-log-mining-buffer-ehcache-global-config, `+log.mining.buffer.ehcache.global.config+`>>
+|No default
+|The XML configuration for the Ehcache global configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
+
+|[[oracle-property-log-mining-buffer-ehcache-transactions-config]]<<oracle-property-log-mining-buffer-ehcache-transactions-config, `+log.mining.buffer.ehcache.transactions.config+`>>
+|No default
+|The XML configuration for the Ehcache transactions configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
+
+|[[oracle-property-log-mining-buffer-ehcache-processedtransactions-config]]<<oracle-property-log-mining-buffer-ehcache-processedtransactions-config, `+log.mining.buffer.ehcache.processedtransactions.config+`>>
+|No default
+|The XML configuration for the Ehcache processed/emitted transactions configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
+
+|[[oracle-property-log-mining-buffer-ehcache-schemachanges-config]]<<oracle-property-log-mining-buffer-ehcache-schemachanges-config, `+log.mining.buffer.ehcache.schemachanges.config+`>>
+|No default
+|The XML configuration for the Ehcache schema changes configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
+
+|[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
+|No default
+|The XML configuration for the Ehcache events configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
