@@ -63,6 +63,7 @@ Anton Kondratev
 Anton Martynov
 Anton Repin
 Aravind Pedapudi
+Aravind Gm
 Archie David
 Arik Cohen
 Aristofanis Lekkos
@@ -99,6 +100,7 @@ Bhagyashree Goyal
 Bhumika Bayani
 Biel Garau Estarellas
 Bin Li
+Binayak Das
 Bingqin Zhou
 Björn Häuser
 Blake Peno
