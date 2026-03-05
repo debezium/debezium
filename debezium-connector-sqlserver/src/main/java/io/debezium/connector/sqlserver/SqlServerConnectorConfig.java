@@ -556,7 +556,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         // Check driver.* first (new standard), fall back to database.* (old) for backward compatibility
         String applicationIntent = config.getString(DRIVER_CONFIG_PREFIX + "applicationIntent");
         if (applicationIntent == null) {
-            applicationIntent = config.getString("database.applicationIntent");
+            applicationIntent = config.getString(DATABASE_CONFIG_PREFIX + "applicationIntent");
         }
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(applicationIntent);
         if (readOnlyDatabaseConnection) {
