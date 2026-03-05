@@ -50,7 +50,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
-    private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
     private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     /**
@@ -554,7 +553,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
 
-        this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
+        // Check driver.* first (new standard), fall back to database.* (old) for backward compatibility
+        String applicationIntent = config.getString(DRIVER_CONFIG_PREFIX + "applicationIntent");
+        if (applicationIntent == null) {
+            applicationIntent = config.getString("database.applicationIntent");
+        }
+        this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(applicationIntent);
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
             LOGGER.info("JDBC connection has set applicationIntent = ReadOnly, switching snapshot isolation mode to {}", SnapshotIsolationMode.SNAPSHOT.name());
