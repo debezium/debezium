@@ -1234,7 +1234,7 @@ public interface Configuration {
     }
 
     /**
-     * Get the integer value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * Get the number value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
      *
      * @param key the key for the configuration property
@@ -1321,9 +1321,9 @@ public interface Configuration {
      * key-value pair.
      *
      * @param field the field
-     * @return the integer value, or null if the key is null, there is no such key-value pair in the configuration and there is
+     * @return the number value, or null if the key is null, there is no such key-value pair in the configuration and there is
      *         no default value in the field or the default value could not be parsed as a long, or there is a key-value pair in
-     *         the configuration but the value could not be parsed as an integer value
+     *         the configuration but the value could not be parsed as a number value
      * @throws NumberFormatException if there is no name-value pair and the field has no default value
      */
     default Number getNumber(Field field) {
