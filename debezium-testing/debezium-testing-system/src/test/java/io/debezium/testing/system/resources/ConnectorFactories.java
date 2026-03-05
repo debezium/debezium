@@ -101,7 +101,7 @@ public class ConnectorFactories {
                 .put("database.user", ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD)
                 .put("database.names", ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAMES)
-                .put("database.encrypt", false)
+                .put("driver.encrypt", false)
                 .put("schema.history.internal.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("schema.history.internal.kafka.topic", "schema-changes.inventory")
                 .addOperationRouterForTable("u", "customers");
