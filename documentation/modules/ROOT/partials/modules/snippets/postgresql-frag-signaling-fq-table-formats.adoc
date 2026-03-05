@@ -9,7 +9,7 @@
 tag::fq-table-name-format-note[]
 [NOTE]
 ====
-If the name of a table that you want to include in a snapshot contains a dot (`.`), a space, or some other non-alphanumeric character, you must escape the table name in double quotes. +
+If the name of a table that you want to include in a snapshot contains a dot (`.`), a space, or some other non-alphanumeric character, you must escape the table name in double quotes.
 For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public.\"My.Table\""*`.
 ====
 end::fq-table-name-format-note[]

@@ -32,7 +32,7 @@ end::sup-topo-multi-primary[]
 ==== Snapshot default flows (global/table read locks): repeatable read semantics
 
 tag::snapshots-default-workflow-repeatable-read-semantics[]
-a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
+a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
 end::snapshots-default-workflow-repeatable-read-semantics[]
 
 

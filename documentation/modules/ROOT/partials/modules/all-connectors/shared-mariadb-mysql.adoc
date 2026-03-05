@@ -43,9 +43,9 @@ The {prodname} {connector-name} connector supports the following {connector-name
 
 Standalone::
 When a single {connector-name} server is used, the server must have the binlog enabled so the {prodname} {connector-name} connector can monitor the server.
- +
++
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-standalone-backupdoc]
- +
++
 In this case, the {connector-name} connector always connects to and follows this standalone {connector-name} server instance.
 
 Primary and replica::
@@ -61,7 +61,7 @@ include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-ha]
 
 Multi-primary::
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-multi-primary]
- +
++
 A {prodname} {connector-name} connector can use these multi-primary {connector-name} replicas as sources, and can fail over to different multi-primary {connector-name} replicas as long as the new replica is caught up to the old replica.
 That is, the new replica has all transactions that were seen on the first replica.
 This works even if the connector is using only a subset of databases and/or tables, because the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary {connector-name} replica and find the correct position in the binlog.
@@ -431,14 +431,14 @@ After the snapshot completes, the connector continues to stream data for the spe
 If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
 
 |3
-|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients. +
- +
+a|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients.
+
 The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas.
 The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
 
 |4
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
- +
+
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
@@ -450,14 +450,14 @@ If the snapshot takes too long to complete, consider using a different isolation
 
 |6
 a|Capture the structure of all tables in the database, or all tables that are designated for capture.
-The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements.
 The schema history provides information about the structure that is in effect when a change event occurs.
- +
+
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
-If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data. +
- +
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
 
@@ -537,9 +537,9 @@ a|Read the current binlog position.
 
 |6
 a|Read the schema of the databases and tables for which the connector is configured to capture changes.
-The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements.
 The schema history provides information about the structure that is in effect when a change event occurs.
- +
+
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
@@ -606,10 +606,10 @@ This option is under consideration for future deprecation, in favor of the `no_d
 |Deprecated, see `recovery`.
 
 |`recovery`
-|Set this option to restore a database schema history topic that is lost or corrupted.
+a|Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
-You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
- +
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth.
+
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
 |`when_needed`
@@ -1810,9 +1810,9 @@ a|_n/a_
 
 |`BIT(>1)`
 |`BYTES`
-a|`io.debezium.data.Bits` +
- +
-The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits. For example, where `n` is bits: +
+a|`io.debezium.data.Bits`
+
+The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits. For example, where `n` is bits:
 `numBytes = n/8 + (n%8== 0 ? 0 : 1)`
 
 |`TINYINT`
@@ -1861,20 +1861,20 @@ a|_n/a_
 
 |`BINARY(M)]`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`VARBINARY(M)]`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYBLOB`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYTEXT`
@@ -1883,22 +1883,22 @@ a|_n/a_
 
 |`BLOB`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
-Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
- +
+a|_n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`TEXT`
 |`STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`MEDIUMBLOB`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`MEDIUMTEXT`
@@ -1907,34 +1907,34 @@ a|_n/a_
 
 |`LONGBLOB`
 |`BYTES` or `STRING`
-a|_n/a_ +
- +
-Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
- +
+a|_n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`LONGTEXT`
 |`STRING`
-a|_n/a_ +
- +
+a|_n/a_
+
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`JSON`
 |`STRING`
-a|`io.debezium.data.Json` +
- +
+a|`io.debezium.data.Json`
+
 Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
 |`STRING`
-a|`io.debezium.data.Enum` +
- +
+a|`io.debezium.data.Enum`
+
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |`STRING`
-a|`io.debezium.data.EnumSet` +
- +
+a|`io.debezium.data.EnumSet`
+
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
@@ -1943,8 +1943,8 @@ The `allowed` schema parameter contains the comma-separated list of allowed valu
 
 |`TIMESTAMP[(M)]`
 |`STRING`
-a|`io.debezium.time.ZonedTimestamp` +
- +
+a|`io.debezium.time.ZonedTimestamp`
+
 In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision.
 {connector-name} allows `M` to be in the range of `0-6`.
 
@@ -1990,23 +1990,23 @@ The {connector-name} connector determines the literal type and semantic type bas
 
 |`DATE`
 |`INT32`
-a|`io.debezium.time.Date` +
+a|`io.debezium.time.Date`
 Represents the number of days since the epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a|`io.debezium.time.MicroTime` +
+a|`io.debezium.time.MicroTime`
 Represents the time value in microseconds and does not include time zone information.
 {connector-name} allows `M` to be in the range of `0-6`.
 
 |`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
 |`INT64`
-a|`io.debezium.time.Timestamp` +
+a|`io.debezium.time.Timestamp`
 Represents the number of milliseconds past the epoch and does not include time zone information.
 
 |`DATETIME(4), DATETIME(5), DATETIME(6)`
 |`INT64`
-a|`io.debezium.time.MicroTimestamp` +
+a|`io.debezium.time.MicroTimestamp`
 Represents the number of microseconds past the epoch and does not include time zone information.
 
 |===
@@ -2025,17 +2025,17 @@ The `connect` setting is expected to be removed in a future version of {prodname
 
 |`DATE`
 |`INT32`
-a|`org.apache.kafka.connect.data.Date` +
+a|`org.apache.kafka.connect.data.Date`
 Represents the number of days since the epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a|`org.apache.kafka.connect.data.Time` +
+a|`org.apache.kafka.connect.data.Time`
 Represents the time value in microseconds since midnight and does not include time zone information.
 
 |`DATETIME[(M)]`
 |`INT64`
-a|`org.apache.kafka.connect.data.Timestamp` +
+a|`org.apache.kafka.connect.data.Timestamp`
 Represents the number of milliseconds since the epoch, and does not include time zone information.
 
 |===
@@ -2059,12 +2059,12 @@ decimal.handling.mode=precise::
 
 |`NUMERIC[(M[,D])]`
 |`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
+a|`org.apache.kafka.connect.data.Decimal`
 The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`DECIMAL[(M[,D])]`
 |`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
+a|`org.apache.kafka.connect.data.Decimal`
 The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |===
@@ -2120,7 +2120,8 @@ During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table defini
 To enable you to convert source columns to Boolean data types, {prodname} provides a `TinyIntOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
 * Map all `TINYINT(1)` or `TINYINT(1) UNSIGNED` columns to `BOOLEAN` types.
-* Enumerate a subset of columns by using a comma-separated list of regular expressions. +
+* Enumerate a subset of columns by using a comma-separated list of regular expressions.
++
 To use this type of conversion, you must set the xref:{context}-property-converters[`converters`] configuration property with the `selector` parameter, as shown in the following example:
 +
 [source]
@@ -2155,15 +2156,15 @@ Currently, the {prodname} {connector-name} connector supports the following spat
 |===
 |{connector-name} type |Literal type |Semantic type
 
-|`GEOMETRY, +
-LINESTRING, +
-POLYGON, +
-MULTIPOINT, +
-MULTILINESTRING, +
-MULTIPOLYGON, +
+|`GEOMETRY,
+LINESTRING,
+POLYGON,
+MULTIPOINT,
+MULTILINESTRING,
+MULTIPOLYGON,
 GEOMETRYCOLLECTION`
 |`STRUCT`
-a|`io.debezium.data.geometry.Geometry` +
+a|`io.debezium.data.geometry.Geometry`
 Contains a structure with two fields:
 
 * `srid (INT32`: spatial reference system ID that defines the type of geometry object stored in the structure
@@ -2568,7 +2569,7 @@ You can use either of the following methods to deploy a {prodname} {connector-na
 * xref:openshift-streams-{context}-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Containerfile]. +
+* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Containerfile].
 This Containerfile deployment method is deprecated.
 The instructions for this method are scheduled for removal in future versions of the documentation.
 
@@ -2672,7 +2673,7 @@ docker push _<myregistry.io>_/debezium-container-for-{context}:latest
 
 .. Create a new {prodname} {connector-name} `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
 +
 =====================================================================
 [source,yaml,subs="+attributes"]

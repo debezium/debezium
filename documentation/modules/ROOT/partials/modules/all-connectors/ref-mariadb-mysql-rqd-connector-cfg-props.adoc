@@ -60,14 +60,14 @@ If you include this property in the configuration, do not also set the `column.i
 [id="{context}-property-column-include-list"]
 xref:{context}-property-column-include-list[`column.include.list`]::
 
-Default value:::  _empty string_ +
+Default value:::  _empty string_
 
 Description::: An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
 Other columns are omitted from the event record.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
 If you include this property in the configuration, do not set the `column.exclude.list` property.
 
 
@@ -88,7 +88,7 @@ In the resulting change event record, the values for the specified columns are r
 +
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
 Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
-Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
 +
 In the following example, `CzQMA0cB5K` is a randomly selected salt.
 +
@@ -99,7 +99,7 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 If necessary, the pseudonym is automatically shortened to the length of the column.
 The connector configuration can include multiple properties that specify different hash algorithms and salts.
 +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 +
 Hashing strategy version 2 ensures fidelity of values that are hashed in different places or systems.
 
@@ -347,7 +347,7 @@ Set one of the following options:
 
 `none`:::: No adjustment.
 `avro`:::: Replaces characters that are not valid in Avro names with underscore characters.
-`avro_unicode`:::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx`. +
+`avro_unicode`:::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx`.
 +
 [NOTE]
 ====
