@@ -694,15 +694,31 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return snapshotOrderByRowCount;
     }
 
-    private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(COLUMN_INCLUDE_LIST);
-        String excludeList = config.getString(COLUMN_EXCLUDE_LIST);
+    /**
+     * Validates that include and exclude lists are not both specified for the same filter type.
+     *
+     * @param config the configuration
+     * @param includeField the include list field
+     * @param excludeField the exclude list field
+     * @param problems the validation output
+     * @return 1 if both lists are specified, 0 otherwise
+     */
+    private static int validateExcludeList(Configuration config,
+                                           Field includeField,
+                                           Field excludeField,
+                                           ValidationOutput problems) {
+        String includeList = config.getString(includeField);
+        String excludeList = config.getString(excludeField);
 
         if (includeList != null && excludeList != null) {
-            problems.accept(COLUMN_EXCLUDE_LIST, excludeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(excludeField, excludeList, "\"" + includeField.name() + "\" is already specified");
             return 1;
         }
         return 0;
+    }
+
+    private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        return validateExcludeList(config, COLUMN_INCLUDE_LIST, COLUMN_EXCLUDE_LIST, problems);
     }
 
     @Override
@@ -719,26 +735,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return tableIdMapper;
     }
 
-    private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(TABLE_INCLUDE_LIST);
-        String excludeList = config.getString(TABLE_EXCLUDE_LIST);
-
-        if (includeList != null && excludeList != null) {
-            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
-    }
-
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(TABLE_INCLUDE_LIST);
-        String excludeList = config.getString(TABLE_EXCLUDE_LIST);
-
-        if (includeList != null && excludeList != null) {
-            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
+        return validateExcludeList(config, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, problems);
     }
 
     /**
@@ -773,24 +771,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(SCHEMA_INCLUDE_LIST);
-        String excludeList = config.getString(SCHEMA_EXCLUDE_LIST);
-
-        if (includeList != null && excludeList != null) {
-            problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
+        return validateExcludeList(config, SCHEMA_INCLUDE_LIST, SCHEMA_EXCLUDE_LIST, problems);
     }
 
     private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(DATABASE_INCLUDE_LIST);
-        String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
-        if (includeList != null && excludeList != null) {
-            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
+        return validateExcludeList(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
     private static int validateMessageKeyColumnsField(Configuration config, Field field, ValidationOutput problems) {
