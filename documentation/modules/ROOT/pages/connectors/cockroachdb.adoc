@@ -137,6 +137,24 @@ When Kafka Connect gracefully shuts down, it stops the connectors, flushes all e
 When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset.
 
 // Type: concept
+// ModuleID: cockroachdb-heartbeats
+// Title: How the CockroachDB connector uses heartbeats
+[[cockroachdb-heartbeats]]
+=== Heartbeats
+
+CockroachDB changefeed link:https://www.cockroachlabs.com/docs/stable/changefeed-messages#resolved-messages[resolved timestamps] serve as natural heartbeats.
+When the connector receives a resolved timestamp, it:
+
+1. Updates the stored offset cursor to the resolved timestamp value.
+2. Dispatches a {prodname} heartbeat event to advance Kafka Connect offsets.
+
+This ensures that offsets advance even during idle periods when no data changes occur.
+Without offset advancement, monitoring systems might report the connector as stuck, and CockroachDB protected timestamps could accumulate, preventing garbage collection.
+
+To enable {prodname} heartbeat records on the `__debezium-heartbeat.<topic.prefix>` Kafka topic, set `heartbeat.interval.ms` to a value greater than `0` (in milliseconds).
+The `cockroachdb.changefeed.resolved.interval` property controls how frequently CockroachDB emits resolved timestamps (default: `10s`).
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-cockroachdb-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} CockroachDB change event records
 [[cockroachdb-topic-names]]
@@ -1091,6 +1109,13 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |[[cockroachdb-property-unavailable-value-placeholder]]<<cockroachdb-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Placeholder for unavailable values (e.g. for toasted columns).
+
+|[[cockroachdb-property-heartbeat-interval]]<<cockroachdb-property-heartbeat-interval, `+heartbeat.interval.ms+`>>
+|`0`
+|Controls the interval (in milliseconds) at which the connector emits heartbeat records to the `__debezium-heartbeat.<topic.prefix>` Kafka topic.
+Set to `0` (the default) to disable heartbeat records.
+Even when disabled, resolved timestamps still advance the connector's internal offsets.
+See xref:cockroachdb-heartbeats[Heartbeats] for details.
 
 |===
 
