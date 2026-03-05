@@ -317,8 +317,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with("database.applicationIntent", "ReadOnly")
-                .with("database.applicationName", appId)
+                .with("driver.applicationIntent", "ReadOnly")
+                .with("driver.applicationName", appId)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1819,7 +1819,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldPropagateDatabaseDriverProperties() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with("database.applicationName", "Debezium App DBZ-964")
+                .with("driver.applicationName", "Debezium App DBZ-964")
                 .build();
 
         start(SqlServerConnector.class, config);
