@@ -276,9 +276,9 @@
                         <database.port>${sqlserver.port}</database.port>
                         <database.user>${sqlserver.user}</database.user>
                         <database.password>${sqlserver.password}</database.password>
-                        <database.ssl.truststore>${project.basedir}/src/test/resources/ssl</database.ssl.truststore>
-                        <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
-                        <database.trustServerCertificate>true</database.trustServerCertificate>
+                        <driver.trustStore>${project.basedir}/src/test/resources/ssl</driver.trustStore>
+                        <driver.trustStorePassword>debezium</driver.trustStorePassword>
+                        <driver.trustServerCertificate>true</driver.trustServerCertificate>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>

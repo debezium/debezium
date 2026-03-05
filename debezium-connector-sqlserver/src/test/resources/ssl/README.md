@@ -48,9 +48,9 @@ This imports the `mssql.pem` public certificate into the truststore that we moun
 this truststore will be configured as part of the SQL Server connector's configuration using:
 
 ```
-database.ssl.truststore=${project.basedir}/src/test/resources/ssl
-database.ssl.truststore.password=debezium
-database.trustServerCertificate=true
+driver.trustStore=${project.basedir}/src/test/resources/ssl
+driver.trustStorePassword=debezium
+driver.trustServerCertificate=true
 ```
 
 We specifically set `trustServerCertificate` because this certificate is self-signed.
