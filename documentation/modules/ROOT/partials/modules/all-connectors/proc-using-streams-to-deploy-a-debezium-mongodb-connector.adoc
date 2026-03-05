@@ -30,7 +30,7 @@ For more information about ImageStreams, see link:{LinkCreatingManagingOpenShift
 . Log in to the OpenShift cluster.
 . Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one.
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies the `metadata.annotations` and `spec.build` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
 +
 .A `dbz-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 =====================================================================
@@ -43,11 +43,11 @@ include::../{partialsdir}/modules/all-connectors/ref-deploy-{context}-kafka-conn
 oc create -f dbz-connect.yaml
 ----
 +
-Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy. +
+Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy.
 After the build completes, the Operator pushes the image to the specified registry or ImageStream, and starts the Kafka Connect cluster.
 The connector artifacts that you listed in the configuration are available in the cluster.
 
-. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy. +
+. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy.
 For example, create the following `KafkaConnector` CR, and save it as `{context}-inventory-connector.yaml`
 +
 .`{context}-inventory-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
@@ -99,9 +99,9 @@ spec:
 |The password that {prodname} uses to connect to the database user account.
 
 |8
-|The topic prefix for the database instance or cluster. +
-The specified name must be formed only from alphanumeric characters or underscores. +
-Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster. +
+|The topic prefix for the database instance or cluster.
+The specified name must be formed only from alphanumeric characters or underscores.
+Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster.
 This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro connector].
 
 |9

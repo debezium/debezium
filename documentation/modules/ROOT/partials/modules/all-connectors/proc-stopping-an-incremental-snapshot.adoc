@@ -11,7 +11,7 @@ The query that you submit specifies the snapshot operation of `incremental`, and
 
 .Prerequisites
 
-* {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled]. +
+* {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled].
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
@@ -74,24 +74,24 @@ tag::sql-based-snapshot[]
 
 |2
 |`ad-hoc-1`
-| The `id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request. +
+| The `id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request.
 Use this string to identify logging messages to entries in the signaling {data-collection}.
 {prodname} does not use this string.
 
 |3
 |`stop-snapshot`
-| Specifies `type` parameter specifies the operation that the signal is intended to trigger. +
+| Specifies `type` parameter specifies the operation that the signal is intended to trigger.
 
 |4
 |`data-collections`
-|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot.
 The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
 If this component of the `data` field is omitted, the signal stops the entire incremental snapshot that is in progress.
 
 |5
 |`incremental`
-|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped. +
-Currently, the only valid option is `incremental`. +
+|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped.
+Currently, the only valid option is `incremental`.
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
 |===
 end::sql-based-snapshot[]
@@ -109,24 +109,24 @@ tag::nosql-based-snapshot[]
 |2
 |null
 |The insert method in the preceding example omits use of the optional `_id` parameter.
-Because the document does not explicitly assign a value for the parameter, the arbitrary id that MongoDB automatically assigns to the document becomes the `id` identifier for the signal request. +
+Because the document does not explicitly assign a value for the parameter, the arbitrary id that MongoDB automatically assigns to the document becomes the `id` identifier for the signal request.
 Use this string to identify logging messages to entries in the signaling {data-collection}.
 {prodname} does not use this identifier string.
 
 |3
 |`stop-snapshot`
-| The `type` parameter specifies the operation that the signal is intended to trigger. +
+| The `type` parameter specifies the operation that the signal is intended to trigger.
 
 |4
 |`data-collections`
-|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot.
 The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
 If this component of the `data` field is omitted, the signal stops the entire incremental snapshot that is in progress.
 
 |5
 |`incremental`
-|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped. +
-Currently, the only valid option is `incremental`. +
+|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped.
+Currently, the only valid option is `incremental`.
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
 |===
 
