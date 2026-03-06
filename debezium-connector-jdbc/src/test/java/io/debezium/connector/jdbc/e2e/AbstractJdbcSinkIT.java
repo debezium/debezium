@@ -267,7 +267,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.password", source.getPassword());
                 sourceConfig.with("database.user", source.getUsername());
                 sourceConfig.with("database.names", "testDB");
-                sourceConfig.with("database.encrypt", "false");
+                sourceConfig.with("driver.encrypt", "false");
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-sqlserver");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");

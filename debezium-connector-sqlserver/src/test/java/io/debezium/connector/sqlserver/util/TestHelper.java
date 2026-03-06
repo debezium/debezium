@@ -107,7 +107,8 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX)
+                .merge(Configuration.fromSystemProperties(CommonConnectorConfig.DRIVER_CONFIG_PREFIX)))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -128,6 +129,10 @@ public class TestHelper {
 
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
+
+        // Also add driver.* properties from system properties
+        Configuration driverProps = Configuration.fromSystemProperties(CommonConnectorConfig.DRIVER_CONFIG_PREFIX);
+        driverProps.forEach((field, value) -> builder.with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + field, value));
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
                 .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
