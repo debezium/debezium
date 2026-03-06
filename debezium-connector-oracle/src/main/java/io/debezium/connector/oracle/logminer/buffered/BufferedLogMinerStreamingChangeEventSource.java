@@ -261,6 +261,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @SuppressWarnings("unchecked")
     private <T extends Transaction> CacheProvider<T> createCacheProvider(OracleConnectorConfig connectorConfig) {
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            return (CacheProvider<T>) connectorConfig.getLogMiningBufferSpillProvider().createCacheProvider(connectorConfig);
+        }
+        // Default logic for other types
         return (CacheProvider<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryCacheProvider(connectorConfig);
             case INFINISPAN_EMBEDDED -> new EmbeddedInfinispanCacheProvider(connectorConfig);
@@ -271,6 +275,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @SuppressWarnings("unchecked")
     private <T extends Transaction> TransactionFactory<T> createTransactionFactory(OracleConnectorConfig connectorConfig) {
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            return (TransactionFactory<T>) connectorConfig.getLogMiningBufferSpillProvider().createTransactionFactory();
+        }
+        // Default logic for other types
         return (TransactionFactory<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryTransactionFactory();
             case INFINISPAN_EMBEDDED, INFINISPAN_REMOTE -> new InfinispanTransactionFactory();
