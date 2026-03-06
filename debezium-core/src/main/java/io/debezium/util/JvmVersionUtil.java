@@ -60,7 +60,7 @@ public class JvmVersionUtil {
         // The version() method is only available on Java 9 and later
         catch (ClassNotFoundException | NoSuchMethodError | NoSuchMethodException | IllegalAccessException nsme) {
             final String specVersion = System.getProperty("java.specification.version");
-            featureVersion = Integer.parseInt(specVersion.substring(specVersion.indexOf('.') + 1));
+            featureVersion = Integer.parseInt(specVersion);
         }
 
         LOGGER.debug("Determined Java version: {}", featureVersion);
