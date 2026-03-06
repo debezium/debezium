@@ -166,14 +166,14 @@ The interceptor simply propagates the traceability context before delegating the
 |Default
 
 |`tracing.span.context.field`::
-The name of the field containing span context. +
+The name of the field containing span context.
 +
 _The sender must write the span context into the database column as a serialized instance of `java.util.Properties` with injected span context._
 |string
 |tracingspancontext
 
 |`tracing.operation.name`::
-The operation name representing the Debezium processing span. +
+The operation name representing the Debezium processing span.
 |string
 |debezium-read
 

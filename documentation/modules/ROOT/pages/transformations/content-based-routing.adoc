@@ -195,12 +195,12 @@ Other languages use different methods to express the same condition.
 
 [TIP]
 ====
-The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures. +
-To use the ContentBasedRouting SMT with the MongoDB connector, you must first unwind the array fields in the JSON into separate documents. +
+The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures.
+To use the ContentBasedRouting SMT with the MongoDB connector, you must first unwind the array fields in the JSON into separate documents.
 ifdef::community[]
 You can do this by applying the {link-prefix}:{link-mongodb-event-flattening}#new-record-state-extraction[MongoDB `ExtractNewDocumentState`] SMT.
 
-You could also take the approach of using a JSON parser within an expression to generate separate output documents for each array item. +
+You could also take the approach of using a JSON parser within an expression to generate separate output documents for each array item.
 endif::community[]
 ifdef::product[]
 You can use a JSON parser within an expression to generate separate output documents for each array item.

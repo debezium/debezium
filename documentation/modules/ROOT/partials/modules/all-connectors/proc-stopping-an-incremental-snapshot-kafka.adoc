@@ -14,12 +14,12 @@ The signal type is `stop-snapshot`, and the `data` field must have the following
 |`type`
 |`incremental`
 | The type of the snapshot to be executed.
-Currently {prodname} supports only the `incremental` type.  +
+Currently {prodname} supports only the `incremental` type.
 See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot.
 Specify {data-collection} names by using the format `{collection-container}.{data-collection}`.
 
 |===

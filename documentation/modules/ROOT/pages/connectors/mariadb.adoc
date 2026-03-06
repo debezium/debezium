@@ -384,9 +384,7 @@ Set the value to match the needs of your environment.
 For more information, see xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files].
 
 |`log_bin_compress`
-|Whether or not the binary log can be compressed. The {prodname}
-{connector-name} connector does not support compressed binary log entries, so
-`log_bin_compress` must be set to `0` (the default), which means no compression.
+|Whether or not the binary log can be compressed. The {prodname} {connector-name} connector does not support compressed binary log entries, so `log_bin_compress` must be set to `0` (the default), which means no compression.
 
 |===
 
