@@ -861,10 +861,21 @@
             <properties>
                 <!-- Docker properties -->
                 <docker.dbs>debezium/mysql-server-gtids-test-database</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mysql.gtid.port}</database.port>
-                <database.replica.port>${mysql.gtid.port}</database.replica.port>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mysql.gtid.port}</database.port>
+                                <database.replica.port>${mysql.gtid.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Use the Docker image for Percona Server.
@@ -881,11 +892,22 @@
             <properties>
                 <!-- Docker properties -->
                 <docker.dbs>debezium/percona-server-test-database</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mysql.percona.port}</database.port>
-                <database.replica.port>${mysql.percona.port}</database.replica.port>
                 <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mysql.percona.port}</database.port>
+                                <database.replica.port>${mysql.percona.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         Use the Docker image for a MySQL replica of another MySQL server
@@ -906,10 +928,21 @@
                 <mysql.gtid.port>3306</mysql.gtid.port>
                 <mysql.gtid.replica.port>4306</mysql.gtid.replica.port>
                 <docker.dbs>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mysql.gtid.port}</database.port>
-                <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mysql.gtid.port}</database.port>
+                                <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         Use the alternative Docker image for MySQL.
@@ -926,11 +959,27 @@
             <properties>
                 <!-- Docker properties -->
                 <docker.dbs>debezium/mysql-server-test-database-ssl</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mysql.ssl.port}</database.port>
-                <database.replica.port>${mysql.ssl.port}</database.replica.port>
                 <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mysql.ssl.port}</database.port>
+                                <database.replica.port>${mysql.ssl.port}</database.replica.port>
+                                <database.ssl.mode>verify_ca</database.ssl.mode>
+                                <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
+                                <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
+                                <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
+                                <database.ssl.keystore.password>debezium</database.ssl.keystore.password>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>apicurio</id>
