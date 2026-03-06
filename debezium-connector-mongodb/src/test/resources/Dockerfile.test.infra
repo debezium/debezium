@@ -1,14 +1,17 @@
 ARG BASE_IMAGE
 ARG DEBEZIUM_VERSION
+ARG CONNECTOR_PLUGIN_VERSION
+
 FROM ${BASE_IMAGE}
 ARG DEBEZIUM_VERSION
+ARG CONNECTOR_PLUGIN_VERSION
 
 ENV CONNECTOR="mongodb"
 
 RUN echo "Installing Debezium connectors version: ${DEBEZIUM_VERSION}" ; \
 MAVEN_REPOSITORY="https://repo1.maven.org/maven2/io/debezium" ; \
 if [[ "${DEBEZIUM_VERSION}" == *-SNAPSHOT ]] ; then \
-    MAVEN_REPOSITORY="https://s01.oss.sonatype.org/content/repositories/snapshots/io/debezium" ; \
+    MAVEN_REPOSITORY="https://central.sonatype.com/repository/maven-snapshots/io/debezium" ; \
 fi ; \
 CONNECTOR_VERSION="${DEBEZIUM_VERSION}" ; \
 for PACKAGE in {scripting,}; do \
@@ -24,6 +27,6 @@ for PACKAGE in {scripting,}; do \
     rm -f /tmp/package.tar.gz ; \
 done
 
-COPY --chown=kafka:kafka debezium-connector-${CONNECTOR}-${DEBEZIUM_VERSION}-plugin.tar.gz /tmp/plugin.tar.gz
+COPY --chown=kafka:kafka debezium-connector-${CONNECTOR}-${CONNECTOR_PLUGIN_VERSION}-plugin.tar.gz /tmp/plugin.tar.gz
 
 RUN tar -xvzf /tmp/plugin.tar.gz -C ${KAFKA_CONNECT_PLUGINS_DIR}/ ; rm -f /tmp/plugin.tar.gz

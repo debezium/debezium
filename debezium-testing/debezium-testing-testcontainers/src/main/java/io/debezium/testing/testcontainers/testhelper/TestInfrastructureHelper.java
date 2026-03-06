@@ -26,6 +26,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.MinimumDurationRunningStartupCheckStrategy;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
@@ -60,20 +61,26 @@ public class TestInfrastructureHelper {
 
     private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
             DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetworkAliases(KAFKA_HOSTNAME)
             .withNetwork(NETWORK)
-            .withEnv("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@" + KAFKA_HOSTNAME + ":9093")
+            .withEnv("HOST_NAME", KAFKA_HOSTNAME)
             .withEnv("CLUSTER_ID", "5Yr1SIgYQz-b-dgRabWx4g")
-            .withEnv("NODE_ID", "1");
+            .withEnv("NODE_ID", "1")
+            .withEnv("NODE_ROLE", "combined")
+            .withEnv("KAFKA_CONTROLLER_QUORUM_BOOTSTRAP_SERVERS", KAFKA_HOSTNAME + ":9093");
 
     private static DebeziumContainer DEBEZIUM_CONTAINER = null;
+
     private static final PostgreSQLContainer<?> POSTGRES_CONTAINER = new PostgreSQLContainer<>(
             DockerImageName.parse("quay.io/debezium/example-postgres:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("postgres"))
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withNetworkAliases("postgres");
 
     private static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>(
             DockerImageName.parse("quay.io/debezium/example-mysql:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mysql"))
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withUsername("mysqluser")
             .withPassword("mysqlpw")
@@ -82,6 +89,7 @@ public class TestInfrastructureHelper {
 
     private static final MariaDBContainer<?> MARIADB_CONTAINER = new MariaDBContainer<>(
             DockerImageName.parse("quay.io/debezium/example-mariadb:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mariadb"))
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withUsername("mariadbuser")
             .withPassword("mariadbpw")
@@ -89,14 +97,15 @@ public class TestInfrastructureHelper {
             .withNetworkAliases("mariadb");
 
     private static final MongoDbReplicaSet MONGODB_REPLICA = MongoDbReplicaSet.replicaSet()
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .name("rs0")
             .memberCount(1)
             .network(NETWORK)
-            .imageName(DockerImageName.parse("mirror.gcr.io/library/mongo:5.0"))
             .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
             .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withNetworkAliases("sqlserver")
             .withEnv("SA_PASSWORD", "Password!")
@@ -113,6 +122,7 @@ public class TestInfrastructureHelper {
             .withConnectTimeoutSeconds(300);
 
     private static final OracleContainer ORACLE_CONTAINER = (OracleContainer) new OracleContainer()
+            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withNetworkAliases("oracledb")
             .withLogConsumer(new Slf4jLogConsumer(LOGGER));
@@ -187,11 +197,14 @@ public class TestInfrastructureHelper {
         final String registry = debeziumContainerImageVersion.startsWith("1.2") ? "" : "quay.io/";
         final String debeziumVersion = debeziumContainerImageVersion.startsWith("1.2") ? "1.2.5.Final" : connectorVersion;
         String baseImageName = registry + "debezium/connect:nightly";
-        DEBEZIUM_CONTAINER = new DebeziumContainer(new ImageFromDockerfile("quay.io/debezium/connect-rest-test:" + debeziumVersion)
-                .withFileFromPath(".", Paths.get(System.getProperty("project.build.directory")))
-                .withFileFromPath("Dockerfile", Paths.get(System.getProperty("project.basedir") + "/src/test/resources/Dockerfile.rest.test"))
-                .withBuildArg("BASE_IMAGE", baseImageName)
-                .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
+        DEBEZIUM_CONTAINER = new DebeziumContainer(
+                new ImageFromDockerfile("localhost/debezium/connect-infra-test:" + debeziumVersion)
+                        .withFileFromPath(".", Paths.get(System.getProperty("project.build.directory")))
+                        .withFileFromPath("Dockerfile", Paths.get(System.getProperty("project.basedir") + "/src/test/resources/Dockerfile.test.infra"))
+                        .withBuildArg("BASE_IMAGE", baseImageName)
+                        .withBuildArg("DEBEZIUM_VERSION", debeziumVersion)
+                        .withBuildArg("CONNECTOR_PLUGIN_VERSION", debeziumVersion))
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
                 .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
