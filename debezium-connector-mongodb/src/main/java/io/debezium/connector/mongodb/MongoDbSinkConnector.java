@@ -16,12 +16,14 @@ import org.apache.kafka.connect.sink.SinkConnector;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.mongodb.sink.Module;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask;
 import io.debezium.connector.mongodb.sink.SinkConnection;
+import io.debezium.metadata.ConfigDescriptor;
 
-public class MongoDbSinkConnector extends SinkConnector {
+public class MongoDbSinkConnector extends SinkConnector implements ConfigDescriptor {
 
     @Immutable
     private Map<String, String> properties;
@@ -57,6 +59,11 @@ public class MongoDbSinkConnector extends SinkConnector {
     @Override
     public ConfigDef config() {
         return MongoDbSinkConnectorConfig.configDef();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return MongoDbSinkConnectorConfig.ALL_FIELDS;
     }
 
     @Override

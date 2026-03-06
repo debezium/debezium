@@ -219,7 +219,7 @@
         <module>debezium-scripting</module>
         <module>debezium-testing</module>
         <module>debezium-schema-generator</module>
-        <module>debezium-transforms</module>
+        <module>debezium-connect-plugins</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
