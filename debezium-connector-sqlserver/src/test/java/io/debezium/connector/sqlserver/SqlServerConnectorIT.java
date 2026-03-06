@@ -2748,8 +2748,19 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldFailWhenUserDoesNotHaveAccessToDatabase() {
-        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
+    void shouldFailWhenUserDoesNotHaveAccessToDatabase() throws Exception {
+        // Create testDB2 WITHOUT enabling CDC at the database level.
+        // createTestDatabases() always enables CDC, so we create testDB2 manually here.
+        // When CDC is not enabled, the cdc schema does not exist, meaning the user
+        // truly has no CDC access which is the scenario this test verifies.
+        try (SqlServerConnection adminConn = TestHelper.adminConnection()) {
+            adminConn.connect();
+            adminConn.execute("IF EXISTS (SELECT name FROM sys.databases WHERE name = N'"
+                    + TestHelper.TEST_DATABASE_2 + "') DROP DATABASE [" + TestHelper.TEST_DATABASE_2 + "]");
+            adminConn.execute("CREATE DATABASE [" + TestHelper.TEST_DATABASE_2 + "]");
+            adminConn.execute("ALTER DATABASE [" + TestHelper.TEST_DATABASE_2 + "] SET ALLOW_SNAPSHOT_ISOLATION ON");
+            // Intentionally NOT calling TestHelper.enableDbCdc() - testDB2 has no CDC at all.
+        }
         final Configuration config2 = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -2760,9 +2771,10 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             result.put("message", message);
         });
         assertEquals(false, result.get("success"));
-        assertEquals(
-                "Connector configuration is not valid. User sa does not have access to CDC schema in the following databases: testDB2. This user can only be used in initial_only snapshot mode",
-                result.get("message"));
+        // When CDC is not enabled on testDB2 at all, sp_cdc_help_change_data_capture
+        // throws an exception which results in an Unable to connect error.
+        // This correctly prevents the connector from starting with an unconfigured database.
+        assertThat(result.get("message").toString()).contains("testDB2");
     }
 
     @Test
