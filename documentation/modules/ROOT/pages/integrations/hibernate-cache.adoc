@@ -1,0 +1,353 @@
+[id="hibernate-cache-invalidation"]
+= Hibernate Second-Level Cache Invalidation
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options, and extensibility points may change in future revisions based on feedback.
+Please share your experiences when using this extension.
+====
+
+== Overview
+
+The link:https://docs.jboss.org/hibernate/stable/orm/userguide/html_single/Hibernate_User_Guide.html#caching-config[second-level cache] (L2C) of Hibernate Object/Relational Mapping (ORM) helps to improve application performance by caching entities across sessions and transactions.
+However, the Hibernate cache can become stale when database changes bypass the ORM layer — for example, when another application, a batch job, or a database administrator modifies records directly.
+
+The {prodname} Hibernate Cache Invalidation extension for Quarkus can help to prevent cache staleness by using change data capture (CDC) to automatically invalidate affected L2C entries in near-real-time.
+The extension, which is based on the xref:integrations/quarkus-debezium-engine-extension.adoc[{prodname} Extensions for Quarkus], automatically performs the following tasks:
+
+* Scans the JPA/Hibernate metamodel at build time to identify entities that are eligible for caching.
+* Registers CDC event handlers that listen for data changes in the corresponding database tables.
+* Evicts the affected cache regions when it detects `UPDATE` or `DELETE` operations.
+
+These actions eliminate the need for manual cache clearing, and ensure consistency between the Hibernate L2C and the database, even when external modifications occur.
+
+For more information about using CDC to remove stale cache entries, see the blog post link:https://debezium.io/blog/2018/12/05/automating-cache-invalidation-with-change-data-capture/[Automating Cache Invalidation with Change Data Capture].
+
+.Prerequisites
+
+* A Quarkus application using Hibernate ORM with a second-level cache provider (such as `hibernate-jcache`).
+* A {prodname} Quarkus connector extension for your database (for example, `debezium-quarkus-postgres` or `debezium-quarkus-mysql`).
+* JDK 21+ installed with `JAVA_HOME` configured appropriately.
+* Apache Maven {maven-version}.
+* A supported database with CDC enabled (for example, PostgreSQL with logical replication, or MySQL with the binlog enabled).
+* Docker or Podman (for dev services and testing).
+
+== Getting Started
+
+* Add the following dependencies to the `pom.xml` file for your Quarkus application:
+
+[source,xml,subs="verbatim,attributes"]
+----
+<dependencies>
+    <!-- Quarkus Hibernate ORM -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-hibernate-orm</artifactId>
+    </dependency>
+
+    <!-- JDBC driver for your database -->
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+
+    <!-- Second-level cache provider -->
+    <dependency>
+        <groupId>org.hibernate.orm</groupId>
+        <artifactId>hibernate-jcache</artifactId>
+    </dependency>
+
+    <!-- Debezium Hibernate Cache Invalidation extension -->
+    <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-quarkus-hibernate-cache</artifactId>
+        <version>{debezium-version}</version>
+    </dependency>
+
+    <!-- Debezium Quarkus connector for your database -->
+    <dependency>
+        <groupId>io.debezium.quarkus</groupId>
+        <artifactId>debezium-quarkus-postgres</artifactId>
+        <version>{debezium-version}</version>
+    </dependency>
+</dependencies>
+----
+
+[NOTE]
+====
+The preceding example shows the `pom.xml` updates required to use the extension with a PostgreSQL database.
+For other databases, replace references to the JDBC driver (`quarkus-jdbc-postgresql`) and {prodname} connector extension (`debezium-quarkus-postgres`) to specify the corresponding artifacts for your database.
+For example, if you use a MySQL database, replace those entries with `quarkus-jdbc-mysql` and `debezium-quarkus-mysql`.
+====
+
+== Configuration
+
+The extension requires minimal configuration.
+The extension automatically configures most {prodname}-specific settings (topic prefix, snapshot mode, schema history, and so forth).
+You must provide the standard Quarkus datasource configuration, and enable the Hibernate second-level cache.
+
+Add the following entries to the `application.properties` file:
+
+.application.properties
+[source,properties,indent=0]
+----
+# Datasource configuration
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.username=hibernate
+quarkus.datasource.password=hibernate
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/hibernate_db
+
+# Enable Hibernate second-level cache
+quarkus.hibernate-orm.second-level-caching-enabled=true
+quarkus.hibernate-orm.cache.region.factory.class=org.hibernate.cache.jcache.JCacheRegionFactory
+quarkus.hibernate-orm.cache.default-cache-concurrency-strategy=read-write
+quarkus.hibernate-orm.cache.use-query-cache=true
+----
+
+The extension automatically sets sensible defaults for cache invalidation through the following {prodname} properties:
+
+Offset storage:: Defaults to `MemoryOffsetBackingStore` (in-memory).
+Override this if you need persistent offsets:
++
+[source,properties,indent=0]
+----
+quarkus.debezium.offset.storage=org.apache.kafka.connect.storage.MemoryOffsetBackingStore
+----
+
+Schema history:: Defaults to in-memory storage.
+Snapshot mode:: Set to `no_data` by default.
+The extension only needs to process changes that occur while the application is running.
+Topic prefix and connector name:: Automatically set to `invalidation`.
+Replica identity:: The `quarkus.debezium.replica` property defaults to `DEFAULT`, which auto-generates unique slot names (PostgreSQL) or server IDs (MySQL) to support multiple application replicas.
+
+[NOTE]
+====
+You can override automatically configured defaults by changing the values of  `quarkus.debezium.*` properties, or by implementing a `DebeziumConfigurationEnhancer`.
+See <<overriding-configuration>> for details.
+====
+
+== Configuring Entities for Caching
+
+The extension automatically detects entities that are eligible for cache invalidation based on the `SharedCacheMode` that is configured for the persistence unit.
+
+The following modes are supported:
+
+`ENABLE_SELECTIVE` (default)::
+The extension caches entities and tracks them for invalidation only if they are explicitly annotated with `@Cacheable` (or `@Cacheable(true)`).
+This is the recommended mode.
+
+`ALL`::
+All entities are cached unless explicitly excluded with `@Cacheable(false)`.
+The extension tracks all cached entity tables.
+
+`DISABLE_SELECTIVE`::
+The extension caches all entities except those annotated with `@Cacheable(false)`.
+
+`NONE`::
+The second-level cache is disabled and the extension has no effect.
+
+=== Example Entity
+
+The following example shows a simple JPA entity configured for second-level caching:
+
+[source,java,indent=0]
+----
+import jakarta.persistence.Cacheable;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import java.math.BigDecimal;
+
+@Entity
+@Cacheable // <1>
+public class Item {
+
+    @Id
+    private long id;
+    private String description;
+    private BigDecimal price;
+
+    // getters and setters ...
+}
+----
+<1> Marks the entity as eligible for second-level caching.
+When `SharedCacheMode` is set to `ENABLE_SELECTIVE`, the extension automatically registers a CDC handler for the `item` table.
+
+Based on the configuration in the example, any external modification to a row in the `item` table (for example, a direct SQL `UPDATE` or `DELETE`) causes the extension to evict the cached data for that entity, ensuring that after the next access, the application loads fresh data from the database.
+
+== Eviction Behavior
+
+By default, the extension evicts the entire entity region from the second-level cache when a change is detected.
+This is a safe approach, because it does not load entities through dynamic fetch graphs, `JOIN FETCH` clauses, or differing eager/lazy association configurations.
+
+When a region is evicted, Hibernate ORM reloads all entities of that type from the database on subsequent access.
+
+[IMPORTANT]
+====
+Region-level eviction is appropriate for most deployments.
+In some cases you might want to specify a custom eviction strategy to provide more control over which entities to evict.
+For example, you might want the application to evict only a single entity, based on the value of the primary key.
+For information about how to implement a custom `DebeziumEvictionStrategy`, see xref:custom-eviction-strategy[].
+====
+
+== Eviction Strategies
+
+The extension provides a default eviction strategy and allows users to supply custom implementations.
+
+=== Default Strategy
+
+The default eviction strategy evicts the entire entity region from the L2C.
+In this approach, when Hibernate loads an entity, it uses one of the following different "shapes", depending on which of the following fetch strategies is in use:
+
+* Dynamic fetch graph.
+* `JOIN FETCH`.
+* Hybrid fetch strategy that combines eager and lazy loading, based on how data is used.
+
+If you evict and reload only a single entity without providing the original fetch context, the cached representation might be incomplete.
+Evicting the whole region forces Hibernate to rebuild all cached entries from their next natural load, avoiding shape inconsistencies.
+
+[[custom-eviction-strategy]]
+=== Custom Eviction Strategy
+
+To implement a custom eviction strategy, create a CDI bean that implements `DebeziumEvictionStrategy`.
+The `evict` method receives an `InvalidationEvent` that contains information about the change (engine name, database, schema, table, key, and source), for example:
+
+[source,java,indent=0]
+----
+import jakarta.enterprise.context.ApplicationScoped;
+import io.debezium.quarkus.hibernate.cache.DebeziumEvictionStrategy;
+import io.debezium.quarkus.hibernate.cache.InvalidationEvent;
+
+@ApplicationScoped
+public class MyCustomEvictionStrategy implements DebeziumEvictionStrategy {
+
+    @Override
+    public void evict(InvalidationEvent event) { // <1>
+        // Implement your custom eviction logic
+        // event.table() returns the affected table name
+        // event.engine() returns the persistence unit name
+    }
+}
+----
+<1> The `InvalidationEvent` provides `engine()`, `database()`, `schema()`, and `table()` accessors that describe the change event source.
+
+The extension automatically discovers and uses your custom strategy via Contexts and Dependency Injection (CDI).
+
+== Event Filtering
+
+By default, the extension filters or skips the following CDC event types:
+
+`Create`:: New inserts that have not been added to the cache.
+`Read`:: Snapshot reads that do not indicate changes.
+`Truncate`:: Table truncation events.
+`Message`:: Logical replication messages (PostgreSQL-specific).
+
+Only `Update` and `Delete` events pass through the filter and go on to trigger cache invalidation.
+
+=== Custom Filter Strategy
+
+To customize which events trigger invalidation, implement the `DebeziumFilterStrategy` interface.
+The following example shows an implementation in which the `filter` method receives a `CapturingEvent` and returns `true` to skip the event, or `false` to trigger invalidation:
+
+[source,java,indent=0]
+----
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.source.SourceRecord;
+import io.debezium.quarkus.hibernate.cache.DebeziumFilterStrategy;
+import io.debezium.runtime.CapturingEvent;
+
+@ApplicationScoped
+public class MyFilterStrategy implements DebeziumFilterStrategy {
+
+    @Override
+    public boolean filter(CapturingEvent<SourceRecord, SourceRecord> event) { // <1>
+        // Return true to SKIP the event, false to process it for invalidation
+        // For example, only invalidate on Delete events:
+        return !(event instanceof CapturingEvent.Delete);
+    }
+}
+----
+<1> The `CapturingEvent` is a sealed type with subtypes `Create`, `Update`, `Delete`, `Truncate`, `Read`, and `Message`.
+
+[[overriding-configuration]]
+== Overriding Configuration
+
+The extension automatically configures the underlying {prodname} engine with defaults optimized for cache invalidation.
+To override specific settings, you can implement the `DebeziumConfigurationEnhancer` interface, as shown in the following example:
+
+[source,java,indent=0]
+----
+import java.util.Map;
+import jakarta.enterprise.context.ApplicationScoped;
+import io.quarkus.debezium.engine.DebeziumConfigurationEnhancer;
+import io.debezium.runtime.Connector;
+
+@ApplicationScoped
+public class MyConfigurationEnhancer implements DebeziumConfigurationEnhancer {
+
+    @Override
+    public Map<String, String> apply(Map<String, String> configuration) { // <1>
+        // Return additional properties to be merged into the Debezium configuration
+        return Map.of("snapshot.mode", "initial");
+    }
+
+    @Override
+    public Connector applicableTo() { // <2>
+        return ...; // The connector this enhancer applies to
+    }
+}
+----
+<1> Returns a map of properties to merge into the base configuration.
+The original configuration is passed as an argument.
+<2> Specifies which connector type this enhancer applies to (for example, the PostgreSQL or MySQL connector).
+
+This is useful in scenarios where you need to fine-tune the connector behavior beyond what the auto-configuration provides.
+
+== How It Works
+
+At a high level, the cache invalidation mechanism performs the following steps:
+
+. At *build time*, the extension scans the JPA/Hibernate metamodel and identifies all entities eligible for caching based on the configured `SharedCacheMode` and entity annotations.
+
+. At *runtime*, when the Quarkus application starts, the extension performs the following tasks:
+.. Starts an embedded {prodname} engine configured to capture changes from the tables corresponding to the cached entities.
+.. Registers CDC event handlers that listen for changes on the relevant tables.
+
+. When a CDC event arrives (for example, an `UPDATE` on the `item` table), the extension then completes the following tasks:
+.. Checks the event against the configured filter strategy (by default, only `Update` and `Delete` events pass through).
+.. If the event passes the filter, invokes the configured eviction strategy to invalidate the corresponding cache region.
+
+. On subsequent access, Hibernate ORM loads the entity from the database, picking up the latest version.
+
+[NOTE]
+====
+Cache invalidation applies *eventual consistency* semantics.
+After a transaction is committed in the database, there is a short interval before the change event is processed.
+After the event is processed, the cache is invalidated.
+In most cases, this delay is insignificant (typically sub-second).
+====
+
+== Limitations
+
+The following limitations apply to the current version of the extension:
+
+Debouncing:: The extension does not implement debouncing to delay removal of invalidation events that the application generates.
+Because of this limitation, if the Quarkus application modifies a cached entity through Hibernate ORM, CDC captures the change and triggers an unnecessary cache invalidation.
+While this does not cause correctness issues, it can result in extra database roundtrips to reload already-correct cache entries.
+
+In-memory offset storage:: By default, offsets are stored in memory.
+This means that change events that occur while the application is shut down are not be replayed when the application restarts.
+For the cache invalidation use case, this is acceptable because the L2C is also empty after a restart and is populated from the database only after the next access.
+
+Schema history storage:: As with offset storage, the schema history defaults to in-memory storage.
+For large databases, the initial schema snapshot at startup can negatively affect performance.
+This can be mitigated by configuring persistent schema history storage.
+
+Query cache:: Invalidation of the Hibernate query cache alongside entity cache invalidation is not available in the initial release.
