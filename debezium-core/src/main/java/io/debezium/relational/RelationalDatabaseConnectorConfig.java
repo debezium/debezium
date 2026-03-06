@@ -57,10 +57,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
-    public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
-    public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
-    public static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
@@ -711,7 +708,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String excludeList = config.getString(excludeField);
 
         if (includeList != null && excludeList != null) {
-            problems.accept(excludeField, excludeList, "\"" + includeField.name() + "\" is already specified");
+            problems.accept(excludeField, excludeList, "\"%s\" is already specified".formatted(includeField.name()));
             return 1;
         }
         return 0;
