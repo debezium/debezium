@@ -371,16 +371,25 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             return newEnvelopeSchema;
         }
 
-        final Schema oldValueSchema = oldEnvelopeSchema.field(Envelope.FieldName.BEFORE).schema();
-        final SchemaBuilder valueBuilder = copySchemaExcludingName(oldValueSchema, SchemaBuilder.struct());
-        valueBuilder.name(schemaNameAdjuster.adjust(newTopicName + ".Value"));
-        final Schema newValueSchema = valueBuilder.build();
+        final org.apache.kafka.connect.data.Field oldValueField = oldEnvelopeSchema.field(Envelope.FieldName.BEFORE) != null
+                ? oldEnvelopeSchema.field(Envelope.FieldName.BEFORE)
+                : oldEnvelopeSchema.field(Envelope.FieldName.AFTER);
+        final Schema newValueSchema;
+        if (oldValueField != null) {
+            final SchemaBuilder valueBuilder = copySchemaExcludingName(oldValueField.schema(), SchemaBuilder.struct());
+            valueBuilder.name(schemaNameAdjuster.adjust(newTopicName + ".Value"));
+            newValueSchema = valueBuilder.build();
+        }
+        else {
+            newValueSchema = null;
+        }
 
         final SchemaBuilder envelopeBuilder = copySchemaExcludingName(oldEnvelopeSchema, SchemaBuilder.struct(), false);
         for (org.apache.kafka.connect.data.Field field : oldEnvelopeSchema.fields()) {
             final String fieldName = field.name();
             Schema fieldSchema = field.schema();
-            if (Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER)) {
+            if (newValueSchema != null
+                    && (Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER))) {
                 fieldSchema = newValueSchema;
             }
             envelopeBuilder.field(fieldName, fieldSchema);
@@ -394,11 +403,15 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
     private Struct updateEnvelope(Schema newEnvelopeSchema, Struct oldEnvelope) {
         final Struct newEnvelope = new Struct(newEnvelopeSchema);
-        final Schema newValueSchema = newEnvelopeSchema.field(Envelope.FieldName.BEFORE).schema();
+        final org.apache.kafka.connect.data.Field newValueField = newEnvelopeSchema.field(Envelope.FieldName.BEFORE) != null
+                ? newEnvelopeSchema.field(Envelope.FieldName.BEFORE)
+                : newEnvelopeSchema.field(Envelope.FieldName.AFTER);
+        final Schema newValueSchema = newValueField != null ? newValueField.schema() : null;
         for (org.apache.kafka.connect.data.Field field : oldEnvelope.schema().fields()) {
             final String fieldName = field.name();
             Object fieldValue = oldEnvelope.get(field);
-            if ((Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER))
+            if (newValueSchema != null
+                    && (Objects.equals(fieldName, Envelope.FieldName.BEFORE) || Objects.equals(fieldName, Envelope.FieldName.AFTER))
                     && fieldValue != null) {
                 fieldValue = updateValue(newValueSchema, requireStruct(fieldValue, "Updating schema"));
             }
