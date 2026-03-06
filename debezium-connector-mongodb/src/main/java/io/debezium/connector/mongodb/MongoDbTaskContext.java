@@ -37,4 +37,8 @@ public class MongoDbTaskContext extends CdcSourceTaskContext<MongoDbConnectorCon
     public String getServerName() {
         return serverName;
     }
+
+    public int getMongoTaskId() {
+        return Integer.parseInt(getTaskId());
+    }
 }
