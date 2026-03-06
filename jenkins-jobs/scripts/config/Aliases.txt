@@ -335,6 +335,7 @@ jw-itq,Shiwanming
 archiedx,Archie David
 shinsj4653,Seongjun Shin
 redboyben,Benoit Audigier
+kartikangiras, Kartik Angiras
 gmarav05,Aravind Gm
 Binayak490-cyber,Binayak Das
 d1vyanshu-kumar,Divyanshu Kumar
