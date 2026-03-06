@@ -130,7 +130,7 @@ public class MongoDbPartition implements Partition {
         Provider(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext, Set<String> replicaSetNames) {
             this.logicalName = connectorConfig.getLogicalName();
             this.replicaSetNames = replicaSetNames;
-            multiTaskEnabled = connectorConfig.getMultiTaskEnabled();
+            multiTaskEnabled = connectorConfig.isMultiTaskEnabled();
             generation = connectorConfig.getMultiTaskGen();
             taskCount = connectorConfig.getMaxTasks();
             taskId = taskContext.getMongoTaskId();

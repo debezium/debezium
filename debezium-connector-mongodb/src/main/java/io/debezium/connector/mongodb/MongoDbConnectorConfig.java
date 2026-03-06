@@ -1013,8 +1013,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(DefaultTopicNamingStrategy.class.getName());
 
-    public static final Field MONGODB_MULTI_TASK_ENABLED = Field.create("mongodb.multi.task.enabled")
-            .withDisplayName("Enable Mongo DB multi-task")
+    public static final Field MONGODB_MULTI_TASK_ENABLED = Field.createInternal("mongodb.multi.task.enabled")
+            .withDisplayName("Enable MongoDB multi-task")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1023,7 +1023,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withDescription("Should the multi-task connector setup be enabled to the MongoDB instance, only valid if the connector manages a single replset.");
 
     public static final Field MONGODB_MULTI_TASK_GEN = Field.create("mongodb.multi.task.gen")
-            .withDisplayName("Mongo DB multi-task generation")
+            .withDisplayName("MongoDB multi-task generation")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1032,7 +1032,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withDescription("Define multi-task generation to be enabled on MongoDB instance");
 
     public static final Field MONGODB_MULTI_TASK_PREV_TASKS = Field.create("mongodb.multi.prev.tasks.max")
-            .withDisplayName("Mongo DB previous multi-task generation task count")
+            .withDisplayName("MongoDB previous multi-task generation task count")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1041,7 +1041,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withDescription("Maximum number of tasks allowed in the previous generation");
 
     public static final Field MONGODB_MULTI_TASK_PREV_GEN = Field.create("mongodb.multi.prev.gen")
-            .withDisplayName("Mongo DB previous multi-task generation")
+            .withDisplayName("MongoDB previous multi-task generation")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1050,13 +1050,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withDescription("Previous multi-task generation that was enabled on MongoDB instance");
 
     public static final Field MONGODB_MULTI_TASK_HOP_SECONDS = Field.create("mongodb.multi.hop.sec")
-            .withDisplayName("Mongo DB previous multi-task hop seconds")
+            .withDisplayName("MongoDB previous multi-task hop seconds")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(10)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Mongo DB previous multi-task hop seconds");
+            .withDescription("MongoDB previous multi-task hop seconds");
 
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MongoDbSourceInfoStructMaker.class.getName());
@@ -1516,7 +1516,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return Module.name();
     }
 
-    public boolean getMultiTaskEnabled() {
+    public boolean isMultiTaskEnabled() {
         return multiTaskEnabled;
     }
 
