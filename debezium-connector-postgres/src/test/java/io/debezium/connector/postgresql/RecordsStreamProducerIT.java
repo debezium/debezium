@@ -123,8 +123,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     void before() throws Exception {
         // ensure the slot is deleted for each test
         TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("init_postgis.ddl");
-        String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
+        String statements = TestHelper.readDDLStatements("init_postgis.ddl") + System.lineSeparator() +
+                "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS test_table;" +
                 "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
