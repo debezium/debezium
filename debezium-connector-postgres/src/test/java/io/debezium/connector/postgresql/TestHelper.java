@@ -247,25 +247,28 @@ public final class TestHelper {
 
     /**
      * Drops all the public non system schemas from the DB.
-     *
      * @throws SQLException if anything fails.
      */
     public static void dropAllSchemas() throws SQLException {
         String lineSeparator = System.lineSeparator();
-        Set<String> schemaNames = schemaNames();
-        if (!schemaNames.contains(PostgresSchema.PUBLIC_SCHEMA_NAME)) {
-            schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
-        }
-        String dropStmts = schemaNames.stream()
-                .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
-                .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
-                .collect(Collectors.joining(lineSeparator));
-        TestHelper.execute(dropStmts);
+        final String initDatabaseDdl;
         try {
-            TestHelper.executeDDL("init_database.ddl");
+            initDatabaseDdl = readDDLStatements("init_database.ddl");
         }
         catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize database", e);
+            throw new IllegalStateException("Failed to read init_database.ddl", e);
+        }
+        try (PostgresConnection connection = create()) {
+            Set<String> schemaNames = connection.readAllSchemaNames(
+                    ((Predicate<String>) Arrays.asList("pg_catalog", "information_schema")::contains).negate());
+            if (!schemaNames.contains(PostgresSchema.PUBLIC_SCHEMA_NAME)) {
+                schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
+            }
+            String dropStmts = schemaNames.stream()
+                    .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
+                    .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
+                    .collect(Collectors.joining(lineSeparator));
+            connection.execute(dropStmts, initDatabaseDdl);
         }
     }
 
@@ -350,14 +353,17 @@ public final class TestHelper {
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {
+        try (PostgresConnection connection = create()) {
+            connection.execute(readDDLStatements(ddlFile));
+        }
+    }
+
+    public static String readDDLStatements(String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
         assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
-        String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
+        return Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
-        try (PostgresConnection connection = create()) {
-            connection.execute(statements);
-        }
     }
 
     public static String topicName(String suffix) {
