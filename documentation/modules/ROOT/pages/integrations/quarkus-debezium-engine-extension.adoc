@@ -425,6 +425,200 @@ public class PostProcessorHandler {
 }
 ```
 
+== Multi-Engine Support
+
+The {prodname} Extension for Quarkus supports running multiple engines within the same application.
+This enables capturing CDC events from different databases simultaneously, each managed by its own engine instance.
+
+=== When to use multiple engines
+
+Use multi-engine support when your application needs to:
+
+- Capture changes from multiple independent databases in the same Quarkus application
+- Process events from different schemas or tables with separate engine lifecycles
+- Combine data from heterogeneous sources into a single service
+
+=== Concepts
+
+Engine Manifest::
+An engine manifest identifies a single engine instance.
+Each manifest has a unique ID and there is a one-to-one mapping between a manifest and a Quarkus datasource.
+The default engine uses the ID `default`.
+
+Engine Qualifier::
+The `@Engine` and `@DefaultEngine` qualifiers allow you to filter CDI events (lifecycle, heartbeat, notifications) by engine instance.
+
+=== Configuring multiple engines
+
+A single-engine setup uses the `quarkus.debezium.*` prefix for configuration.
+To add an additional engine, define its properties under `quarkus.debezium.capturing.<engine-id>.*` and configure a matching Quarkus named datasource.
+
+The following example configures a default engine capturing from one PostgreSQL database and an `alternative` engine capturing from a second database:
+
+```properties
+# Default engine configuration
+quarkus.debezium.offset.storage=org.apache.kafka.connect.storage.MemoryOffsetBackingStore
+quarkus.debezium.name=default-engine
+quarkus.debezium.topic.prefix=dbserver1
+quarkus.debezium.plugin.name=pgoutput
+quarkus.debezium.snapshot.mode=initial
+
+# Default datasource
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.username=postgres
+quarkus.datasource.password=postgres
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/inventory
+
+# Default engine deserializer
+quarkus.debezium.capturing.default.destination=dbserver1.public.products
+quarkus.debezium.capturing.default.deserializer=com.acme.ProductDeserializer
+
+# Alternative engine configuration
+quarkus.debezium.capturing.alternative.engine-id=alternative
+quarkus.debezium.capturing.alternative.offset.storage=org.apache.kafka.connect.storage.MemoryOffsetBackingStore
+quarkus.debezium.capturing.alternative.name=alternative-engine
+quarkus.debezium.capturing.alternative.topic.prefix=dbserver2
+quarkus.debezium.capturing.alternative.plugin.name=pgoutput
+quarkus.debezium.capturing.alternative.snapshot.mode=initial
+
+# Alternative datasource
+quarkus.datasource.alternative.db-kind=postgresql
+quarkus.datasource.alternative.username=postgres
+quarkus.datasource.alternative.password=postgres
+quarkus.datasource.alternative.jdbc.url=jdbc:postgresql://localhost:5433/orders
+
+# Alternative engine deserializer
+quarkus.debezium.capturing.alternative.orders.destination=dbserver2.public.orders
+quarkus.debezium.capturing.alternative.orders.deserializer=com.acme.OrderDeserializer
+```
+
+[NOTE]
+====
+Each additional engine requires a corresponding https://quarkus.io/guides/datasource#configure-multiple-datasources[named Quarkus datasource].
+The datasource name must match the engine ID (e.g., `alternative`).
+====
+
+=== Capturing events from multiple engines
+
+Use the `engine` attribute on `@Capturing` to route events from a specific engine.
+When `engine` is not specified, events are received from the default engine.
+
+```java
+import io.debezium.runtime.Capturing;
+import io.debezium.runtime.CapturingEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class CaptureHandler {
+
+    @Capturing(destination = "dbserver1.public.products")
+    public void products(CapturingEvent<String, Product> event) {
+        // events from the default engine
+    }
+
+    @Capturing(destination = "dbserver2.public.orders", engine = "alternative")
+    public void orders(CapturingEvent<String, Order> event) {
+        // events from the alternative engine
+    }
+}
+```
+
+=== Filtering lifecycle events by engine
+
+Use the `@Engine` qualifier to observe lifecycle events for a specific engine.
+Use `@DefaultEngine` as a shorthand to observe events from the default engine.
+
+```java
+import io.debezium.runtime.events.*;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class LifecycleListener {
+
+    void onDefaultStarted(@Observes @DefaultEngine ConnectorStartedEvent event) {
+        // triggered when the default engine starts
+    }
+
+    void onAlternativeStarted(@Observes @Engine("alternative") ConnectorStartedEvent event) {
+        // triggered when the alternative engine starts
+    }
+
+    void onDefaultTaskStarted(@Observes @Engine("default") TasksStartedEvent event) {
+        // triggered when a task starts on the default engine
+    }
+
+    void onAlternativeTaskStarted(@Observes @Engine("alternative") TasksStartedEvent event) {
+        // triggered when a task starts on the alternative engine
+    }
+}
+```
+
+=== Filtering notification events by engine
+
+Snapshot and notification events can also be filtered per engine:
+
+```java
+import io.debezium.runtime.events.DefaultEngine;
+import io.debezium.runtime.events.Engine;
+import io.quarkus.debezium.notification.SnapshotEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class SnapshotListener {
+
+    public void defaultSnapshot(@Observes @DefaultEngine SnapshotEvent snapshot) {
+        // snapshot events from the default engine
+    }
+
+    public void alternativeSnapshot(@Observes @Engine("alternative") SnapshotEvent snapshot) {
+        // snapshot events from the alternative engine
+    }
+}
+```
+
+=== Filtering heartbeat events by engine
+
+Heartbeat events are filtered using the same `@Engine` qualifier:
+
+```java
+import io.debezium.runtime.events.Engine;
+import io.debezium.runtime.events.DebeziumHeartbeat;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class HeartbeatListener {
+
+    public void defaultHeartbeat(@Observes @Engine("default") DebeziumHeartbeat heartbeat) {
+        // heartbeat from the default engine
+    }
+
+    public void alternativeHeartbeat(@Observes @Engine("alternative") DebeziumHeartbeat heartbeat) {
+        // heartbeat from the alternative engine
+    }
+}
+```
+
+[NOTE]
+====
+Heartbeat intervals are configured per engine.
+For additional engines, set `quarkus.debezium.capturing.<engine-id>.heartbeat.interval.ms`.
+====
+
+=== Supported features in multi-engine mode
+
+All features available in single-engine mode are also supported when running multiple engines:
+
+- Capturing Listener
+- Custom Deserializer
+- Lifecycle events
+- Heartbeat events
+- Custom Data Type Converter
+- Notification events
+- Post Processors
+
 == DevService Support
 
 Quarkus automatically provisions unconfigured services in dev and test modes using Dev Services.
