@@ -1353,4 +1353,137 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return stopMessageFound.get();
     }
 
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldSerializePausedStateToOffsets() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait a bit for pause signal to be processed
+        waitForAvailableRecords(2, TimeUnit.SECONDS);
+
+        // Consume available records and check offsets contain paused flag
+        final AtomicBoolean pausedFlagFound = new AtomicBoolean(false);
+        consumeAvailableRecords(record -> {
+            final Map<String, ?> offset = record.sourceOffset();
+            if (offset.containsKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED)) {
+                final Boolean paused = (Boolean) offset.get(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+                if (Boolean.TRUE.equals(paused)) {
+                    pausedFlagFound.set(true);
+                }
+            }
+        });
+
+        assertThat(pausedFlagFound.get()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldRemainPausedAfterRestart() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait for pause signal to be processed
+        waitForAvailableRecords(2, TimeUnit.SECONDS);
+        consumeAvailableRecords(record -> {
+        });
+
+        // Stop and restart connector
+        stopConnector();
+        startConnector();
+
+        // After restart, snapshot should still be paused
+        // Try to consume records - should not get any snapshot records
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        final AtomicInteger snapshotRecordsAfterRestart = new AtomicInteger(0);
+        consumeAvailableRecords(record -> {
+            final Map<String, ?> offset = record.sourceOffset();
+            if (offset.containsKey("snapshot") && "INCREMENTAL".equals(offset.get("snapshot"))) {
+                snapshotRecordsAfterRestart.incrementAndGet();
+            }
+        });
+
+        // Should not receive any incremental snapshot records while paused
+        assertThat(snapshotRecordsAfterRestart.get()).isEqualTo(0);
+
+        // Resume and verify snapshot continues
+        sendResumeSignal();
+        final Map<Integer, SourceRecord> remainingChanges = consumeRecordsMixedWithIncrementalSnapshot(ROW_COUNT - expectedRecordCount);
+        assertThat(remainingChanges).hasSize(ROW_COUNT - expectedRecordCount);
+    }
+
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldRemovePausedFlagAfterResume() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait for pause signal to be processed
+        waitForAvailableRecords(2, TimeUnit.SECONDS);
+        consumeAvailableRecords(record -> {
+        });
+
+        // Resume the snapshot
+        sendResumeSignal();
+
+        // Consume remaining records and verify paused flag is false or removed
+        final AtomicBoolean pausedFlagStillTrue = new AtomicBoolean(false);
+        final Map<Integer, SourceRecord> remainingChanges = consumeRecordsMixedWithIncrementalSnapshot(
+                ROW_COUNT - expectedRecordCount,
+                entry -> true,
+                records -> {
+                    records.forEach(record -> {
+                        final Map<String, ?> offset = record.sourceOffset();
+                        if (offset.containsKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED)) {
+                            final Boolean paused = (Boolean) offset.get(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+                            if (Boolean.TRUE.equals(paused)) {
+                                pausedFlagStillTrue.set(true);
+                            }
+                        }
+                    });
+                });
+
+        assertThat(remainingChanges).hasSize(ROW_COUNT - expectedRecordCount);
+        assertThat(pausedFlagStillTrue.get()).isFalse();
+    }
+
 }
