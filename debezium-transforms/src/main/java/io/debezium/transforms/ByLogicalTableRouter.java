@@ -371,9 +371,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             return newEnvelopeSchema;
         }
 
-        final org.apache.kafka.connect.data.Field oldValueField = oldEnvelopeSchema.field(Envelope.FieldName.BEFORE) != null
-                ? oldEnvelopeSchema.field(Envelope.FieldName.BEFORE)
-                : oldEnvelopeSchema.field(Envelope.FieldName.AFTER);
+        final org.apache.kafka.connect.data.Field oldValueField = getSchemaFieldWithFallback(oldEnvelopeSchema, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
         final Schema newValueSchema;
         if (oldValueField != null) {
             final SchemaBuilder valueBuilder = copySchemaExcludingName(oldValueField.schema(), SchemaBuilder.struct());
@@ -403,9 +401,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
     private Struct updateEnvelope(Schema newEnvelopeSchema, Struct oldEnvelope) {
         final Struct newEnvelope = new Struct(newEnvelopeSchema);
-        final org.apache.kafka.connect.data.Field newValueField = newEnvelopeSchema.field(Envelope.FieldName.BEFORE) != null
-                ? newEnvelopeSchema.field(Envelope.FieldName.BEFORE)
-                : newEnvelopeSchema.field(Envelope.FieldName.AFTER);
+        final org.apache.kafka.connect.data.Field newValueField = getSchemaFieldWithFallback(newEnvelopeSchema, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
         final Schema newValueSchema = newValueField != null ? newValueField.schema() : null;
         for (org.apache.kafka.connect.data.Field field : oldEnvelope.schema().fields()) {
             final String fieldName = field.name();
@@ -427,6 +423,14 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             newValue.put(field.name(), oldValue.get(field));
         }
         return newValue;
+    }
+
+    private org.apache.kafka.connect.data.Field getSchemaFieldWithFallback(Schema schema, String fieldName, String fallbackFieldName) {
+        final org.apache.kafka.connect.data.Field field = schema.field(fieldName);
+        if (field != null) {
+            return field;
+        }
+        return schema.field(fallbackFieldName);
     }
 
     private SchemaBuilder copySchemaExcludingName(Schema source, SchemaBuilder builder) {
