@@ -20,6 +20,7 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 
@@ -134,7 +135,24 @@ public class MongoDbConnector extends BaseSourceConnector {
                 try {
                     // Check base connection by accessing first database name
                     try (MongoClient client = connectionContext.getMongoClient()) {
-                        client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
+                        // only when we try to fetch results a connection gets established
+                        // Verify if users has rights to list databases
+                        var dbNames = new ArrayList<String>();
+                        client.listDatabaseNames().into(dbNames);
+                        if (dbNames.isEmpty()) {
+                            connectionStringValidation.addErrorMessage(
+                                    "User doesn't have rights to list databases. " +
+                                            "Please verify credentials and database permissions");
+                        }
+                    }
+                    catch (MongoCommandException e) {
+                        if (e.getErrorCode() == 13) { // Unauthorized
+                            connectionStringValidation.addErrorMessage(
+                                    "User doesn't have sufficient privileges: " + e.getMessage());
+                        }
+                        else {
+                            connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+                        }
                     }
 
                     // For RS clusters check that replica set name is present

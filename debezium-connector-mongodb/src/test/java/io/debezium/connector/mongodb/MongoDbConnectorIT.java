@@ -3182,6 +3182,36 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-3126")
+    public void shouldFailToValidateWithInvalidCredentials() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.USER, "invalidUser")
+                .with(MongoDbConnectorConfig.PASSWORD, "invalidPassword")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-3126")
+    public void shouldValidateSuccessfullyWithValidCredentials() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
+    }
+
     /**
      * Helper method to verify that all records have the correct source.collection field.
      * This catches the race condition reported in dbz#1531 where multiple snapshot threads
