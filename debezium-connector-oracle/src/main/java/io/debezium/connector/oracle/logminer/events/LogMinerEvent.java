@@ -21,9 +21,10 @@ public class LogMinerEvent {
     private final EventType eventType;
     private final Scn scn;
     private final TableId tableId;
-    private final long rowId;
+    private long rowId;
     private final String rsId;
     private final long changeTime;
+    private boolean rolledBack;
 
     public LogMinerEvent(LogMinerEventRow row) {
         this(row.getEventType(), row.getScn(), row.getTableId(), row.getRowId(), row.getRsId(), row.getChangeTime());
@@ -54,6 +55,10 @@ public class LogMinerEvent {
         return rowId;
     }
 
+    public void setRowId(long rowId) {
+        this.rowId = rowId;
+    }
+
     public String getRowIdAsString() {
         // Given this method decodes the value inline, it should be used infrequently.
         return RowIdCodec.decode(rowId);
@@ -61,6 +66,14 @@ public class LogMinerEvent {
 
     public String getRsId() {
         return rsId;
+    }
+
+    public boolean isRolledBack() {
+        return rolledBack;
+    }
+
+    public void markAsRolledBack() {
+        this.rolledBack = true;
     }
 
     public Instant getChangeTime() {

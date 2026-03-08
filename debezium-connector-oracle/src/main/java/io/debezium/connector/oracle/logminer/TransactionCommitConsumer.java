@@ -404,6 +404,12 @@ public class TransactionCommitConsumer implements AutoCloseable {
                 intoVals[i] = fromVals[i];
             }
         }
+        if (!hasRowId(into) && hasRowId(from)) {
+            into.setRowId(from.getRowId());
+        }
+        if (from.isRolledBack()) {
+            into.markAsRolledBack();
+        }
     }
 
     private boolean isUpdateForSameTableWithLobColumnChanges(DmlEvent into, DmlEvent event) {
@@ -503,6 +509,10 @@ public class TransactionCommitConsumer implements AutoCloseable {
     }
 
     private void dispatchChangeEvent(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {
+        if (event.isRolledBack()) {
+            LOGGER.debug("Skipping rolled-back event for table '{}' with row-id '{}'.", event.getTableId(), event.getRowIdAsString());
+            return;
+        }
         // Must be one based so that START_SCN/START_SCN_TS assignment works in delegate
         final long eventIndex = ++dispatchEventIndex;
         LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
