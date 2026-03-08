@@ -205,7 +205,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
-        offset.put(INCREMENTAL_SNAPSHOT_PAUSED, paused.get());
+        if (paused.get()) {
+            offset.put(INCREMENTAL_SNAPSHOT_PAUSED, true);
+        }
+        else {
+            offset.remove(INCREMENTAL_SNAPSHOT_PAUSED);
+        }
         return offset;
     }
 
