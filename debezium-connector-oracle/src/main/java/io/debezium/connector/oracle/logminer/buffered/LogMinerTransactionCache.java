@@ -146,13 +146,13 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void removeTransactionEvents(T transaction);
 
     /**
-     * Removes a specific transaction event by unique row identifier.
+     * Marks as rolled back a specific transaction event by unique row identifier.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param rowId the event's unique row identifier
      * @return {@code true} if the event was found and removed, {@code false} if it was not found
      */
-    boolean removeTransactionEventWithRowId(T transaction, String rowId);
+    boolean rollbackTransactionEventWithRowId(T transaction, String rowId);
 
     /**
      * Checks whether a specific transaction's event with the event key is cached.
