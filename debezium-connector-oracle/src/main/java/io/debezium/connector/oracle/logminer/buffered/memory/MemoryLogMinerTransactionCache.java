@@ -124,15 +124,14 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public boolean removeTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
+    public boolean rollbackTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
                 if (entry.event.getRowId() == encodedRowId) {
-                    events.remove(i);
-                    eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
+                    entry.event.markAsRolledBack();
                     return true;
                 }
             }
