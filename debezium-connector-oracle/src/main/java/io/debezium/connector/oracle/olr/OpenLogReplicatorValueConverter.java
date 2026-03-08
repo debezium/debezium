@@ -62,6 +62,28 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     }
 
     @Override
+    protected Object convertFloat(Column column, Field fieldDefn, Object data) {
+        if (data instanceof Integer intData) {
+            return intData.floatValue();
+        }
+        else if (data instanceof Long longData) {
+            return longData.floatValue();
+        }
+        return super.convertFloat(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertDouble(Column column, Field fieldDefn, Object data) {
+        if (data instanceof Integer intData) {
+            return intData.doubleValue();
+        }
+        else if (data instanceof Long longData) {
+            return longData.doubleValue();
+        }
+        return super.convertDouble(column, fieldDefn, data);
+    }
+
+    @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object value) {
         if (value instanceof Number) {
             value = convertTimestampValue(column, value);
