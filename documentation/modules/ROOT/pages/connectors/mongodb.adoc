@@ -10,6 +10,7 @@
 :connector-class: MongoDb
 :connector-name: MongoDB
 :include-list-example: public.inventory
+:MONGODB:
 :collection-container:  database
 ifdef::community[]
 

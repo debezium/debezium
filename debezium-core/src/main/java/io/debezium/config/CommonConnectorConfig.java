@@ -1876,6 +1876,13 @@ public abstract class CommonConnectorConfig {
         return false;
     }
 
+    /**
+     * Whether a particular connector supports skipping messages without a change in included columns.
+     */
+    public boolean supportsSkipMessagesWithoutChange() {
+        return false;
+    }
+
     protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
         return false;
     }
