@@ -288,6 +288,10 @@ public class PostgresType {
             return this;
         }
 
+        public boolean hasElementType() {
+            return this.elementTypeOid != 0;
+        }
+
         public Builder enumValues(List<String> enumValues) {
             this.enumValues = enumValues;
             return this;

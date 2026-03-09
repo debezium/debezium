@@ -387,13 +387,16 @@ public class TypeRegistry {
             while (rs.next()) {
                 PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
 
-                // If the type does have a base type, we can build/add immediately.
-                if (!builder.hasParentType()) {
+                // If the type has neither a base type nor an element type,
+                // we can build and add it immediately.
+                if (!builder.hasParentType() && !builder.hasElementType()) {
                     addType(builder.build());
                     continue;
                 }
 
-                // For types with base type mappings, they need to be delayed.
+                // For types with base or element type mappings, they need to be delayed.
+                // Otherwise their base/element types has not yet be registered,
+                // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
                 delayResolvedBuilders.add(builder);
             }
 
