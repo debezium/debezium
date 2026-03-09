@@ -344,3 +344,4 @@ mly-zju,Lingyang Ma
 lingyangma,Lingyang Ma
 viragtripathi,Virag Tripathi
 siddhantcvdi,Siddhant Chaturvedi
+zach-all,Zach All

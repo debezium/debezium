@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,6 +110,21 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
+        this(config, valueConverterBuilder, connectionUsage, Collections.emptySet());
+    }
+
+    /**
+     * Creates a Postgres connection with an optional schema filter for the {@link TypeRegistry}.
+     * When {@code typeRegistrySchemaFilter} is non-empty, only types from those schemas (plus built-in
+     * system schemas) are pre-loaded; types from other schemas are resolved on-demand.
+     *
+     * @param config                   {@link JdbcConfiguration} instance, may not be null.
+     * @param valueConverterBuilder    supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
+     * @param connectionUsage          a symbolic name of the connection to be tracked in monitoring tools
+     * @param typeRegistrySchemaFilter schema names to pre-load types from; empty means all schemas
+     */
+    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage,
+                              Set<String> typeRegistrySchemaFilter) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
@@ -116,7 +132,7 @@ public class PostgresConnection extends JdbcConnection {
             this.defaultValueConverter = null;
         }
         else {
-            this.typeRegistry = new TypeRegistry(this);
+            this.typeRegistry = new TypeRegistry(this, typeRegistrySchemaFilter);
 
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
