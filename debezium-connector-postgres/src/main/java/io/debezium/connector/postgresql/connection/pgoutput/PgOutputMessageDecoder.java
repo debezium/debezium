@@ -7,8 +7,10 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -683,12 +685,12 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        StringBuilder sb = new StringBuilder();
-        byte b = 0;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte b;
         while ((b = buffer.get()) != 0) {
-            sb.append((char) b);
+            baos.write(b);
         }
-        return sb.toString();
+        return baos.toString(StandardCharsets.UTF_8);
     }
 
     /**
