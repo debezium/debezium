@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -34,7 +35,8 @@ public class OlrNetworkClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OlrNetworkClient.class);
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     private final String hostName;
     private final int port;
     private final String sourceName;
