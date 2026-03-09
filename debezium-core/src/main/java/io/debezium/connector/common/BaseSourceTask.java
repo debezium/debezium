@@ -244,6 +244,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             cdcSourceTaskContext = preStart(config);
 
+            // Configure MDC logging context early to ensure all subsequent logs include connector context
+            // This addresses DBZ-3438 by setting MDC before any logging occurs in the task startup
+            if (cdcSourceTaskContext != null && cdcSourceTaskContext.getConnectorType() != null) {
+                cdcSourceTaskContext.configureLoggingContext("startup");
+            }
+
             DebeziumOpenLineageEmitter.emit(
                     DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(props), connectorName(), cdcSourceTaskContext.getRunId()),
                     DebeziumTaskState.INITIAL);
