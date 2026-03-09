@@ -185,6 +185,61 @@ public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
         assertThat(((Struct) recordsForTopic.get(0).value()).getStruct("after").getFloat64("m")).isEqualTo(0.0);
     }
 
+    @Test
+    @FixFor("DBZ-2175")
+    public void shouldHandleDeleteOfRowWithNegativeMoneyWithoutCrash() throws Exception {
+        createTable();
+
+        TestHelper.execute("ALTER TABLE post_money.debezium_test REPLICA IDENTITY FULL;");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("INSERT INTO post_money.debezium_test(id, m) VALUES(20, '-1.50'::money);");
+        TestHelper.execute("DELETE FROM post_money.debezium_test WHERE id = 20;");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("post_money.debezium_test"));
+
+        assertThat(recordsForTopic).hasSize(2);
+
+        Struct afterInsert = ((Struct) recordsForTopic.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat((BigDecimal) afterInsert.get("m")).isEqualByComparingTo(new BigDecimal("-1.50"));
+
+        Struct beforeDelete = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.BEFORE);
+        assertThat(beforeDelete).isNotNull();
+        assertThat((BigDecimal) beforeDelete.get("m")).isEqualByComparingTo(new BigDecimal("-1.50"));
+    }
+
+    @Test
+    @FixFor("DBZ-2175")
+    public void shouldHandleDeleteOfRowWithLargeNegativeMoneyWithoutCrash() throws Exception {
+        createTable();
+
+        TestHelper.execute("ALTER TABLE post_money.debezium_test REPLICA IDENTITY FULL;");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("INSERT INTO post_money.debezium_test(id, m) VALUES(21, '-92233720368547758.08'::money);");
+        TestHelper.execute("DELETE FROM post_money.debezium_test WHERE id = 21;");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("post_money.debezium_test"));
+
+        assertThat(recordsForTopic).hasSize(2);
+
+        Struct beforeDelete = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.BEFORE);
+        assertThat(beforeDelete).isNotNull();
+        assertThat((BigDecimal) beforeDelete.get("m")).isEqualByComparingTo(new BigDecimal("-92233720368547758.08"));
+    }
+
     private void createTable() {
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS post_money CASCADE;",
