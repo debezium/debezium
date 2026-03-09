@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.olr;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -69,6 +70,9 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
         else if (data instanceof Long longData) {
             return longData.floatValue();
         }
+        else if (data instanceof BigDecimal bigDecimalData) {
+            data = bigDecimalData.floatValue();
+        }
         return super.convertFloat(column, fieldDefn, data);
     }
 
@@ -79,6 +83,9 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
         }
         else if (data instanceof Long longData) {
             return longData.doubleValue();
+        }
+        else if (data instanceof BigDecimal bigDecimalData) {
+            data = bigDecimalData.doubleValue();
         }
         return super.convertDouble(column, fieldDefn, data);
     }
