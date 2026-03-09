@@ -130,7 +130,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         if (events != null) {
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId() == encodedRowId) {
+                if (entry.event.getRowId() == encodedRowId && !entry.event.isRolledBack()) {
                     entry.event.markAsRolledBack();
                     return true;
                 }
