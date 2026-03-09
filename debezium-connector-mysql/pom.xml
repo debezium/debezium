@@ -234,6 +234,7 @@
         <docker.dbs>debezium/mysql-server-test-database</docker.dbs>
         <docker.filter>${docker.dbs}</docker.filter>
         <docker.skip>false</docker.skip>
+        <docker.platform>linux/amd64</docker.platform>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
 
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
@@ -257,6 +258,7 @@
                             <name>debezium/mysql-server-test-database</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
+                                <platform>${docker.platform}</platform>
                                 <env>
                                     <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                                     <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
@@ -311,6 +313,7 @@
                             <name>debezium/mysql-server-test-database-ssl</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
+                                <platform>${docker.platform}</platform>
                                 <env>
                                     <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
                                     <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->

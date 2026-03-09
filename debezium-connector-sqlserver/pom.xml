@@ -23,6 +23,7 @@
         <docker.db>mcr.microsoft.com/mssql/server:2022-latest</docker.db>
         <docker.filter>${docker.db}</docker.filter>
         <docker.skip>false</docker.skip>
+        <docker.platform>linux/amd64</docker.platform>
         <docker.showLogs>true</docker.showLogs>
         <!-- Apicurion container properties -->
         <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
@@ -172,6 +173,7 @@
                             <name>${docker.db}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
+                                <platform>${docker.platform}</platform>
                                 <env>
                                     <ACCEPT_EULA>Y</ACCEPT_EULA>
                                     <SA_PASSWORD>${sqlserver.password}</SA_PASSWORD>

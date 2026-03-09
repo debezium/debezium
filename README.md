@@ -100,37 +100,7 @@ In order to run testcontainers against [colima](https://github.com/abiosoft/coli
 
 #### Docker Desktop on Apple Silicon
 
-When running on Apple Silicon, the Docker Maven Plugin needs to be configured to use the `linux/amd64` platform. Additionally, it should be pointed to the Docker socket created by Docker Desktop using the `docker.host` system property.
-
-For example:
-
-```shell
-mvn docker:start \
-  -Ddocker.host=unix://$HOME/.docker/run/docker.sock \
-  -Ddocker.platform=linux/amd64 \
-  -pl debezium-connector-sqlserver
-```
-
-To avoid repetition in CLI commands, these system properties can be defined in the user's Maven profile.
-Here's an example `~/.m2/settings.xml` profile:
-
-```xml
-<settings>
-  <profiles>
-    <profile>
-      <id>default</id>
-      <properties>
-        <docker.host>unix://${user.home}/.docker/run/docker.sock</docker.host>
-        <docker.platform>linux/amd64</docker.platform>
-      </properties>
-    </profile>
-  </profiles>
-
-  <activeProfiles>
-    <activeProfile>default</activeProfile>
-  </activeProfiles>
-</settings>
-```
+When running on Apple Silicon, the Docker Maven Plugin needs to be configured to use the `linux/amd64` platform through the x86_64/amd64 emulation on Apple Silicon.
 
 ### Building the code
 
