@@ -156,7 +156,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId) {
+            if (event != null && event.getRowId() == encodedRowId && !event.isRolledBack()) {
                 event.markAsRolledBack();
                 eventCache.put(eventKey, event);
                 return true;
