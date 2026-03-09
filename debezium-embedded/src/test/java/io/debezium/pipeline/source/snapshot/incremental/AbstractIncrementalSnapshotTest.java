@@ -1396,10 +1396,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Testing.Print.enable();
 
         populateTable();
-        startConnector();
+        startConnector(additionalConfiguration());
 
         // Start incremental snapshot
         sendAdHocSnapshotSignal();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // Consume some records to ensure snapshot is running
         final int expectedRecordCount = ROW_COUNT / 2;
@@ -1410,27 +1412,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendPauseSignal();
 
         // Wait for pause signal to be processed
-        waitForAvailableRecords(2, TimeUnit.SECONDS);
-        consumeAvailableRecords(record -> {
-        });
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused"));
 
         // Stop and restart connector
         stopConnector();
-        startConnector();
+        logInterceptor.clear();
 
-        // After restart, snapshot should still be paused
-        // Try to consume records - should not get any snapshot records
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
-        final AtomicInteger snapshotRecordsAfterRestart = new AtomicInteger(0);
-        consumeAvailableRecords(record -> {
-            final Map<String, ?> offset = record.sourceOffset();
-            if (offset.containsKey("snapshot") && "INCREMENTAL".equals(offset.get("snapshot"))) {
-                snapshotRecordsAfterRestart.incrementAndGet();
-            }
-        });
+        startConnector(additionalConfiguration(), loggingCompletion(), false);
 
-        // Should not receive any incremental snapshot records while paused
-        assertThat(snapshotRecordsAfterRestart.get()).isEqualTo(0);
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot in progress, need to read new chunk on start")
+                && logInterceptor.containsMessage("Incremental snapshot was paused."));
 
         // Resume and verify snapshot continues
         sendResumeSignal();

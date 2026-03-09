@@ -198,7 +198,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
-        if (!snapshotRunning()) {
+        if (!snapshotRunning() && !paused.get()) {
             return offset;
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
