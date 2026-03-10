@@ -57,7 +57,13 @@ public final class Vectors {
             return null;
         }
 
-        strVector = strVector.substring(1, strVector.length() - 1);
+        strVector = strVector.substring(1, strVector.length() - 1).trim();
+        if (strVector.isEmpty()) {
+            final var result = new Struct(schema);
+            result.put(SparseDoubleVector.DIMENSIONS_FIELD, dimensions);
+            result.put(SparseDoubleVector.VECTOR_FIELD, new HashMap<>());
+            return result;
+        }
         final var strValues = strVector.split(",");
         final Map<Short, T> vector = new HashMap<>(strValues.length);
 
