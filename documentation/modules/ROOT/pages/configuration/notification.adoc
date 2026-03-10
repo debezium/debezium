@@ -385,7 +385,7 @@ The notification mechanism is designed to be extensible.
 You can implement channels as needed to deliver notifications in a manner that works best in your environment.
 Adding a notification channel involves several steps:
 
-1. xref:debezium-configuring-custom-notification-channels[Create a Java project for the channel] to implement the channel, and xref:debezium-core-module-dependency[add `{prodname} Core` as a dependency].
+1. xref:debezium-configuring-custom-notification-channels[Create a Java project for the channel] to implement the channel, and xref:debezium-connector-common-module-dependency[add `{prodname} Connector Core` as a dependency].
 2. xref:deploying-a-debezium-custom-notification-channel[Deploy the notification channel].
 3. xref:configuring-connectors-to-use-a-custom-notification-channel[Enable connectors to use the custom notification channel by modifying the connector configuration].
 
@@ -432,7 +432,7 @@ To enable {prodname} to use the channel, specify this name in the connector's `n
 |===
 
 //   Type: concept
-[id="debezium-core-module-dependency"]
+[id="debezium-connector-common-module-dependency"]
 === {prodname} core module dependencies
 
 A custom notification channel Java project has compile dependencies on the {prodname} core module.
@@ -442,7 +442,7 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 ----
 <dependency>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-core</artifactId>
+    <artifactId>debezium-connector-common</artifactId>
     <version>${version.debezium}</version> // <1>
 </dependency>
 ----
