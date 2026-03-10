@@ -66,7 +66,9 @@ jobs:
             support/revapi/**
             debezium-api/**
             debezium-assembly-descriptors/**
-            debezium-core/**
+            debezium-connector-common/**
+            debezium-config/**
+            debezium-util/**
             debezium-embedded/**
             debezium-revapi/**
             debezium-ide-configs/**
