@@ -433,6 +433,7 @@ To enable {prodname} to use the channel, specify this name in the connector's `n
 
 //   Type: concept
 [id="debezium-connector-common-module-dependency"]
+[id="debezium-core-module-dependency"]
 === {prodname} core module dependencies
 
 A custom notification channel Java project has compile dependencies on the {prodname} core module.
