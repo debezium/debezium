@@ -41,6 +41,7 @@ import io.debezium.relational.Table;
  */
 public class LogMinerDmlParser implements DmlParser {
 
+    private static final String ORA_ARCHIVE_STATE = "ORA_ARCHIVE_STATE";
     private static final String NULL_SENTINEL = "${DBZ_NULL}";
     private static final String NULL = "NULL";
     private static final String INSERT_INTO = "insert into ";
@@ -64,6 +65,7 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int WHERE_LENGTH = WHERE.length();
 
     private final boolean useRelaxedQuotes;
+    private int rowArchivalColumnIndex = -1;
 
     public LogMinerDmlParser(OracleConnectorConfig connectorConfig) {
         this.useRelaxedQuotes = connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection();
@@ -75,13 +77,18 @@ public class LogMinerDmlParser implements DmlParser {
             throw new DmlParserException("DML parser requires a non-null table");
         }
         if (sql != null && sql.length() > 0) {
-            switch (sql.charAt(0)) {
-                case 'i':
-                    return parseInsert(sql, table);
-                case 'u':
-                    return parseUpdate(sql, table);
-                case 'd':
-                    return parseDelete(sql, table);
+            try {
+                switch (sql.charAt(0)) {
+                    case 'i':
+                        return parseInsert(sql, table);
+                    case 'u':
+                        return parseUpdate(sql, table);
+                    case 'd':
+                        return parseDelete(sql, table);
+                }
+            }
+            finally {
+                rowArchivalColumnIndex = -1;
             }
         }
         throw new DmlParserException("Unknown supported SQL '" + sql + "'");
@@ -254,7 +261,13 @@ public class LogMinerDmlParser implements DmlParser {
             else if (c == '"') {
                 if (inQuote) {
                     inQuote = false;
-                    columnNames[columnIndex++] = sql.substring(start + 1, index);
+                    final String columnName = sql.substring(start + 1, index);
+                    if (!ORA_ARCHIVE_STATE.equals(columnName)) {
+                        columnNames[columnIndex++] = columnName;
+                    }
+                    else {
+                        rowArchivalColumnIndex = columnIndex;
+                    }
                     start = index + 2;
                     continue;
                 }
@@ -335,6 +348,12 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
                 if (c == ',' && nested != 0) {
+                    continue;
+                }
+
+                if (rowArchivalColumnIndex != -1 && columnIndex == rowArchivalColumnIndex) {
+                    rowArchivalColumnIndex = -1;
+                    start = index + 1;
                     continue;
                 }
 
@@ -469,8 +488,7 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        int position = getColumnIndexByName(currentColumnName, table);
-                        newValues[position] = collectedValue.toString();
+                        setColumnValue(currentColumnName, collectedValue, table, newValues);
                         collectedValue = null;
                         start = index + 1;
                         inColumnValue = false;
@@ -511,8 +529,7 @@ public class LogMinerDmlParser implements DmlParser {
                             // indicate that the field is explicitly being cleared to NULL.
                             // This sentinel value will be cleared later when we reconcile before/after
                             // state in parseUpdate()
-                            int position = getColumnIndexByName(currentColumnName, table);
-                            newValues[position] = NULL_SENTINEL;
+                            setColumnValue(currentColumnName, NULL_SENTINEL, table, newValues);
                         }
                         start = index + 1;
                         inColumnValue = false;
@@ -523,8 +540,7 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    int position = getColumnIndexByName(currentColumnName, table);
-                    newValues[position] = value;
+                    setColumnValue(currentColumnName, value, table, newValues);
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -630,8 +646,7 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        int position = getColumnIndexByName(currentColumnName, table);
-                        values[position] = collectedValue.toString();
+                        setColumnValue(currentColumnName, collectedValue, table, values);
                         collectedValue = null;
                         start = index + 1;
                         inColumnValue = false;
@@ -681,8 +696,7 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    int position = getColumnIndexByName(currentColumnName, table);
-                    values[position] = value;
+                    setColumnValue(currentColumnName, value, table, values);
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -704,5 +718,19 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
+    }
+
+    private void setColumnValue(String columnName, String columnValue, Table table, Object[] values) {
+        if (!ORA_ARCHIVE_STATE.equals(columnName)) {
+            int position = getColumnIndexByName(columnName, table);
+            values[position] = columnValue;
+        }
+    }
+
+    private void setColumnValue(String columnName, StringBuilder columnValue, Table table, Object[] values) {
+        if (!ORA_ARCHIVE_STATE.equals(columnName)) {
+            int position = getColumnIndexByName(columnName, table);
+            values[position] = columnValue.toString();
+        }
     }
 }

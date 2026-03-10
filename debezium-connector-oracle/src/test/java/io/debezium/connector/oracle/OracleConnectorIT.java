@@ -6314,6 +6314,115 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#1676")
+    public void testOracleRowArchivalColumnAtEndOfTable() throws Exception {
+        TestHelper.dropTable(connection, "dbz1676");
+        try {
+            connection.execute("""
+                    CREATE TABLE dbz1676 (
+                        LAST_NAME VARCHAR2(50),
+                        FIRST_NAME VARCHAR2(50),
+                        AGE NUMBER,
+                        ADDRESS VARCHAR2(256),
+                        EMAIL VARCHAR(256),
+                        UPDATED_AT TIMESTAMP(6),
+                        USER_ID NUMBER(9,0),
+                        PRIMARY KEY (USER_ID))
+                    """);
+            // This adds the ORA_ARCHIVE_STATE column and SYS_NC00009$ raw column (both hidden)
+            connection.execute("ALTER TABLE dbz1676 row archival");
+            TestHelper.streamTable(connection, "dbz1676");
+
+            connection.execute("INSERT INTO dbz1676 values ('doe','john',21,'123 Main St', 'john@doe.com', sysdate, 1)");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ1676")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1676 values ('doe','jane',21,'987 Main St', 'jane@doe.com', sysdate, 2)");
+
+            SourceRecords allRecords = consumeRecordsByTopic(2);
+
+            List<SourceRecord> records = allRecords.recordsForTopic("server1.DEBEZIUM.DBZ1676");
+            assertThat(records).hasSize(2);
+
+            SourceRecord record = records.get(0);
+            assertThat(getAfter(record).get("USER_ID")).isEqualTo(1);
+            assertThat(getAfter(record).schema().fields()).hasSize(7);
+            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+
+            record = records.get(1);
+            assertThat(getAfter(record).get("USER_ID")).isEqualTo(2);
+            assertThat(getAfter(record).schema().fields()).hasSize(7);
+            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1676");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1676")
+    public void testOracleRowArchivalColumnInMiddleOfTable() throws Exception {
+        TestHelper.dropTable(connection, "dbz1676");
+        try {
+            connection.execute("""
+                    CREATE TABLE dbz1676 (
+                        LAST_NAME VARCHAR2(50),
+                        FIRST_NAME VARCHAR2(50),
+                        AGE NUMBER,
+                        ADDRESS VARCHAR2(256),
+                        EMAIL VARCHAR(256),
+                        UPDATED_AT TIMESTAMP(6),
+                        USER_ID NUMBER(9,0),
+                        PRIMARY KEY (USER_ID))
+                    """);
+            // This adds the ORA_ARCHIVE_STATE column and SYS_NC00009$ raw column (both hidden)
+            connection.execute("ALTER TABLE dbz1676 row archival");
+            connection.execute("ALTER TABLE dbz1676 add preferred_name varchar2(100)");
+            TestHelper.streamTable(connection, "dbz1676");
+
+            connection.execute("INSERT INTO dbz1676 values ('doe','john',21,'123 Main St', 'john@doe.com', sysdate, 1, 'john')");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ1676")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1676 values ('doe','jane',21,'987 Main St', 'jane@doe.com', sysdate, 2, 'jane')");
+
+            SourceRecords allRecords = consumeRecordsByTopic(2);
+
+            List<SourceRecord> records = allRecords.recordsForTopic("server1.DEBEZIUM.DBZ1676");
+            assertThat(records).hasSize(2);
+
+            SourceRecord record = records.get(0);
+            assertThat(getAfter(record).get("USER_ID")).isEqualTo(1);
+            assertThat(getAfter(record).get("PREFERRED_NAME")).isEqualTo("john");
+            assertThat(getAfter(record).schema().fields()).hasSize(8);
+            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+
+            record = records.get(1);
+            assertThat(getAfter(record).get("USER_ID")).isEqualTo(2);
+            assertThat(getAfter(record).get("PREFERRED_NAME")).isEqualTo("jane");
+            assertThat(getAfter(record).schema().fields()).hasSize(8);
+            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1676");
+        }
+    }
+
     public static class ErrorCausingCustomConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
         @Override
         public void configure(Properties props) {
