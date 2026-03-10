@@ -82,6 +82,7 @@ jobs:
             debezium-api/**
             debezium-assembly-descriptors/**
             debezium-core/**
+            debezium-connect-plugins/**
             debezium-embedded/**
             debezium-revapi/**
             debezium-ide-configs/**
