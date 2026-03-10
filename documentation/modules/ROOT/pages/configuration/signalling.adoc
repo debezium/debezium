@@ -427,7 +427,7 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 ----
 <dependency>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-core</artifactId>
+    <artifactId>debezium-connector-common</artifactId>
     <version>${version.debezium}</version>
 </dependency>
 ----
@@ -846,7 +846,7 @@ Include the following compile dependencies in your project's `pom.xml` file:
 ----
 <dependency>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-core</artifactId>
+    <artifactId>debezium-connector-common</artifactId>
     <version>${version.debezium}</version>
 </dependency>
 ----
