@@ -41,7 +41,7 @@ The original source field is also preserved in the record.
 The source field must be a string field.
 The value of an embedding field is a vector of floating-point 32-bit numbers.
 The size of the vector depends on the selected model.
-To provide the internal representation of an embedding, {prodname} uses the link:https://github.com/debezium/debezium/blob/main/debezium-core/src/main/java/io/debezium/data/vector/FloatVector.java[FloatVector] data type.
+To provide the internal representation of an embedding, {prodname} uses the link:https://github.com/debezium/debezium/blob/main/debezium-connector-common/src/main/java/io/debezium/data/vector/FloatVector.java[FloatVector] data type.
 The schema type of the embedding field in the record is `io.debezium.data.FloatVector`.
 
 Both source field and embedding field specifications support nested structures, such as, `after.product_description_embedding`.
