@@ -53,6 +53,17 @@ public class VectorDatabaseTest {
     }
 
     @Test
+    void shouldParseEmptySparseVector() {
+        var vector = SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{}/5");
+        Assertions.assertThat(vector.getInt16("dimensions")).isEqualTo((short) 5);
+        Assertions.assertThat(vector.getMap("vector")).isEmpty();
+
+        vector = SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{ }/5");
+        Assertions.assertThat(vector.getInt16("dimensions")).isEqualTo((short) 5);
+        Assertions.assertThat(vector.getMap("vector")).isEmpty();
+    }
+
+    @Test
     void shouldIgnoreErrorInSparseVectorFormat() {
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:30}")).isNull();
         Assertions.assertThat(SparseDoubleVector.fromLogical(SparseDoubleVector.schema(), "{1:10,11:20,111:30/1000")).isNull();
