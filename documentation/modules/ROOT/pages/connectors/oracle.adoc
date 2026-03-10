@@ -1266,11 +1266,11 @@ Specifies the list of Infinispan server hostname and port combinations, using `<
 
 [[oracle-event-buffering-ehcache]]
 ==== Ehcache
-The {prodname} connector can also be configured to use Ehcache as its cache provider, supporting locally embedded cache stores.
-In order to use Ehcache, the `log.mining.buffer.type` must be configured using `ehcache`.
+You can configure a {prodname} Oracle connector to use Ehcache as its cache provider,  so that the connector buffers event data in a locally embedded cache store.
+To enable the connector to use Ehcache, set the value of the `log.mining.buffer.type` to `ehcache`.
 
-In order to allow flexibility with ehcache cache configurations, the connector expects a series of cache configuration properties to be uspplied when using ehcache to buffer event data.
-See the xref:oracle-connector-properties[configuration properties] in the `log.mining.buffer.ehcache` namespace.
+You can customize the Ehcache configuration through a set of cache configuration properties.
+For details about the available properties, see the xref:oracle-connector-properties[configuration properties] in the `log.mining.buffer.ehcache` namespace.
 
 For example, the following illustrates what an embedded `log.mining.buffer.ehcache.global.config` global configuration would look like:
 
