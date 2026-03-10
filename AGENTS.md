@@ -363,6 +363,7 @@ Optional detailed description:
 4. Full build passes: `mvn clean install`
 5. Rebase on latest main before submitting
 6. Code formatting applied (automatic during build)
+7. DCO: sign off all commits with `git commit -s`
 
 **Code style:**
 - Auto-formatted during build
