@@ -309,7 +309,7 @@ Debezium connectors process events through a pipeline: Database → ChangeEventS
 - PostgreSQL: Multiple logical decoding plugins (decoderbufs, wal2json, pgoutput) have different behaviors
 - MySQL/MariaDB: Share binlog connector base, check both specific and base implementations
 - MongoDB: Oplog vs change streams have different event structures
-- Oracle: LogMiner vs XStream have different capabilities
+- Oracle: LogMiner, XStream, and OpenLogReplicator have different capabilities
 
 **Instructions:**
 - Start by identifying which phase of the pipeline has the issue
