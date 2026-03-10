@@ -45,6 +45,10 @@
       <version>${version.maven}</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>org.reflections</groupId>
+      <artifactId>reflections</artifactId>
+    </dependency>
 
     <!-- Test dependencies -->
     <dependency>
