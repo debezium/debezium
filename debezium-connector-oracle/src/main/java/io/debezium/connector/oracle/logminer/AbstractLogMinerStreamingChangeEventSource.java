@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +51,10 @@ import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
+import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
 import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
@@ -120,7 +123,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
     private List<LogFile> sessionLogFiles;
-    private boolean sessionLogFilesChanged = false;
     private List<BigInteger> currentRedoLogSequences;
     private OracleOffsetContext effectiveOffset;
     private OraclePartition partition;
@@ -315,10 +317,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     protected List<LogFile> getSessionLogFiles() {
         return sessionLogFiles;
-    }
-
-    protected boolean hasSessionLogFileSetChanged() {
-        return sessionLogFilesChanged;
     }
 
     protected OffsetActivityMonitor getOffsetActivityMonitor() {
@@ -853,6 +851,21 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected abstract boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs();
 
     /**
+     * Resolves the Oracle LGWR buffer flushing strategy.
+     *
+     * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
+     */
+    protected LogWriterFlushStrategy resolveFlushStrategy() {
+        if (getConfig().isLogMiningReadOnly()) {
+            return new ReadOnlyLogWriterFlushStrategy();
+        }
+        if (getConfig().isRacSystem()) {
+            return new RacCommitLogWriterFlushStrategy(getConfig(), getJdbcConfiguration(), getMetrics());
+        }
+        return new CommitLogWriterFlushStrategy(getConfig(), getConnection());
+    }
+
+    /**
      * Calculates the mining session's upper boundary based on batch size limits.
      *
      * @param lowerBoundsScn the current lower boundary
@@ -1156,16 +1169,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (!useContinuousMining) {
             List<LogFile> sessionLogFilesToAdd = new ArrayList<>();
             for (LogFile logFile : currentLogFiles) {
-                if (logFile.getFirstScn().compareTo(upperBoundsScn) <= 0) {
+                // All logs must be enqueued for redo_log_catalog mode
+                // This is because the later logs, on log switch, will have the data dictionary.
+                // For other mining strategies, it's safe to only enqueue the necessary logs for the range.
+                if (isUsingCatalogInRedoStrategy()) {
                     sessionLogFilesToAdd.add(logFile);
                 }
-            }
-
-            if (sessionLogFiles != null) {
-                // This check is only required after first session pass
-                final Set<LogFile> oldSessionLogSet = new HashSet<>(sessionLogFiles);
-                final Set<LogFile> newSessionLogSet = new HashSet<>(sessionLogFilesToAdd);
-                this.sessionLogFilesChanged = !oldSessionLogSet.equals(newSessionLogSet);
+                else if (logFile.getFirstScn().compareTo(upperBoundsScn) <= 0) {
+                    sessionLogFilesToAdd.add(logFile);
+                }
             }
 
             sessionLogFiles = sessionLogFilesToAdd;
@@ -1184,17 +1196,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     /**
      * Applies the current/session log state to the mining session.
-     *
-     * @param postMiningSessionEnded {@code true} if a prior session just ended
      * @throws SQLException if a database exception occurs
      */
-    protected void applyLogsToSession(boolean postMiningSessionEnded) throws SQLException {
+    protected void applyLogsToSession() throws SQLException {
         if (!useContinuousMining) {
             sessionContext.removeAllLogFilesFromSession();
-        }
-
-        if ((!postMiningSessionEnded || !useContinuousMining) && isUsingCatalogInRedoStrategy()) {
-            sessionContext.writeDataDictionaryToRedoLogs();
         }
 
         if (!useContinuousMining) {
