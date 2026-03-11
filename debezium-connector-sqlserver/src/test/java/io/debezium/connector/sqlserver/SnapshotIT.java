@@ -329,7 +329,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
         assertThat(tableB).isNull();
         TestHelper.waitForSnapshotToBeCompleted();
         connection.execute("INSERT INTO table_a VALUES(22, 'some_name', 556)");
-        connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)"); 
+        connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");
 
         records = consumeRecordsByTopic(2);
         tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
