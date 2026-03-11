@@ -510,6 +510,39 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         assertThat(data.get(0).valueSchema().field("gencol")).isNull();
     }
 
+    @Test
+    @FixFor("DBZ-1329")
+    public void snapshotNewTableWithoutTableIncludeList() throws Exception {
+        // Testing.Print.enable();
+
+        // Populate the default table
+        populateTable();
+        // Start connector without an explicit table.include.list
+        startConnector();
+        waitForConnectorToStart();
+
+        // Create a completely new table at runtime
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("CREATE TABLE s1.tab2 (pk SERIAL, aa integer, PRIMARY KEY(pk));");
+            connection.execute("INSERT INTO s1.tab2 (aa) VALUES (1);");
+        }
+
+        // Trigger incremental snapshot for the new table
+        sendAdHocSnapshotSignal("s1.tab2");
+
+        // Verify the incremental snapshot message is properly generated without throwing NullPointerException
+        final int expectedRecordCount = 1;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32("aa"),
+                "test_server.s1.tab2",
+                null);
+
+        assertThat(dbChanges).contains(entry(1, 1));
+    }
+
     protected void populate4PkTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a4");
