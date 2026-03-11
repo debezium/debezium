@@ -51,7 +51,8 @@ public class SchemaChangeEvent {
         this.partition = Objects.requireNonNull(partition, "partition must not be null");
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
         this.source = Objects.requireNonNull(source, "source must not be null");
-        this.database = Objects.requireNonNull(database, "database must not be null");
+        // database is not mandatory for all databases (e.g. PostgreSQL)
+        this.database = database;
         // schema is not mandatory for all databases
         this.schema = schema;
         // DDL is not mandatory
