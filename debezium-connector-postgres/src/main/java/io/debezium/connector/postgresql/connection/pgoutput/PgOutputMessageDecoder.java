@@ -715,6 +715,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     /**
      * Reads the replication stream up to the next null-terminator byte and returns the contents as a string.
      *
+     * <p>This method uses {@link ByteArrayOutputStream} which starts with a 32-byte internal buffer
+     * and grows by doubling. It is intended for short protocol-level identifiers (schema, table,
+     * column names, prefixes) and should not be used for reading column <em>values</em>, where
+     * arbitrarily large payloads would cause excessive buffer copying and memory overhead.
+     *
      * @param buffer The replication stream buffer
      * @return string read from the replication stream
      */
