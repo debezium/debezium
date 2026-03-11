@@ -12,10 +12,10 @@
     <packaging>jar</packaging>
 
     <properties>
-	<!-- S3 -->
+        <!-- S3 -->
         <version.s3mock>3.10.0</version.s3mock>
 
-    <!-- Azurite -->
+        <!-- Azurite -->
         <version.azurite>3.33.0</version.azurite>
     </properties>
 
