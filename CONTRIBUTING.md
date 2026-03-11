@@ -136,9 +136,11 @@ Feel free to commit your changes locally as often as you'd like, though we gener
 
 Committing is as simple as:
 
-    $ git commit .
+    $ git commit -s .
 
-which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the GitHub issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
+Notice the `-s` flag. The Debezium project enforces a Developer Certificate of Origin (DCO) check on all pull requests. By adding `-s` to your commit command, Git will automatically append a *Signed-off-by* line to your commit message, confirming you have the right to submit the code. If you forget this flag, the automated CI checks will fail.
+    
+Executing the commit command will pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the GitHub issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
     debezium/dbz#1234 Expanded the MySQL integration test and correct a unit test.
 
