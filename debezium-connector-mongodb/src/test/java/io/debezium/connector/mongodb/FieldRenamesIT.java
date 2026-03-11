@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
+import io.debezium.connector.mongodb.FieldExcludeListIT.ExpectedUpdate;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 
