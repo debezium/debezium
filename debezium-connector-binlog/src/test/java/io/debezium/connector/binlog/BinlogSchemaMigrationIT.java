@@ -56,7 +56,7 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
     @Test
     void shouldCorrectlyMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        // Breaks if table whitelist does not contain both tables
+        // Breaks if table include list does not contain both tables
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -94,7 +94,7 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
     }
 
     @Test
-    void shouldProcessAndWarnOnNonWhitelistedMigrateTable() throws SQLException, InterruptedException {
+    void shouldProcessAndWarnOnNonIncludedMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         final LogInterceptor logInterceptor = new LogInterceptor(getRenameTableParserListenerClass());
 

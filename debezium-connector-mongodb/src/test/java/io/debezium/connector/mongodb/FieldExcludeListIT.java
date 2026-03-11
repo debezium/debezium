@@ -1585,8 +1585,8 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         assertThat(value2.get(AFTER)).isEqualTo(expected);
     }
 
-    private Configuration getConfiguration(String blackList) {
-        return getConfiguration(blackList, DATABASE_NAME, COLLECTION_NAME);
+    private Configuration getConfiguration(String excludeList) {
+        return getConfiguration(excludeList, DATABASE_NAME, COLLECTION_NAME);
     }
 
     private Configuration getConfiguration(String fieldExcludeList, String database, String collection) {
@@ -1636,14 +1636,14 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         }
     }
 
-    private void assertReadRecord(String blackList, Document snapshotRecord, String field, String expected) throws InterruptedException {
-        assertReadRecord(DATABASE_NAME, COLLECTION_NAME, blackList, snapshotRecord, field, expected);
+    private void assertReadRecord(String excludeList, Document snapshotRecord, String field, String expected) throws InterruptedException {
+        assertReadRecord(DATABASE_NAME, COLLECTION_NAME, excludeList, snapshotRecord, field, expected);
     }
 
-    private void assertReadRecord(String dbName, String collectionName, String blackList, Document snapshotRecord,
+    private void assertReadRecord(String dbName, String collectionName, String excludeList, Document snapshotRecord,
                                   String field, String expected)
             throws InterruptedException {
-        config = getConfiguration(blackList, dbName, collectionName);
+        config = getConfiguration(excludeList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, dbName);
@@ -1661,14 +1661,14 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         assertThat(value.get(field)).isEqualTo(expected);
     }
 
-    private void assertInsertRecord(String blackList, Document insertRecord, String field, String expected) throws InterruptedException {
-        assertInsertRecord(DATABASE_NAME, COLLECTION_NAME, blackList, insertRecord, field, expected);
+    private void assertInsertRecord(String excludeList, Document insertRecord, String field, String expected) throws InterruptedException {
+        assertInsertRecord(DATABASE_NAME, COLLECTION_NAME, excludeList, insertRecord, field, expected);
     }
 
-    private void assertInsertRecord(String dbName, String collectionName, String blackList, Document insertRecord,
+    private void assertInsertRecord(String dbName, String collectionName, String excludeList, Document insertRecord,
                                     String field, String expected)
             throws InterruptedException {
-        config = getConfiguration(blackList, dbName, collectionName);
+        config = getConfiguration(excludeList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, dbName);
@@ -1689,23 +1689,23 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         assertThat(value.get(field)).isEqualTo(expected);
     }
 
-    private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
+    private void assertUpdateRecord(String excludeList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
                                     String field, ExpectedUpdate expected)
             throws InterruptedException {
-        assertUpdateRecord(blackList, objectId, snapshotRecord, updateRecord, true, field, expected);
+        assertUpdateRecord(excludeList, objectId, snapshotRecord, updateRecord, true, field, expected);
     }
 
-    private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
+    private void assertUpdateRecord(String excludeList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
                                     boolean doSet, String field, ExpectedUpdate expected)
             throws InterruptedException {
-        assertUpdateRecord(DATABASE_NAME, COLLECTION_NAME, blackList, objectId, snapshotRecord, updateRecord, doSet, field, expected);
+        assertUpdateRecord(DATABASE_NAME, COLLECTION_NAME, excludeList, objectId, snapshotRecord, updateRecord, doSet, field, expected);
     }
 
-    private void assertUpdateRecord(String dbName, String collectionName, String blackList, ObjectId objectId,
+    private void assertUpdateRecord(String dbName, String collectionName, String excludeList, ObjectId objectId,
                                     Document snapshotRecord, Document updateRecord, boolean doSet, String field,
                                     ExpectedUpdate expected)
             throws InterruptedException {
-        config = getConfiguration(blackList, dbName, collectionName);
+        config = getConfiguration(excludeList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, dbName);

@@ -67,16 +67,16 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
 
     @Test
     void shouldCorrectlyManageRollback() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -101,7 +101,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         // Transaction with rollback
         // supported only for non-GTID setup
         // ---------------------------------------------------------------------------------------------------------------
-        if (replicaIsMaster) {
+        if (replicaIsPrimary) {
             try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
                 try (JdbcConnection connection = db.connect()) {
                     final Connection jdbc = connection.connection();
@@ -135,16 +135,16 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
 
     @Test
     void shouldProcessSavepoint() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -196,16 +196,16 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
 
     @Test
     void shouldProcessLargeTransaction() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -267,16 +267,16 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     @FixFor("DBZ-411")
     @Test
     void shouldProcessRolledBackSavepoint() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -301,7 +301,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         // Transaction with rollback to savepoint
         // supported only for non-GTID setup
         // ---------------------------------------------------------------------------------------------------------------
-        if (replicaIsMaster) {
+        if (replicaIsPrimary) {
             try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
                 try (JdbcConnection connection = db.connect()) {
                     final Connection jdbc = connection.connection();

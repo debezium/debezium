@@ -1399,7 +1399,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-800")
-    public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
+    public void shouldReceiveHeartbeatAlsoWhenChangingNonIncludedTable() throws Exception {
         // Testing.Print.enable();
         startConnector(config -> config
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")

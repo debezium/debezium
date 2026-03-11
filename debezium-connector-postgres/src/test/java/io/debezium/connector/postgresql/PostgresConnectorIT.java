@@ -1336,7 +1336,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
+    void shouldTakeExcludeListFiltersIntoAccountLegacy() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
@@ -1409,14 +1409,14 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
 
-        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+        String tableIncludeListWithWhitespace = "s1.a, s1.b";
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeListWithWhitespace);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -1439,14 +1439,14 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
 
-        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+        String tableIncludeListWithWhitespace = "s1.a, s1.b";
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeListWithWhitespace);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();

@@ -1154,15 +1154,15 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1617")
-    public void blacklistColumnWhenCdcColumnsDoNotMatchWithOriginalSnapshot() throws Exception {
+    public void excludeColumnWhenCdcColumnsDoNotMatchWithOriginalSnapshot() throws Exception {
         connection.execute("CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))");
         TestHelper.enableTableCdc(connection, "table_a");
 
-        connection.execute("ALTER TABLE table_a ADD blacklisted_column varchar(30)");
+        connection.execute("ALTER TABLE table_a ADD excluded_column varchar(30)");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.table_a.blacklisted_column")
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.table_a.excluded_column")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1200,14 +1200,14 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-1067")
     public void testColumnExcludeList() throws Exception {
         connection.execute(
-                "CREATE TABLE blacklist_column_table_a (id int, name varchar(30), amount integer primary key(id))",
-                "CREATE TABLE blacklist_column_table_b (id int, name varchar(30), amount integer primary key(id))");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_a");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_b");
+                "CREATE TABLE column_exclude_table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE column_exclude_table_b (id int, name varchar(30), amount integer primary key(id))");
+        TestHelper.enableTableCdc(connection, "column_exclude_table_a");
+        TestHelper.enableTableCdc(connection, "column_exclude_table_b");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.blacklist_column_table_a.amount")
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.column_exclude_table_a.amount")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1216,16 +1216,16 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Wait for snapshot completion
         consumeRecordsByTopic(1);
 
-        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
-        connection.execute("INSERT INTO blacklist_column_table_b VALUES(11, 'some_name', 447)");
+        connection.execute("INSERT INTO column_exclude_table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO column_exclude_table_b VALUES(11, 'some_name', 447)");
 
         final SourceRecords records = consumeRecordsByTopic(2);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_a");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_b");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.column_exclude_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.column_exclude_table_b");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB1.dbo.blacklist_column_table_a.Value")
+                .name("server1.testDB1.dbo.column_exclude_table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
@@ -1235,7 +1235,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         Schema expectedSchemaB = SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB1.dbo.blacklist_column_table_b.Value")
+                .name("server1.testDB1.dbo.column_exclude_table_b.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
