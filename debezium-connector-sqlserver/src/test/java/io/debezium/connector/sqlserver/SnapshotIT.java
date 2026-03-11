@@ -5,13 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -25,8 +18,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +31,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.common.BaseSourceTask;
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -47,6 +45,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Testing;
 
@@ -330,7 +329,7 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
         assertThat(tableB).isNull();
         TestHelper.waitForSnapshotToBeCompleted();
         connection.execute("INSERT INTO table_a VALUES(22, 'some_name', 556)");
-        connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");
+        connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)"); 
 
         records = consumeRecordsByTopic(2);
         tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
@@ -344,20 +343,20 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1067")
-        public void testColumnExcludeList() throws Exception {
+    public void testColumnExcludeList() throws Exception {
         connection.execute(
-            "CREATE TABLE column_exclude_table_a (id int, name varchar(30), amount integer primary key(id))",
-            "CREATE TABLE column_exclude_table_b (id int, name varchar(30), amount integer primary key(id))");
+                "CREATE TABLE column_exclude_table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE column_exclude_table_b (id int, name varchar(30), amount integer primary key(id))");
         connection.execute("INSERT INTO column_exclude_table_a VALUES(10, 'some_name', 120)");
         connection.execute("INSERT INTO column_exclude_table_b VALUES(11, 'some_name', 447)");
         TestHelper.enableTableCdc(connection, "column_exclude_table_a");
         TestHelper.enableTableCdc(connection, "column_exclude_table_b");
 
         final Configuration config = TestHelper.defaultConfig()
-            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-            .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.column_exclude_table_a.amount")
-            .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.column_exclude_table_a,dbo.column_exclude_table_b")
-            .build();
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.column_exclude_table_a.amount")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.column_exclude_table_a,dbo.column_exclude_table_b")
+                .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -367,40 +366,38 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
         final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.column_exclude_table_b");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
-            .optional()
-            .name("server1.testDB1.dbo.column_exclude_table_a.Value")
-            .field("id", Schema.INT32_SCHEMA)
-            .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-            .build();
+                .optional()
+                .name("server1.testDB1.dbo.column_exclude_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
         Struct expectedValueA = new Struct(expectedSchemaA)
-            .put("id", 10)
-            .put("name", "some_name");
+                .put("id", 10)
+                .put("name", "some_name");
 
         Schema expectedSchemaB = SchemaBuilder.struct()
-            .optional()
-            .name("server1.testDB1.dbo.column_exclude_table_b.Value")
-            .field("id", Schema.INT32_SCHEMA)
-            .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-            .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
-            .build();
+                .optional()
+                .name("server1.testDB1.dbo.column_exclude_table_b.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
         Struct expectedValueB = new Struct(expectedSchemaB)
-            .put("id", 11)
-            .put("name", "some_name")
-            .put("amount", 447);
+                .put("id", 11)
+                .put("name", "some_name")
+                .put("amount", 447);
 
         assertThat(tableA).hasSize(1);
         SourceRecordAssert.assertThat(tableA.get(0))
-            .valueAfterFieldIsEqualTo(expectedValueA)
-            .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
+                .valueAfterFieldIsEqualTo(expectedValueA)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
 
         assertThat(tableB).hasSize(1);
-        SourceRecordAssert.assertThat(tableB).hasSize(1);
         SourceRecordAssert.assertThat(tableB.get(0))
-            .valueAfterFieldIsEqualTo(expectedValueB)
-            .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
-
+                .valueAfterFieldIsEqualTo(expectedValueB)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
         stopConnector();
-        }
+    }
 
     @Test
     void reoderCapturedTables() throws Exception {
