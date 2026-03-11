@@ -656,7 +656,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     /**
-     * Handle the supplied event that signals that an out of the ordinary event that occurred on the master.
+     * Handle the supplied event that signals that an out of the ordinary event that occurred on the primary
      * It notifies the replica that something happened on the primary that might cause data to be in an
      * inconsistent state.
      *

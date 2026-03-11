@@ -39,7 +39,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
     private final AtomicBoolean isGtidModeEnabled = new AtomicBoolean(false);
-    private final AtomicLong milliSecondsBehindMaster = new AtomicLong();
+    private final AtomicLong milliSecondsBehindPrimary = new AtomicLong();
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogStreamingChangeEventSourceMetrics(BinlogTaskContext<T> taskContext,
@@ -50,7 +50,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
-        this.milliSecondsBehindMaster.set(-1);
+        this.milliSecondsBehindPrimary.set(-1);
     }
 
     @Override
@@ -136,7 +136,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
 
     @Override
     public long getMilliSecondsBehindSource() {
-        return milliSecondsBehindMaster.get();
+        return milliSecondsBehindPrimary.get();
     }
 
     @Override
@@ -177,7 +177,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     }
 
     public void setMilliSecondsBehindSource(long value) {
-        milliSecondsBehindMaster.set(value);
+        milliSecondsBehindPrimary.set(value);
     }
 
 }

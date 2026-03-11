@@ -33,7 +33,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseWhitelistAndTableWhitelist() {
+    public void shouldCreateFilterWithDatabaseAllowlistAndTableAllowlist() {
         filter = Selectors.tableSelector()
                 .includeDatabases("db1,db2")
                 .includeTables("db1\\.A,db1\\.B,db2\\.C")
@@ -54,7 +54,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseWhitelistAndTableBlacklist() {
+    public void shouldCreateFilterWithDatabaseAllowlistAndTableBlocklist() {
         filter = Selectors.tableSelector()
                 .includeDatabases("db1,db2")
                 .excludeTables("db1\\.A,db1\\.B,db2\\.C")
@@ -75,7 +75,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseBlacklistAndTableWhitelist() {
+    public void shouldCreateFilterWithDatabaseBlocklistAndTableAllowlist() {
         filter = Selectors.tableSelector()
                 .excludeDatabases("db3,db4")
                 .includeTables("db1\\.A,db1\\.B,db2\\.C")
@@ -96,7 +96,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseBlacklistAndTableBlacklist() {
+    public void shouldCreateFilterWithDatabaseBlocklistAndTableBlocklist() {
         filter = Selectors.tableSelector()
                 .excludeDatabases("db3,db4")
                 .excludeTables("db1\\.A,db1\\.B,db2\\.C")
@@ -117,7 +117,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithNoDatabaseFilterAndTableWhitelist() {
+    public void shouldCreateFilterWithNoDatabaseFilterAndTableAllowlist() {
         filter = Selectors.tableSelector()
                 .includeTables("db1\\.A,db1\\.B,db2\\.C")
                 .build();
@@ -137,7 +137,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithNoDatabaseFilterAndTableBlacklist() {
+    public void shouldCreateFilterWithNoDatabaseFilterAndTableBlocklist() {
         filter = Selectors.tableSelector()
                 .excludeTables("db1\\.A,db1\\.B,db2\\.C")
                 .build();
@@ -157,7 +157,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseWhitelistAndNoTableFilter() {
+    public void shouldCreateFilterWithDatabaseAllowlistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                 .includeDatabases("db1,db2")
                 .build();
@@ -169,7 +169,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithDatabaseBlacklistAndNoTableFilter() {
+    public void shouldCreateFilterWithDatabaseBlocklistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                 .excludeDatabases("db1,db2")
                 .build();
@@ -181,7 +181,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithSchemaBlacklistAndNoTableFilter() {
+    public void shouldCreateFilterWithSchemaBlocklistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                 .excludeSchemas("sc1,sc2")
                 .build();
@@ -193,7 +193,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithSchemaWhitelistAndNoTableFilter() {
+    public void shouldCreateFilterWithSchemaAllowlistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                 .includeSchemas("sc1,sc2")
                 .build();
@@ -205,7 +205,7 @@ public class SelectorsTest {
     }
 
     @Test
-    public void shouldCreateFilterWithSchemaWhitelistAndTableWhitelist() {
+    public void shouldCreateFilterWithSchemaAllowlistAndTableAllowlist() {
         filter = Selectors.tableSelector()
                 .includeSchemas("sc1,sc2")
                 .includeTables("db\\.sc1\\.A,db\\.sc2\\.B")
