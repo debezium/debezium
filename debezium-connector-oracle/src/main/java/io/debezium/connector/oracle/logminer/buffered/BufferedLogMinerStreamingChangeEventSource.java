@@ -50,10 +50,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
-import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -106,7 +103,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
 
-            boolean sessionStartScnChanged = false;
             Scn sessionStartScn = getOffsetContext().getScn();
             Scn sessionEndScn = Scn.NULL;
             Scn readScn = sessionStartScn;
@@ -114,7 +110,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             Stopwatch watch = Stopwatch.accumulating().start();
             int miningStartAttempts = 1;
 
-            boolean firstBatch = true;
+            boolean needsNewSession = true; // first session always starts a new session
+            boolean dictionaryWritten = false; // tracks if data dictionary is written to logs
+            boolean sessionActive = false;
+            boolean needsConnectionRestart = false;
+
             while (getContext().isRunning()) {
 
                 // Check if we should break when using archive log only mode
@@ -126,6 +126,24 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 final Instant batchStartTime = Instant.now();
                 updateDatabaseTimeDifference();
+
+                if (sessionActive && !needsNewSession) {
+                    boolean timeout = isMiningSessionRestartRequired(watch);
+                    boolean logSwitch = !timeout && checkLogSwitchOccurredAndUpdate();
+                    if (timeout || logSwitch) {
+                        endMiningSession();
+                        sessionActive = false;
+                        needsNewSession = true;
+                        dictionaryWritten = false;
+                        needsConnectionRestart = timeout && getConfig().isLogMiningRestartConnection();
+                        watch = Stopwatch.accumulating().start();
+                    }
+                }
+
+                if (needsNewSession && isUsingCatalogInRedoStrategy() && !dictionaryWritten) {
+                    getLogMinerContext().writeDataDictionaryToRedoLogs();
+                    dictionaryWritten = true;
+                }
 
                 Scn currentScn = getCurrentScn();
                 getMetrics().setCurrentScn(currentScn);
@@ -141,32 +159,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 collectLogs(sessionStartScn, sessionEndScn);
 
-                if (firstBatch) {
-                    // This is the first execution of the streaming pass, so apply the logs
-                    applyLogsToSession(false);
-                    firstBatch = false;
-                }
-                else {
-                    final boolean miningSessionRestartRequired = isMiningSessionRestartRequired(watch);
-                    final boolean logSwitchOccurred = checkLogSwitchOccurredAndUpdate();
-                    final boolean sessionLogSetChanged = hasSessionLogFileSetChanged();
-
-                    if (miningSessionRestartRequired || logSwitchOccurred || sessionLogSetChanged || sessionStartScnChanged) {
-                        // Mining session is active, so end the current session and restart if necessary
-                        endMiningSession();
-
-                        // Only restart the connection if mining session max time or log switch occurred
-                        final boolean restartRequired = miningSessionRestartRequired || logSwitchOccurred;
-                        if (restartRequired && getConfig().isLogMiningRestartConnection()) {
-                            prepareJdbcConnection(true);
-                        }
-
-                        applyLogsToSession(true);
-                        sessionStartScnChanged = false;
-
-                        // Recreate the stop watch
-                        watch = Stopwatch.accumulating().start();
+                if (needsNewSession) {
+                    if (needsConnectionRestart) {
+                        prepareJdbcConnection(true);
+                        needsConnectionRestart = false;
                     }
+                    applyLogsToSession();
+                    needsNewSession = false;
+                    sessionActive = true;
                 }
 
                 if (startMiningSession(sessionStartScn, sessionEndScn, miningStartAttempts)) {
@@ -176,12 +176,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     LOGGER.debug("ProcessResult MineStartScn={} ReadStartScn={}", result.miningSessionStartScn(), result.readStartScn());
 
                     if (!result.miningSessionStartScn.equals(sessionStartScn)) {
-                        if (hasLogMiningStartingLogChanged(sessionStartScn, result)) {
-                            // LogMiner reads a log in totality, regardless if the start position is near the
-                            // beginning, middle, or end of the log. So by updating this value if and only if
-                            // the log changes, allows for maximum session reuse.
-                            sessionStartScnChanged = true;
-                        }
                         sessionStartScn = result.miningSessionStartScn;
                     }
 
@@ -242,21 +236,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 .toList();
 
         return !logsWithLastMiningStartPosition.equals(logsWithNextMiningStartPosition);
-    }
-
-    /**
-     * Resolves the Oracle LGWR buffer flushing strategy.
-     *
-     * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
-     */
-    private LogWriterFlushStrategy resolveFlushStrategy() {
-        if (getConfig().isLogMiningReadOnly()) {
-            return new ReadOnlyLogWriterFlushStrategy();
-        }
-        if (getConfig().isRacSystem()) {
-            return new RacCommitLogWriterFlushStrategy(getConfig(), getJdbcConfiguration(), getMetrics());
-        }
-        return new CommitLogWriterFlushStrategy(getConfig(), getConnection());
     }
 
     @SuppressWarnings("unchecked")
