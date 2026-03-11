@@ -344,6 +344,8 @@
                                 <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
                                 <sourceDirectory>${project.build.testSourceDirectory}</sourceDirectory>
                             </sourceDirectories>
+                            <includeResources>true</includeResources>
+                            <includeTestResources>true</includeTestResources>
                         </configuration>
                         <executions>
                             <execution>
