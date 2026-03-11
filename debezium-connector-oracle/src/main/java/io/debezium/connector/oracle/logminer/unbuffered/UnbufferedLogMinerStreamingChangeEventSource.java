@@ -100,7 +100,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         Stopwatch watch = Stopwatch.accumulating().start();
         int miningStartAttempts = 1;
 
-        boolean firstBatch = true;
+        boolean needsNewSession = true; // first session always starts a new session
+        boolean dictionaryWritten = false; // tracks if data dictionary is written to logs
+        boolean sessionActive = false;
+        boolean needsConnectionRestart = false;
+
         while (getContext().isRunning()) {
 
             // Check if we should break when using archive log only mode
@@ -117,6 +121,24 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // except once per iteration.
             databaseOffset = getMetrics().getDatabaseOffset();
 
+            if (sessionActive && !needsNewSession) {
+                boolean timeout = isMiningSessionRestartRequired(watch);
+                boolean logSwitch = !timeout && checkLogSwitchOccurredAndUpdate();
+                if (timeout || logSwitch) {
+                    endMiningSession();
+                    sessionActive = false;
+                    needsNewSession = true;
+                    dictionaryWritten = false;
+                    needsConnectionRestart = timeout && getConfig().isLogMiningRestartConnection();
+                    watch = Stopwatch.accumulating().start();
+                }
+            }
+
+            if (needsNewSession && isUsingCatalogInRedoStrategy() && !dictionaryWritten) {
+                getLogMinerContext().writeDataDictionaryToRedoLogs();
+                dictionaryWritten = true;
+            }
+
             Scn currentScn = getCurrentScn();
             getMetrics().setCurrentScn(currentScn);
 
@@ -132,25 +154,14 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 continue;
             }
 
-            if (firstBatch) {
-                applyLogsToSession(false);
-                firstBatch = false;
-            }
-            else {
-                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
-                    // Mining session is active, so end the current session and restart if necessary
-                    endMiningSession();
-
-                    // Mining session reached max time or the log switch occurred
-                    if (getConfig().isLogMiningRestartConnection()) {
-                        prepareJdbcConnection(true);
-                    }
-
-                    applyLogsToSession(true);
-
-                    // Recreate the stop watch
-                    watch = Stopwatch.accumulating().start();
+            if (needsNewSession) {
+                if (needsConnectionRestart) {
+                    prepareJdbcConnection(true);
+                    needsConnectionRestart = false;
                 }
+                applyLogsToSession();
+                needsNewSession = false;
+                sessionActive = true;
             }
 
             if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
