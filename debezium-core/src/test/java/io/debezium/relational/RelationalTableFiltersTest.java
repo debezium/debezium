@@ -25,13 +25,13 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeDatabaseCoveredByLiteralInWhitelist() {
+    public void shouldIncludeDatabaseCoveredByLiteralInIncludeList() {
         filters = build.includeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
     }
 
     @Test
-    public void shouldIncludeDatabaseCoveredByMultipleLiteralsInWhitelist() {
+    public void shouldIncludeDatabaseCoveredByMultipleLiteralsInIncludeList() {
         filters = build.includeDatabases("db1,db2").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
         assertThat(filters.databaseFilter().test("db2")).isTrue();
@@ -52,59 +52,59 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeDatabaseCoveredByWildcardInWhitelist() {
+    public void shouldIncludeDatabaseCoveredByWildcardInIncludeList() {
         filters = build.includeDatabases("db.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
     }
 
     @Test
-    public void shouldIncludeDatabaseCoveredByMultipleWildcardsInWhitelist() {
+    public void shouldIncludeDatabaseCoveredByMultipleWildcardsInIncludeList() {
         filters = build.includeDatabases("db.*,mongo.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
         assertThat(filters.databaseFilter().test("mongo2")).isTrue();
     }
 
     @Test
-    public void shouldExcludeDatabaseCoveredByLiteralInBlacklist() {
+    public void shouldExcludeDatabaseCoveredByLiteralInExcludeList() {
         filters = build.excludeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
     }
 
     @Test
-    public void shouldExcludeDatabaseCoveredByMultipleLiteralsInBlacklist() {
+    public void shouldExcludeDatabaseCoveredByMultipleLiteralsInExcludeList() {
         filters = build.excludeDatabases("db1,db2").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
         assertThat(filters.databaseFilter().test("db2")).isFalse();
     }
 
     @Test
-    public void shouldNotExcludeDatabaseNotCoveredByLiteralInBlacklist() {
+    public void shouldNotExcludeDatabaseNotCoveredByLiteralInExcludeList() {
         filters = build.excludeDatabases("db1").createFilters();
         assertThat(filters.databaseFilter().test("db2")).isTrue();
     }
 
     @Test
-    public void shouldExcludeDatabaseCoveredByWildcardInBlacklist() {
+    public void shouldExcludeDatabaseCoveredByWildcardInExcludeList() {
         filters = build.excludeDatabases("db.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
     }
 
     @Test
-    public void shouldExcludeDatabaseCoveredByMultipleWildcardsInBlacklist() {
+    public void shouldExcludeDatabaseCoveredByMultipleWildcardsInExcludeList() {
         filters = build.excludeDatabases("db.*,mongo.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isFalse();
         assertThat(filters.databaseFilter().test("mongo2")).isFalse();
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByLiteralWithPeriodAsWildcardInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByLiteralWithPeriodAsWildcardInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.coll[.]?ection[x]?A,db1[.](.*)B").createFilters();
         assertCollectionIncluded("db1xcoll.ectionA"); // first '.' is an unescaped wildcard in regex
         assertCollectionIncluded("db1.collectionA");
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByLiteralInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByLiteralInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collectionA").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionExcluded("db1.collectionB");
@@ -112,7 +112,7 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByLiteralWithEscapedPeriodInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByLiteralWithEscapedPeriodInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1[.]collectionA").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionExcluded("db1.collectionB");
@@ -125,7 +125,7 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByMultipleLiteralsInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByMultipleLiteralsInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collectionA,db1.collectionB").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionB");
@@ -134,7 +134,7 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByMultipleRegexInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByMultipleRegexInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1.collection[x]?A,db1[.](.*)B").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionxA");
@@ -151,7 +151,7 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeCollectionCoveredByRegexWithWildcardInWhitelistAndNoBlacklist() {
+    public void shouldIncludeCollectionCoveredByRegexWithWildcardInIncludeListAndNoExcludeList() {
         filters = build.includeCollections("db1[.](.*)").createFilters();
         assertCollectionIncluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionxA");
@@ -168,7 +168,7 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldExcludeCollectionCoveredByLiteralInBlacklist() {
+    public void shouldExcludeCollectionCoveredByLiteralInExcludeList() {
         filters = build.excludeCollections("db1.collectionA").createFilters();
         assertCollectionExcluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionB");
@@ -176,25 +176,25 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
-    public void shouldIncludeSignalingCollectionAndNoWhitelistAndNoBlacklist() {
+    public void shouldIncludeSignalingCollectionAndNoIncludeListAndNoExcludeList() {
         filters = build.signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");
     }
 
     @Test
-    public void shouldIncludeSignalingCollectionNotCoveredByWhitelist() {
+    public void shouldIncludeSignalingCollectionNotCoveredByIncludeList() {
         filters = build.includeCollections("db1.table").signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");
     }
 
     @Test
-    public void shouldIncludeSignalingCollectionCoveredByLiteralInBlacklist() {
+    public void shouldIncludeSignalingCollectionCoveredByLiteralInExcludeList() {
         filters = build.excludeCollections("db1.signal").signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");
     }
 
     @Test
-    public void shouldIncludeSignalingCollectionCoveredByRegexInBlacklist() {
+    public void shouldIncludeSignalingCollectionCoveredByRegexInExcludeList() {
         filters = build.excludeCollections("db1.*").signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");
     }

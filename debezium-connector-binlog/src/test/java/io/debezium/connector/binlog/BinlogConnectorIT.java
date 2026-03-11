@@ -294,16 +294,16 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     private void shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(Field dbIncludeListField, int serverId) throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultJdbcConfigBuilder()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -636,7 +636,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         Testing.print("Position after inserts:  " + positionAfterInserts);
         Testing.print("Offset: " + lastCommittedOffset);
         Testing.print("Position after update:  " + positionAfterUpdate);
-        if (replicaIsMaster) {
+        if (replicaIsPrimary) {
             // Same binlog filename ...
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionBeforeInserts.binlogFilename());
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionAfterInserts.binlogFilename());
@@ -644,7 +644,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
             assertThat(persistedOffsetSource.binlogPosition()).isLessThan(positionAfterInserts.binlogPosition());
         }
         else {
-            // the replica is not the same server as the master, so it will have a different binlog filename and position ...
+            // the replica is not the same server as the master, so it will have a different binlog
         }
         // Event number is 2 ...
         assertThat(offsetContext.eventsToSkipUponRestart()).isEqualTo(2);
@@ -702,11 +702,11 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     void shouldUseOverriddenSelectStatementDuringSnapshotting() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -749,11 +749,11 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws SQLException, InterruptedException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -1007,7 +1007,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-683")
-    public void shouldReceiveSchemaForNonWhitelistedTablesAndDatabases() throws SQLException, InterruptedException {
+    public void shouldReceiveSchemaForNonIncludedTablesAndDatabases() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         final String tables = String.format("%s.customers,%s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
@@ -1035,7 +1035,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         // Two databases
-        // SET + USE + DROP DB + CREATE DB + 4 tables (2 whitelisted) (DROP + CREATE) TABLE
+        // SET + USE + DROP DB + CREATE DB + 4 tables (2 included) (DROP + CREATE) TABLE
         // USE + DROP DB + CREATE DB + (DROP + CREATE) TABLE
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4 + 1 + 2 + 2);
         // Records for one of the databases only
@@ -1062,7 +1062,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         // Two databases
-        // SET + USE + DROP DB + CREATE DB + 4 tables (2 whitelisted) (DROP + CREATE) TABLE
+        // SET + USE + DROP DB + CREATE DB + 4 tables (2 included) (DROP + CREATE) TABLE
         // USE + DROP DB + CREATE DB + (DROP + CREATE) TABLE
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4 + 1 + 2 + 2);
         // Records for one of the databases only
@@ -1088,7 +1088,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
         // Two databases
-        // SET + USE + DROP DB + CREATE DB + 4 tables (2 whitelisted) (DROP + CREATE) TABLE
+        // SET + USE + DROP DB + CREATE DB + 4 tables (2 included) (DROP + CREATE) TABLE
         // USE + DROP DB + CREATE DB + (DROP + CREATE) TABLE
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4 + 1 + 2 + 2);
         // Records for one of the databases only
@@ -1352,7 +1352,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
+    void shouldConsumeEventsWithMaskedAndExcludedColumns() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
@@ -2169,7 +2169,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-1242")
-    public void testEmptySchemaLogWarningWithDatabaseWhitelist() throws Exception {
+    public void testEmptySchemaLogWarningWithDatabaseIncludeList() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         config = DATABASE.defaultConfig()
@@ -2187,7 +2187,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-1242")
-    public void testNoEmptySchemaLogWarningWithDatabaseWhitelist() throws Exception {
+    public void testNoEmptySchemaLogWarningWithDatabaseIncludeList() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         config = DATABASE.defaultConfig()
@@ -2204,7 +2204,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-1242")
-    public void testEmptySchemaWarningWithTableWhitelist() throws Exception {
+    public void testEmptySchemaWarningWithTableIncludeList() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
@@ -2225,7 +2225,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-1242")
-    public void testNoEmptySchemaWarningWithTableWhitelist() throws Exception {
+    public void testNoEmptySchemaWarningWithTableIncludeList() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 

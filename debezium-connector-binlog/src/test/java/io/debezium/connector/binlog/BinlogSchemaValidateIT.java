@@ -78,15 +78,15 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -162,15 +162,15 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20) AFTER age;", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20) AFTER age;", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -246,15 +246,15 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 DROP age;", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 DROP age;", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -323,15 +323,15 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -388,7 +388,7 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
         assertTombstone(tombstoneEvent);
     }
 
-    private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsMaster) throws SQLException {
+    private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsPrimary) throws SQLException {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("SET SQL_LOG_BIN=OFF;");
@@ -398,8 +398,8 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
             }
         }
 
-        if (!replicaIsMaster) {
-            // if has replica, also apply DDL because master didn't record DDL at binlog
+        if (!replicaIsPrimary) {
+            // if has replica, also apply DDL because primary didn't record DDL at binlog
             try (BinlogTestConnection db = getTestReplicaDatabaseConnection(DATABASE.getDatabaseName())) {
                 try (JdbcConnection connection = db.connect()) {
                     connection.execute("SET SQL_LOG_BIN=OFF;");

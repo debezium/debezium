@@ -186,11 +186,11 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldStartCorrectlyWithDeprecatedJdbcOffsetStorage() throws InterruptedException, IOException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -198,7 +198,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         Configuration config = deprecatedConfig(jdbcUrl).build();
 
         // Start the connector ...
@@ -211,11 +211,11 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldStartCorrectlyWithJdbcOffsetStorage() throws InterruptedException, IOException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -223,7 +223,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         Configuration config = config(jdbcUrl).build();
 
         // Start the connector ...

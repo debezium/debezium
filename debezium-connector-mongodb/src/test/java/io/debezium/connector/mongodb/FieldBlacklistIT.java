@@ -27,7 +27,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.util.Testing;
 
-public class FieldBlacklistIT extends AbstractMongoConnectorIT {
+public class FieldExcludeListIT extends AbstractMongoConnectorIT {
 
     private static final String SERVER_NAME = "serverX";
 
@@ -1508,8 +1508,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         }
     }
 
-    private void assertReadRecord(String blackList, Document snapshotRecord, String field, String expected) throws InterruptedException {
-        config = getConfiguration(blackList);
+    private void assertReadRecord(String excludeList, Document snapshotRecord, String field, String expected) throws InterruptedException {
+        config = getConfiguration(excludeList);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, "dbA");
@@ -1527,8 +1527,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         assertThat(value.get(field)).isEqualTo(expected);
     }
 
-    private void assertInsertRecord(String blackList, Document insertRecord, String field, String expected) throws InterruptedException {
-        config = getConfiguration(blackList);
+    private void assertInsertRecord(String excludeList, Document insertRecord, String field, String expected) throws InterruptedException {
+        config = getConfiguration(excludeList);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, "dbA");
@@ -1549,16 +1549,16 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         assertThat(value.get(field)).isEqualTo(expected);
     }
 
-    private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
+    private void assertUpdateRecord(String excludeList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
                                     String field, ExpectedUpdate expected)
             throws InterruptedException {
-        assertUpdateRecord(blackList, objectId, snapshotRecord, updateRecord, true, field, expected);
+        assertUpdateRecord(excludeList, objectId, snapshotRecord, updateRecord, true, field, expected);
     }
 
-    private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
+    private void assertUpdateRecord(String excludeList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
                                     boolean doSet, String field, ExpectedUpdate expected)
             throws InterruptedException {
-        config = getConfiguration(blackList);
+        config = getConfiguration(excludeList);
         context = new MongoDbTaskContext(config);
 
         TestHelper.cleanDatabase(mongo, "dbA");
