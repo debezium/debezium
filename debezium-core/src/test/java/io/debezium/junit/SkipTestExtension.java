@@ -16,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.reflections.Reflections;
 
 import io.debezium.junit.DatabaseVersionResolver.DatabaseVersion;
-import io.debezium.util.JvmVersionUtil;
 import io.debezium.util.Testing;
 
 /**
@@ -120,7 +119,7 @@ public class SkipTestExtension extends AnnotationBasedExtension implements Execu
 
     private ConditionEvaluationResult checkJavaVersion(SkipWhenJavaVersion annotation, ExtensionContext context) {
         int checkedVersion = annotation.value();
-        int actualVersion = JvmVersionUtil.getFeatureVersion();
+        int actualVersion = Runtime.version().feature();
         boolean isSkippedVersion = false;
 
         switch (annotation.check()) {

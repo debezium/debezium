@@ -23,8 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.SkipWhenJavaVersion;
 import io.debezium.pipeline.AbstractMetricsTest;
 
 /**
@@ -100,7 +98,6 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     }
 
     @Test
-    @SkipWhenJavaVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, value = 16, description = "Deep reflection not allowed by default on this Java version")
     public void oneRecordInQueue() throws Exception {
         // Testing.Print.enable();
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
