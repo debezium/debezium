@@ -38,11 +38,11 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-transforms</artifactId>
             <scope>provided</scope>
-        </dependency>	
-	    <dependency>
+        </dependency>   
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-scripting-languages</artifactId>
-	        <type>pom</type>
+            <type>pom</type>
             <optional>true</optional>
         </dependency>
         <dependency>

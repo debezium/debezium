@@ -5,7 +5,9 @@
 <module name="Checker">
 
     <!-- Source code is not formatted using tabs -->
-    <module name="FileTabCharacter" />
+    <module name="FileTabCharacter">
+      <property name="fileExtensions" value="*.xml"/>
+    </module>
 
     <!-- Checks the header of Java files -->
     <module name="io.debezium.checkstyle.Header">
