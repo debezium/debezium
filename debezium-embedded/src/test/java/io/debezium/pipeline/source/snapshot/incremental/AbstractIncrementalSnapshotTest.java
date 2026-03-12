@@ -1412,7 +1412,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendPauseSignal();
 
         // Wait for pause signal to be processed
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused"));
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused."));
 
         // Stop and restart connector
         stopConnector();
@@ -1440,6 +1440,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Start incremental snapshot
         sendAdHocSnapshotSignal();
 
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
         // Consume some records to ensure snapshot is running
         final int expectedRecordCount = ROW_COUNT / 2;
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
@@ -1449,14 +1451,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendPauseSignal();
 
         // Wait for pause signal to be processed
-        waitForAvailableRecords(2, TimeUnit.SECONDS);
-        consumeAvailableRecords(record -> {
-        });
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused."));
 
         // Resume the snapshot
         sendResumeSignal();
 
         // Consume remaining records and verify paused flag is false or removed
+        // The consumption itself implicitly waits for the resume to take effect
         final AtomicBoolean pausedFlagStillTrue = new AtomicBoolean(false);
         final Map<Integer, SourceRecord> remainingChanges = consumeRecordsMixedWithIncrementalSnapshot(
                 ROW_COUNT - expectedRecordCount,
