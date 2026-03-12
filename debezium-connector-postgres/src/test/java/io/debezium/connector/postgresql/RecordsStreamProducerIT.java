@@ -551,6 +551,39 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-1682")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Multi-byte character readString fix is specific to pgoutput decoder")
+    void shouldReceiveChangesForInsertsWithMultiByteCharacterNames() throws Exception {
+        // Create schema, table and column name with multi-byte UTF-8 characters:
+        // - Schema name uses 3-byte CJK characters (テスト)
+        // - Table name uses 2-byte Latin extended characters (café)
+        // - Column name uses 3-byte CJK characters (名前)
+        // This verifies the readString() fix correctly decodes multi-byte UTF-8 identifiers
+        // from the pgoutput replication stream.
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS \"テスト\" CASCADE;" +
+                        "CREATE SCHEMA \"テスト\";" +
+                        "CREATE TABLE \"テスト\".\"café\" (pk SERIAL, \"名前\" TEXT, PRIMARY KEY(pk));");
+
+        startConnector();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO \"テスト\".\"café\" (\"名前\") VALUES ('日本語テキスト')");
+
+        SourceRecord record = consumer.remove();
+        VerifyRecord.isValidInsert(record, PK_FIELD, 1);
+
+        // Verify that multi-byte schema and table names were decoded correctly
+        assertSourceInfo(record, "postgres", "テスト", "café");
+
+        // Verify that multi-byte column name and value were decoded correctly
+        assertRecordSchemaAndValues(
+                Collections.singletonList(
+                        new SchemaAndValueField("名前", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "日本語テキスト")),
+                record, Envelope.FieldName.AFTER);
+    }
+
+    @Test
     void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
