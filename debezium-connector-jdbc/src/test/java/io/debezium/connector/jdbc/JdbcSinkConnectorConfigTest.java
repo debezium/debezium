@@ -188,7 +188,7 @@ public class JdbcSinkConnectorConfigTest {
         // testing the proxy
         TemporaryBackwardCompatibleCollectionNamingStrategyProxy collectionNamingStrategyProxy = (TemporaryBackwardCompatibleCollectionNamingStrategyProxy) config
                 .getCollectionNamingStrategy();
-        assertThat(collectionNamingStrategyProxy.resolveCollectionName(new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
+        assertThat(collectionNamingStrategyProxy.resolveCollectionName(new DebeziumSinkRecordFactory().createRecord("database.schema.deptable", config),
                 config.getCollectionNameFormat()))
                 .isEqualTo("kafkadepdep_database_schema_deptable");
 
@@ -197,7 +197,7 @@ public class JdbcSinkConnectorConfigTest {
         assertThat(originalCollectionNamingStrategy).isInstanceOf(CollectionNamingStrategy.class);
         assertThat(
                 originalCollectionNamingStrategy.resolveCollectionName(
-                        new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
+                        new DebeziumSinkRecordFactory().createRecord("database.schema.deptable", config),
                         config.getCollectionNameFormat()))
                 .isEqualTo("kafkadepdep_database_schema_deptable");
 
@@ -206,7 +206,8 @@ public class JdbcSinkConnectorConfigTest {
         final TableNamingStrategy tableNamingStrategy;
         if (originalCollectionNamingStrategy instanceof TableNamingStrategy) {
             tableNamingStrategy = (TableNamingStrategy) originalCollectionNamingStrategy;
-            assertThat(tableNamingStrategy.resolveTableName(config, new DebeziumSinkRecordFactory().createRecord("database.schema.deptable").getOriginalKafkaRecord()))
+            assertThat(tableNamingStrategy.resolveTableName(config,
+                    new DebeziumSinkRecordFactory().createRecord("database.schema.deptable", config).getOriginalKafkaRecord()))
                     .isEqualTo("kafkadepdep_database_schema_deptable");
         }
         else {

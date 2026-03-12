@@ -17,14 +17,12 @@ import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.sink.field.FieldDescriptor;
-import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
 /**
- * An immutable representation of a {@link SinkRecord}.
+ * An immutable representation of a {@link SinkRecord} with extensions for the JDBC connector.
  *
  * @author Chris Cranford
  * @author rk3rn3r
@@ -33,26 +31,19 @@ import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements JdbcSinkRecord {
 
     private final Map<String, JdbcFieldDescriptor> jdbcFields = new LinkedHashMap<>();
-    private final PrimaryKeyMode primaryKeyMode;
-    private final Set<String> configuredPrimaryKeyFields;
-    private final FieldNameFilter fieldFilter;
-    private final DatabaseDialect dialect;
+    private final JdbcSinkConnectorConfig config;
     private Struct filteredKey = null;
 
     // LAZY INIT
     private Set<String> keyFieldNames = null;
     private Set<String> nonKeyFieldNames = null;
 
-    public JdbcKafkaSinkRecord(SinkRecord record, PrimaryKeyMode primaryKeyMode, Set<String> configuredPrimaryKeyFields, FieldNameFilter fieldFilter,
-                               String cloudEventsSchemaNamePattern, DatabaseDialect dialect) {
-        super(record, cloudEventsSchemaNamePattern);
-        this.primaryKeyMode = primaryKeyMode;
-        this.configuredPrimaryKeyFields = configuredPrimaryKeyFields;
-        this.fieldFilter = fieldFilter;
-        this.dialect = dialect;
-        if (PrimaryKeyMode.KAFKA.equals(primaryKeyMode)) {
+    public JdbcKafkaSinkRecord(SinkRecord record, JdbcSinkConnectorConfig config) {
+        super(record, config.cloudEventsSchemaNamePattern());
+        this.config = config;
+        if (PrimaryKeyMode.KAFKA.equals(config.getPrimaryKeyMode())) {
             Map<String, FieldDescriptor> kafkaFields = kafkaFields();
-            kafkaFields.forEach((name, field) -> jdbcFields.put(name, new JdbcFieldDescriptor(field, dialect.getSchemaType(field.getSchema()), true)));
+            kafkaFields.forEach((name, field) -> jdbcFields.put(name, new JdbcFieldDescriptor(field, true)));
             allFields.putAll(kafkaFields);
             keyFieldNames = new LinkedHashSet<>(kafkaFields.keySet());
         }
@@ -60,7 +51,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
 
     public Struct filteredKey() {
         if (null == filteredKey) {
-            filteredKey = getFilteredKey(primaryKeyMode, configuredPrimaryKeyFields, fieldFilter);
+            filteredKey = getFilteredKey(config.getPrimaryKeyMode(), config.getPrimaryKeyFields(), config.fieldFilter());
         }
         return filteredKey;
     }
@@ -77,7 +68,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
                     String fieldName = field.name();
                     FieldDescriptor descriptor = new FieldDescriptor(field.schema(), fieldName, true);
                     allFields.put(fieldName, descriptor);
-                    jdbcFields.put(fieldName, new JdbcFieldDescriptor(descriptor, dialect.getSchemaType(field.schema()), true));
+                    jdbcFields.put(fieldName, new JdbcFieldDescriptor(descriptor, true));
                     return fieldName;
                 }).collect(Collectors.toCollection(LinkedHashSet::new));
             }
@@ -88,7 +79,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
     @Override
     public Set<String> nonKeyFieldNames() {
         if (null == nonKeyFieldNames) {
-            final Struct filteredPayload = getFilteredPayload(fieldFilter);
+            final Struct filteredPayload = getFilteredPayload(config.fieldFilter());
             if (null == filteredPayload) {
                 nonKeyFieldNames = Set.of();
             }
@@ -100,7 +91,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
                     }
                     FieldDescriptor descriptor = new FieldDescriptor(field.schema(), fieldName, false);
                     allFields.put(fieldName, descriptor);
-                    jdbcFields.put(fieldName, new JdbcFieldDescriptor(descriptor, dialect.getSchemaType(field.schema()), false));
+                    jdbcFields.put(fieldName, new JdbcFieldDescriptor(descriptor, false));
                     return fieldName;
                 }).filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
             }
@@ -125,8 +116,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
     public String toString() {
         return "JdbcKafkaSinkRecord{" +
                 "jdbcFields=" + jdbcFields +
-                ", primaryKeyMode=" + primaryKeyMode +
-                ", configuredPrimaryKeyFields=" + configuredPrimaryKeyFields +
+                ", config=" + config +
                 ", keyFieldNames=" + keyFieldNames() +
                 ", nonKeyFieldNames=" + nonKeyFieldNames() +
                 ", originalKafkaRecord=" + originalKafkaRecord +

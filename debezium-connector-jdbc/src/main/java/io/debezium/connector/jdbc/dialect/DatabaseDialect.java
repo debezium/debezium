@@ -195,10 +195,10 @@ public interface DatabaseDialect {
     /**
      * Construct a {@code TRUNCATE} statement specific for this dialect.
      *
-     * @param table the current relational table model, should not be {@code null}
+     * @param collectionId the collection id, should not be {@code null}
      * @return the truncate SQL statement to be executed, never {@code null}
      */
-    String getTruncateStatement(TableDescriptor table);
+    String getTruncateStatement(CollectionId collectionId);
 
     /**
      * Returns the SQL binding fragment for a column, schema, and type mapping.
@@ -421,4 +421,5 @@ public interface DatabaseDialect {
      * @return set of retriable exception classes
      */
     Set<Class<? extends Exception>> getCommunicationExceptions();
+
 }

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
@@ -74,9 +74,10 @@ public class JdbcSinkDualModeIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName, (byte) 1);
+        var config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
-        consume(factory.createRecord(topicName, (byte) 2));
+        consume(factory.createRecord(topicName, (byte) 2, config));
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
@@ -106,9 +107,10 @@ public class JdbcSinkDualModeIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName, (byte) 1);
+        var config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
-        consume(factory.createRecord(topicName, (byte) 1)); // Same ID - should upsert
+        consume(factory.createRecord(topicName, (byte) 1, config)); // Same ID - should upsert
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
@@ -140,13 +142,15 @@ public class JdbcSinkDualModeIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
+        var config = new JdbcSinkConnectorConfig(properties);
+
         // Insert 10 records in batch
         for (byte i = 1; i <= 10; i++) {
-            consume(factory.createRecord(topicName, i));
+            consume(factory.createRecord(topicName, i, config));
         }
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(),
-                destinationTableName(factory.createRecord(topicName, (byte) 1)));
+                destinationTableName(factory.createRecord(topicName, (byte) 1, config)));
         tableAssert.exists().hasNumberOfRows(10).hasNumberOfColumns(3);
     }
 }
