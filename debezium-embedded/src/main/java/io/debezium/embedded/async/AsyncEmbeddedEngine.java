@@ -41,6 +41,7 @@ import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.rest.entities.ConfigInfo;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -82,6 +83,7 @@ import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.Reflections;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
@@ -797,7 +799,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
         if (configInfos.errorCount() > 0) {
-            final String errors = configInfos.values().stream()
+            @SuppressWarnings("unchecked")
+            final String errors = ((List<ConfigInfo>) Reflections.invokeMethodWithFallbackName(configInfos, "configs", "values", List.class)).stream()
                     .flatMap(v -> v.configValue().errors().stream())
                     .collect(Collectors.joining(" "));
             throw new DebeziumException("Connector configuration is not valid. " + errors);
