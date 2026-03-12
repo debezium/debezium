@@ -445,6 +445,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'events' cache");
 
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS = Field.create("log.mining.buffer.infinispan.cache.rollbacks")
+            .withDisplayName("Infinispan 'rollbacks' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 23))
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'rollbacks' cache");
+
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES = Field.create("log.mining.buffer.infinispan.cache.schema_changes")
             .withDisplayName("Infinispan 'schema-changes' cache configuration")
             .withType(Type.STRING)
@@ -701,6 +710,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the events cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
+    public static final Field LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG = Field.create("log.mining.buffer.ehcache.rollbacks.config")
+            .withDisplayName("Defines the partial ehcache configuration for the rollbacks cache")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the rollbacks cache, but " +
+                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
+
     @Deprecated
     public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
             .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
@@ -862,6 +880,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
                     LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD,
@@ -894,6 +913,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG,
                     OBJECT_ID_CACHE_SIZE,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION,
                     LOG_MINING_CLIENTID_INCLUDE_LIST,

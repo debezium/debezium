@@ -525,12 +525,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setRedoSql(null);
             };
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
-                getTransactionCache().forEachEvent(transaction, event -> {
+                getTransactionCache().forEachEvent(transaction, (event, rolledBack) -> {
                     if (!getContext().isRunning()) {
                         return false;
                     }
                     LOGGER.trace("Dispatching event {}", event.getEventType());
-                    commitConsumer.accept(event, null, 0L);
+                    commitConsumer.accept(event, rolledBack, null, 0L);
                     return true;
                 });
             }
@@ -1186,8 +1186,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private String getLoggedAbandonedTransactionTableNames(Transaction transaction) throws InterruptedException {
         if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
             final Set<String> tableNames = new HashSet<>();
-            getTransactionCache().forEachEvent(transaction, event -> {
-                tableNames.add(event.getTableId().identifier());
+            getTransactionCache().forEachEvent(transaction, (event, rolledBack) -> {
+                if (!rolledBack) {
+                    tableNames.add(event.getTableId().identifier());
+                }
                 return true;
             });
             return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
