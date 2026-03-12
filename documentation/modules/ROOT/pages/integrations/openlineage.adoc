@@ -16,6 +16,18 @@ toc::[]
 {prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations.
 The OpenLineage integration provides you with comprehensive visibility into the data flow and transformations that you use in your data pipeline.
 
+[IMPORTANT]
+====
+Technology Preview::
+Use of the OpenLineage integration is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+
+
 == About Data Lineage and OpenLineage
 
 Data lineage tracks the flow of data through various systems, transformations, and processes.
@@ -58,12 +70,12 @@ Job metadata:: Description, tags, and owners.
 
 .Dataset mapping for source connectors
 
-The following dataset mappings are possible: 
+The following dataset mappings are possible:
 
 Input Datasets::
 Represents the database tables that {prodname} is configured to capture changes from.
 The OpenLineage integration automatically creates input datasets based on the connector configuration.
-The integration applies the following principles when it creates dataset mappings: 
+The integration applies the following principles when it creates dataset mappings:
 
 * Each table that the connector monitors becomes an input dataset.
 * Each dataset captures schema information for the corresponding source table, including the name and data type of each column.
@@ -100,7 +112,7 @@ The following principles apply when defining output dataset mappings:
 +
 * Each target database table or collection represents an output dataset.
 * The output dataset specifies the schema information for the target database.
-* The namespace format depends on the target database system. 
+* The namespace format depends on the target database system.
 For more information, see xref:dataset-namespace-formatting[Dataset namespace formatting].
 
 The following {prodname} sink connectors support OpenLineage integration in Kafka Connect:
@@ -108,7 +120,7 @@ The following {prodname} sink connectors support OpenLineage integration in Kafk
 MongoDB Sink Connector:: Writes CDC events to MongoDB collections.
 JDBC Sink Connector:: Writes CDC events to relational database tables.
 
-NOTE: {prodname} Server currently only supports OpenLineage integration with the Kafka sink. 
+NOTE: {prodname} Server currently only supports OpenLineage integration with the Kafka sink.
 MongoDB Sink and JDBC Sink connectors are only supported in Kafka Connect deployments.
 
 .Run events
@@ -248,7 +260,7 @@ NOTE: For {prodname} Server, add the `debezium.source.` prefix to all property n
 |No default value
 
 |`openlineage.integration.dataset.kafka.bootstrap.servers` (source connectors only)
-|Kafka bootstrap servers used to retrieve Kafka topic metadata. 
+|Kafka bootstrap servers used to retrieve Kafka topic metadata.
 For source connectors, if you do not specify a value, the value of `schema.history.internal.kafka.bootstrap.servers` is used.
 
 For sink connectors, you must specify a value for this property.
@@ -402,7 +414,7 @@ The following example shows a complete configuration for enabling the MongoDB si
 }
 ----
 
-NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics. 
+NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics.
 Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
 
 === JDBC sink connector configuration example
