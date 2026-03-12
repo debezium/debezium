@@ -135,7 +135,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         sessionActive = false;
                         needsNewSession = true;
                         dictionaryWritten = false;
-                        needsConnectionRestart = timeout && getConfig().isLogMiningRestartConnection();
+                        needsConnectionRestart = getConfig().isLogMiningRestartConnection();
                         watch = Stopwatch.accumulating().start();
                     }
                 }
@@ -157,7 +157,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 flushStrategy.flush(getCurrentScn());
 
-                collectLogs(sessionStartScn, sessionEndScn);
+                final boolean forceNewSession = collectLogs(sessionStartScn, sessionEndScn);
+                if (!needsNewSession && forceNewSession) {
+                    endMiningSession();
+                    needsNewSession = true;
+                }
 
                 if (needsNewSession) {
                     if (needsConnectionRestart) {

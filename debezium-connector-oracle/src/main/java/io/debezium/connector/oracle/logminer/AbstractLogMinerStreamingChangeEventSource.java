@@ -1157,11 +1157,13 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param lowerBoundsScn the lower SCN window boundary, should never be {@code null}
      * @param upperBoundsScn the upper SCN window boundary, should never be {@code null}
+     * @return {@code true} if a new session must be forced because session logs changed, {@code false} otherwise
      * @throws SQLException if a database exception occurs
      */
-    protected void collectLogs(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
+    protected boolean collectLogs(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
         currentLogFiles = logCollector.getLogs(lowerBoundsScn);
 
+        boolean forceSession = false;
         if (!useContinuousMining) {
             List<LogFile> sessionLogFilesToAdd = new ArrayList<>();
             for (LogFile logFile : currentLogFiles) {
@@ -1176,6 +1178,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 }
             }
 
+            if (!isUsingCatalogInRedoStrategy() && !sessionLogFilesToAdd.equals(sessionLogFiles)) {
+                LOGGER.trace("LogMiner session log file list changed, forcing a new mining session.");
+                forceSession = true;
+            }
+
             sessionLogFiles = sessionLogFilesToAdd;
         }
 
@@ -1188,6 +1195,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     }
                     return results;
                 }));
+
+        return forceSession;
     }
 
     /**
@@ -1200,9 +1209,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
 
         if (!useContinuousMining) {
-            for (LogFile logFile : sessionLogFiles) {
-                sessionContext.addLogFile(logFile.getFileName());
-            }
+            sessionContext.addLogFiles(sessionLogFiles);
 
             // These need to be updated when we prepare the session so that log switch check works
             currentRedoLogSequences = currentLogFiles.stream()
