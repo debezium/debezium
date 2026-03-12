@@ -88,20 +88,6 @@ public class LogMinerSessionContext implements AutoCloseable {
     }
 
     /**
-     * Add the log file to the LogMiner session.
-     *
-     * @param logFileName the log file to add to the session, should not be {@code null}
-     * @throws SQLException if a database exception occurred registering the log file
-     */
-    public void addLogFile(String logFileName) throws SQLException {
-        Objects.requireNonNull(logFileName);
-
-        LOGGER.trace("Adding log file '{}' to the mining session.", logFileName);
-        connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
-                logFileName + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
-    }
-
-    /**
      * Adds all the given logs to the session.
      *
      * @param logFiles collection of log files
@@ -109,7 +95,12 @@ public class LogMinerSessionContext implements AutoCloseable {
      */
     public void addLogFiles(List<LogFile> logFiles) throws SQLException {
         for (LogFile logFile : logFiles) {
-            addLogFile(logFile.getFileName());
+            Objects.requireNonNull(logFile);
+            Objects.requireNonNull(logFile.getFileName());
+
+            LOGGER.debug("  Adding log file: {}", logFile);
+            connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
+                    logFile.getFileName() + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
         }
     }
 

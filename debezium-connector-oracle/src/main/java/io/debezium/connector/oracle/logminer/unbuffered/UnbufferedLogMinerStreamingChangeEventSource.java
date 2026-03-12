@@ -128,7 +128,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                     sessionActive = false;
                     needsNewSession = true;
                     dictionaryWritten = false;
-                    needsConnectionRestart = timeout && getConfig().isLogMiningRestartConnection();
+                    needsConnectionRestart = getConfig().isLogMiningRestartConnection();
                     watch = Stopwatch.accumulating().start();
                 }
             }
@@ -141,7 +141,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             Scn currentScn = getCurrentScn();
             getMetrics().setCurrentScn(currentScn);
 
-            collectLogs(minLogScn, getCurrentScn());
+            final boolean forceNewSession = collectLogs(minLogScn, getCurrentScn());
+            if (!isUsingCatalogInRedoStrategy() && !needsNewSession && forceNewSession) {
+                endMiningSession();
+                needsNewSession = true;
+            }
 
             minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
             getMetrics().setOffsetScn(minLogScn);
