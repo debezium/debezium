@@ -74,6 +74,7 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getSmallCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getSmallCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getSmallCacheSize())
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, getSmallCacheSize())
                     .build();
 
             final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
@@ -128,6 +129,7 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getLargeCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getLargeCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getLargeCacheSize())
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, getLargeCacheSize())
                     .build();
 
             final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);

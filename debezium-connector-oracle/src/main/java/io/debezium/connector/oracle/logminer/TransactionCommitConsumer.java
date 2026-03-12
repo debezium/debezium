@@ -107,7 +107,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
 
         for (final RowState rowState : pending) {
-            prepareAndDispatch(rowState.event, rowState.transactionId, rowState.transactionSequence);
+            prepareAndDispatch(rowState);
         }
 
         // For situations where the consumer instance is reused, reset internal state
@@ -121,17 +121,17 @@ public class TransactionCommitConsumer implements AutoCloseable {
         dispatchEventIndex = 0;
     }
 
-    public void accept(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {
+    public void accept(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
         totalEvents++;
 
         if (!connectorConfig.isLobEnabled()) {
             // LOB support is not enabled, perform immediate dispatch
-            dispatchChangeEvent(event, transactionId, transactionSequence);
+            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
             return;
         }
 
         if (event instanceof DmlEvent dmlEvent) {
-            acceptDmlEvent(dmlEvent, transactionId, transactionSequence);
+            acceptDmlEvent(dmlEvent, rolledBack, transactionId, transactionSequence);
         }
         else {
             acceptManipulationEvent(event);
@@ -142,7 +142,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         return totalEvents;
     }
 
-    private void acceptDmlEvent(DmlEvent event, String transactionId, long transactionSequence) throws InterruptedException {
+    private void acceptDmlEvent(DmlEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
         enqueueEventIndex++;
 
         final Table table = schema.tableFor(event.getTableId());
@@ -166,12 +166,16 @@ public class TransactionCommitConsumer implements AutoCloseable {
             // queue with the logic below. Therefore, there is no need to attempt to dispatch the
             // accumulator as it should be null.
             LOGGER.debug("\tEvent for table {} has no LOB columns, dispatching.", table.id());
-            dispatchChangeEvent(event, transactionId, transactionSequence);
+            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
             return;
         }
 
-        if (!tryMerge(accumulatorEvent, event)) {
-            prepareAndDispatch(accumulatorEvent, transactionId, transactionSequence);
+        if (tryMerge(accumulatorEvent, event)) {
+            rowState.rolledBack = rolledBack;
+            rowState.transactionSequence = transactionSequence;
+        }
+        else {
+            prepareAndDispatch(rowState);
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
@@ -181,7 +185,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
             else if (rowId.equals(currentXmlDetails.rowId)) {
                 currentXmlDetails.reset();
             }
-            rows.put(rowId, new RowState(event, enqueueEventIndex, transactionId, transactionSequence));
+            rows.put(rowId, new RowState(event, rolledBack, enqueueEventIndex, transactionId, transactionSequence));
             accumulatorEvent = event;
         }
 
@@ -301,10 +305,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
         values[details.columnPosition] = constructor.apply(prevValue);
     }
 
-    private void prepareAndDispatch(DmlEvent event, String transactionId, long transactionSequence) throws InterruptedException {
-        if (null == event) { // we just added the first event for this row
+    private void prepareAndDispatch(RowState rowState) throws InterruptedException {
+        if (null == rowState) { // we just added the first event for this row
             return;
         }
+        final DmlEvent event = rowState.event;
         Object[] values = newValues(event);
         for (int i = 0; i < values.length; i++) {
             if (values[i] instanceof AbstractUnderConstruction) {
@@ -327,7 +332,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
                 return;
             }
         }
-        dispatchChangeEvent(event, transactionId, transactionSequence);
+        dispatchChangeEvent(event, rowState.rolledBack, rowState.transactionId, rowState.transactionSequence);
     }
 
     private boolean tryMerge(DmlEvent prev, DmlEvent next) {
@@ -403,12 +408,6 @@ public class TransactionCommitConsumer implements AutoCloseable {
                 LOGGER.trace("\t\tMerge column {}: replacing {} with {}.", i, intoVals[i], fromVals[i]);
                 intoVals[i] = fromVals[i];
             }
-        }
-        if (!hasRowId(into) && hasRowId(from)) {
-            into.setRowId(from.getRowId());
-        }
-        if (from.isRolledBack()) {
-            into.markAsRolledBack();
         }
     }
 
@@ -508,8 +507,8 @@ public class TransactionCommitConsumer implements AutoCloseable {
         return BLOB_TYPE.equalsIgnoreCase(column.typeName()) || CLOB_TYPE.equalsIgnoreCase(column.typeName());
     }
 
-    private void dispatchChangeEvent(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {
-        if (event.isRolledBack()) {
+    private void dispatchChangeEvent(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
+        if (rolledBack) {
             LOGGER.debug("Skipping rolled-back event for table '{}' with row-id '{}'.", event.getTableId(), event.getRowIdAsString());
             return;
         }
@@ -1004,12 +1003,14 @@ public class TransactionCommitConsumer implements AutoCloseable {
 
     private static class RowState {
         final DmlEvent event;
+        boolean rolledBack;
         final long transactionIndex;
         final String transactionId;
-        final long transactionSequence;
+        long transactionSequence;
 
-        RowState(final DmlEvent event, final long transactionIndex, String transactionId, long transactionSequence) {
+        RowState(final DmlEvent event, boolean rolledBack, final long transactionIndex, String transactionId, long transactionSequence) {
             this.event = event;
+            this.rolledBack = rolledBack;
             this.transactionIndex = transactionIndex;
             this.transactionId = transactionId;
             this.transactionSequence = transactionSequence;
