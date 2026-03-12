@@ -2191,6 +2191,132 @@ public class LogFileCollectorTest {
         assertThat(results).containsAll(expected);
     }
 
+    @Test
+    @FixFor("dbz#745")
+    public void testScnIsNotInArchiveStandalone() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814020840L))).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#745")
+    public void testScnIsNotInArchiveRac() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813011749L))
+                .lastRedoScn(Scn.valueOf(6642813838620L))
+                .lastRedoSequenceNumber(14691L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_2_seq_26547.44874.1193544930", 6642813933063L, 6642814010839L, 26547, 2));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+        files.add(createRedoLog("redo02.log", 6642814010839L, 26548, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814010840L))).isFalse();
+    }
+
+    @Test
+    @FixFor("Dbz#745")
+    public void testScnIsInArchiveStandalone() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814020825L))).isTrue();
+    }
+
+    @Test
+    @FixFor("Dbz#745")
+    public void testScnIsInArchiveRac() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813011749L))
+                .lastRedoScn(Scn.valueOf(6642813838620L))
+                .lastRedoSequenceNumber(14691L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_2_seq_26547.44874.1193544930", 6642813933063L, 6642814010839L, 26547, 2));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+        files.add(createRedoLog("redo02.log", 6642814010839L, 26548, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814010836L))).isTrue();
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }
