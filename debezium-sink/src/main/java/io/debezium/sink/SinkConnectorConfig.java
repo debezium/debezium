@@ -5,6 +5,8 @@
  */
 package io.debezium.sink;
 
+import java.util.Set;
+
 import org.apache.kafka.common.config.ConfigDef;
 
 import io.debezium.config.EnumeratedValue;
@@ -152,18 +154,6 @@ public interface SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("The primary key mode.");
 
-    String DEFAULT_TIME_ZONE = "UTC";
-    String USE_TIME_ZONE = "use.time.zone";
-    String DEPRECATED_DATABASE_TIME_ZONE = "database.time_zone";
-    Field USE_TIME_ZONE_FIELD = Field.create(USE_TIME_ZONE)
-            .withDisplayName("The timezone used when inserting temporal values.")
-            .withDefault(DEFAULT_TIME_ZONE)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 6))
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("The timezone used when inserting temporal values. Defaults to UTC.")
-            .withDeprecatedAliases(DEPRECATED_DATABASE_TIME_ZONE);
-
     String BATCH_SIZE = "batch.size";
     Field BATCH_SIZE_FIELD = Field.create(BATCH_SIZE)
             .withDisplayName("Specifies how many records to attempt to batch together into the destination table, when possible. " +
@@ -176,6 +166,16 @@ public interface SinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
+    String PRIMARY_KEY_FIELDS = "primary.key.fields";
+    Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
+            .withDisplayName("Comma-separated list of primary key field names")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 5))
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("A comma-separated list of primary key field names. " +
+                    "This is interpreted differently depending on " + PRIMARY_KEY_MODE + ".");
+
     String CLOUDEVENTS_SCHEMA_NAME_PATTERN = "cloud.events.schema.name.pattern";
     Field CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD = Field.create(CLOUDEVENTS_SCHEMA_NAME_PATTERN)
             .withDisplayName("CloudEvents messages schema name pattern")
@@ -184,11 +184,13 @@ public interface SinkConnectorConfig {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(".*CloudEvents\\.Envelope$")
-            .withDescription("Regular expression pattern to identify CloudEvents messages by this schema name pattern.");
+            .withDescription("Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.");
 
     String getCollectionNameFormat();
 
     PrimaryKeyMode getPrimaryKeyMode();
+
+    Set<String> getPrimaryKeyFields();
 
     boolean isTruncateEnabled();
 
@@ -200,7 +202,7 @@ public interface SinkConnectorConfig {
 
     CollectionNamingStrategy getCollectionNamingStrategy();
 
-    FieldNameFilter getFieldFilter();
+    FieldNameFilter fieldFilter();
 
     String cloudEventsSchemaNamePattern();
 

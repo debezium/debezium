@@ -17,7 +17,7 @@ import org.assertj.db.type.ValueType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -52,12 +52,12 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"));
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
-                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
-        consume(convertedRecord);
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        final String destinationTableName = destinationTableName(convertedRecord);
+        final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), config);
+        consume(cloudEventRecord);
+
+        final String destinationTableName = destinationTableName(cloudEventRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
@@ -82,12 +82,11 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"));
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
-                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
-        consume(convertedRecord);
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), config);
+        consume(cloudEventRecord);
 
-        final String destinationTableName = destinationTableName(convertedRecord);
+        final String destinationTableName = destinationTableName(cloudEventRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
@@ -115,12 +114,11 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), cloudEventsSchemaName);
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
-                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
-        consume(convertedRecord);
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), cloudEventsSchemaName, config);
+        consume(cloudEventRecord);
 
-        final String destinationTableName = destinationTableName(convertedRecord);
+        final String destinationTableName = destinationTableName(cloudEventRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);

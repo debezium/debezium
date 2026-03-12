@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.Tag;
@@ -16,7 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -67,10 +68,11 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
+        var config = new JdbcSinkConnectorConfig(properties);
         // Create 3 records with duplicate key "1"
-        final KafkaDebeziumSinkRecord record1 = factory.createRecord(topicName, (byte) 1); // id=1, value=1
-        final KafkaDebeziumSinkRecord record2 = factory.createRecord(topicName, (byte) 1); // id=1, value=2 (duplicate!)
-        final KafkaDebeziumSinkRecord record3 = factory.createRecord(topicName, (byte) 2); // id=2, value=3
+        final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config); // id=1, value=1
+        final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // id=1, value=2 (duplicate!)
+        final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 2, config); // id=2, value=3
 
         // Pass all records in one call to ensure proper batching
         consume(java.util.List.of(record1, record2, record3));
@@ -102,10 +104,11 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
+        var config = new JdbcSinkConnectorConfig(properties);
         // Create 3 records with duplicate key "1"
-        final KafkaDebeziumSinkRecord record1 = factory.createRecord(topicName, (byte) 1);
-        final KafkaDebeziumSinkRecord record2 = factory.createRecord(topicName, (byte) 1); // duplicate!
-        final KafkaDebeziumSinkRecord record3 = factory.createRecord(topicName, (byte) 2);
+        final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
+        final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // duplicate!
+        final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 2, config);
 
         // Pass all records in one call to ensure proper batching
         consume(java.util.List.of(record1, record2, record3));
@@ -137,10 +140,11 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
+        var config = new JdbcSinkConnectorConfig(properties);
         // Create 3 records with duplicate key "1"
-        final KafkaDebeziumSinkRecord record1 = factory.createRecord(topicName, (byte) 1); // Insert id=1
-        final KafkaDebeziumSinkRecord record2 = factory.createRecord(topicName, (byte) 1); // Update id=1 (duplicate!)
-        final KafkaDebeziumSinkRecord record3 = factory.createRecord(topicName, (byte) 2); // Insert id=2
+        final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config); // Insert id=1
+        final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // Update id=1 (duplicate!)
+        final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 2, config); // Insert id=2
 
         // Pass all records in one call to ensure proper batching
         consume(java.util.List.of(record1, record2, record3));
@@ -165,6 +169,7 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-1525")
     public void testUpsertWithoutReductionBufferAndUnnestCausesDuplicateKeyError(SinkRecordFactory factory) {
+        Locale.setDefault(new Locale("en", "US")); // enforce "en_US" as system locale else "Hint:" in error msg will be locale specific
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -179,10 +184,11 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        // Create 3 records with duplicate key "1"
-        final KafkaDebeziumSinkRecord record1 = factory.createRecord(topicName, (byte) 1);
-        final KafkaDebeziumSinkRecord record2 = factory.createRecord(topicName, (byte) 1); // duplicate!
-        final KafkaDebeziumSinkRecord record3 = factory.createRecord(topicName, (byte) 2);
+        var config = new JdbcSinkConnectorConfig(properties);
+        // Create 3 records with one duplicate key
+        final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
+        final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 2, config);
+        final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 1, config); // duplicate!
 
         // UNNEST generates ONE SQL statement with all 3 records:
         // INSERT INTO t SELECT * FROM UNNEST(ARRAY[1,1,2], ...) ON CONFLICT (id) DO UPDATE ...

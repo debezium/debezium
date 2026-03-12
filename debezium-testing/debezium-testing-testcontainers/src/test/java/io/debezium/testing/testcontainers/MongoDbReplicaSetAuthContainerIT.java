@@ -7,6 +7,7 @@ package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 
+import java.time.Duration;
 import java.util.ArrayList;
 
 import org.assertj.core.api.Assertions;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.images.PullPolicy;
 
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.MongoClients;
@@ -44,7 +46,7 @@ public class MongoDbReplicaSetAuthContainerIT {
     @BeforeAll
     static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
-        mongo = replicaSet().authEnabled(true).build();
+        mongo = replicaSet().withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8))).authEnabled(true).build();
         LOGGER.info("Starting {}...", mongo);
         mongo.start();
         LOGGER.info("Setting up users");

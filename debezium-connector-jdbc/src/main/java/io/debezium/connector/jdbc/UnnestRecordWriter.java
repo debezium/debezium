@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.util.Stopwatch;
 
@@ -50,27 +51,28 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     }
 
     @Override
-    public void write(List<JdbcSinkRecord> records, SqlStatementInfo sqlStatementInfo) {
+    public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
         // If it's a batch statement (UNNEST), use column-wise binding
         // Otherwise delegate to parent's standard row-wise binding
+        SqlStatementInfo sqlStatementInfo = getSqlStatementInfo(tableDescriptor, records);
         if (sqlStatementInfo.isBatchStatement()) {
-            writeUnnestBatch(records, sqlStatementInfo.statement());
+            writeUnnestBatch(sqlStatementInfo.statement(), records);
         }
         else {
-            super.write(records, sqlStatementInfo);
+            super.write(tableDescriptor, records);
         }
     }
 
     /**
      * Write records using UNNEST approach with column-wise binding.
      */
-    private void writeUnnestBatch(List<JdbcSinkRecord> records, String sqlStatement) {
+    private void writeUnnestBatch(String sqlStatement, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
         final Transaction transaction = getSession().beginTransaction();
 
         try {
-            getSession().doWork(processUnnestBatch(records, sqlStatement));
+            getSession().doWork(processUnnestBatch(sqlStatement, records));
             transaction.commit();
         }
         catch (Exception e) {
@@ -81,36 +83,40 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         LOGGER.trace("[PERF] Total UNNEST write execution time {}", writeStopwatch.durations());
     }
 
+    void performUnnestBatch(Connection conn, String sqlStatement, List<JdbcSinkRecord> records) throws SQLException {
+        try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
+
+            Stopwatch allbindStopwatch = Stopwatch.reusable();
+            allbindStopwatch.start();
+
+            // Bind column arrays for UNNEST using setArray()
+            bindArraysForUnnest(records, conn, prepareStatement);
+
+            allbindStopwatch.stop();
+            LOGGER.trace("[PERF] All records bind execution time for UNNEST {}", allbindStopwatch.durations());
+
+            Stopwatch executeStopwatch = Stopwatch.reusable();
+            executeStopwatch.start();
+            int updateCount = prepareStatement.executeUpdate();
+            executeStopwatch.stop();
+
+            // Check for execution failure
+            if (updateCount == Statement.EXECUTE_FAILED) {
+                throw new BatchUpdateException("Execution failed for UNNEST batch", new int[]{ updateCount });
+            }
+
+            LOGGER.debug("UNNEST batch insert affected {} rows", updateCount);
+            LOGGER.trace("[PERF] Execute UNNEST batch execution time {}", executeStopwatch.durations());
+        }
+    }
+
     /**
      * Process a batch using UNNEST approach where each column's values are passed as a SQL array.
      * Uses PreparedStatement.setArray() for optimal performance and query plan caching.
      */
-    private Work processUnnestBatch(List<JdbcSinkRecord> records, String sqlStatement) {
+    private Work processUnnestBatch(String sqlStatement, List<JdbcSinkRecord> records) {
         return conn -> {
-            try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
-
-                Stopwatch allbindStopwatch = Stopwatch.reusable();
-                allbindStopwatch.start();
-
-                // Bind column arrays for UNNEST using setArray()
-                bindArraysForUnnest(records, conn, prepareStatement);
-
-                allbindStopwatch.stop();
-                LOGGER.trace("[PERF] All records bind execution time for UNNEST {}", allbindStopwatch.durations());
-
-                Stopwatch executeStopwatch = Stopwatch.reusable();
-                executeStopwatch.start();
-                int updateCount = prepareStatement.executeUpdate();
-                executeStopwatch.stop();
-
-                // Check for execution failure
-                if (updateCount == Statement.EXECUTE_FAILED) {
-                    throw new BatchUpdateException("Execution failed for UNNEST batch", new int[]{ updateCount });
-                }
-
-                LOGGER.debug("UNNEST batch insert affected {} rows", updateCount);
-                LOGGER.trace("[PERF] Execute UNNEST batch execution time {}", executeStopwatch.durations());
-            }
+            performUnnestBatch(conn, sqlStatement, records);
         };
     }
 

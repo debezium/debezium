@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -29,7 +31,6 @@ import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
-import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.util.Strings;
 
@@ -54,7 +55,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String CONNECTION_POOL_TIMEOUT = "connection.pool.timeout";
     public static final String INSERT_MODE = "insert.mode";
     public static final String TRUNCATE_ENABLED = "truncate.enabled";
-    public static final String PRIMARY_KEY_FIELDS = "primary.key.fields";
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
@@ -156,15 +156,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final Field DELETE_ENABLED_FIELD = SinkConnectorConfig.DELETE_ENABLED_FIELD
             .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled);
 
-    public static final Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
-            .withDisplayName("Comma-separated list of primary key field names")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 5))
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("A comma-separated list of primary key field names. " +
-                    "This is interpreted differently depending on " + PRIMARY_KEY_MODE + ".");
-
     public static final Field SCHEMA_EVOLUTION_FIELD = Field.create(SCHEMA_EVOLUTION)
             .withDisplayName("Controls how schema evolution is handled by the sink connector")
             .withEnum(SchemaEvolutionMode.class, SchemaEvolutionMode.NONE)
@@ -182,6 +173,18 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("When enabled, table, column, and other identifiers are quoted based on the database dialect. " +
                     "When disabled, only explicit cases where the dialect requires quoting will be used, such as names starting with an underscore.");
+
+    public static final String DEFAULT_TIME_ZONE = "UTC";
+    public static final String USE_TIME_ZONE = "use.time.zone";
+    public static final String DEPRECATED_DATABASE_TIME_ZONE = "database.time_zone";
+    public static final Field USE_TIME_ZONE_FIELD = Field.create(USE_TIME_ZONE)
+            .withDisplayName("The timezone used when inserting temporal values.")
+            .withDefault(DEFAULT_TIME_ZONE)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 6))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("The timezone used when inserting temporal values. Defaults to UTC.")
+            .withDeprecatedAliases(DEPRECATED_DATABASE_TIME_ZONE);
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
@@ -404,8 +407,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean deleteEnabled;
     private final boolean truncateEnabled;
     private final String collectionNameFormat;
-    private final PrimaryKeyMode primaryKeyMode;
-    private final Set<String> primaryKeyFields;
     private final SchemaEvolutionMode schemaEvolutionMode;
     private final boolean quoteIdentifiers;
     private final CollectionNamingStrategy collectionNamingStrategy;
@@ -416,11 +417,13 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean sqlServerIdentityInsert;
     private final int flushMaxRetries;
     private final long flushRetryDelayMs;
-    private final FieldNameFilter fieldsFilter;
     private final int batchSize;
     private final boolean useReductionBuffer;
     private final boolean connectionRestartOnErrors;
     private final String cloudEventsSchemaNamePattern;
+    private final PrimaryKeyMode primaryKeyMode;
+    private final Set<String> primaryKeyFields;
+    private final FieldNameFilter fieldsFilter;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -428,13 +431,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
         this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
-        this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
-        this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = resolveCollectionNamingStrategy(config, props);
-        this.columnNamingStrategy = resolveColumnNamingStrategy(config, props);
-
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.postgresUnnestInsert = config.getBoolean(POSTGRES_UNNEST_INSERT_FIELD);
@@ -445,9 +443,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
         this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
-
-        String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST_FIELD);
-        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST_FIELD);
+        this.collectionNamingStrategy = resolveCollectionNamingStrategy(config, props);
+        this.columnNamingStrategy = resolveColumnNamingStrategy(config, props);
+        this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
+        this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
+        String fieldIncludeList = config.getString(SinkConnectorConfig.FIELD_INCLUDE_LIST_FIELD);
+        String fieldExcludeList = config.getString(SinkConnectorConfig.FIELD_EXCLUDE_LIST_FIELD);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
     }
 
@@ -469,24 +470,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
             throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
         }
-
     }
 
     public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
         return config.validateAndRecord(fields, problems);
-    }
-
-    private static int validateColumnNamingStyle(Configuration config, Field field, ValidationOutput problems) {
-        String namingStyle = config.getString(field);
-        Set<String> validStyles = Set.of("snake_case", "camel_case", "kebab_case", "upper_case", "lower_case", "default");
-
-        if (!validStyles.contains(namingStyle)) {
-            problems.accept(field, namingStyle, "Invalid column naming style: " + namingStyle +
-                    ". Valid options are: " + validStyles);
-            return 1; // Validation fail
-        }
-
-        return 0; // Validation success
     }
 
     protected static ConfigDef configDef() {
@@ -517,6 +504,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return primaryKeyMode;
     }
 
+    @Override
     public Set<String> getPrimaryKeyFields() {
         return primaryKeyFields;
     }
@@ -548,7 +536,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     @Override
-    public FieldNameFilter getFieldFilter() {
+    public FieldNameFilter fieldFilter() {
         return fieldsFilter;
     }
 

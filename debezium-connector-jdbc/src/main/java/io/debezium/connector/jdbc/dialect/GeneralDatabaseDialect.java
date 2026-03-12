@@ -400,10 +400,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getTruncateStatement(TableDescriptor table) {
+    public String getTruncateStatement(CollectionId collectionId) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("TRUNCATE TABLE ");
-        builder.append(getQualifiedTableName(table.getId()));
+        builder.append(getQualifiedTableName(collectionId));
 
         return builder.build();
     }
@@ -415,8 +415,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, int startIndex, Object value) {
-        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, getSchemaType(field.getSchema()).getClass().getName(), value);
-        return field.bind(startIndex, value);
+        var schemaType = getSchemaType(field.getSchema());
+        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
+        return field.bind(startIndex, value, schemaType);
     }
 
     @Override
@@ -723,7 +724,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         else {
             value = getColumnValueFromKeyField(fieldName, record, columnName);
         }
-        return record.jdbcFields().get(fieldName).getQueryBinding(column, value);
+        JdbcFieldDescriptor jdbcField = record.jdbcFields().get(fieldName);
+        return jdbcField.getQueryBinding(column, value, getSchemaType(jdbcField.getSchema()));
     }
 
     private Object getColumnValueFromKeyField(String fieldName, JdbcSinkRecord record, String columnName) {
@@ -804,7 +806,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
-        return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getPayload());
+        return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getPayload(), getSchemaType(field.getSchema()));
     }
 
     private static boolean isColumnNullable(String columnName, Collection<String> primaryKeyColumnNames, int nullability) {
