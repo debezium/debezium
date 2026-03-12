@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb.sink;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -149,7 +150,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     }
 
     @Override
-    public FieldNameFilter getFieldFilter() {
+    public FieldNameFilter fieldFilter() {
         return fieldsFilter;
     }
 
@@ -181,6 +182,11 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
         return null;
+    }
+
+    @Override
+    public Set<String> getPrimaryKeyFields() {
+        return Set.of();
     }
 
     @Override

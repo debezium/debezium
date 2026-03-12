@@ -5,47 +5,290 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
+
 import java.sql.BatchUpdateException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
+import org.hibernate.JDBCException;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
+import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.metadata.CollectionId;
+import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 
 /**
- * Default implementation that writes batches using standard JDBC batching (row-wise).
- * Each record is bound individually and added to the JDBC batch.
+ * Abstract base class for RecordWriter implementations.
+ * Provides common functionality for binding values to queries.
  *
- * @author Mario Fiore Vitale
+ * @author Gaurav Miglani
+ * @author rk3rn3r
  */
-public class DefaultRecordWriter extends AbstractRecordWriter {
+public class DefaultRecordWriter implements RecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRecordWriter.class);
 
-    public DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
-                               JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
-        super(session, queryBinderResolver, config, dialect);
+    private final SharedSessionContract session;
+    private final QueryBinderResolver queryBinderResolver;
+    private final JdbcSinkConnectorConfig config;
+    private final DatabaseDialect dialect;
+    private final int flushMaxRetries;
+    private final Duration flushRetryDelay;
+
+    protected DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
+                                  JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+        this.session = session;
+        this.queryBinderResolver = queryBinderResolver;
+        this.config = config;
+        this.dialect = dialect;
+        this.flushMaxRetries = config.getFlushMaxRetries();
+        this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
+    }
+
+    protected SharedSessionContract getSession() {
+        return session;
+    }
+
+    protected QueryBinderResolver getQueryBinderResolver() {
+        return queryBinderResolver;
+    }
+
+    protected JdbcSinkConnectorConfig getConfig() {
+        return config;
+    }
+
+    protected DatabaseDialect getDialect() {
+        return dialect;
+    }
+
+    /**
+     * Bind key field values to the query for a single record.
+     */
+    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+        final Struct keySource = record.filteredKey();
+        if (keySource != null) {
+            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
+        }
+        return index;
+    }
+
+    /**
+     * Bind non-key field values to the query for a single record.
+     */
+    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
+    }
+
+    /**
+     * Bind field values to the query for a single record.
+     */
+    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
+        for (String fieldName : fieldNames) {
+            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
+
+            Object value;
+            if (field.getSchema().isOptional()) {
+                value = source.getWithoutDefault(fieldName);
+            }
+            else {
+                value = source.get(fieldName);
+            }
+            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
+
+            boundValues.forEach(query::bind);
+            index += boundValues.size();
+        }
+        return index;
+    }
+
+    private TableDescriptor readTable(CollectionId collectionId) {
+        return session.doReturningWork((connection) -> dialect.readTable(connection, collectionId));
+    }
+
+    private TableDescriptor createTable(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        LOGGER.debug("Attempting to create table '{}'.", collectionId.toFullIdentiferString());
+
+        if (NONE.equals(config.getSchemaEvolutionMode())) {
+            LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", collectionId.toFullIdentiferString());
+            throw new SQLException("Cannot create table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
+        }
+
+        Transaction transaction = session.beginTransaction();
+        try {
+            final String createSql = dialect.getCreateTableStatement(record, collectionId);
+            LOGGER.trace("SQL: {}", createSql);
+            session.createNativeQuery(createSql, Object.class).executeUpdate();
+            transaction.commit();
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+
+        return readTable(collectionId);
+    }
+
+    private boolean hasTable(CollectionId collectionId) {
+        return this.executeWithRetries("check for existence of table",
+                () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
+    }
+
+    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
+
+        if (!hasTable(collectionId)) {
+            LOGGER.error("Table '{}' does not exist and cannot be altered.", collectionId.toFullIdentiferString());
+            throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
+        }
+
+        // Resolve table metadata from the database
+        final TableDescriptor table = readTable(collectionId);
+
+        // Delegating to dialect to deal with database case sensitivity.
+        Set<String> missingFields = dialect.resolveMissingFields(record, table);
+        if (missingFields.isEmpty()) {
+            // There are no missing fields, simply return
+            // todo: should we check column type changes or default value changes?
+            return table;
+        }
+
+        LOGGER.debug("The follow fields are missing in the table: {}", missingFields);
+        for (String missingFieldName : missingFields) {
+            final FieldDescriptor fieldDescriptor = record.allFields().get(missingFieldName);
+            if (!fieldDescriptor.getSchema().isOptional() && fieldDescriptor.getSchema().defaultValue() == null) {
+                throw new SQLException(String.format(
+                        "Cannot ALTER table '%s' because field '%s' is not optional but has no default value",
+                        collectionId.toFullIdentiferString(), fieldDescriptor.getName()));
+            }
+        }
+
+        if (NONE.equals(config.getSchemaEvolutionMode())) {
+            LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", collectionId.toFullIdentiferString());
+            throw new SQLException("Cannot alter table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
+        }
+
+        Transaction transaction = session.beginTransaction();
+        try {
+            final String alterSql = dialect.getAlterTableStatement(table, record, missingFields);
+            LOGGER.trace("SQL: {}", alterSql);
+            session.createNativeQuery(alterSql, Object.class).executeUpdate();
+            transaction.commit();
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+
+        return readTable(collectionId);
+    }
+
+    public TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        if (!hasTable(collectionId)) {
+            // Table does not exist, lets attempt to create it.
+            try {
+                return createTable(collectionId, record);
+            }
+            catch (SQLException | JDBCException ce) {
+                // It's possible the table may have been created in the interim, so try to alter.
+                LOGGER.warn("Table creation failed for '{}', attempting to alter the table", collectionId.toFullIdentiferString(), ce);
+                try {
+                    return alterTableIfNeeded(collectionId, record);
+                }
+                catch (SQLException | JDBCException ae) {
+                    // The alter failed, hard stop.
+                    LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
+                    throw ae;
+                }
+            }
+        }
+        else {
+            // Table exists, lets attempt to alter it if necessary.
+            try {
+                return alterTableIfNeeded(collectionId, record);
+            }
+            catch (SQLException | JDBCException ae) {
+                LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
+                throw ae;
+            }
+        }
+    }
+
+    private boolean isRetriable(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        for (Class<? extends Exception> e : dialect.getCommunicationExceptions()) {
+            if (e.isAssignableFrom(throwable.getClass())) {
+                return true;
+            }
+        }
+        return isRetriable(throwable.getCause());
+    }
+
+    // Retries the callable operation based on the configured retry settings.
+    // Wraps any exception into a ConnectException if retries are exhausted or if the exception is not retriable.
+    public <T> T executeWithRetries(String description, Callable<T> callable) {
+        int retries = 0;
+        Exception lastException = null;
+        while (retries <= flushMaxRetries) {
+            try {
+                if (retries > 0) {
+                    LOGGER.warn("Retry to {}. Retry {}/{} with delay {} ms",
+                            description, retries, flushMaxRetries, flushRetryDelay.toMillis());
+                    try {
+                        Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
+                    }
+                    catch (InterruptedException e) {
+                        throw new ConnectException("Interrupted while waiting to retry " + description, e);
+                    }
+                }
+                return callable.call();
+            }
+            catch (Exception e) {
+                lastException = e;
+                if (isRetriable(e)) {
+                    retries++;
+                }
+                else {
+                    throw new ConnectException("Failed to " + description, e);
+                }
+            }
+        }
+        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
     }
 
     @Override
-    public void write(List<JdbcSinkRecord> records, SqlStatementInfo sqlStatementInfo) {
+    public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
+        SqlStatementInfo statementInfo = getSqlStatementInfo(tableDescriptor, records);
         final Transaction transaction = getSession().beginTransaction();
 
         try {
-            getSession().doWork(processBatch(records, sqlStatementInfo.statement()));
+            getSession().doWork(processBatch(statementInfo, records));
             transaction.commit();
         }
         catch (Exception e) {
@@ -56,43 +299,61 @@ public class DefaultRecordWriter extends AbstractRecordWriter {
         LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
     }
 
-    protected Work processBatch(List<JdbcSinkRecord> records, String sqlStatement) {
-        return conn -> {
-            try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
+    public void writeTruncate(CollectionId collectionId) throws SQLException {
+        final Transaction transaction = session.beginTransaction();
+        try {
+            var sql = dialect.getTruncateStatement(collectionId);
+            LOGGER.trace("SQL: {}", sql);
+            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
 
-                QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
-                Stopwatch allbindStopwatch = Stopwatch.reusable();
-                allbindStopwatch.start();
-                for (JdbcSinkRecord record : records) {
+            query.executeUpdate();
+            transaction.commit();
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
 
-                    Stopwatch singlebindStopwatch = Stopwatch.reusable();
-                    singlebindStopwatch.start();
-                    bindValues(record, queryBinder);
-                    singlebindStopwatch.stop();
+    private Work processBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
+        return conn -> performWrite(conn, statementInfo, records);
+    }
 
-                    Stopwatch addBatchStopwatch = Stopwatch.reusable();
-                    addBatchStopwatch.start();
-                    prepareStatement.addBatch();
-                    addBatchStopwatch.stop();
+    private void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
+        try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
 
-                    LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
-                    LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
-                }
-                allbindStopwatch.stop();
-                LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
+            QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
+            Stopwatch allbindStopwatch = Stopwatch.reusable();
+            allbindStopwatch.start();
+            for (JdbcSinkRecord record : records) {
 
-                Stopwatch executeStopwatch = Stopwatch.reusable();
-                executeStopwatch.start();
-                int[] batchResult = prepareStatement.executeBatch();
-                executeStopwatch.stop();
-                for (int updateCount : batchResult) {
-                    if (updateCount == Statement.EXECUTE_FAILED) {
-                        throw new BatchUpdateException("Execution failed for part of the batch", batchResult);
-                    }
-                }
-                LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
+                Stopwatch singlebindStopwatch = Stopwatch.reusable();
+                singlebindStopwatch.start();
+                bindValues(record, queryBinder);
+                singlebindStopwatch.stop();
+
+                Stopwatch addBatchStopwatch = Stopwatch.reusable();
+                addBatchStopwatch.start();
+                prepareStatement.addBatch();
+                addBatchStopwatch.stop();
+
+                LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
+                LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
             }
-        };
+            allbindStopwatch.stop();
+            LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
+
+            Stopwatch executeStopwatch = Stopwatch.reusable();
+            executeStopwatch.start();
+            int[] batchResult = prepareStatement.executeBatch();
+            executeStopwatch.stop();
+            for (int updateCount : batchResult) {
+                if (updateCount == Statement.EXECUTE_FAILED) {
+                    throw new BatchUpdateException("Execution failed for part of the batch", batchResult);
+                }
+            }
+            LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
+        }
     }
 
     protected void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
@@ -115,34 +376,52 @@ public class DefaultRecordWriter extends AbstractRecordWriter {
         }
     }
 
-    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        final Struct keySource = record.filteredKey();
-        if (keySource != null) {
-            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
+    /**
+     * Get SQL statement for a list of records.
+     * Tries to use batch operations (like UNNEST for PostgreSQL) if available and enabled,
+     * otherwise falls back to standard single-record statement with JDBC batching.
+     */
+    protected SqlStatementInfo getSqlStatementInfo(TableDescriptor table, List<JdbcSinkRecord> records) {
+        if (records.isEmpty()) {
+            throw new DataException("Cannot generate SQL statement for empty record list");
         }
-        return index;
-    }
 
-    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
-    }
+        // Get first record for basic checks and fallback
+        JdbcSinkRecord firstRecord = records.get(0);
 
-    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
-        for (String fieldName : fieldNames) {
-            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
+        if (!firstRecord.isDelete()) {
+            switch (config.getInsertMode()) {
+                case INSERT:
+                    // Try batch insert first (e.g., UNNEST for PostgreSQL)
+                    Optional<String> batchInsert = dialect.getBatchInsertStatement(table, records);
+                    if (batchInsert.isPresent()) {
+                        LOGGER.debug("Using batch INSERT statement with {} records", records.size());
+                        return new SqlStatementInfo(batchInsert.get(), true);
+                    }
+                    return new SqlStatementInfo(dialect.getInsertStatement(table, firstRecord), false);
 
-            Object value;
-            if (field.getSchema().isOptional()) {
-                value = source.getWithoutDefault(fieldName);
+                case UPSERT:
+                    if (firstRecord.keyFieldNames().isEmpty()) {
+                        throw new ConnectException("Cannot write to table " + table.getId().name() + " with no key fields defined.");
+                    }
+                    // Try batch upsert first (e.g., UNNEST with ON CONFLICT for PostgreSQL)
+                    Optional<String> batchUpsert = dialect.getBatchUpsertStatement(table, records);
+                    if (batchUpsert.isPresent()) {
+                        LOGGER.debug("Using batch UPSERT statement with {} records", records.size());
+                        return new SqlStatementInfo(batchUpsert.get(), true);
+                    }
+                    return new SqlStatementInfo(dialect.getUpsertStatement(table, firstRecord), false);
+
+                case UPDATE:
+                    // UPDATE doesn't have batch optimization yet
+                    return new SqlStatementInfo(dialect.getUpdateStatement(table, firstRecord), false);
             }
-            else {
-                value = source.get(fieldName);
-            }
-            List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, index, value);
-
-            boundValues.forEach(query::bind);
-            index += boundValues.size();
         }
-        return index;
+        else {
+            // DELETE doesn't have batch optimization yet
+            return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false);
+        }
+        throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
     }
+
 }

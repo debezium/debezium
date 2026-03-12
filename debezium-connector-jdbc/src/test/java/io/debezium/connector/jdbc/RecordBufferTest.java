@@ -82,7 +82,7 @@ class RecordBufferTest extends AbstractRecordBufferTest {
                 .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        KafkaDebeziumSinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder()
+        KafkaDebeziumSinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder(config)
                 .name("prefix")
                 .topic("topic")
                 .keySchema(factory.keySchema(UnaryOperator.identity(), Schema.INT16_SCHEMA))
@@ -117,7 +117,7 @@ class RecordBufferTest extends AbstractRecordBufferTest {
                 .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        KafkaDebeziumSinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder()
+        KafkaDebeziumSinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder(config)
                 .name("prefix")
                 .topic("topic")
                 .keySchema(factory.basicKeySchema())

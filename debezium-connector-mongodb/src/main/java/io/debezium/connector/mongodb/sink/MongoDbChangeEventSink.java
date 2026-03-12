@@ -12,7 +12,6 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
@@ -66,8 +65,8 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
     }
 
-    public Optional<CollectionId> getCollectionId(String collectionName) {
-        return Optional.of(new CollectionId(collectionName));
+    public CollectionId getCollectionId(String collectionName) {
+        return new CollectionId(collectionName);
     }
 
     public void execute(final Collection<SinkRecord> records) {

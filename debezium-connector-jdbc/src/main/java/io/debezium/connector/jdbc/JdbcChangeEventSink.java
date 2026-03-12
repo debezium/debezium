@@ -5,30 +5,22 @@
  */
 package io.debezium.connector.jdbc;
 
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
 import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
 import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
 import java.sql.SQLException;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.JDBCException;
 import org.hibernate.StatelessSession;
-import org.hibernate.Transaction;
 import org.hibernate.dialect.DatabaseVersion;
-import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +32,7 @@ import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
-import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.spi.ChangeEventSink;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 
 /**
@@ -54,16 +43,13 @@ import io.debezium.util.Stopwatch;
 public class JdbcChangeEventSink implements ChangeEventSink {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class);
-
-    public static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
+    public static final String FOUND_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
 
     private final JdbcSinkConnectorConfig config;
     private final DatabaseDialect dialect;
     private final StatelessSession session;
 
     private final RecordWriter recordWriter;
-    private final int flushMaxRetries;
-    private final Duration flushRetryDelay;
     private final ConnectorContext connectorContext;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
@@ -72,8 +58,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
-        this.flushMaxRetries = config.getFlushMaxRetries();
-        this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
         this.connectorContext = connectorContext;
 
         final DatabaseVersion version = this.dialect.getVersion();
@@ -85,22 +69,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
         for (SinkRecord kafkaSinkRecord : records) {
-
-            JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config.getPrimaryKeyMode(), config.getPrimaryKeyFields(), config.getFieldFilter(),
-                    config.cloudEventsSchemaNamePattern(), dialect);
+            JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
             LOGGER.trace("Processing {}", record);
 
-            validate(record);
+            if (record.isSchemaChange()) {
+                LOGGER.error("Ignored schema change event for topic '{}'. " + FOUND_SCHEMA_CHANGE_RECORD_MSG, record.topicName());
+                continue;
+            }
 
-            Optional<CollectionId> optionalCollectionId = getCollectionIdFromRecord(record);
-            if (optionalCollectionId.isEmpty()) {
-
+            CollectionId collectionId = getCollectionIdFromRecord(record);
+            if (null == collectionId) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topicName(), record.partition(),
                         record.offset());
                 continue;
             }
-
-            final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
@@ -108,13 +90,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     continue;
                 }
 
-                // Here we want to flush the buffer to let truncate having effect on the buffered events.
+                // Here we want to flush the buffers to let truncate having effect on the buffered events.
                 flushBuffers(upsertBufferByTable);
                 flushBuffers(deleteBufferByTable);
 
                 try {
-                    final TableDescriptor table = checkAndApplyTableChangesIfNeeded(collectionId, record);
-                    writeTruncate(dialect.getTruncateStatement(table));
+                    final TableDescriptor table = recordWriter.checkAndApplyTableChangesIfNeeded(collectionId, record);
+                    recordWriter.writeTruncate(table.getId());
                     continue;
                 }
                 catch (SQLException | JDBCException e) {
@@ -163,13 +145,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         flushBuffers(deleteBufferByTable);
     }
 
-    private void validate(JdbcSinkRecord record) {
-        if (record.isSchemaChange()) {
-            LOGGER.error(DETECT_SCHEMA_CHANGE_RECORD_MSG);
-            throw new DataException(DETECT_SCHEMA_CHANGE_RECORD_MSG);
-        }
-    }
-
     private BufferFlushRecords getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
         Stopwatch stopwatch = Stopwatch.reusable();
         stopwatch.start();
@@ -197,7 +172,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return bufferMap.computeIfAbsent(collectionId, (id) -> {
             final TableDescriptor tableDescriptor;
             try {
-                tableDescriptor = checkAndApplyTableChangesIfNeeded(collectionId, record);
+                tableDescriptor = recordWriter.checkAndApplyTableChangesIfNeeded(collectionId, record);
             }
             catch (SQLException | JDBCException e) {
                 throw new ConnectException("Error while checking and applying table changes for collection '" + collectionId + "'", e);
@@ -239,7 +214,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private void flushBufferWithRetries(CollectionId collectionId, List<JdbcSinkRecord> toFlush, TableDescriptor tableDescriptor) {
         LOGGER.debug("Flushing records in JDBC Writer for table: {}", collectionId.name());
-        executeWithRetries("flush records for table '" + collectionId.name() + "'", () -> {
+        recordWriter.executeWithRetries("flush records for table '" + collectionId.name() + "'", () -> {
             flushBuffer(collectionId, toFlush, tableDescriptor);
             return null;
         });
@@ -252,9 +227,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             LOGGER.debug("Flushing {} records in JDBC Writer for table: {}", toFlush.size(), collectionId.name());
             tableChangesStopwatch.start();
             tableChangesStopwatch.stop();
-            RecordWriter.SqlStatementInfo sqlInfo = getSqlStatementInfo(table, toFlush);
             flushBufferStopwatch.start();
-            recordWriter.write(toFlush, sqlInfo);
+            recordWriter.write(table, toFlush);
             flushBufferStopwatch.stop();
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
@@ -288,235 +262,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        if (!hasTable(collectionId)) {
-            // Table does not exist, lets attempt to create it.
-            try {
-                return createTable(collectionId, record);
-            }
-            catch (SQLException | JDBCException ce) {
-                // It's possible the table may have been created in the interim, so try to alter.
-                LOGGER.warn("Table creation failed for '{}', attempting to alter the table", collectionId.toFullIdentiferString(), ce);
-                try {
-                    return alterTableIfNeeded(collectionId, record);
-                }
-                catch (SQLException | JDBCException ae) {
-                    // The alter failed, hard stop.
-                    LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
-                    throw ae;
-                }
-            }
-        }
-        else {
-            // Table exists, lets attempt to alter it if necessary.
-            try {
-                return alterTableIfNeeded(collectionId, record);
-            }
-            catch (SQLException | JDBCException ae) {
-                LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
-                throw ae;
-            }
-        }
+    public CollectionId getCollectionId(String collectionName) {
+        return dialect.getCollectionId(collectionName);
     }
 
-    private boolean hasTable(CollectionId collectionId) {
-        return this.executeWithRetries("check for existence of table",
-                () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
-    }
-
-    private TableDescriptor readTable(CollectionId collectionId) {
-        return session.doReturningWork((connection) -> dialect.readTable(connection, collectionId));
-    }
-
-    private TableDescriptor createTable(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        LOGGER.debug("Attempting to create table '{}'.", collectionId.toFullIdentiferString());
-
-        if (NONE.equals(config.getSchemaEvolutionMode())) {
-            LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", collectionId.toFullIdentiferString());
-            throw new SQLException("Cannot create table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
-        }
-
-        Transaction transaction = session.beginTransaction();
-        try {
-            final String createSql = dialect.getCreateTableStatement(record, collectionId);
-            LOGGER.trace("SQL: {}", createSql);
-            session.createNativeQuery(createSql, Object.class).executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-
-        return readTable(collectionId);
-    }
-
-    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
-
-        if (!hasTable(collectionId)) {
-            LOGGER.error("Table '{}' does not exist and cannot be altered.", collectionId.toFullIdentiferString());
-            throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
-        }
-
-        // Resolve table metadata from the database
-        final TableDescriptor table = readTable(collectionId);
-
-        // Delegating to dialect to deal with database case sensitivity.
-        Set<String> missingFields = dialect.resolveMissingFields(record, table);
-        if (missingFields.isEmpty()) {
-            // There are no missing fields, simply return
-            // todo: should we check column type changes or default value changes?
-            return table;
-        }
-
-        LOGGER.debug("The follow fields are missing in the table: {}", missingFields);
-        for (String missingFieldName : missingFields) {
-            final FieldDescriptor fieldDescriptor = record.allFields().get(missingFieldName);
-            if (!fieldDescriptor.getSchema().isOptional() && fieldDescriptor.getSchema().defaultValue() == null) {
-                throw new SQLException(String.format(
-                        "Cannot ALTER table '%s' because field '%s' is not optional but has no default value",
-                        collectionId.toFullIdentiferString(), fieldDescriptor.getName()));
-            }
-        }
-
-        if (NONE.equals(config.getSchemaEvolutionMode())) {
-            LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", collectionId.toFullIdentiferString());
-            throw new SQLException("Cannot alter table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
-        }
-
-        Transaction transaction = session.beginTransaction();
-        try {
-            final String alterSql = dialect.getAlterTableStatement(table, record, missingFields);
-            LOGGER.trace("SQL: {}", alterSql);
-            session.createNativeQuery(alterSql, Object.class).executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-
-        return readTable(collectionId);
-    }
-
-    /**
-     * Get SQL statement for a list of records.
-     * Tries to use batch operations (like UNNEST for PostgreSQL) if available and enabled,
-     * otherwise falls back to standard single-record statement with JDBC batching.
-     */
-    private RecordWriter.SqlStatementInfo getSqlStatementInfo(TableDescriptor table, List<JdbcSinkRecord> records) {
-        if (records.isEmpty()) {
-            throw new DataException("Cannot generate SQL statement for empty record list");
-        }
-
-        // Get first record for basic checks and fallback
-        JdbcSinkRecord firstRecord = records.get(0);
-
-        if (!firstRecord.isDelete()) {
-            switch (config.getInsertMode()) {
-                case INSERT:
-                    // Try batch insert first (e.g., UNNEST for PostgreSQL)
-                    Optional<String> batchInsert = dialect.getBatchInsertStatement(table, records);
-                    if (batchInsert.isPresent()) {
-                        LOGGER.debug("Using batch INSERT statement with {} records", records.size());
-                        return new RecordWriter.SqlStatementInfo(batchInsert.get(), true);
-                    }
-                    return new RecordWriter.SqlStatementInfo(dialect.getInsertStatement(table, firstRecord), false);
-
-                case UPSERT:
-                    if (firstRecord.keyFieldNames().isEmpty()) {
-                        throw new ConnectException("Cannot write to table " + table.getId().name() + " with no key fields defined.");
-                    }
-                    // Try batch upsert first (e.g., UNNEST with ON CONFLICT for PostgreSQL)
-                    Optional<String> batchUpsert = dialect.getBatchUpsertStatement(table, records);
-                    if (batchUpsert.isPresent()) {
-                        LOGGER.debug("Using batch UPSERT statement with {} records", records.size());
-                        return new RecordWriter.SqlStatementInfo(batchUpsert.get(), true);
-                    }
-                    return new RecordWriter.SqlStatementInfo(dialect.getUpsertStatement(table, firstRecord), false);
-
-                case UPDATE:
-                    // UPDATE doesn't have batch optimization yet
-                    return new RecordWriter.SqlStatementInfo(dialect.getUpdateStatement(table, firstRecord), false);
-            }
-        }
-        else {
-            // DELETE doesn't have batch optimization yet
-            return new RecordWriter.SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false);
-        }
-
-        throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
-    }
-
-    private void writeTruncate(String sql) throws SQLException {
-        final Transaction transaction = session.beginTransaction();
-        try {
-            LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-
-            query.executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
-    public Optional<CollectionId> getCollectionId(String collectionName) {
-        return Optional.of(dialect.getCollectionId(collectionName));
-    }
-
-    // Retries the callable operation based on the configured retry settings.
-    // Wraps any exception into a ConnectException if retries are exhausted or if the exception is not retriable.
-    private <T> T executeWithRetries(String description, Callable<T> callable) {
-        int retries = 0;
-        Exception lastException = null;
-        while (retries <= flushMaxRetries) {
-            try {
-                if (retries > 0) {
-                    LOGGER.warn("Retry to {}. Retry {}/{} with delay {} ms",
-                            description, retries, flushMaxRetries, flushRetryDelay.toMillis());
-                    try {
-                        Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
-                    }
-                    catch (InterruptedException e) {
-                        throw new ConnectException("Interrupted while waiting to retry " + description, e);
-                    }
-                }
-                return callable.call();
-            }
-            catch (Exception e) {
-                lastException = e;
-                if (isRetriable(e)) {
-                    retries++;
-                }
-                else {
-                    throw new ConnectException("Failed to " + description, e);
-                }
-            }
-        }
-        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
-
-    }
-
-    private boolean isRetriable(Throwable throwable) {
-        if (throwable == null) {
-            return false;
-        }
-        for (Class<? extends Exception> e : dialect.getCommunicationExceptions()) {
-            if (e.isAssignableFrom(throwable.getClass())) {
-                return true;
-            }
-        }
-        return isRetriable(throwable.getCause());
-    }
-
-    public Optional<CollectionId> getCollectionIdFromRecord(DebeziumSinkRecord record) {
+    public CollectionId getCollectionIdFromRecord(DebeziumSinkRecord record) {
         String tableName = this.config.getCollectionNamingStrategy().resolveCollectionName(record, config.getCollectionNameFormat());
         if (tableName == null) {
-            return Optional.empty();
+            return null;
         }
         return getCollectionId(tableName);
     }

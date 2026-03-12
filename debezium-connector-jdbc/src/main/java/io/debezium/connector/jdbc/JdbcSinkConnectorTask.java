@@ -60,6 +60,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
 
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
+    private static final DatasetDataExtractor DATASET_DATA_EXTRACTOR = new DatasetDataExtractor();
 
     private SessionFactory sessionFactory;
     private ConnectorContext connectorContext;
@@ -83,7 +84,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
      */
     private boolean usePre380OriginalRecordAccess = false;
     private Method pre380OriginalRecordMethod = null;
-    private DatasetDataExtractor datasetDataExtractor;
 
     public JdbcSinkConnectorTask() {
         try {
@@ -107,9 +107,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         stateLock.lock();
 
         try {
-
             final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
-            datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(),
@@ -129,13 +127,13 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
             sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
             StatelessSession session = sessionFactory.openStatelessSession();
-            DatabaseDialect databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+            DatabaseDialect dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
 
             // Instantiate the appropriate RecordWriter based on dialect and configuration
-            RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, databaseDialect);
+            RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, dialect);
 
-            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext);
+            changeEventSink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
         finally {
@@ -160,7 +158,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         LOGGER.debug("Received {} changes.", records.size());
 
         records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record)))));
+                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, DATASET_DATA_EXTRACTOR.extract(record)))));
 
         try {
             executeStopWatch.start();
@@ -245,11 +243,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
     public void stop() {
         stateLock.lock();
         try {
-
             if (changeEventSink != null) {
+                changeEventSink.close();
                 try {
-                    changeEventSink.close();
-
                     DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
                     if (sessionFactory != null && sessionFactory.isOpen()) {
                         LOGGER.info("Closing the session factory");
