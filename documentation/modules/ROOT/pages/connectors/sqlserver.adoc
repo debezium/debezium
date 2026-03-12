@@ -3260,6 +3260,23 @@ Use the following format to specify the collection name:
 
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
+For multi-database deployments, if `tasks.max > 1`, you can configure one signal table per database by providing a comma-separated list of fully-qualified signal table names. For example:
+
+`signal.data.collection=db1.dbo.debezium_signal,db2.dbo.debezium_signal`
+
+Specifying a dedicated signal table for each database, permits each task to process signals for its assigned databases correctly. 
+If you configure only a single signal table for a multi-task connector, signals might not be processed correctly for all databases.
+
+[IMPORTANT]
+====
+Support for using multiple signaling tables with the {prodname} SQL Server connector is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+
+
 |[[sqlserver-property-signal-enabled-channels]]<<sqlserver-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
 |  List of the signaling channel names that are enabled for the connector.
