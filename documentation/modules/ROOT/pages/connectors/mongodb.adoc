@@ -194,17 +194,6 @@ Grant the user permission to read the database specified by the connector's xref
 `capture.scope` is set to `collection`::
 Grant the user permission to read the collection specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 .Permission to use the MongoDB `hello` command
 
 Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
@@ -1761,9 +1750,19 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
-|
-|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. The value ought to be a long representation of Bson timestamp.
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. 
+Set the value to be a long representation of the BSON timestamp.
 
+[IMPORTANT]
+====
+The ability to set the `capture.start.op.time`` property to override the normal offset-based behavior and begin streaming from a specific timestamp is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+
+====
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -1787,16 +1786,6 @@ This feature is currently in an incubating state.
 The exact semantics, configuration options, and so forth are subject to change, based on the feedback that we receive.
 ====
 endif::community[]
-ifdef::product[]
-[IMPORTANT]
-====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 +
 [WARNING]
 ====

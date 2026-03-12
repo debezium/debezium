@@ -3151,6 +3151,15 @@ Set this parameter on the primary server to specify the physical replication slo
 |[[postgresql-property-offset-mismatch-strategy]]<<postgresql-property-offset-mismatch-strategy, `+offset.mismatch.strategy+`>>
 |`no_validation`
 |Specifies how the connector handles mismatches between the stored offset LSN and the replication slot's confirmed flush LSN when the connector starts.
++
+[IMPORTANT]
+====
+The `offset.mismatch.strategy` property is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
 This property replaces the deprecated `internal.slot.seek.to.known.offset.on.start` boolean property.
 
 A mismatch can occur in several scenarios:
@@ -4138,6 +4147,15 @@ Use this mode to prevent WAL growth on low-activity databases where monitored ta
 +
 NOTE: When using `connector_and_driver` mode, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN, which may advance the replication slot beyond the stored offset when non-monitored WAL activity occurs.
 If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
++
+[IMPORTANT]
+====
+The `connector_and_driver` mode is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
 If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
@@ -4406,17 +4424,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 
 {prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
 When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
-
-ifdef::product[]
-[IMPORTANT]
-====
-Exactly-once delivery of PostgreSQL change event records is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 If a fault does happen then the system does not lose any events.
 However, while it is recovering from the fault, it's possible that the connector might emit some duplicate change events.
