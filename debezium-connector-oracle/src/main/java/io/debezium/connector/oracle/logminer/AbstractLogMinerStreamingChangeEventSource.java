@@ -2072,7 +2072,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException, InterruptedException {
         boolean showMessage = true;
-        while (context.isRunning() && !isScnInArchiveLogs(scn)) {
+        while (context.isRunning() && !logCollector.isScnInArchiveLogs(scn)) {
             if (showMessage) {
                 LOGGER.warn("SCN {} is not yet in archive logs, waiting for log switch.", scn);
                 showMessage = false;
@@ -2090,26 +2090,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
 
         return true;
-    }
-
-    /**
-     * Returns whether the system change number is in the archive logs.
-     *
-     * @param scn the system change number to check, should not be {@code null}
-     * @return {@code true} if the starting system change number is in the archive logs; {@code false} otherwise.
-     * @throws SQLException if a database exception occurred
-     */
-    private boolean isScnInArchiveLogs(Scn scn) throws SQLException {
-        try {
-            // Purposely use getLogsForOffsetScn as we want to skip consistency here
-            return logCollector.getLogsForOffsetScn(scn).stream()
-                    .anyMatch(log -> log.isScnInLogFileRange(scn) && log.isArchive());
-        }
-        catch (LogFileNotFoundException e) {
-            // It is safe to ignore this error.
-            // This identifies that the check should simply be re-evaluated after the pause.
-            return false;
-        }
     }
 
     /**
