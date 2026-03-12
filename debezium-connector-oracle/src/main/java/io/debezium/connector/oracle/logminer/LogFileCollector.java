@@ -98,6 +98,31 @@ public class LogFileCollector {
         throw new LogFileNotFoundException(offsetScn);
     }
 
+    /**
+     * Checks whether the specified system change number is present in the archive log files. For Oracle RAC,
+     * this check explicitly requires that all redo thread active current logs start after the given SCN.
+     *
+     * @param scn the minimum system change number to start reading changes from, should not be {@code null}
+     * @return {@code true} if the change number is in the archive logs, otherwise {@code false}
+     * @throws SQLException if there is a database failure during the collection
+     */
+    public boolean isScnInArchiveLogs(Scn scn) throws SQLException {
+        try {
+            final List<LogFile> allLogs = getLogs(scn);
+            final Map<Integer, List<LogFile>> threadLogs = allLogs.stream()
+                    .collect(Collectors.groupingBy(LogFile::getThread));
+
+            return threadLogs.entrySet().stream()
+                    .allMatch(e -> e.getValue().stream()
+                            .filter(LogFile::isCurrent)
+                            .allMatch(log -> log.getFirstScn().compareTo(scn) > 0));
+        }
+        catch (LogFileNotFoundException e) {
+            // It is safe to ignore this because we used consistency checks
+            return false;
+        }
+    }
+
     @VisibleForTesting
     public List<LogFile> getLogsForOffsetScn(Scn offsetScn) throws SQLException {
         return connection.queryAndMap(getLogsQuery(offsetScn), rs -> {
