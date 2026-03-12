@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG;
 
@@ -98,6 +99,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 cacheManager.removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
                 cacheManager.removeCache(SCHEMA_CHANGES_CACHE_NAME);
                 cacheManager.removeCache(EVENTS_CACHE_NAME);
+                cacheManager.removeCache(ROLLBACKS_CACHE_NAME);
             }
 
             LOGGER.info("Shutting down Ehcache embedded caches");
@@ -143,7 +145,9 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 .replace("${log.mining.buffer.ehcache.schemachanges.config}",
                         configuration.getString(LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, ""))
                 .replace("${log.mining.buffer.ehcache.events.config}",
-                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, ""));
+                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, ""))
+                .replace("${log.mining.buffer.ehcache.rollbacks.config}",
+                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, ""));
     }
 
     private String readConfigurationTemplate() {
@@ -171,6 +175,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         return new EhcacheLogMinerTransactionCache(
                 getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
                 getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
+                getCache(ROLLBACKS_CACHE_NAME, String.class, Boolean.class, evictionListener),
                 evictionListener);
     }
 

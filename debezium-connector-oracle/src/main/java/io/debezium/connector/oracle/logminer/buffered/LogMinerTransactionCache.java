@@ -122,12 +122,14 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Apply a predicate over all cached events associated with the specified transaction.
      * The events will be supplied in insertion order.
+     * As its second parameter the predicate receives a boolean indicating
+     * whether the event has been marked as rolled back via a savepoint rollback.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param predicate the consumer, should not be {@code null}
      * @throws InterruptedException thrown if the thread is interrupted
      */
-    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
+    void forEachEvent(T transaction, LogMinerEventPredicate predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
@@ -231,7 +233,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     }
 
     @FunctionalInterface
-    interface InterruptiblePredicate<T> {
-        boolean test(T t) throws InterruptedException;
+    interface LogMinerEventPredicate {
+        boolean test(LogMinerEvent event, boolean rolledBack) throws InterruptedException;
     }
 }
