@@ -5,6 +5,13 @@
  */
 package io.debezium.connector.binlog;
 
+import static io.debezium.connector.binlog.BinlogConnectorConfig.isBuiltInDatabase;
+import static io.debezium.data.Envelope.FieldName.AFTER;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -26,11 +33,8 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,19 +43,16 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
-import static io.debezium.connector.binlog.BinlogConnectorConfig.isBuiltInDatabase;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
-import static io.debezium.data.Envelope.FieldName.AFTER;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.DebeziumEngineTestUtils.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
@@ -643,7 +644,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
             assertThat(persistedOffsetSource.binlogPosition()).isLessThan(positionAfterInserts.binlogPosition());
         }
         else {
-            // the replica is not the same server as the primary, so it will have a different binlog filename and position
+            // the replica is not the same server as the primary, so it will have a different binlog filename and position...
         }
         // Event number is 2 ...
         assertThat(offsetContext.eventsToSkipUponRestart()).isEqualTo(2);
