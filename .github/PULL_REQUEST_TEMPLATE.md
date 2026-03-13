@@ -8,8 +8,7 @@ Fixes debezium/dbz#<the Debezium Issue Number>
 
 ## PR Checklist
 <!-- Please review the following checklist and mark items with an 'x' before submitting your pull request. -->
-- [ ] Discussed and approved on GitHub Issues, chat or the mailing list
-- [ ] A GitHub Issue associated with your PR (include the GitHub issue number in commit comment)
-- [ ] One feature/change per PR
-- [ ] No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code)
+- [ ] I have read the [contribution guidelines](https://github.com/debezium/debezium/blob/main/CONTRIBUTING.md) and the [governance document](https://github.com/debezium/debezium/blob/main/GOVERNANCE.md) on PR expectations.
+- [ ] Minimal changes to code not directly related to your change (e.g. no unnecessary formatting changes or refactoring to existing code)
+- [ ] One feature/change per PR unless tightly coupled
 - [ ] Do a rebase on upstream `main`
