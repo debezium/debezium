@@ -7,8 +7,10 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -713,16 +715,21 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     /**
      * Reads the replication stream up to the next null-terminator byte and returns the contents as a string.
      *
+     * <p>This method uses {@link ByteArrayOutputStream} which starts with a 32-byte internal buffer
+     * and grows by doubling. It is intended for short protocol-level identifiers (schema, table,
+     * column names, prefixes) and should not be used for reading column <em>values</em>, where
+     * arbitrarily large payloads would cause excessive buffer copying and memory overhead.
+     *
      * @param buffer The replication stream buffer
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        StringBuilder sb = new StringBuilder();
-        byte b = 0;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte b;
         while ((b = buffer.get()) != 0) {
-            sb.append((char) b);
+            baos.write(b);
         }
-        return sb.toString();
+        return baos.toString(StandardCharsets.UTF_8);
     }
 
     /**
