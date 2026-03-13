@@ -264,19 +264,24 @@ The following example shows a data change event with ordered transaction metadat
 
 [[vitess-connector-generation]]
 === Connector Generation
-The [prodname} Vitess connector provides a xref:vitess-property-connector-generation[`connector generation`] property that stores the generation number for transaction ordering semantics.
+The {prodname} Vitess connector provides a xref:vitess-property-connector-generation[`connector generation`] property that stores the generation number for transaction ordering semantics.
 
-When you change the connector configuration in a way that affects how the connector computes the `transaction-rank`field, incrementing the value of the xref:vitess-property-connector-generation[`vitess.connector.generation`] property ensures that downstream applications consume  events in the correct order across the configuration change.
+Certain connector configuration changes can affect the way that the connector computes the `transaction-rank` field.
+After you make such a change, you must increment the value of the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+Incrementing the connector generation provides the connector with the information that it needs to stream change events to Kafka from different shards in the correct sequence.
 
-For example, when you enable transaction chunking (xref:vitess-property-transaction-chunk-size[`vitess.transaction.chunk.size.bytes`]), the connector computes `transaction_rank` from the VGTID of the previous transaction rather than the current transaction, because VStream does not provide the committed VGTID until the final chunk of a chunked transaction.
+For example, when you set xref:vitess-property-transaction-chunk-size[`vitess.transaction.chunk.size.bytes`] to enable transaction chunking, the connector computes `transaction_rank` from the VGTID of the previous transaction, rather than the VGTID of the current transaction.
+This behavior results, because for chunked transactions, VStream behavior sends the final committed VGTID for a transaction only after it commits the final chunk of the transaction.
 Events produced before and after you enable transaction chunking therefore use different mechanisms to compute rank.
-These different mechanisms can cause consumers to misorder events they occur within the same connector epoch.
+After you enable transaction chunking, the connector uses a different mechanism to compute rank than it does when chunking is disabled.
+If you do not increment the connector epoch, consumers that process events that result from these different ranking mechanisms can incorrectly sequence events.
 
 .How the connector applies a generation change
 
-When the connector starts, it compares the value of the generation that is stored in the offset to the value configured in the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
-If the values differ — whether the configured generation is higher or lower than the stored value — the connector increments the `transaction_epoch` for all shards by one before it begins streaming.
-This increment ensures that all events produced after the configuration change carry a higher epoch than events produced before the change.
+When the connector starts, it compares the value of the generation that is stored in the offset to the value that is configured in the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+If the generation values differ, whether the value of the configured generation is higher or lower than the stored value, the connector increments the `transaction_epoch` for all shards by one before it begins streaming.
+When you increment the transaction epoch after a configuration change, events that the connector emits afterward are associated with a later epoch than those emitted before the change.
+The epoch acts as a boundary marker that signals a shift in the connector configuration, enabling  downstream event processing frameworks to reliably distinguish between change events that occur across the transition boundary.
 Because epoch is the primary sort key in the xref:vitess-ordered-transaction-metadata[ordered transaction metadata] comparison logic, consumers can correctly identify post-change events as newer regardless of their `transaction_rank` value.
 
 Increment `vitess.connector.generation` whenever you make any of the following configuration changes that affect transaction ordering semantics:
