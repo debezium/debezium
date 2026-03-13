@@ -69,7 +69,7 @@ public class JdbcSinkConnectorConfigTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "none");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-        
+
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
                 .isFalse();
     }
