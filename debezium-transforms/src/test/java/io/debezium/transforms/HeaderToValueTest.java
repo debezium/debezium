@@ -427,4 +427,36 @@ public class HeaderToValueTest {
 
         assertThat(transformedRecord).isEqualTo(readRecord);
     }
+
+    @Test
+    public void whenCreatingNewNestedFieldThatDoesNotExistInPayloadItShouldCreateIt() {
+
+        headerToValue.configure(Map.of(
+                "headers", "h1",
+                "fields", "newParent.newField",
+                "operation", "copy"));
+
+        Struct row = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "a product");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+
+        Struct payload = createEnvelope.create(row, null, Instant.now());
+        SourceRecord sourceRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+        sourceRecord.headers().add("h1", "header value", Schema.STRING_SCHEMA);
+
+        SourceRecord transformedRecord = headerToValue.apply(sourceRecord);
+
+        Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
+        assertThat(payloadStruct.get("newParent")).isNotNull();
+        Struct newParent = Requirements.requireStruct(payloadStruct.get("newParent"), "");
+        assertThat(newParent.get("newField")).isEqualTo("header value");
+
+    }
 }
