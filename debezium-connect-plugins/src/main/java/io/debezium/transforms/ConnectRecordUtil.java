@@ -124,6 +124,22 @@ public class ConnectRecordUtil {
             fieldNameToAdd.ifPresent(s -> updatedValue.put(s, entry.value()));
         }
 
+        List<String> newParentFields = getNewParentFieldsAtLevel(fieldName, originalValue.schema(), nestedFields, level);
+        for (String parentFieldName : newParentFields) {
+            if (updatedSchema.field(parentFieldName) != null) {
+                Schema parentSchema = updatedSchema.field(parentFieldName).schema();
+                Struct newParentStruct = new Struct(parentSchema);
+                for (NewEntry entry : newEntries) {
+                    Optional<String> nestedFieldName = getNestedFieldNameForParent(entry.name(), parentFieldName, fieldName, level);
+                    if (nestedFieldName.isPresent()) {
+                        newParentStruct.put(nestedFieldName.get(), entry.value());
+                    }
+                }
+
+                updatedValue.put(parentFieldName, newParentStruct);
+            }
+        }
+
         return updatedValue;
     }
 
@@ -144,9 +160,7 @@ public class ConnectRecordUtil {
                 org.apache.kafka.connect.data.Field field = currentSchema.field(parentFieldName);
 
                 if (field == null) {
-                    throw new DebeziumException(
-                            String.format("Field '%s' does not exist in the schema. Cannot add nested field '%s'.",
-                                    parentFieldName, nestedField));
+                    break;
                 }
 
                 if (field.schema().type().isPrimitive()) {
@@ -177,12 +191,31 @@ public class ConnectRecordUtil {
         }
 
         LOGGER.debug("Fields copied from the old schema {}", newSchemabuilder.fields());
+
         for (NewEntry entry : newEntries) {
             Optional<String> currentFieldName = getFieldName(entry.name(), fieldName, level);
             if (currentFieldName.isPresent()) {
-                newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), entry.schema());
+                final String fieldToAdd = currentFieldName.get();
+                if (newSchemabuilder.field(fieldToAdd) == null) {
+                    newSchemabuilder = newSchemabuilder.field(fieldToAdd, entry.schema());
+                }
             }
         }
+
+        List<String> newParentFields = getNewParentFieldsAtLevel(fieldName, oldSchema, nestedFields, level);
+        for (String parentFieldName : newParentFields) {
+            SchemaBuilder parentSchemaBuilder = SchemaBuilder.struct().optional();
+
+            for (NewEntry entry : newEntries) {
+                Optional<String> nestedFieldName = getNestedFieldNameForParent(entry.name(), parentFieldName, fieldName, level);
+                if (nestedFieldName.isPresent()) {
+                    parentSchemaBuilder = parentSchemaBuilder.field(nestedFieldName.get(), entry.schema());
+                }
+            }
+
+            newSchemabuilder = newSchemabuilder.field(parentFieldName, parentSchemaBuilder.build());
+        }
+
         LOGGER.debug("Newly added fields {}", newSchemabuilder.fields());
         return newSchemabuilder.build();
     }
@@ -215,5 +248,63 @@ public class ConnectRecordUtil {
 
     private static boolean isRootField(String fieldName, String[] nestedNames) {
         return nestedNames.length == 1 && fieldName.equals(ROOT_FIELD_NAME);
+    }
+
+    private static List<String> getNewParentFieldsAtLevel(String currentFieldName, Schema oldSchema, List<String> nestedFields, int level) {
+        List<String> newParents = new java.util.ArrayList<>();
+        List<org.apache.kafka.connect.data.Field> existingFields = oldSchema.fields();
+
+        for (String nestedField : nestedFields) {
+            String[] parts = nestedField.split("\\.");
+
+            if (shouldProcessAtLevel(currentFieldName, parts, level)) {
+                int currentLevelIndex = level;
+                if (currentLevelIndex < parts.length) {
+                    String field = parts[currentLevelIndex];
+
+                    if (currentLevelIndex < parts.length - 1) {
+                        boolean exists = existingFields.stream()
+                                .anyMatch(f -> f.name().equals(field));
+
+                        if (!exists && !newParents.contains(field)) {
+                            newParents.add(field);
+                        }
+                    }
+                }
+            }
+        }
+
+        return newParents;
+    }
+
+    private static boolean shouldProcessAtLevel(String fieldName, String[] parts, int level) {
+        if (level == 0 && fieldName.equals(ROOT_FIELD_NAME)) {
+            return true;
+        }
+
+        if (level > 0 && level < parts.length) {
+            return parts[level - 1].equals(fieldName);
+        }
+
+        return false;
+    }
+
+    private static Optional<String> getNestedFieldNameForParent(String destinationFieldName, String parentFieldName,
+                                                                String currentFieldName, int level) {
+        String[] parts = destinationFieldName.split("\\.");
+
+        if (level == 0 && currentFieldName.equals(ROOT_FIELD_NAME)) {
+            if (parts.length > 1 && parentFieldName.equals(parts[0])) {
+                return Optional.of(parts[1]);
+            }
+        }
+        else if (level > 0) {
+            String pathSoFar = String.join(NESTING_SEPARATOR, java.util.Arrays.copyOf(parts, Math.min(level + 1, parts.length)));
+            if (pathSoFar.equals(parentFieldName) && level + 1 < parts.length) {
+                return Optional.of(parts[level + 1]);
+            }
+        }
+
+        return Optional.empty();
     }
 }
