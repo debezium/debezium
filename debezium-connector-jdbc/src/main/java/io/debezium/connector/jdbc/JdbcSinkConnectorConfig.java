@@ -654,16 +654,24 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return 0;
     }
 
+
     private static int validateDeleteEnabled(Configuration config, Field field, ValidationOutput problems) {
         if (config.getBoolean(field)) {
             final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE));
-            if (!PrimaryKeyMode.RECORD_KEY.equals(primaryKeyMode)) {
-                LOGGER.error("When '{}' is set to 'true', the '{}' option must be set to '{}'.",
-                        DELETE_ENABLED, PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+            
+            // Allow RECORD_KEY, RECORD_VALUE, and RECORD_HEADER
+            if (!PrimaryKeyMode.RECORD_KEY.equals(primaryKeyMode)
+                    && !PrimaryKeyMode.RECORD_VALUE.equals(primaryKeyMode)
+                    && !PrimaryKeyMode.RECORD_HEADER.equals(primaryKeyMode)) {
+                
+                LOGGER.error("When '{}' is set to 'true', the '{}' option must be set to '{}', '{}', or '{}'.",
+                        DELETE_ENABLED, PRIMARY_KEY_MODE, 
+                        PrimaryKeyMode.RECORD_KEY.getValue(),
+                        PrimaryKeyMode.RECORD_VALUE.getValue(),
+                        PrimaryKeyMode.RECORD_HEADER.getValue());
                 return 1;
             }
         }
         return 0;
     }
-
 }
