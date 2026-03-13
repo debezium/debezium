@@ -748,10 +748,21 @@
             <properties>
                 <!-- Docker properties -->
                 <docker.dbs>debezium/mariadb-server-gtids-test-database</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mariadb.gtid.port}</database.port>
-                <database.replica.port>${mariadb.gtid.port}</database.replica.port>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mariadb.gtid.port}</database.port>
+                                <database.replica.port>${mariadb.gtid.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         Use the Docker image for a MariaDB replica of another MariaDB server
@@ -772,10 +783,21 @@
                 <mariadb.gtid.port>3306</mariadb.gtid.port>
                 <mariadb.gtid.replica.port>4306</mariadb.gtid.replica.port>
                 <docker.dbs>debezium/mariadb-server-gtids-test-database,debezium/mariadb-server-gtids-test-database-replica</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mariadb.gtid.port}</database.port>
-                <database.replica.port>${mariadb.gtid.replica.port}</database.replica.port>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mariadb.gtid.port}</database.port>
+                                <database.replica.port>${mariadb.gtid.replica.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         Use the alternative Docker image for MariaDB.
@@ -792,11 +814,22 @@
             <properties>
                 <!-- Docker properties -->
                 <docker.dbs>debezium/mariadb-server-test-database-ssl</docker.dbs>
-                <!-- Integration test properties -->
-                <database.port>${mariadb.ssl.port}</database.port>
-                <database.replica.port>${mariadb.ssl.port}</database.replica.port>
                 <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mariadb.ssl.port}</database.port>
+                                <database.replica.port>${mariadb.ssl.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>apicurio</id>
