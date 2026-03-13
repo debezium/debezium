@@ -25,7 +25,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.util.Requirements;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 
@@ -431,10 +430,10 @@ public class HeaderToValueTest {
 
     @Test
     @FixFor("DBZ-1669")
-    public void whenNestedFieldParentDoesNotExistAnErrorIsThrown() {
+    public void whenNestedFieldParentDoesNotExistTheParentStructIsCreated() {
         // This test verifies issue #1669: when you specify nested fields like
         // "headers.h1,headers.h2,headers.h3" but the "headers" struct doesn't exist
-        // in the schema, the SMT should raise an error rather than silently ignoring them.
+        // in the schema, the SMT should create the parent struct rather than silently ignoring them.
 
         headerToValue.configure(Map.of(
                 "headers", "Event_Type,ce_type,X-B3-TraceId",
@@ -458,9 +457,45 @@ public class HeaderToValueTest {
         sourceRecord.headers().add("ce_type", "ce_type_value", Schema.STRING_SCHEMA);
         sourceRecord.headers().add("X-B3-TraceId", "trace_id_value", Schema.STRING_SCHEMA);
 
-        assertThatThrownBy(() -> headerToValue.apply(sourceRecord))
-                .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("headers")
-                .hasMessageContaining("does not exist");
+        SourceRecord transformedRecord = headerToValue.apply(sourceRecord);
+
+        Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
+        assertThat(payloadStruct.get("headers")).isNotNull();
+        Struct headers = Requirements.requireStruct(payloadStruct.get("headers"), "");
+        assertThat(headers.get("h1")).isEqualTo("event_type_value");
+        assertThat(headers.get("h2")).isEqualTo("ce_type_value");
+        assertThat(headers.get("h3")).isEqualTo("trace_id_value");
+    }
+
+    @Test
+    public void whenCreatingNewNestedFieldThatDoesNotExistInPayloadItShouldCreateIt() {
+
+        headerToValue.configure(Map.of(
+                "headers", "h1",
+                "fields", "newParent.newField",
+                "operation", "copy"));
+
+        Struct row = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "a product");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+
+        Struct payload = createEnvelope.create(row, null, Instant.now());
+        SourceRecord sourceRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+        sourceRecord.headers().add("h1", "header value", Schema.STRING_SCHEMA);
+
+        SourceRecord transformedRecord = headerToValue.apply(sourceRecord);
+
+        Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
+        assertThat(payloadStruct.get("newParent")).isNotNull();
+        Struct newParent = Requirements.requireStruct(payloadStruct.get("newParent"), "");
+        assertThat(newParent.get("newField")).isEqualTo("header value");
+
     }
 }
