@@ -25,6 +25,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.util.Requirements;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 
@@ -426,5 +427,40 @@ public class HeaderToValueTest {
         SourceRecord transformedRecord = headerToValue.apply(readRecord);
 
         assertThat(transformedRecord).isEqualTo(readRecord);
+    }
+
+    @Test
+    @FixFor("DBZ-1669")
+    public void whenNestedFieldParentDoesNotExistAnErrorIsThrown() {
+        // This test verifies issue #1669: when you specify nested fields like
+        // "headers.h1,headers.h2,headers.h3" but the "headers" struct doesn't exist
+        // in the schema, the SMT should raise an error rather than silently ignoring them.
+
+        headerToValue.configure(Map.of(
+                "headers", "Event_Type,ce_type,X-B3-TraceId",
+                "fields", "headers.h1,headers.h2,headers.h3",
+                "operation", "copy"));
+
+        Struct row = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "a product");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+
+        Struct payload = createEnvelope.create(row, null, Instant.now());
+        SourceRecord sourceRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+        sourceRecord.headers().add("Event_Type", "event_type_value", Schema.STRING_SCHEMA);
+        sourceRecord.headers().add("ce_type", "ce_type_value", Schema.STRING_SCHEMA);
+        sourceRecord.headers().add("X-B3-TraceId", "trace_id_value", Schema.STRING_SCHEMA);
+
+        assertThatThrownBy(() -> headerToValue.apply(sourceRecord))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("headers")
+                .hasMessageContaining("does not exist");
     }
 }
