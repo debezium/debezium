@@ -70,6 +70,7 @@ Aristofanis Lekkos
 Arkoprabho Chakraborti
 artiship
 Arthur Le Ray
+Artur Albov
 Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
@@ -364,6 +365,7 @@ Jure Kajzer
 Justin Hiza
 Kanha Gupta
 Kanthi Subramanian
+Kartik Angiras
 Katerina Galieva
 Katsumi Miyajima
 Kaushik Iyer
@@ -619,6 +621,7 @@ Shushant Kumar
 Shyama Praveena S
 SiuFay
 Siddhant Agnihotry
+Siddhant Chaturvedi
 Stanislav Deviatov
 Stanley Shyiko
 Stathis Souris
@@ -785,4 +788,5 @@ Pierre-Yves Péton
 Jiang Zhu
 William Xiang
 Shiwanming
+Divyansh Agrawal
 Divyanshu Kumar
