@@ -171,6 +171,58 @@ CockroachDB changefeeds handle schema changes natively by performing a _backfill
 This means no events are lost during the transition, and downstream consumers see the new columns as soon as the backfill completes.
 
 // Type: concept
+// ModuleID: cockroachdb-incremental-snapshots
+// Title: Incremental snapshots
+[[cockroachdb-incremental-snapshots]]
+=== Incremental snapshots
+
+The CockroachDB connector supports {prodname} {link-prefix}:{link-signalling}#debezium-signaling-incremental-snapshots[signal-based incremental snapshots].
+An incremental snapshot re-reads existing rows from one or more tables and emits them as `op=r` (read) events, while the connector continues to capture ongoing changes without interruption.
+
+To use incremental snapshots:
+
+. Create a signaling table in CockroachDB:
++
+[source,sql]
+----
+CREATE TABLE debezium_signal (
+    id STRING PRIMARY KEY,
+    type STRING NOT NULL,
+    data STRING
+);
+----
+
+. Add the signaling table to the connector configuration:
++
+[source,json]
+----
+{
+    "signal.data.collection": "mydb.public.debezium_signal",
+    "table.include.list": "public.my_table,public.debezium_signal"
+}
+----
++
+The signaling table must be included in `table.include.list` so the changefeed delivers signal events to the connector.
+
+. To trigger an incremental snapshot, insert a signal row:
++
+[source,sql]
+----
+INSERT INTO debezium_signal (id, type, data) VALUES
+    ('snap-1', 'execute-snapshot',
+     '{"data-collections": ["mydb.public.my_table"]}');
+----
+
+The connector re-reads all rows from the specified table(s) and emits them as `op=r` events.
+You can use incremental snapshots to:
+
+* Re-populate a downstream consumer that lost data.
+* Backfill a newly added sink or topic.
+* Verify source-target consistency by re-snapshotting and comparing.
+
+For more information about signaling, see {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-cockroachdb-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} CockroachDB change event records
 [[cockroachdb-topic-names]]
@@ -1218,8 +1270,6 @@ In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when 
 
 * **Multi-table changefeed**: The connector creates a single changefeed for all configured tables and consumes all per-table Kafka topics concurrently in a single KafkaConsumer.
 This is the recommended approach to minimize the number of changefeed jobs on the CockroachDB cluster.
-
-* **No incremental snapshots**: The connector does not yet support signal-based incremental snapshots (see link:https://github.com/debezium/dbz/issues/1630[debezium/dbz#1630]).
 
 * **Kafka sink only**: The connector currently only supports Kafka as the intermediate changefeed sink.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
