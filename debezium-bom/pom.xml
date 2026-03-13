@@ -32,7 +32,7 @@
         <version.opentelemetry>1.59.0</version.opentelemetry>
 
         <!-- HTTP client -->
-        <version.okhttp>4.8.1</version.okhttp>
+        <version.okhttp>4.9.2</version.okhttp>
 
         <!-- Scripting -->
         <version.groovy>4.0.17</version.groovy>
