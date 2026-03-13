@@ -27,6 +27,8 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+
 /**
  * A set of utilities for more easily creating various kinds of transformations.
  */
@@ -34,6 +36,7 @@ public class ConnectRecordUtil {
 
     private static final String UPDATE_DESCRIPTION = "updateDescription";
     public static final String NESTING_SEPARATOR = ".";
+    public static final String NESTING_SEPARATOR_REGEX = "\\" + NESTING_SEPARATOR;
     public static final String ROOT_FIELD_NAME = "payload";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectRecordUtil.class);
@@ -126,7 +129,35 @@ public class ConnectRecordUtil {
 
     public static Schema makeNewSchema(Schema oldSchema, List<NewEntry> newEntries) {
         List<String> nestedFields = newEntries.stream().filter(e -> e.name().contains(NESTING_SEPARATOR)).map(e -> e.name()).collect(Collectors.toList());
+        validateNestedFieldsExist(oldSchema, nestedFields);
         return buildNewSchema(ROOT_FIELD_NAME, oldSchema, newEntries, nestedFields, 0);
+    }
+
+    private static void validateNestedFieldsExist(Schema schema, List<String> nestedFields) {
+
+        for (String nestedField : nestedFields) {
+            String[] parts = nestedField.split(NESTING_SEPARATOR_REGEX);
+            Schema currentSchema = schema;
+
+            for (int i = 0; i < parts.length - 1; i++) {
+                String parentFieldName = parts[i];
+                org.apache.kafka.connect.data.Field field = currentSchema.field(parentFieldName);
+
+                if (field == null) {
+                    throw new DebeziumException(
+                            String.format("Field '%s' does not exist in the schema. Cannot add nested field '%s'.",
+                                    parentFieldName, nestedField));
+                }
+
+                if (field.schema().type().isPrimitive()) {
+                    throw new DebeziumException(
+                            String.format("Field '%s' is a primitive type, not a struct. Cannot add nested field '%s'.",
+                                    parentFieldName, nestedField));
+                }
+
+                currentSchema = field.schema();
+            }
+        }
     }
 
     private static Schema buildNewSchema(String fieldName, Schema oldSchema, List<NewEntry> newEntries, List<String> nestedFields, int level) {
@@ -157,7 +188,7 @@ public class ConnectRecordUtil {
     }
 
     private static Optional<String> getFieldName(String destinationFieldName, String fieldName, int level) {
-        String[] nestedNames = destinationFieldName.split("\\.");
+        String[] nestedNames = destinationFieldName.split(NESTING_SEPARATOR_REGEX);
         if (isRootField(fieldName, nestedNames)) {
             return Optional.of(nestedNames[0]);
         }
