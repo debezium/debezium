@@ -95,7 +95,7 @@ public class Key {
          * Pattern for defining the PK columns of a given table, in the form of "table:column1(,column2,...)",
          * optionally with leading/trailing whitespace.
          */
-        public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\\s*([^\\s:]+):([^:\\s]+)\\s*$");
+        public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\\s*([^:]+):([^:,]+(,[^:,]+)*)\\s*$");
 
         public static final Pattern PATTERN_SPLIT = Pattern.compile(";");
         private static final Pattern TABLE_SPLIT = Pattern.compile(":");
@@ -119,10 +119,10 @@ public class Key {
             // will become => [inventory.customers.pk1,inventory.customers.pk2,(.*).purchaseorders.pk3,(.*).purchaseorders.pk4]
             // then joining those values
             List<Predicate<ColumnId>> predicates = new ArrayList<>(Arrays.stream(PATTERN_SPLIT.split(fullyQualifiedColumnNames))
-                    .map(TABLE_SPLIT::split)
+                    .map(s -> TABLE_SPLIT.split(s, 2))
                     .collect(
                             ArrayList<String>::new,
-                            (m, p) -> Arrays.asList(COLUMN_SPLIT.split(p[1])).forEach(c -> m.add(p[0] + "." + c)),
+                            (m, p) -> Arrays.asList(COLUMN_SPLIT.split(p[1])).forEach(c -> m.add(p[0] + "." + c.trim())),
                             ArrayList::addAll))
                     .stream()
                     .map(regex -> Predicates.includes(regex, ColumnId::toString))
