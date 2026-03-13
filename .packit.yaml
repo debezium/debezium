@@ -242,6 +242,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 21.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
 
   ###############################################################################################
@@ -264,6 +265,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 21.3.0-xs
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
             ORACLE_ARG: "-Poracle-xstream"
 
@@ -287,6 +289,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
 
   ###############################################################################################
@@ -310,6 +313,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
             ORACLE_PROFILE_ARGS: "-Poracle-logminer-unbuffered -pl debezium-connector-oracle"
 
@@ -333,6 +337,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0-xs
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
             ORACLE_ARG: "-Poracle-xstream"
 
@@ -357,6 +362,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 23.3.0.0
+            ORACLE_REGISTRY: "container-registry.oracle.com/database/free"
             ORACLE_PROFILE_ARGS: "-Poracle-23 -pl debezium-connector-oracle"
             TEST_PROFILE: oracle
 
@@ -381,6 +387,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             ORACLE_PROFILE_ARGS: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
             TEST_PROFILE: oracle
 
@@ -405,5 +412,6 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
             TEST_PROFILE: oracle

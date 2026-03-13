@@ -27,7 +27,7 @@ elif [ "$TEST_PROFILE" = "oracle" ]
 then
   source ${HOME}/install-oracle-driver.sh
   export LD_LIBRARY_PATH=$ORACLE_ARTIFACT_DIR
-  if [ "$ORACLE_VERSION" = "23.3.0.0" ]
+  if [ "$ORACLE_REGISTRY" != "quay.io/rh_integration/dbz-oracle" ]
   then
     export ORACLE_HOME=/usr/lib/oracle/21/client64
     export PATH=$ORACLE_HOME/bin:$PATH
