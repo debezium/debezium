@@ -185,10 +185,21 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                     cachedOldToastedValues.put(columnName, value);
                 }
                 else {
-                    if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(value)) {
-                        final Object candidate = cachedOldToastedValues.get(columnName);
-                        if (candidate != null) {
-                            value = candidate;
+                    // DBZ-1258 handle toasted column: recover from cache or fall back to sentinel to avoid null
+                    boolean isExplicitToastMarker = UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(value);
+                    boolean isNullOnToastedColumn = (value == null) && column.isToastedColumn();
+
+                    if (isExplicitToastMarker || isNullOnToastedColumn) {
+                        final Object cachedOldValue = cachedOldToastedValues.get(columnName);
+                        if (cachedOldValue != null) {
+                            // Best case: we have the real value from the old tuple; use it.
+                            value = cachedOldValue;
+                        }
+                        else if (isNullOnToastedColumn) {
+                            // No cache hit — use the type-specific sentinel for this column so that
+                            // converters produce the correct placeholder format (string, array, hstore, etc.)
+                            value = new UnchangedToastedReplicationMessageColumn(column.getName(), column.getType(),
+                                    column.getType().getName(), column.isOptional()).getValue(null, false);
                         }
                     }
                 }
