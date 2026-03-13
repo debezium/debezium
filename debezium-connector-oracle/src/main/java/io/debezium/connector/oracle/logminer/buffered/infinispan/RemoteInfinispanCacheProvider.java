@@ -27,8 +27,11 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.CompositeTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.EventCountStrategy;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.SpillStrategy;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.LogMinerEventMarshallerImpl;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.TransactionMarshallerImpl;
 
@@ -60,7 +63,24 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
         this.cacheManager = new RemoteCacheManager(createClientConfig(connectorConfig), true);
 
-        this.transactionCache = createTransactionCache(connectorConfig);
+        // If the connector is configured to use MEMORY buffer with Infinispan remote as the spill provider,
+        // compose a Memory event store + Infinispan spill cache into a CompositeTransactionCache so the
+        // composite semantics (memory first, spilled second) match other providers like Chronicle.
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY
+                && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            // Create Infinispan remote spillover cache and strategy, then create composite
+            InfinispanLogMinerTransactionCache spilloverCache = createTransactionCache(connectorConfig);
+
+            long spillThreshold = connectorConfig.getLogMiningBufferSpillThreshold();
+            SpillStrategy strategy = new EventCountStrategy(spillThreshold);
+            int indexThreshold = connectorConfig.getLogMiningBufferSpillInMemoryIndexThreshold();
+
+            this.transactionCache = new CompositeTransactionCache<InfinispanTransaction>(spilloverCache, strategy, indexThreshold);
+        }
+        else {
+            this.transactionCache = createTransactionCache(connectorConfig);
+        }
+
         this.processedTransactionsCache = createProcessedTransactionCache(connectorConfig);
         this.schemaChangesCache = createSchemaChangesCache(connectorConfig);
 

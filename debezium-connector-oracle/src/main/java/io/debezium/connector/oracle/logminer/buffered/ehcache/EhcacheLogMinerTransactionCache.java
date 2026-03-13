@@ -175,6 +175,18 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
+    public boolean removeTransactionEventWithEventKey(EhcacheTransaction transaction, int eventKey) {
+        final var eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (eventIds != null && eventIds.contains(eventKey)) {
+            final String eventKeyStr = transaction.getEventId(eventKey);
+            eventCache.remove(eventKeyStr);
+            eventIds.remove(eventKey);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public int getTransactionEventCount(EhcacheTransaction transaction) {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
