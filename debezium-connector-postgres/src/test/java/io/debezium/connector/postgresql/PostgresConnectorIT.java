@@ -4245,4 +4245,86 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, 1);
     }
+
+    @Test
+    @FixFor("DBZ-1258")
+    public void shouldEmitPlaceholderForUnchangedJsonbColumnOnUpdate() throws Exception {
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS dbz1258 CASCADE;",
+                "CREATE SCHEMA dbz1258;",
+                "CREATE TABLE dbz1258.toast_test (pk SERIAL PRIMARY KEY, label TEXT NOT NULL, payload JSONB);");
+
+        final String topic = topicName("dbz1258.toast_test");
+
+        // The placeholder Debezium emits when a TOAST column value cannot be obtained
+        // from the WAL stream (configured via UNAVAILABLE_VALUE_PLACEHOLDER, default below).
+        final String placeholder = "__debezium_unavailable_value";
+
+        // Build a jsonb value large enough (>2KB) to be stored via TOAST by PostgreSQL.
+        // Without a TOASTed value, pgoutput sends the column as type 't' (text present) on
+        // every UPDATE — the fix code path is never reached. With a real TOAST value,
+        // pgoutput sends type 'u' (unchanged toast) for an UPDATE that did not modify the column.
+        final String largeValue = RandomStringUtils.randomAlphanumeric(10000);
+        final String largeJsonb = "{\"data\": \"" + largeValue + "\"}";
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "dbz1258.toast_test")
+                // Keep REPLICA IDENTITY DEFAULT (no explicit setting) so that old tuples
+                // only carry primary-key columns — this is the setting that triggers DBZ-1258.
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // ── Scenario 1: INSERT — jsonb must be the real inserted value ─────
+        TestHelper.execute(
+                "INSERT INTO dbz1258.toast_test (label, payload) VALUES ('initial', '" + largeJsonb.replace("'", "''") + "');");
+
+        SourceRecords insertRecords = consumeRecordsByTopic(1);
+        assertThat(insertRecords.recordsForTopic(topic)).hasSize(1);
+
+        Struct insertAfter = ((Struct) insertRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(insertAfter.get("payload")).isEqualTo(largeJsonb);
+
+        // ── Scenario 2: UPDATE that does NOT touch the jsonb column ────────
+        // Before fix → null. After fix → placeholder string.
+        TestHelper.execute(
+                "UPDATE dbz1258.toast_test SET label = 'updated' WHERE pk = 1;");
+
+        SourceRecords updateRecords = consumeRecordsByTopic(1);
+        assertThat(updateRecords.recordsForTopic(topic)).hasSize(1);
+
+        Struct updateAfter = ((Struct) updateRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(updateAfter.get("label")).isEqualTo("updated");
+
+        // unchanged jsonb must not be null — real value from cache or placeholder, never null
+        Object payloadAfterUpdate = updateAfter.get("payload");
+        assertThat(payloadAfterUpdate).isNotNull();
+        assertThat(payloadAfterUpdate).satisfiesAnyOf(
+                v -> assertThat(v).isEqualTo(largeJsonb),
+                v -> assertThat(v).isEqualTo(placeholder));
+
+        // ── Scenario 3: INSERT with an explicit NULL jsonb — must stay null ─
+        // A genuine NULL in the column must not be confused with a TOAST marker.
+        TestHelper.execute(
+                "INSERT INTO dbz1258.toast_test (label, payload) VALUES ('nulljson', NULL);");
+
+        SourceRecords nullInsertRecords = consumeRecordsByTopic(1);
+        Struct nullInsertAfter = ((Struct) nullInsertRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(nullInsertAfter.get("payload")).isNull();
+
+        // ── Scenario 4: UPDATE that DOES change the jsonb column ──────────
+        // When Debezium can see the new value in the WAL it must pass it through unchanged.
+        TestHelper.execute(
+                "UPDATE dbz1258.toast_test SET payload = '{\"new\": \"data\"}' WHERE pk = 1;");
+
+        SourceRecords changedRecords = consumeRecordsByTopic(1);
+        Struct changedAfter = ((Struct) changedRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(changedAfter.get("payload")).isEqualTo("{\"new\": \"data\"}");
+
+        stopConnector();
+        TestHelper.execute("DROP SCHEMA IF EXISTS dbz1258 CASCADE;");
+    }
 }
