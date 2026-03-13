@@ -5,12 +5,14 @@
  */
 package io.debezium.connector.binlog;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Path;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,6 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
