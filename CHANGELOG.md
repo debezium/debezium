@@ -3,9 +3,67 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
-================================================================================
-                               CHANGELOG.md
-================================================================================
+## 3.5.0.Beta2
+March 13rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Beta2)
+
+### New features since 3.5.0.Beta1
+
+* When restarting connector, minimize number of initial logs read [DBZ-7791] [debezium/dbz#1279](https://github.com/debezium/dbz/issues/1279)
+* Add JMX metrics for CDC directory size and utilization in Cassandra connector [debezium/dbz#1618](https://github.com/debezium/dbz/issues/1618)
+* CockroachDB connector: Schema evolution detection (DDL changes without restart) [debezium/dbz#1629](https://github.com/debezium/dbz/issues/1629)
+* CockroachDB connector: Heartbeat support using resolved timestamps [debezium/dbz#1631](https://github.com/debezium/dbz/issues/1631)
+* Support Oracle 26ai (23.26.x) [debezium/dbz#1649](https://github.com/debezium/dbz/issues/1649)
+* Add a default value for OpenLineage openlineage.integration.job.description [DBZ-9421] [debezium/dbz#1084](https://github.com/debezium/dbz/issues/1084)
+* Add connection validator for Redis [DBZ-9438] [debezium/dbz#1095](https://github.com/debezium/dbz/issues/1095)
+* AzureBlobSchemaHistory support sovereign clouds [debezium/dbz#1659](https://github.com/debezium/dbz/issues/1659)
+* Add OpenTelemetry support to server Docker image [debezium/dbz#1660](https://github.com/debezium/dbz/issues/1660)
+* Improve CI / Jenkins Pipeline for Oracle 23 & 26 [debezium/dbz#1665](https://github.com/debezium/dbz/issues/1665)
+
+
+### Breaking changes since 3.5.0.Beta1
+
+None
+
+
+### Fixes since 3.5.0.Beta1
+
+* Debezium throws exception even when SQL user has read access [DBZ-9336] [debezium/dbz#1242](https://github.com/debezium/dbz/issues/1242)
+* Postgres Connector fails to retrieve schema for new tables [DBZ-8668] [debezium/dbz#1329](https://github.com/debezium/dbz/issues/1329)
+* DEBEZIUM_SIGNALS Warning: Select statement was not provided [debezium/dbz#1642](https://github.com/debezium/dbz/issues/1642)
+* Unable to parse ROW ARCHIVAL DDL and corresponding DML with hidden ORA_ARCHIVE_STATE column [debezium/dbz#1650](https://github.com/debezium/dbz/issues/1650)
+* InformixStreamingChangeEventSource can cause NullPointerException [debezium/dbz#1653](https://github.com/debezium/dbz/issues/1653)
+* Pull actual default values into description of configuration properties [DBZ-283] [debezium/dbz#104](https://github.com/debezium/dbz/issues/104)
+* Contributor check workflow is not working [debezium/dbz#1661](https://github.com/debezium/dbz/issues/1661)
+* PostgreSQL pgvector sparsevec parsing fails on empty vectors (e.g., {}/5), incorrectly emitting null [debezium/dbz#1671](https://github.com/debezium/dbz/issues/1671)
+* Unable to parse DML for CDC after initial snapshot on a table with ROW ARCHIVAL enabled [debezium/dbz#1676](https://github.com/debezium/dbz/issues/1676)
+* Incorrect values exposed for TSTZRANGE and TSRANGE depending on timezone [DBZ-1888] [debezium/dbz#295](https://github.com/debezium/dbz/issues/295)
+* Mongo DB connector should properly validate if password and rights [DBZ-3126] [debezium/dbz#425](https://github.com/debezium/dbz/issues/425)
+* Oracle OLR adapter: BINARY_FLOAT whole-number values converted to null [debezium/dbz#1679](https://github.com/debezium/dbz/issues/1679)
+* Oracle OLR adapter: NUMBER values with >15 significant digits lose precision [debezium/dbz#1681](https://github.com/debezium/dbz/issues/1681)
+* Decoderbuf plugin connector ,When Error in exporting money type data [DBZ-2175] [debezium/dbz#325](https://github.com/debezium/dbz/issues/325)
+* Exception ORA-00310 with RAC and archive log only mode [DBZ-6013] [debezium/dbz#745](https://github.com/debezium/dbz/issues/745)
+
+
+### Other changes since 3.5.0.Beta1
+
+* specify `jandex` version in debezium-quarkus [debezium/dbz#1626](https://github.com/debezium/dbz/issues/1626)
+* Upgrade MySQL binlog client to 0.40.5 [debezium/dbz#1652](https://github.com/debezium/dbz/issues/1652)
+* Update to com.mchange:c3p0 to 0.12.0 [debezium/dbz#1654](https://github.com/debezium/dbz/issues/1654)
+* Optimize platform-conductor Docker image size [debezium/dbz#1664](https://github.com/debezium/dbz/issues/1664)
+* Update the Lint version in Platform UI [debezium/dbz#1670](https://github.com/debezium/dbz/issues/1670)
+* Refactor duplicated validator logic for include/exclude filter properties [debezium/dbz#1674](https://github.com/debezium/dbz/issues/1674)
+* Multiple doc glitches in io.debezium.config.Configuration [DBZ-276] [debezium/dbz#103](https://github.com/debezium/dbz/issues/103)
+* Make mysql images with arm64/aarch64 [debezium/dbz#1678](https://github.com/debezium/dbz/issues/1678)
+* Replace all leftover usage of blacklist/whitelist/master/slave in tests etc [DBZ-2433] [debezium/dbz#357](https://github.com/debezium/dbz/issues/357)
+* ObjectSizeCalculator fails with preview builds [DBZ-3085] [debezium/dbz#420](https://github.com/debezium/dbz/issues/420)
+* Verify/add integration tests for all supported MySQL database for all modes [DBZ-730] [debezium/dbz#143](https://github.com/debezium/dbz/issues/143)
+* Remove deprecated proc-triggering-an-incremental-snapshot.adoc [debezium/dbz#1686](https://github.com/debezium/dbz/issues/1686)
+* Support SSL for SQL Server connector [DBZ-4139] [debezium/dbz#516](https://github.com/debezium/dbz/issues/516)
+* ConfigMapOffsetStoreTest tests in debezium-storage module fails [debezium/dbz#1689](https://github.com/debezium/dbz/issues/1689)
+* Enhance smoke tests that verify the Debezium Server [DBZ-8518] [debezium/dbz#1025](https://github.com/debezium/dbz/issues/1025)
+
+
+
 ## 3.5.0.Beta1
 February 26th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Beta1)
 
