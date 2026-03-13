@@ -41,6 +41,13 @@ Represents the data change workload for {prodname} to process.
 |`long`
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
+|[[connectors-strm-metric-numberofunchangedeventsskipped_{context}]]<<connectors-strm-metric-numberofunchangedeventsskipped_{context}, `NumberOfUnchangedEventsSkipped`>>
+|`long`
+|The number of update events skipped by the connector since its last start or metrics reset because no monitored columns changed.
+ifdef::MONGODB[]
+Note that for the MongoDB connector, this metric is not supported and will return `-1`.
+endif::MONGODB[]
+
 |[[connectors-strm-metric-capturedtables_{context}]]<<connectors-strm-metric-capturedtables_{context}, `CapturedTables`>>
 |`string[]`
 |The list of tables that are captured by the connector.

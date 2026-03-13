@@ -31,6 +31,7 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
+    private final AtomicLong numberOfUnchangedEventsSkipped = new AtomicLong(-1);
 
     private final CapturedTablesSupplier capturedTablesSupplier;
     private final EventMetadataProvider metadataProvider;
@@ -70,8 +71,21 @@ public class StreamingMeter implements StreamingMetricsMXBean {
     }
 
     @Override
+    public long getNumberOfUnchangedEventsSkipped() {
+        return numberOfUnchangedEventsSkipped.get();
+    }
+
+    @Override
     public void resetLagBehindSource() {
         lagBehindSource.set(null);
+    }
+
+    public void enableUnchangedEventsMetric() {
+        numberOfUnchangedEventsSkipped.compareAndSet(-1, 0);
+    }
+
+    public void onUnchangedEventSkipped() {
+        numberOfUnchangedEventsSkipped.incrementAndGet();
     }
 
     public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
@@ -99,5 +113,6 @@ public class StreamingMeter implements StreamingMetricsMXBean {
         numberOfCommittedTransactions.set(0);
         sourceEventPosition.set(Collections.emptyMap());
         lastTransactionId.set(null);
+        numberOfUnchangedEventsSkipped.updateAndGet(x -> x >= 0 ? 0 : x);
     }
 }

@@ -90,6 +90,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final CommonConnectorConfig connectorConfig;
     private final EnumSet<Operation> skippedOperations;
     private final boolean neverSkip;
+    private final boolean supportsSkipMessagesWithoutChange;
 
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
@@ -166,6 +167,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
+        this.supportsSkipMessagesWithoutChange = connectorConfig.supportsSkipMessagesWithoutChange();
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
@@ -205,6 +207,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
+        this.supportsSkipMessagesWithoutChange = connectorConfig.supportsSkipMessagesWithoutChange();
         this.transactionMonitor = transactionMonitor;
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
@@ -327,6 +330,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                 incrementalSnapshotChangeEventSource.processMessage(partition, dataCollectionId, key, offset);
                             }
                             streamingReceiver.changeRecord(partition, schema, operation, key, value, offset, headers);
+                        }
+                    }
+
+                    @Override
+                    public void unchangedEventSkipped(P partition) {
+                        if (supportsSkipMessagesWithoutChange) {
+                            eventListener.onUnchangedEventSkipped(partition);
                         }
                     }
 

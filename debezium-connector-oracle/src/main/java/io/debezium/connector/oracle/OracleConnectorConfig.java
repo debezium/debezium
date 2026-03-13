@@ -1142,6 +1142,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return getAdapter().getHistoryRecordComparator();
     }
 
+    @Override
+    public boolean supportsSkipMessagesWithoutChange() {
+        return true;
+    }
+
     /**
      * Defines modes of representation of {@code interval} datatype
      */

@@ -680,6 +680,11 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     @Override
+    public boolean supportsSkipMessagesWithoutChange() {
+        return true;
+    }
+
+    @Override
     protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
         return true;
     }

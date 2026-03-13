@@ -644,6 +644,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
+    public boolean supportsSkipMessagesWithoutChange() {
+        return true;
+    }
+
+    @Override
     protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
         return true;
     }

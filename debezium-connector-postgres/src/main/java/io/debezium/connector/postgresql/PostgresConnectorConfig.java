@@ -1542,6 +1542,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode;
     }
 
+    @Override
+    public boolean supportsSkipMessagesWithoutChange() {
+        return true;
+    }
+
     public SnapshotIsolationMode getSnapshotIsolationMode() {
         return this.snapshotIsolationMode;
     }
