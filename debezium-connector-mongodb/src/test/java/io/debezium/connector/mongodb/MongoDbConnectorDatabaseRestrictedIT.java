@@ -177,14 +177,14 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
     }
 
     @Test
-    void shouldFailInGuardRailValidationWithoutPermissions() {
+    void shouldFailInGuardRailValidationWhenCollectionLimitExceeded() {
         var logInterceptor = new LogInterceptor(MongoDbConnections.class);
 
         // Populate collection
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
 
-        // Use the DB configuration to define the connector's configuration ...
-        var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD);
+        // Use a valid user - guardrail failure is triggered by collection count exceeding the limit
+        var config = connectorConfiguration(TEST_ALLOWED_USER, TEST_ALLOWED_PWD);
         // Set the guardrail to 1 collection, which should enforce the guardrail validation check
         config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1).build();
 
