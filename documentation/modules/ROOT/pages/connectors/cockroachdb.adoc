@@ -155,6 +155,22 @@ To enable {prodname} heartbeat records on the `__debezium-heartbeat.<topic.prefi
 The `cockroachdb.changefeed.resolved.interval` property controls how frequently CockroachDB emits resolved timestamps (default: `10s`).
 
 // Type: concept
+// ModuleID: cockroachdb-schema-evolution
+// Title: How the CockroachDB connector handles schema evolution
+[[cockroachdb-schema-evolution]]
+=== Schema evolution
+
+The connector automatically detects DDL changes such as `ALTER TABLE ADD COLUMN`, `DROP COLUMN`, and `RENAME COLUMN` without requiring a restart.
+When an incoming changefeed event contains fields that do not match the registered table schema, the connector:
+
+1. Detects the mismatch by comparing event field names against registered column names.
+2. Re-queries `information_schema` to retrieve the updated table definition.
+3. Refreshes the internal schema and continues processing with the new column layout.
+
+CockroachDB changefeeds handle schema changes natively by performing a _backfill_ -- re-emitting all existing rows with the updated schema.
+This means no events are lost during the transition, and downstream consumers see the new columns as soon as the backfill completes.
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-cockroachdb-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} CockroachDB change event records
 [[cockroachdb-topic-names]]
@@ -1204,9 +1220,6 @@ In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when 
 This is the recommended approach to minimize the number of changefeed jobs on the CockroachDB cluster.
 
 * **No incremental snapshots**: The connector does not yet support signal-based incremental snapshots (see link:https://github.com/debezium/dbz/issues/1630[debezium/dbz#1630]).
-
-* **No schema evolution detection**: The connector does not currently detect schema changes automatically.
-If you alter a table's schema, you must restart the connector to pick up the changes (see link:https://github.com/debezium/dbz/issues/1629[debezium/dbz#1629]).
 
 * **Kafka sink only**: The connector currently only supports Kafka as the intermediate changefeed sink.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
