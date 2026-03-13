@@ -32,6 +32,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     private final Cache<String, EhcacheTransaction> transactionCache;
     private final Cache<String, LogMinerEvent> eventCache;
+    private final Cache<String, Boolean> rollbackCache;
     private final EhcacheEvictionListener evictionListener;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
@@ -39,9 +40,11 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
                                            Cache<String, LogMinerEvent> eventCache,
+                                           Cache<String, Boolean> rollbackCache,
                                            EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
+        this.rollbackCache = rollbackCache;
         this.evictionListener = evictionListener;
 
         primeHeapCacheFromOffHeapCaches();
@@ -101,14 +104,14 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
+    public void forEachEvent(EhcacheTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
-                    if (event != null && !predicate.test(event)) {
+                    final String eventKey = transaction.getEventId(iterator.next());
+                    if (!predicate.test(eventCache.get(eventKey), rollbackCache.containsKey(eventKey))) {
                         break;
                     }
                 }
@@ -141,24 +144,24 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void removeTransactionEvents(EhcacheTransaction transaction) {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            eventCache.removeAll(events
-                    .stream()
+            final Set<String> keys = events.stream()
                     .map(transaction::getEventId)
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toSet());
+            eventCache.removeAll(keys);
+            rollbackCache.removeAll(keys);
         }
         eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
-    public boolean removeTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
+    public boolean rollbackTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId) {
-                eventCache.remove(eventKey);
-                eventIds.remove(eventId);
+            if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
+                rollbackCache.put(eventKey, Boolean.TRUE);
                 return true;
             }
         }
@@ -192,6 +195,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
+        rollbackCache.clear();
         eventIdsByTransactionId.clear();
     }
 

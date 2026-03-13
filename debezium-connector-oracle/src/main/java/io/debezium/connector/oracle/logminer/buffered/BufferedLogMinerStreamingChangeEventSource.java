@@ -525,12 +525,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setRedoSql(null);
             };
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
-                getTransactionCache().forEachEvent(transaction, event -> {
+                getTransactionCache().forEachEvent(transaction, (event, rolledBack) -> {
                     if (!getContext().isRunning()) {
                         return false;
                     }
                     LOGGER.trace("Dispatching event {}", event.getEventType());
-                    commitConsumer.accept(event, null, 0L);
+                    commitConsumer.accept(event, rolledBack, null, 0L);
                     return true;
                 });
             }
@@ -900,7 +900,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private void removeEventWithRowId(LogMinerEventRow row) {
         final Transaction transaction = getTransactionCache().getTransaction(row.getTransactionId());
         if (transaction != null) {
-            if (removeTransactionEventWithRowId(transaction, row)) {
+            if (rollbackTransactionEventWithRowId(transaction, row)) {
                 return;
             }
             Loggings.logWarningAndTraceRecord(LOGGER, row,
@@ -917,7 +917,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             if (getTransactionCache().streamTransactionsAndReturn(
                     stream -> stream.filter(t -> t.getTransactionId().startsWith(prefix))
-                            .anyMatch(t -> removeTransactionEventWithRowId(t, row)))) {
+                            .anyMatch(t -> rollbackTransactionEventWithRowId(t, row)))) {
                 return;
             }
 
@@ -939,15 +939,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
-     * For the specified transaction and change event, removes the latest event from the event cache that
+     * For the specified transaction and change event, marks as rolled back the latest event from the event cache that
      * matches the transaction and the change event's row identifier values.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param row the event, should not be {@code null}
      * @return true if an event was found and undone, false otherwise
      */
-    private boolean removeTransactionEventWithRowId(Transaction transaction, LogMinerEventRow row) {
-        if (getTransactionCache().removeTransactionEventWithRowId(transaction, row.getRowId())) {
+    private boolean rollbackTransactionEventWithRowId(Transaction transaction, LogMinerEventRow row) {
+        if (getTransactionCache().rollbackTransactionEventWithRowId(transaction, row.getRowId())) {
             // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
             // number of times a given transaction is re-mined.
             getMetrics().increasePartialRollbackCount();
@@ -1186,8 +1186,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private String getLoggedAbandonedTransactionTableNames(Transaction transaction) throws InterruptedException {
         if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
             final Set<String> tableNames = new HashSet<>();
-            getTransactionCache().forEachEvent(transaction, event -> {
-                tableNames.add(event.getTableId().identifier());
+            getTransactionCache().forEachEvent(transaction, (event, rolledBack) -> {
+                if (!rolledBack) {
+                    tableNames.add(event.getTableId().identifier());
+                }
                 return true;
             });
             return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
