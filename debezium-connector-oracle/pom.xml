@@ -837,7 +837,7 @@
                             <images>
                                 <!-- A container for the data server replica set -->
                                 <image>
-                                    <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <name>quay.io/apicurio/apicurio-registry:${version.apicurio}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>
@@ -849,7 +849,7 @@
                                             <color>blue</color>
                                         </log>
                                         <wait>
-                                            <log>.*apicurio-registry-app.*started in.*</log>
+                                            <log>.*Using the following RegistryStorage.*</log>
                                             <time>${apicurio.init.timeout}</time>
                                         </wait>
                                     </run>
