@@ -43,18 +43,6 @@ endif::community[]
 ifdef::product[]
 {prodname} can ingest change events from Oracle by using either the native LogMiner database package or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
 
-[IMPORTANT]
-====
-Use of the {prodname} Oracle connector with XStream is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
-====
 endif::product[]
 
 ifdef::product[]
@@ -134,24 +122,6 @@ This mode is recommended only if you can guarantee that all transactions fit wit
 Otherwise, use the uncommitted changes mode.
 +
 Enable this mode by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `logminer_unbuffered`.
-ifdef::community[]
-+
-[NOTE]
-====
-This feature is currently *incubating* and might change in future releases.
-====
-endif::community[]
-ifdef::product[]
-+
-[IMPORTANT]
-====
-The Committed changes mode setting is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 ifdef::community[]
 OpenLogReplicator::
@@ -3028,16 +2998,12 @@ You can modify the connector configuration to enable the connector to capture ev
 ifdef::product[]
 [IMPORTANT]
 ====
-The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
 
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
-====
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 endif::product[]
 
 ifdef::community[]
@@ -4718,7 +4684,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
@@ -5636,17 +5602,6 @@ To configure the connector to use Oracle XStream, you must apply specific databa
 
 ifdef::product[]
 [IMPORTANT]
-====
-Use of the {prodname} Oracle connector with XStream is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
-====
 endif::product[]
 .Prerequisites
 
