@@ -33,7 +33,6 @@ import com.mongodb.client.MongoClients;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
-import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
@@ -178,22 +177,26 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     @Test
     void shouldFailInGuardRailValidationWhenCollectionLimitExceeded() {
-        var logInterceptor = new LogInterceptor(MongoDbConnections.class);
+        var logInterceptor = new LogInterceptor(ErrorHandler.class);
 
-        // Populate collection
+        // Create two collections to guarantee guardrail limit of 1 is exceeded
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
+        populateCollection(TEST_DATABASE, "items2", INIT_DOCUMENT_COUNT);
 
         // Use a valid user - guardrail failure is triggered by collection count exceeding the limit
         var config = connectorConfiguration(TEST_ALLOWED_USER, TEST_ALLOWED_PWD);
         // Set the guardrail to 1 collection, which should enforce the guardrail validation check
-        config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1).build();
+        config = Configuration.create().with(config)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
 
         // Connector should fail during guardrail validation
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        Assertions.assertThat(logInterceptor.containsMessage("Error while attempting to")).isTrue();
+        Assertions.assertThat(logInterceptor.containsMessage("Guardrail limit exceeded")).isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
