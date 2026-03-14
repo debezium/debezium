@@ -1004,7 +1004,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 new SystemTablesPredicate(config),
                 x -> x.schema() + "." + x.table(),
                 true,
-                DEFAULT_QUERY_FETCH_SIZE,
+                CommonConnectorConfig.DEFAULT_SNAPSHOT_FETCH_SIZE,
                 ColumnFilterMode.SCHEMA,
                 false);
 

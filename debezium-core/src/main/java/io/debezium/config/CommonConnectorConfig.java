@@ -736,6 +736,8 @@ public abstract class CommonConnectorConfig {
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
+    public static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+
     public static final Field SNAPSHOT_FETCH_SIZE = Field.create("snapshot.fetch.size")
             .withDisplayName("Snapshot fetch size")
             .withType(Type.INT)
@@ -743,6 +745,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot.")
+            .withDefault(DEFAULT_SNAPSHOT_FETCH_SIZE)
             .withValidation(Field::isNonNegativeInteger);
 
     public static final Field INCREMENTAL_SNAPSHOT_CHUNK_SIZE = Field.create("incremental.snapshot.chunk.size")

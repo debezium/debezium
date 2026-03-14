@@ -4038,7 +4038,7 @@ Setting a delay interval helps to prevent the connector from restarting snapshot
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[postgresql-property-snapshot-fetch-size]]<<postgresql-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
-|`10240`
+|`2000`
 |During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
 
 |[[postgresql-property-slot-stream-params]]<<postgresql-property-slot-stream-params, `+slot.stream.params+`>>

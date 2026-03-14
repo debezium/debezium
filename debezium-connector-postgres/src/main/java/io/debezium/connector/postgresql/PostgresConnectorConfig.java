@@ -609,7 +609,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
-    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final int DEFAULT_MAX_RETRIES = 6;
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
@@ -1390,7 +1389,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 config,
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
-                DEFAULT_SNAPSHOT_FETCH_SIZE,
+                CommonConnectorConfig.DEFAULT_SNAPSHOT_FETCH_SIZE,
                 ColumnFilterMode.SCHEMA,
                 false);
 

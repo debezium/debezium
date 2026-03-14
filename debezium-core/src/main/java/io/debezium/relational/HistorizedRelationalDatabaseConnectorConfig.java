@@ -14,6 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -30,8 +31,6 @@ import io.debezium.relational.history.SchemaHistoryMetrics;
  * @author Gunnar Morling
  */
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
-
-    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
 
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
@@ -91,7 +90,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
         this(connectorClass, config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema,
-                DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, multiPartitionMode);
+                CommonConnectorConfig.DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, multiPartitionMode);
     }
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,

@@ -4274,7 +4274,7 @@ Setting a delay interval helps to prevent the connector from restarting snapshot
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
-|`10000`
+|`2000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector reads table contents in multiple batches of the specified size.
 
