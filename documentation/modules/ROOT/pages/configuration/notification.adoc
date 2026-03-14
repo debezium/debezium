@@ -64,7 +64,7 @@ In domain-driven design, exported events should always refer to an aggregate.
 For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
 
 |timestamp
-|The time when the notification was created. 
+|The time when the notification was created.
 The value represents the number of milliseconds since the UNIX epoch.
 |===
 
@@ -465,8 +465,8 @@ Declare your implementation in the `META-INF/services/io.debezium.pipeline.notif
 * You have a custom notification channel Java program.
 
 .Procedure
-* To use a notification channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
- +
+* To use a notification channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with.
++
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
 
