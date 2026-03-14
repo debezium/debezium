@@ -262,6 +262,33 @@ The following example shows a data change event with ordered transaction metadat
 }
 ----
 
+[[vitess-connector-generation]]
+=== Connector Generation
+The {prodname} Vitess connector provides a xref:vitess-property-connector-generation[`connector generation`] property that stores the generation number for transaction ordering semantics.
+
+Certain connector configuration changes can affect the way that the connector computes the `transaction-rank` field.
+After you make such a change, you must increment the value of the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+Incrementing the connector generation provides the connector with the information that it needs to stream change events to Kafka from different shards in the correct sequence.
+
+For example, when you set xref:vitess-property-transaction-chunk-size[`vitess.transaction.chunk.size.bytes`] to enable transaction chunking, the connector computes `transaction_rank` from the VGTID of the previous transaction, rather than the VGTID of the current transaction.
+This behavior results, because for chunked transactions, VStream behavior sends the final committed VGTID for a transaction only after it commits the final chunk of the transaction.
+Events produced before and after you enable transaction chunking therefore use different mechanisms to compute rank.
+After you enable transaction chunking, the connector uses a different mechanism to compute rank than it does when chunking is disabled.
+If you do not increment the connector epoch, consumers that process events that result from these different ranking mechanisms can incorrectly sequence events.
+
+.How the connector applies a generation change
+
+When the connector starts, it compares the value of the generation that is stored in the offset to the value that is configured in the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+If the generation values differ, whether the value of the configured generation is higher or lower than the stored value, the connector increments the `transaction_epoch` for all shards by one before it begins streaming.
+When you increment the transaction epoch after a configuration change, events that the connector emits afterward are associated with a later epoch than those emitted before the change.
+The epoch acts as a boundary marker that signals a shift in the connector configuration, enabling  downstream event processing frameworks to reliably distinguish between change events that occur across the transition boundary.
+Because epoch is the primary sort key in the xref:vitess-ordered-transaction-metadata[ordered transaction metadata] comparison logic, consumers can correctly identify post-change events as newer regardless of their `transaction_rank` value.
+
+Increment `vitess.connector.generation` whenever you make any of the following configuration changes that affect transaction ordering semantics:
+
+* Enabling or disabling transaction chunking  (`vitess.transaction.chunk.size.bytes`).
+* Any other change that alters how `transaction_rank` is computed.
+
 [[vitess-efficient-transaction-metadata]]
 === Efficient Transaction Metadata
 
@@ -1799,6 +1826,15 @@ That is, the connector streams all `insert`, `update`, and `delete` operations.
 `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory` provides additional transaction metadata that can help consumers to interpret the correct order of two events, regardless of the order in which they are consumed.
 For more information, see xref:vitess-ordered-transaction-metadata[Ordered transaction metadata].
 
+|[[vitess-property-connector-generation]]<<vitess-property-connector-generation, `+vitess.connector.generation+`>>
+|`0`
+|The generation number for transaction ordering semantics.
+When the connector starts, it compares this value against the generation stored in the Kafka Connect offset.
+If the values differ, the connector increments the `transaction_epoch` for all shards before streaming begins.
+Increment this value after you make configuration changes that affect how `transaction_rank` is computed, such as enabling or disabling transaction chunking.
+This property takes effect only when `transaction.metadata.factory` is set to `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory`.
+For more information, see xref:vitess-connector-generation[Connector Generation].
+
 |[[vitess-property-keepalive-interval-ms]]<<vitess-property-keepalive-interval-ms, `+vitess.keepalive.interval.ms+`>>
 |`Long.MAX_VALUE`
 |Control the interval between periodic gPRC keepalive pings for VStream. Defaults to `Long.MAX_VALUE` (disabled).
@@ -1876,7 +1912,7 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
