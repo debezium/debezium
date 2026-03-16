@@ -1359,7 +1359,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Testing.Print.enable();
 
         populateTable();
-        startConnector();
+        startConnector(additionalConfiguration());
 
         // Start incremental snapshot
         sendAdHocSnapshotSignal();
@@ -1435,7 +1435,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Testing.Print.enable();
 
         populateTable();
-        startConnector();
+        startConnector(additionalConfiguration());
 
         // Start incremental snapshot
         sendAdHocSnapshotSignal();
