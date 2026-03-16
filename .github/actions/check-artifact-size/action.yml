@@ -1,0 +1,410 @@
+name: "Check Artifact Size"
+description: "Checks Debezium artifact files (JAR, tar.gz, zip) size against threshold"
+
+inputs:
+  percentage:
+    description: "Percentage threshold used for repository comparison"
+    required: true
+  base-size-gb:
+    description: "Base size in GiB used for repository comparison"
+    required: true
+  maven-central-warning-threshold:
+    description: "Percentage threshold for flagging size increases compared to Maven Central versions"
+    required: false
+    default: "20"
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+outputs:
+  exceeds_threshold:
+    description: "Whether any artifact exceeds threshold"
+    value: ${{ steps.size_check.outputs.exceeds_threshold }}
+  threshold_bytes:
+    description: "Threshold in bytes"
+    value: ${{ steps.size_check.outputs.threshold_bytes }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Calculate Build Artifacts Size
+      id: size_check
+      shell: ${{ inputs.shell }}
+      run: |
+        # Calculate threshold from percentage and base size (in bytes)
+        BASE_SIZE_BYTES=$((${{ inputs.base-size-gb }} * 1024 * 1024 * 1024))
+        THRESHOLD_BYTES=$((BASE_SIZE_BYTES * ${{ inputs.percentage }} / 100))
+
+        echo "Threshold per repository: ${THRESHOLD_BYTES} bytes (${{ inputs.percentage }}% of ${{ inputs.base-size-gb }}GiB)"
+        echo "threshold_bytes=${THRESHOLD_BYTES}" >> $GITHUB_OUTPUT
+
+        # Initialize repository size file
+        EXCEEDS=false
+        # repo_sizes.txt format: repo_name|size_bytes|exceeds_threshold
+        echo "" > repo_sizes.txt
+
+        # Find all repository directories (top-level directories containing artifacts)
+        for repo_dir in */; do
+          repo_name=$(basename "$repo_dir")
+
+          # Find all artifacts for a specific repo, get size in bytes (du -sb), sum them up with awk
+          repo_size=$(find "$repo_dir" -type f \( -name "debezium-*.jar" -o -name "debezium-*.tar.gz" -o -name "debezium-*.zip" \) -exec du -sb {} + 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+
+          if [ "$repo_size" -gt 0 ]; then
+            # Check if this repository exceeds threshold
+            if [ ${repo_size} -gt ${THRESHOLD_BYTES} ]; then
+              EXCEEDS=true
+              exceeds_flag="true"
+              over=$((repo_size - THRESHOLD_BYTES))
+              echo "::warning::Repository ${repo_name} (${repo_size} bytes) exceeds threshold (${THRESHOLD_BYTES} bytes) by ${over} bytes"
+            else
+              exceeds_flag="false"
+            fi
+
+            # Store: repo_name|size|exceeds_flag
+            echo "${repo_name}|${repo_size}|${exceeds_flag}" >> repo_sizes.txt
+          fi
+        done
+
+        # Set exceeds_threshold output
+        if [ "$EXCEEDS" = true ]; then
+          echo "exceeds_threshold=true" >> $GITHUB_OUTPUT
+        else
+          echo "exceeds_threshold=false" >> $GITHUB_OUTPUT
+          echo "All repositories are within acceptable limits"
+        fi
+
+    - name: Compare with Maven Central
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "Comparing with Maven Central versions..."
+        echo "" > maven_central_comparison.txt
+
+        MAVEN_CENTRAL_BASE="https://repo1.maven.org/maven2/io/debezium"
+
+        # Find all tar.gz files and filter to only distribution packages
+        find . -type f -name "*.tar.gz" | while read tar_file; do
+          filename=$(basename "$tar_file")
+
+          # Skip non-debezium files
+          if [[ ! "$filename" =~ ^debezium- ]]; then
+            continue
+          fi
+
+          # Extract artifact name (remove version and .tar.gz)
+          # Example: debezium-connector-mysql-3.1.0-SNAPSHOT.tar.gz -> debezium-connector-mysql
+          artifact_name=$(echo "$filename" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+.*\.tar\.gz$//')
+
+          # Skip if we couldn't parse the name
+          if [ -z "$artifact_name" ]; then
+            continue
+          fi
+
+          echo "Checking $artifact_name on Maven Central..."
+
+          # Query Maven Central metadata
+          metadata_url="${MAVEN_CENTRAL_BASE}/${artifact_name}/maven-metadata.xml"
+          metadata=$(curl -s -L "$metadata_url")
+
+          if [ -z "$metadata" ]; then
+            echo "  Not published to Maven Central - skipping"
+            continue
+          fi
+
+          # Get the latest version (includes Beta, Alpha, CR, etc.)
+          latest_version=$(echo "$metadata" | grep -oP '<latest>\K[^<]+' || echo "")
+
+          # If no <latest> tag, get the last version from the list
+          if [ -z "$latest_version" ]; then
+            latest_version=$(echo "$metadata" | grep -oP '<version>\K[^<]+' | grep -v SNAPSHOT | sort -V | tail -1)
+          fi
+
+          # Get the latest Final version
+          latest_final=$(echo "$metadata" | grep -oP '<version>\K[^<]+' | grep -i 'Final$' | sort -V | tail -1)
+
+          if [ -z "$latest_version" ]; then
+            echo "  No version found on Maven Central - skipping"
+            continue
+          fi
+
+          echo "  Latest version: $latest_version"
+          if [ -n "$latest_final" ]; then
+            echo "  Latest Final: $latest_final"
+          fi
+
+          # Detect the suffix from the current filename
+          # Match common patterns: -plugin.tar.gz, .tar.gz, -dist.tar.gz, etc.
+          suffix=$(echo "$filename" | grep -oE '(-[a-z]+)?\.tar\.gz$')
+
+          # If no suffix found, default to .tar.gz
+          if [ -z "$suffix" ]; then
+            suffix=".tar.gz"
+          fi
+
+          echo "  Detected suffix: $suffix"
+
+          # Download to temp directory
+          mkdir -p /tmp/maven-central
+
+          # Get current size
+          current_size=$(stat -f%z "$tar_file" 2>/dev/null || stat -c%s "$tar_file" 2>/dev/null)
+
+          # Extract current version from filename
+          # Example: debezium-server-dist-3.6.0-SNAPSHOT.tar.gz -> 3.6.0-SNAPSHOT
+          current_version=$(echo "$filename" | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+[^.]*)(\.[^.]+){2}$/\1/')
+
+          # Variables to store comparison data
+          latest_ver_data=""
+          final_ver_data=""
+
+          # Compare against latest version
+          central_tar_url="${MAVEN_CENTRAL_BASE}/${artifact_name}/${latest_version}/${artifact_name}-${latest_version}${suffix}"
+          central_tar_file="/tmp/maven-central/${artifact_name}-${latest_version}${suffix}"
+
+          if curl -s -f -L -o "$central_tar_file" "$central_tar_url" 2>/dev/null; then
+            previous_size=$(stat -f%z "$central_tar_file" 2>/dev/null || stat -c%s "$central_tar_file" 2>/dev/null)
+            size_diff=$((current_size - previous_size))
+
+            if [ "$previous_size" -gt 0 ]; then
+              percent_change=$((size_diff * 100 / previous_size))
+            else
+              percent_change=0
+            fi
+
+            echo "  Latest ($latest_version): $previous_size bytes, diff: $size_diff bytes ($percent_change%)"
+            latest_ver_data="$latest_version|$previous_size|$size_diff|$percent_change"
+            rm -f "$central_tar_file"
+          fi
+
+          # Compare against latest Final version (if different from latest)
+          if [ -n "$latest_final" ] && [ "$latest_final" != "$latest_version" ]; then
+            central_tar_url_final="${MAVEN_CENTRAL_BASE}/${artifact_name}/${latest_final}/${artifact_name}-${latest_final}${suffix}"
+            central_tar_file_final="/tmp/maven-central/${artifact_name}-${latest_final}${suffix}"
+
+            if curl -s -f -L -o "$central_tar_file_final" "$central_tar_url_final" 2>/dev/null; then
+              final_size=$(stat -f%z "$central_tar_file_final" 2>/dev/null || stat -c%s "$central_tar_file_final" 2>/dev/null)
+              final_diff=$((current_size - final_size))
+
+              if [ "$final_size" -gt 0 ]; then
+                final_percent=$((final_diff * 100 / final_size))
+              else
+                final_percent=0
+              fi
+
+              echo "  Final ($latest_final): $final_size bytes, diff: $final_diff bytes ($final_percent%)"
+              final_ver_data="$latest_final|$final_size|$final_diff|$final_percent"
+              rm -f "$central_tar_file_final"
+            fi
+          fi
+
+          # Store comparison data if we have at least one comparison
+          if [ -n "$latest_ver_data" ] || [ -n "$final_ver_data" ]; then
+            # Format: artifact|current_version|current_size|latest_ver|latest_size|latest_diff|latest_percent|final_ver|final_size|final_diff|final_percent
+            echo "${artifact_name}|${current_version}|${current_size}|${latest_ver_data}|${final_ver_data}" >> maven_central_comparison.txt
+          else
+            echo "  No tar.gz distribution on Maven Central - skipping"
+          fi
+        done
+
+        echo "Maven Central comparison complete"
+
+    - name: Generate Size Report
+      if: always()
+      shell: ${{ inputs.shell }}
+      run: |
+        ### Report Utils Functions BEGIN ###
+        
+        # Function to convert bytes to human readable format (binary units: base-2)
+        format_value() {
+          local bytes=$1
+          # Handle empty or invalid input
+          if [ -z "$bytes" ] || [ "$bytes" = "N/A" ]; then
+            echo "N/A"
+            return
+          fi
+          if [ "$bytes" -ge 1073741824 ]; then
+            echo "$(awk "BEGIN {printf \"%.2f\", $bytes/1073741824}")GiB"
+          elif [ "$bytes" -ge 1048576 ]; then
+            echo "$(awk "BEGIN {printf \"%.2f\", $bytes/1048576}")MiB"
+          elif [ "$bytes" -ge 1024 ]; then
+            echo "$(awk "BEGIN {printf \"%.2f\", $bytes/1024}")KiB"
+          else
+            echo "${bytes}B"
+          fi
+        }
+
+        # Function to add thousands separator
+        format_number() {
+          local num=$1
+          # Handle empty or invalid input
+          if [ -z "$num" ] || [ "$num" = "N/A" ]; then
+            echo "N/A"
+            return
+          fi
+          # Try to use printf with thousands separator, fallback to manual formatting
+          if result=$(LC_NUMERIC=en_US.UTF-8 printf "%'d" $num 2>/dev/null); then
+            echo "$result"
+          else
+            # Manual formatting: add commas every 3 digits
+            echo $num | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta'
+          fi
+        }
+        ### Report Utils Functions END ###
+        # Generate timestamped filename
+        REPORT_TIMESTAMP=$(date -u '+%Y-%m-%d-%H%M%S')
+        REPORT_FILE="size-report-${REPORT_TIMESTAMP}.md"
+
+        # Make timestamp available to subsequent steps
+        echo "REPORT_TIMESTAMP=${REPORT_TIMESTAMP}" >> $GITHUB_ENV
+
+        echo "# 📊 Artifact Size Report" > "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        THRESHOLD_BYTES="${{ steps.size_check.outputs.threshold_bytes }}"
+
+        echo "**🗓️ Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$REPORT_FILE"
+        echo "**⚖️ Threshold per Repository:** $(format_value "$THRESHOLD_BYTES") (${{ inputs.percentage }}% of ${{ inputs.base-size-gb }}GiB)" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        if [ "${{ steps.size_check.outputs.exceeds_threshold }}" == "true" ]; then
+          echo "⚠️ **Status:** SOME REPOSITORIES EXCEEDED THRESHOLD" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo "## ⚠️ Repositories Exceeding Threshold" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo "| Repository | Total Size | Over Threshold |" >> "$REPORT_FILE"
+          echo "|------------|------------|----------------|" >> "$REPORT_FILE"
+
+          # Filter repo_sizes.txt for repositories exceeding threshold
+          if [ -f repo_sizes.txt ]; then
+            grep -v '^$' repo_sizes.txt 2>/dev/null | while IFS='|' read repo size exceeds; do
+              if [ "$exceeds" = "true" ]; then
+                over=$((size - ${{ steps.size_check.outputs.threshold_bytes }}))
+                size_hr=$(format_value "$size")
+                over_hr=$(format_value "$over")
+                echo "| $repo | $size_hr ($(format_number "$size")) | +$over_hr (+$(format_number "$over")) |" >> "$REPORT_FILE"
+              fi
+            done
+          fi
+        else
+          echo "✅ **Status:** All repositories within acceptable limits" >> "$REPORT_FILE"
+        fi
+
+        echo "" >> "$REPORT_FILE"
+        echo "## 📦 Repository Size Summary" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        echo "| Repository | Total Size | Status |" >> "$REPORT_FILE"
+        echo "|------------|------------|--------|" >> "$REPORT_FILE"
+
+        if [ -f repo_sizes.txt ]; then
+          grep -v '^$' repo_sizes.txt 2>/dev/null | sort -t'|' -k2 -rn | while IFS='|' read repo size exceeds; do
+            size_hr=$(format_value "$size")
+            if [ "$exceeds" = "true" ]; then
+              status="⚠️ Exceeds"
+            else
+              status="✅ OK"
+            fi
+            echo "| $repo | $size_hr ($(format_number "$size")) | $status |" >> "$REPORT_FILE"
+          done
+        fi
+
+        echo "" >> "$REPORT_FILE"
+        echo "## 🔄 Maven Central Comparison (Distribution Archives)" >> "$REPORT_FILE"
+        echo "**⚖️ Maven artifact comparison threshold:** ${{ inputs.maven-central-warning-threshold }}%" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        if [ -f maven_central_comparison.txt ] && [ -s maven_central_comparison.txt ]; then
+          echo "" >> "$REPORT_FILE"
+          echo "| Artifact | Current Version | Current Size | Latest Version | Latest Size | Final Version | Final Size |" >> "$REPORT_FILE"
+          echo "|----------|-----------------|--------------|----------------|-------------|---------------|------------|" >> "$REPORT_FILE"
+
+          # Format: artifact|current_version|current_size|latest_ver|latest_size|latest_diff|latest_percent|final_ver|final_size|final_diff|final_percent
+          grep -v '^$' maven_central_comparison.txt | sort -t'|' -k1 | while IFS='|' read artifact current_ver current latest_ver latest_size latest_diff latest_percent final_ver final_size final_diff final_percent; do
+
+            # Format current size
+            current_hr=$(format_value "$current")
+            current_fmt="$current_hr"
+
+            # Format latest size with percentage difference
+            latest_size_fmt="-"
+            latest_version_str="-"
+            if [ -n "$latest_ver" ] && [ "$latest_ver" != "" ]; then
+              latest_version_str="$latest_ver"
+              if [ -n "$latest_size" ] && [ "$latest_size" != "" ] && [ "$latest_size" != "N/A" ]; then
+                latest_size_hr=$(format_value "$latest_size")
+                if [ -n "$latest_percent" ] && [ "$latest_percent" != "" ]; then
+                  if [ "$latest_diff" -gt 0 ] 2>/dev/null; then
+                    latest_size_fmt="$latest_size_hr (+${latest_percent}%)"
+                    if [ "$latest_percent" -gt ${{ inputs.maven-central-warning-threshold }} ] 2>/dev/null; then
+                      latest_size_fmt="⚠️ $latest_size_fmt"
+                    fi
+                  elif [ "$latest_diff" -lt 0 ] 2>/dev/null; then
+                    latest_size_fmt="$latest_size_hr (${latest_percent}%)"
+                  else
+                    latest_size_fmt="$latest_size_hr (=)"
+                  fi
+                else
+                  latest_size_fmt="$latest_size_hr"
+                fi
+              fi
+            fi
+
+            # Format final size with percentage difference
+            final_size_fmt="-"
+            final_version_str="-"
+            if [ -n "$final_ver" ] && [ "$final_ver" != "" ]; then
+              final_version_str="$final_ver"
+              if [ -n "$final_size" ] && [ "$final_size" != "" ] && [ "$final_size" != "N/A" ]; then
+                final_size_hr=$(format_value "$final_size")
+                if [ -n "$final_percent" ] && [ "$final_percent" != "" ]; then
+                  if [ "$final_diff" -gt 0 ] 2>/dev/null; then
+                    final_size_fmt="$final_size_hr (+${final_percent}%)"
+                    if [ "$final_percent" -gt ${{ inputs.maven-central-warning-threshold }} ] 2>/dev/null; then
+                      final_size_fmt="⚠️ $final_size_fmt"
+                    fi
+                  elif [ "$final_diff" -lt 0 ] 2>/dev/null; then
+                    final_size_fmt="$final_size_hr (${final_percent}%)"
+                  else
+                    final_size_fmt="$final_size_hr (=)"
+                  fi
+                else
+                  final_size_fmt="$final_size_hr"
+                fi
+              fi
+            fi
+
+            echo "| $artifact | $current_ver | $current_fmt | $latest_version_str | $latest_size_fmt | $final_version_str | $final_size_fmt |" >> "$REPORT_FILE"
+          done
+        else
+          echo "_No tar.gz distribution archives found that are published to Maven Central._" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo "Note: Most connectors and modules publish as JARs or ZIP files, not tar.gz distributions." >> "$REPORT_FILE"
+        fi
+
+        echo "" >> "$REPORT_FILE"
+        echo "## 📋 All Debezium Artifacts (Sorted by Size)" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        echo "| Artifact File | Size (bytes) | Repository |" >> "$REPORT_FILE"
+        echo "|---------------|--------------|------------|" >> "$REPORT_FILE"
+
+        find . -type f \( -name "debezium-*.jar" -o -name "debezium-*.tar.gz" -o -name "debezium-*.zip" \) -exec du -sb {} + 2>/dev/null | sort -rn | while read size path; do
+          artifact=$(basename "$path")
+          repo=$(echo "$path" | cut -d'/' -f2)
+          size_hr=$(format_value "$size")
+          echo "| $artifact | $size_hr ($(format_number "$size")) | $repo |" >> "$REPORT_FILE"
+        done
+
+        echo ""
+        echo "========================================="
+        echo "Size Report Generated Successfully"
+        echo "Report file: $REPORT_FILE"
+        echo "========================================="
+        cat "$REPORT_FILE" || echo "Warning: Could not display report"
+
+    - name: Upload Size Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: size-report-${{ env.REPORT_TIMESTAMP }}
+        path: size-report-*.md
+        retention-days: 7

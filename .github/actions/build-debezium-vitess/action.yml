@@ -8,6 +8,10 @@ inputs:
   path-vitess:
     description: "Debezium Vitess repository checkout path"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   shell:
     description: "The shell to use"
     required: false
@@ -34,11 +38,12 @@ runs:
     - name: Build Vitess
       shell: ${{ inputs.shell }}
       run: >
-        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-vitess }}/pom.xml 
-        -Passembly        
-        -Dcheckstyle.skip=false
-        -Dformat.skip=false
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-vitess }}/pom.xml
+        -Passembly
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DfailFlakyTests=false
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}

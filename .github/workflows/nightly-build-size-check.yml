@@ -1,0 +1,729 @@
+name: Nightly Build Size Check
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+  # to be removed
+  push:
+    branches:
+      - DBZ-1667-nightly
+
+env:
+  MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
+  SIZE_THRESHOLD_PERCENTAGE: 70
+  SIZE_BASE_GB: 1
+
+jobs:
+
+  build_cassandra:
+    name: Cassandra
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Cassandra)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-cassandra
+        with:
+          path-core: core
+          path-cassandra: cassandra
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cassandra-build
+          path: |
+            cassandra/**/*.jar
+            cassandra/**/*.tar.gz
+            cassandra/**/*.zip
+          retention-days: 1
+
+  build_db2:
+    name: Db2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Db2)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-db2
+          path: db2
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-db2
+        with:
+          path-core: core
+          path-db2: db2
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: db2-build
+          path: |
+            db2/**/*.jar
+            db2/**/*.tar.gz
+            db2/**/*.zip
+          retention-days: 1
+
+  build_ibmi:
+    name: IBMi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (IBMi)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-ibmi
+          path: ibmi
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-ibmi
+        with:
+          path-core: core
+          path-ibmi: ibmi
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibmi-build
+          path: |
+            ibmi/**/*.jar
+            ibmi/**/*.tar.gz
+            ibmi/**/*.zip
+          retention-days: 1
+
+  build_informix:
+    name: Informix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Informix)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-informix
+          path: informix
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-informix
+        with:
+          path-core: core
+          path-informix: informix
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: informix-build
+          path: |
+            informix/**/*.jar
+            informix/**/*.tar.gz
+            informix/**/*.zip
+          retention-days: 1
+
+  build_vitess:
+    name: Vitess
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Vitess)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-vitess
+          path: vitess
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-vitess
+        with:
+          path-core: core
+          path-vitess: vitess
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitess-build
+          path: |
+            vitess/**/*.jar
+            vitess/**/*.tar.gz
+            vitess/**/*.zip
+          retention-days: 1
+
+  build_spanner:
+    name: Spanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Spanner)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-spanner
+        with:
+          path-core: core
+          path-spanner: spanner
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spanner-build
+          path: |
+            spanner/**/*.jar
+            spanner/**/*.tar.gz
+            spanner/**/*.zip
+          retention-days: 1
+
+  build_cockroachdb:
+    name: CockroachDB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (CockroachDB)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cockroachdb
+          path: cockroachdb
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-cockroachdb
+        with:
+          path-core: core
+          path-cockroachdb: cockroachdb
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cockroachdb-build
+          path: |
+            cockroachdb/**/*.jar
+            cockroachdb/**/*.tar.gz
+            cockroachdb/**/*.zip
+          retention-days: 1
+
+  build_server:
+    name: "Debezium Server"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+      - name: Checkout Action (Debezium Server)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-server
+          path: server
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-debezium-server
+        with:
+          path-core: core
+          path-server: server
+          only-build: 'true'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: |
+            server/**/*.jar
+            server/**/*.tar.gz
+            server/**/*.zip
+          retention-days: 1
+
+  build_core:
+    name: "Debezium Core"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+          ref: main
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+      - name: Build Debezium (Core)
+        shell: bash
+        run: >
+          ./core/mvnw clean install -B -ntp -f core/pom.xml
+          -DskipTests=true
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-build
+          path: |
+            core/**/*.jar
+            core/**/*.tar.gz
+            core/**/*.zip
+          retention-days: 1
+
+  build_storage:
+    name: "Storage"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-storage
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-build
+          path: |
+            debezium-storage/**/*.jar
+            debezium-storage/**/*.tar.gz
+            debezium-storage/**/*.zip
+          retention-days: 1
+
+  build_openlineage:
+    name: "OpenLineage"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-openlineage
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlineage-build
+          path: |
+            debezium-openlineage/**/*.jar
+            debezium-openlineage/**/*.tar.gz
+            debezium-openlineage/**/*.zip
+          retention-days: 1
+
+  build_ai:
+    name: "AI"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-ai
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-build
+          path: |
+            debezium-ai/**/*.jar
+            debezium-ai/**/*.tar.gz
+            debezium-ai/**/*.zip
+          retention-days: 1
+
+  build_schema_generator:
+    name: "Schema Generator"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-schema-generator
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-generator-build
+          path: |
+            debezium-schema-generator/**/*.jar
+            debezium-schema-generator/**/*.tar.gz
+            debezium-schema-generator/**/*.zip
+          retention-days: 1
+
+  build_testing:
+    name: "Testing"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-testing
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-build
+          path: |
+            debezium-testing/**/*.jar
+            debezium-testing/**/*.tar.gz
+            debezium-testing/**/*.zip
+          retention-days: 1
+
+  build_mysql:
+    name: "MySQL"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-mysql
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-build
+          path: |
+            debezium-connector-mysql/**/*.jar
+            debezium-connector-mysql/**/*.tar.gz
+            debezium-connector-mysql/**/*.zip
+          retention-days: 1
+
+  build_postgres:
+    name: "PostgreSQL"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-postgres
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-build
+          path: |
+            debezium-connector-postgres/**/*.jar
+            debezium-connector-postgres/**/*.tar.gz
+            debezium-connector-postgres/**/*.zip
+          retention-days: 1
+
+  build_oracle:
+    name: "Oracle"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-oracle
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-build
+          path: |
+            debezium-connector-oracle/**/*.jar
+            debezium-connector-oracle/**/*.tar.gz
+            debezium-connector-oracle/**/*.zip
+          retention-days: 1
+
+  build_sqlserver:
+    name: "SQL Server"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-sqlserver
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlserver-build
+          path: |
+            debezium-connector-sqlserver/**/*.jar
+            debezium-connector-sqlserver/**/*.tar.gz
+            debezium-connector-sqlserver/**/*.zip
+          retention-days: 1
+
+  build_mongodb:
+    name: "MongoDB"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-mongodb
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-build
+          path: |
+            debezium-connector-mongodb/**/*.jar
+            debezium-connector-mongodb/**/*.tar.gz
+            debezium-connector-mongodb/**/*.zip
+          retention-days: 1
+
+  build_mariadb:
+    name: "MariaDB"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-mariadb
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mariadb-build
+          path: |
+            debezium-connector-mariadb/**/*.jar
+            debezium-connector-mariadb/**/*.tar.gz
+            debezium-connector-mariadb/**/*.zip
+          retention-days: 1
+
+  build_jdbc:
+    name: "JDBC"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-jdbc
+        with:
+          only-build: 'true'
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdbc-build
+          path: |
+            debezium-connector-jdbc/**/*.jar
+            debezium-connector-jdbc/**/*.tar.gz
+            debezium-connector-jdbc/**/*.zip
+          retention-days: 1
+
+  check-size:
+    name: "Check Artifact Size"
+    needs: [build_cassandra, build_db2, build_ibmi, build_informix, build_vitess, build_spanner, build_cockroachdb, build_server, build_core, build_storage, build_openlineage, build_ai, build_schema_generator, build_testing, build_mysql, build_postgres, build_oracle, build_sqlserver, build_mongodb, build_mariadb, build_jdbc]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Core artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: core-build
+          path: ./debezium
+
+      - name: Download Storage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: storage-build
+          path: ./debezium
+
+      - name: Download OpenLineage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: openlineage-build
+          path: ./debezium
+
+      - name: Download AI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ai-build
+          path: ./debezium
+
+      - name: Download Schema Generator artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: schema-generator-build
+          path: ./debezium
+
+      - name: Download Testing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: testing-build
+          path: ./debezium
+
+      - name: Download MySQL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mysql-build
+          path: ./debezium
+
+      - name: Download PostgreSQL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: postgres-build
+          path: ./debezium
+
+      - name: Download Oracle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: oracle-build
+          path: ./debezium
+
+      - name: Download SQL Server artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlserver-build
+          path: ./debezium
+
+      - name: Download MongoDB artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mongodb-build
+          path: ./debezium
+
+      - name: Download MariaDB artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mariadb-build
+          path: ./debezium
+
+      - name: Download JDBC artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jdbc-build
+          path: ./debezium
+
+      - name: Download Cassandra artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cassandra-build
+          path: ./debezium-connector-cassandra
+
+      - name: Download Db2 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: db2-build
+          path: ./debezium-connector-db2
+
+      - name: Download IBMi artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ibmi-build
+          path: ./debezium-connector-ibmi
+
+      - name: Download Server artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: server-build
+          path: ./debezium-server
+
+      - name: Download Informix artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: informix-build
+          path: ./debezium-connector-informix
+
+      - name: Download Vitess artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: vitess-build
+          path: ./debezium-connector-vitess
+
+      - name: Download Spanner artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: spanner-build
+          path: ./debezium-connector-spanner
+
+      - name: Download CockroachDB artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cockroachdb-build
+          path: ./debezium-connector-cockroachdb
+
+      - name: Checkout Action (for check-artifact-size action)
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Check Artifact Size
+        uses: ./core/.github/actions/check-artifact-size
+        with:
+          percentage: ${{ env.SIZE_THRESHOLD_PERCENTAGE }}
+          base-size-gb: ${{ env.SIZE_BASE_GB }}
+
+      - name: Delete Build Artifacts
+        if: always()
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            core-build
+            storage-build
+            openlineage-build
+            ai-build
+            schema-generator-build
+            testing-build
+            mysql-build
+            postgres-build
+            oracle-build
+            sqlserver-build
+            mongodb-build
+            mariadb-build
+            jdbc-build
+            cassandra-build
+            db2-build
+            ibmi-build
+            informix-build
+            vitess-build
+            spanner-build
+            cockroachdb-build
+            server-build
+          failOnError: false
