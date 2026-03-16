@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   shell:
     description: "The shell to use"
     required: false
@@ -23,7 +27,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install -B -pl debezium-connector-sqlserver -am
-        -Passembly        
+        -Passembly
         -Dcheckstyle.skip=true
         -Dformat.skip=true
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
@@ -32,3 +36,4 @@ runs:
         -Ddebezium.test.records.waittime=10
         -DfailFlakyTests=false
         -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
