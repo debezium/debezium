@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
@@ -43,6 +44,8 @@ import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Integration test for {@link ReplicationConnection}
@@ -119,6 +122,26 @@ public class ReplicationConnectionIT {
                 }
             }
         });
+    }
+
+    @Test
+    @FixFor("DBZ-1683")
+    void shouldNotLogTooManyUnknownTypeResolutionsOnStartup() throws Exception {
+        TestHelper.create().dropReplicationSlot("test1");
+        LogInterceptor interceptor = new LogInterceptor(TypeRegistry.class);
+        interceptor.setLoggerLevel(TypeRegistry.class, Level.TRACE);
+
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
+            conn1.startStreaming(new WalPositionLocator());
+            List<String> matched = interceptor.getLogEntriesThatContainsMessage("Type OID")
+                    .stream().filter(msg -> msg.contains("not cached, attempting to lookup from database")).toList();
+
+            // At v18, PostgreSQL defines roughly 300 array types by default.
+            // Resolving most of them via individual database lookups would be a performance concern.
+            // Since DBZ-1683 caused such behavior, we set the threshold to 300.
+            assertThat(matched.size())
+                    .isLessThan(300);
+        }
     }
 
     @Test
