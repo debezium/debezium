@@ -9,6 +9,10 @@ inputs:
     description: "Maven cache key from debezium CI build_cache job"
     required: false
     default: ''
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
 
 outputs:
   cache_key:
@@ -26,6 +30,7 @@ runs:
         maven-cache-key: ${{ inputs.maven-cache-key }}
 
     - name: Run tests
+      if: ${{ inputs.only-build != 'true' }}
       uses: debezium/debezium-platform/.github/actions/tests@main
       with:
         working-directory: ${{ inputs.path-conductor }}

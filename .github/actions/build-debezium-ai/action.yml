@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   shell:
     description: "The shell to use"
     required: false
@@ -22,4 +26,7 @@ runs:
     - name: Build Debezium AI module
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :debezium-ai -am -amd
+        ./mvnw clean install -B -pl :debezium-core,:debezium-transforms,:debezium-ai -am
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
