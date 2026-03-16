@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -3232,5 +3234,69 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                             expectedCollection, sourceCollection, record.topic())
                     .isEqualTo(expectedCollection);
         }
+    }
+
+    /**
+     * Verify that the connector correctly recovers from an interrupted snapshot.
+     *
+     * Scenario:
+     * 1. Insert many documents and start the connector with throttled batching
+     * 2. Consume only a partial set of snapshot records
+     * 3. Stop the connector mid-snapshot
+     * 4. Restart the connector
+     * 5. Verify the connector logs "previous snapshot was incomplete" and re-snapshots
+     * 6. Verify the connector produces snapshot records (not a crash loop)
+     */
+    @Test
+    @FixFor("DBZ-1708")
+    void shouldRecoverFromInterruptedSnapshot() throws InterruptedException {
+        var documentCount = 500;
+        var dbName = "dbit";
+        var collectionName = "recovery_test";
+        var topic = "mongo.dbit.recovery_test";
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collectionName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 1)
+                .build();
+
+        // Insert enough documents so snapshot takes time
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+            coll.drop();
+            var docs = new ArrayList<Document>();
+            for (int i = 0; i < documentCount; i++) {
+                docs.add(new Document("_id", i).append("name", "item_" + i).append("data", "padding_" + "x".repeat(200)));
+            }
+            coll.insertMany(docs);
+        }
+
+        // Start the connector and stop it as soon as we get the first record,
+        // guaranteeing the snapshot is still in progress
+        start(MongoDbConnector.class, config);
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        // Restart with a log interceptor to verify the incomplete snapshot is detected
+        var logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
+
+        start(MongoDbConnector.class, config);
+
+        // The connector should detect the incomplete snapshot and re-snapshot
+        Awaitility.await()
+                .alias("Connector should detect incomplete snapshot")
+                .atMost(120, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("The previous snapshot was incomplete, so restarting the snapshot"));
+
+        // Verify the connector produces snapshot records from the re-snapshot
+        var records = consumeRecordsByTopic(documentCount);
+        assertThat(records.recordsForTopic(topic)).hasSize(documentCount);
+        records.forEach(record -> validate(record));
+
+        stopConnector();
     }
 }

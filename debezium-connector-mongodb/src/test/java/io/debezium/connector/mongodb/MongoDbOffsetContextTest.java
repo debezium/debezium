@@ -105,9 +105,9 @@ public class MongoDbOffsetContextTest {
      * snapshot), calling getSourceInfo() throws DataException because the "collection"
      * field is required (non-optional) in the schema but the value is null.
      *
-     * This test documents the crash that occurs in the validate() error-reporting path.
-     * The fix in MongoDbConnectorTask.validate() wraps getSourceInfo() in try-catch
-     * and falls back to getOffset().toString().
+     * This documents why MongoDbConnectorTask.validate() uses getOffset() instead of
+     * getSourceInfo() for error messages — getSourceInfo() is unsafe when collectionId
+     * is null.
      */
     @Test
     public void getSourceInfoThrowsWhenCollectionIsNull() {
@@ -127,8 +127,8 @@ public class MongoDbOffsetContextTest {
 
     /**
      * Bug 2 fix verification: getOffset() should work even when collectionId is null,
-     * providing a safe fallback for error messages. This is the fallback used in the
-     * fixed validate() method's catch block.
+     * providing a safe alternative for error messages. This is used in
+     * MongoDbConnectorTask.validate() instead of the unsafe getSourceInfo().
      */
     @Test
     public void getOffsetWorksWhenCollectionIsNull() {
