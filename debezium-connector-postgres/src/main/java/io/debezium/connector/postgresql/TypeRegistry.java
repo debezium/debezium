@@ -72,19 +72,17 @@ public class TypeRegistry {
     private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel) as values "
             + "FROM pg_catalog.pg_enum t GROUP BY id";
 
-    private static final String SQL_TYPES_BASE = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
+    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
             + "WHERE n.nspname != 'pg_toast'";
 
-    private static final String SQL_TYPES = SQL_TYPES_BASE;
-
     /**
      * Schema-filtered variant; caller must supply a {@code text[]} parameter for the {@code ANY(?)} predicate.
      * {@code pg_catalog} and {@code information_schema} are always included.
      */
-    private static final String SQL_TYPES_SCHEMA_FILTERED = SQL_TYPES_BASE
+    private static final String SQL_TYPES_SCHEMA_FILTERED = SQL_TYPES
             + " AND (n.nspname = ANY(?) OR n.nspname IN ('pg_catalog', 'information_schema'))";
 
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
@@ -119,14 +117,6 @@ public class TypeRegistry {
     private final PostgresConnection connection;
     private final SqlTypeMapper sqlTypeMapper;
 
-    /**
-     * Schema names to restrict the bulk type load to. When non-empty, only types whose namespace is in this
-     * set (plus the always-included {@code pg_catalog} and {@code information_schema}) are loaded during
-     * {@link #prime()}; types from other schemas are resolved on-demand via {@link #resolveUnknownType(int)}.
-     * When empty all schemas are loaded.
-     */
-    private final Set<String> schemaFilter;
-
     private int geometryOid = Integer.MIN_VALUE;
     private int geographyOid = Integer.MIN_VALUE;
     private int citextOid = Integer.MIN_VALUE;
@@ -160,10 +150,12 @@ public class TypeRegistry {
     public TypeRegistry(PostgresConnection connection, Set<String> schemaFilter) {
         try {
             this.connection = connection;
-            this.schemaFilter = schemaFilter == null ? Collections.emptySet() : Collections.unmodifiableSet(new HashSet<>(schemaFilter));
-            sqlTypeMapper = new SqlTypeMapper(this.connection, this.schemaFilter);
+            final Set<String> filter = (schemaFilter == null || schemaFilter.isEmpty())
+                    ? Collections.emptySet()
+                    : Collections.unmodifiableSet(new HashSet<>(schemaFilter));
+            sqlTypeMapper = new SqlTypeMapper(this.connection, filter);
 
-            prime();
+            prime(filter);
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't initialize type registry", e);
@@ -411,63 +403,49 @@ public class TypeRegistry {
 
     /**
      * Prime the {@link TypeRegistry} with all existing database types.
-     * When a {@link #schemaFilter} is configured, only types from those schemas (plus the always-included
+     * When a non-empty {@code schemaFilter} is provided, only types from those schemas (plus the always-included
      * built-in schemas) are loaded, reducing heap usage for databases with many custom types (DBZ-9455).
      */
-    private void prime() throws SQLException {
+    private void prime(Set<String> schemaFilter) throws SQLException {
         final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
 
         if (schemaFilter.isEmpty()) {
-            // Legacy path — load all schemas unconditionally.
             try (Statement statement = connection.connection().createStatement();
                     ResultSet rs = statement.executeQuery(SQL_TYPES)) {
-                while (rs.next()) {
-                    PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
-
-                    // If the type has neither a base type nor an element type,
-                    // we can build and add it immediately.
-                    if (!builder.hasParentType() && !builder.hasElementType()) {
-                        addType(builder.build());
-                        continue;
-                    }
-
-                    // For types with base or element type mappings, they need to be delayed.
-                    // Otherwise their base/element types has not yet be registered,
-                    // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
-                    delayResolvedBuilders.add(builder);
-                }
+                collectBuilders(rs, delayResolvedBuilders);
             }
         }
         else {
-            // Filtered path — restrict to configured schemas + built-ins.
             LOGGER.info("TypeRegistry schema filter active; pre-loading types from schemas: {}", schemaFilter);
             try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPES_SCHEMA_FILTERED)) {
                 final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
                 statement.setArray(1, schemaArray);
                 try (ResultSet rs = statement.executeQuery()) {
-                    while (rs.next()) {
-                        PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
-
-                        // If the type has neither a base type nor an element type,
-                        // we can build and add it immediately.
-                        if (!builder.hasParentType() && !builder.hasElementType()) {
-                            addType(builder.build());
-                            continue;
-                        }
-
-                        // For types with base or element type mappings, they need to be delayed.
-                        // Otherwise their base/element types has not yet be registered,
-                        // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
-                        delayResolvedBuilders.add(builder);
-                    }
+                    collectBuilders(rs, delayResolvedBuilders);
                 }
                 schemaArray.free();
             }
         }
 
-        // Resolve delayed builders (domain types that reference a parent type)
+        // Resolve delayed builders
         for (PostgresType.Builder builder : delayResolvedBuilders) {
             addType(builder.build());
+        }
+    }
+
+    private void collectBuilders(ResultSet rs, List<PostgresType.Builder> builders) throws SQLException {
+        while (rs.next()) {
+            PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
+            // If the type has neither a base type nor an element type,
+            // we can build and add it immediately.
+            if (!builder.hasParentType() && !builder.hasElementType()) {
+                addType(builder.build());
+                continue;
+            }
+            // For types with base or element type mappings, they need to be delayed.
+            // Otherwise their base/element types has not yet be registered,
+            // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
+            builders.add(builder);
         }
     }
 
