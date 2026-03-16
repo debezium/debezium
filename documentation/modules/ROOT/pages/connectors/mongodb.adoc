@@ -1750,17 +1750,17 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
-|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. 
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter.
 Set the value to be a long representation of the BSON timestamp.
 
 [IMPORTANT]
 ====
 The ability to set the `capture.start.op.time`` property to override the normal offset-based behavior and begin streaming from a specific timestamp is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
 
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 
 ====
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
@@ -2247,7 +2247,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
