@@ -10,7 +10,6 @@ import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLRecoverableException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -161,52 +160,12 @@ public class OracleConnection extends JdbcConnection {
     }
 
     private OracleDatabaseVersion resolveOracleDatabaseVersion() {
-        String versionStr;
         try {
-            try {
-                // Oracle 18.1 introduced BANNER_FULL as the new column rather than BANNER
-                // This column uses a different format than the legacy BANNER.
-                versionStr = queryAndMap("SELECT BANNER_FULL FROM V$VERSION WHERE BANNER_FULL LIKE 'Oracle%Database%'", (rs) -> {
-                    if (rs.next()) {
-                        return rs.getString(1);
-                    }
-                    return null;
-                });
-            }
-            catch (SQLException e) {
-                // exception ignored
-                if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\"")) {
-                    LOGGER.debug("BANNER_FULL column not in V$VERSION, using BANNER column as fallback");
-                    versionStr = null;
-                }
-                else {
-                    throw e;
-                }
-            }
-
-            // For databases prior to 18.1, a SQLException will be thrown due to BANNER_FULL not being a column and
-            // this will cause versionStr to remain null, use fallback column BANNER for versions prior to 18.1.
-            if (versionStr == null) {
-                versionStr = queryAndMap("SELECT BANNER FROM V$VERSION WHERE BANNER LIKE 'Oracle%Database%'", (rs) -> {
-                    if (rs.next()) {
-                        return rs.getString(1);
-                    }
-                    return null;
-                });
-            }
+            return OracleDatabaseVersion.parse(connection().getMetaData());
         }
         catch (SQLException e) {
-            if (e instanceof SQLRecoverableException) {
-                throw new RetriableException("Failed to resolve Oracle database version", e);
-            }
-            throw new RuntimeException("Failed to resolve Oracle database version", e);
+            throw new RetriableException("Failed to resolve Oracle database version", e);
         }
-
-        if (versionStr == null) {
-            throw new RuntimeException("Failed to resolve Oracle database version");
-        }
-
-        return OracleDatabaseVersion.parse(versionStr);
     }
 
     @Override

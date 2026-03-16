@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
 
 /**
  * Represents the Oracle database version.
@@ -15,27 +15,13 @@ import java.util.regex.Pattern;
  */
 public class OracleDatabaseVersion {
 
-    /* Parses the version number before the hyphen */
-    private final static Pattern LEGACY_VERSION_PATTERN = Pattern.compile(
-            "(?:.*)(?:Release )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:.*)");
-
-    /* Parses the version number at the end of the multiline banner text */
-    private final static Pattern VERSION_PATTERN = Pattern.compile(
-            "^Oracle(?:.*)\\nVersion ([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)", Pattern.MULTILINE);
-
     private final int major;
-    private final int maintenance;
-    private final int appServer;
-    private final int component;
-    private final int platform;
+    private final int minor;
     private final String banner;
 
-    private OracleDatabaseVersion(int major, int maintenance, int appServer, int component, int platform, String banner) {
+    private OracleDatabaseVersion(int major, int minor, String banner) {
         this.major = major;
-        this.maintenance = maintenance;
-        this.appServer = appServer;
-        this.component = component;
-        this.platform = platform;
+        this.minor = minor;
         this.banner = banner;
     }
 
@@ -43,20 +29,8 @@ public class OracleDatabaseVersion {
         return major;
     }
 
-    public int getMaintenance() {
-        return maintenance;
-    }
-
-    public int getAppServer() {
-        return appServer;
-    }
-
-    public int getComponent() {
-        return component;
-    }
-
-    public int getPlatform() {
-        return platform;
+    public int getMinor() {
+        return minor;
     }
 
     public String getBanner() {
@@ -65,31 +39,21 @@ public class OracleDatabaseVersion {
 
     @Override
     public String toString() {
-        return major + "." + maintenance + "." + appServer + "." + component + "." + platform;
+        return major + "." + minor;
     }
 
     /**
-     * Parse the Oracle database version banner.
+     * Parse version data from the database driver metadata.
      *
-     * @param banner the banner text
-     * @return the parsed OracleDatabaseVersion.
-     * @throws RuntimeException if the version banner string cannot be parsed
+     * @param databaseMetaData the database connection metadata
+     * @return the parsed OracleDatabaseVersion
+     * @throws SQLException if there was an issue reading the database metadata.
      */
-    public static OracleDatabaseVersion parse(String banner) {
-        Matcher matcher = VERSION_PATTERN.matcher(banner);
-        if (!matcher.matches()) {
-            matcher = LEGACY_VERSION_PATTERN.matcher(banner);
-            if (!matcher.matches()) {
-                throw new RuntimeException("Failed to resolve Oracle database version: '" + banner + "'");
-            }
-        }
+    public static OracleDatabaseVersion parse(DatabaseMetaData databaseMetaData) throws SQLException {
+        final int major = databaseMetaData.getDatabaseMajorVersion();
+        final int minor = databaseMetaData.getDatabaseMinorVersion();
+        final String productVersion = databaseMetaData.getDatabaseProductVersion();
 
-        int major = Integer.parseInt(matcher.group(1));
-        int maintenance = Integer.parseInt(matcher.group(2));
-        int app = Integer.parseInt(matcher.group(3));
-        int component = Integer.parseInt(matcher.group(4));
-        int platform = Integer.parseInt(matcher.group(5));
-
-        return new OracleDatabaseVersion(major, maintenance, app, component, platform, banner);
+        return new OracleDatabaseVersion(major, minor, productVersion);
     }
 }
