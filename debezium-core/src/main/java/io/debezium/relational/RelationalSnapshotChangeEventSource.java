@@ -72,6 +72,7 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
@@ -819,6 +820,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                               Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
         return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
+                    LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
+                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), "snapshot");
                     try {
                         doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
                                 selectStatement, rowCount, rowCountTablesKeySet, connection);
@@ -828,6 +831,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                 snapshotContext.offset,
                                 table.id().identifier());
                         throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
+                    }
+                    finally {
+                        previousLoggingContext.restore();
                     }
                 },
                 null);
@@ -839,6 +845,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                                      Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
         return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
+                    LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
+                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), "snapshot");
                     try {
                         doCreateDataEventsForChunk(sourceContext, snapshotContext, offset, snapshotReceiver, chunk, progressMap, snapshotProgress, connection);
                     }
@@ -846,6 +854,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(
                                 snapshotContext.partition, snapshotContext.offset, chunk.getTableId().identifier());
                         throw new ConnectException("Snapshotting of table " + chunk.getTableId() + " chunk " + chunk.getChunkId() + " failed", e);
+                    }
+                    finally {
+                        previousLoggingContext.restore();
                     }
                 },
                 null);
