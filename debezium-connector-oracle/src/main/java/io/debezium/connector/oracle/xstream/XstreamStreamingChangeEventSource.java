@@ -241,7 +241,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
         final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
-        if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMaintenance() < 2)) {
+        if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMinor() < 2)) {
             return XStreamUtility.POS_VERSION_V1;
         }
         return XStreamUtility.POS_VERSION_V2;
