@@ -1,24 +1,17 @@
-name: "Build Informix"
-description: "Builds the Debezium Informix connector"
+name: "Build Ingres"
+description: "Builds the Debezium Ingres connector"
 
 inputs:
   path-core:
     description: "Debezium core repository checkout path"
     required: true
-  path-informix:
-    description: "Debezium Informix repository checkout path"
+  path-ingres:
+    description: "Debezium ingres repository checkout path"
     required: true
   only-build:
     description: "Only build without tests, checkstyle, and format"
     required: false
     default: 'false'
-  cache-hit:
-    required: false
-    default: 'false'
-  profile:
-    description: "The Informix build profile to use"
-    required: false
-    default: "assembly"
   shell:
     description: "The shell to use"
     required: false
@@ -28,11 +21,10 @@ runs:
   using: "composite"
   steps:
     - name: Build Debezium (Core)
-      if: inputs.cache-hit != 'true'
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
         -am
         -DskipTests=true
         -DskipITs=true
@@ -43,17 +35,16 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    - name: Build Informix connector (Informix - ${{ inputs.profile }})
+    - name: Build Ingres
       shell: ${{ inputs.shell }}
       run: >
-        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-informix }}/pom.xml
-        -P${{ inputs.profile }}
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-ingres }}/pom.xml
+        -Passembly
         -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -Ddebezium.test.records.waittime=10
-        -Ddebezium.test.records.waittime.after.nulls=10
+        -Ddebezium.test.records.waittime=5
         -DfailFlakyTests=false
         ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}

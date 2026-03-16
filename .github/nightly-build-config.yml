@@ -1,0 +1,31 @@
+# ========================================
+# Nightly Build Configuration
+# ========================================
+# This file centralizes all configuration for the nightly build size check workflow
+
+# Artifact Size Monitoring
+artifact-size:
+  # Base size in GiB used for threshold calculations
+  base-size-gb: 1
+  # Default threshold percentage (applied to all repositories unless overridden)
+  default-threshold-percentage: 70
+  # Maven Central comparison warning threshold (percentage)
+  maven-central-warning-threshold: 20
+  # Maven Central repository base URL
+  maven-central-base: "https://repo1.maven.org/maven2/io/debezium"
+
+  # Repository-specific threshold overrides
+  # Format: repository-name: percentage
+  repository-thresholds:
+    debezium-connector-cassandra: 95
+    debezium: 85
+
+# Notification Configuration
+notifications:
+  zulip:
+    # Enable or disable Zulip notifications
+    enabled: true
+    # Stream where notifications are sent
+    stream: "dev"
+    # Topic for notifications
+    topic: "alerts"
