@@ -251,19 +251,22 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 LOGGER.info("Starting snapshot");
 
                 SnapshottingTask snapshottingTask = snapshotSource.getBlockingSnapshottingTask(partition, (O) offsetContext, snapshotConfiguration);
-                try {
-                    doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
-                }
-                catch (Exception e) {
-                    LOGGER.warn("Error while executing requested blocking snapshot.", e);
-                }
-                finally {
-                    eventDispatcher.setEventListener(streamingMetrics);
-                    resumeStreaming(partition);
-                }
+                doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
             }
             catch (InterruptedException e) {
                 throw new DebeziumException("Blocking snapshot has been interrupted");
+            }
+            catch (Exception e) {
+                LOGGER.warn("Error while executing requested blocking snapshot.", e);
+            }
+            finally {
+                eventDispatcher.setEventListener(streamingMetrics);
+                try {
+                    resumeStreaming(partition);
+                }
+                catch (InterruptedException e) {
+                    LOGGER.warn("Streaming resume has been interrupted");
+                }
             }
         });
     }
