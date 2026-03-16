@@ -21,7 +21,7 @@ public class OracleDatabaseVersionResolver implements DatabaseVersionResolver {
     public DatabaseVersion getVersion() {
         try (OracleConnection connection = TestHelper.testConnection()) {
             OracleDatabaseVersion version = connection.getOracleVersion();
-            return new DatabaseVersion(version.getMajor(), version.getMaintenance(), version.getAppServer());
+            return new DatabaseVersion(version.getMajor(), version.getMinor(), 0);
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to resolve database version", e);
