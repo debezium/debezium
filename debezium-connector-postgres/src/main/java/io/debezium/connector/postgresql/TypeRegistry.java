@@ -419,11 +419,15 @@ public class TypeRegistry {
             LOGGER.info("TypeRegistry schema filter active; pre-loading types from schemas: {}", schemaFilter);
             try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPES_SCHEMA_FILTERED)) {
                 final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
-                statement.setArray(1, schemaArray);
-                try (ResultSet rs = statement.executeQuery()) {
-                    collectBuilders(rs, delayResolvedBuilders);
+                try {
+                    statement.setArray(1, schemaArray);
+                    try (ResultSet rs = statement.executeQuery()) {
+                        collectBuilders(rs, delayResolvedBuilders);
+                    }
                 }
-                schemaArray.free();
+                finally {
+                    schemaArray.free();
+                }
             }
         }
 
@@ -623,11 +627,15 @@ public class TypeRegistry {
             else {
                 try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPE_DETAILS_SCHEMA_FILTERED)) {
                     final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
-                    statement.setArray(1, schemaArray);
-                    try (ResultSet rs = statement.executeQuery()) {
-                        populateSqlTypes(rs, sqlTypesByPgTypeNames);
+                    try {
+                        statement.setArray(1, schemaArray);
+                        try (ResultSet rs = statement.executeQuery()) {
+                            populateSqlTypes(rs, sqlTypesByPgTypeNames);
+                        }
                     }
-                    schemaArray.free();
+                    finally {
+                        schemaArray.free();
+                    }
                 }
             }
 
