@@ -3924,6 +3924,8 @@ This property does not affect the behavior of incremental snapshots. +
 |No default
 |Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
+Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log.
 
