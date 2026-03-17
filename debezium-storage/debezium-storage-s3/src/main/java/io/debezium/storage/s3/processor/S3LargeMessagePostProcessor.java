@@ -23,6 +23,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.util.Strings;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -85,12 +86,12 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         final Configuration config = Configuration.from(properties);
 
         bucket = config.getString(BUCKET_NAME_CONFIG);
-        if (bucket == null || bucket.isBlank()) {
+        if (Strings.isNullOrBlank(bucket)) {
             throw new DebeziumException("Configuration '" + BUCKET_NAME_CONFIG + "' is required for " + getClass().getSimpleName());
         }
 
         final String regionName = config.getString(REGION_NAME_CONFIG);
-        if (regionName == null || regionName.isBlank()) {
+        if (Strings.isNullOrBlank(regionName)) {
             throw new DebeziumException("Configuration '" + REGION_NAME_CONFIG + "' is required for " + getClass().getSimpleName());
         }
 
@@ -104,36 +105,36 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
 
         if (s3ClientOverride != null) {
             s3Client = s3ClientOverride;
+            return;
         }
-        else {
-            final Region region = Region.of(regionName);
 
-            final AwsCredentialsProvider credentialsProvider;
-            final String accessKeyId = config.getString(ACCESS_KEY_ID_CONFIG);
-            final String secretAccessKey = config.getString(SECRET_ACCESS_KEY_CONFIG);
-            if (accessKeyId != null && secretAccessKey != null) {
-                LOGGER.info("Using StaticCredentialsProvider for S3 authentication.");
-                AwsCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
-                credentialsProvider = StaticCredentialsProvider.create(credentials);
-            }
-            else {
-                LOGGER.info("Using DefaultCredentialsProvider for S3 authentication.");
-                credentialsProvider = DefaultCredentialsProvider.create();
-            }
+        final Region region = Region.of(regionName);
+        final AwsCredentialsProvider credentialsProvider = createCredentialsProvider(config);
 
-            S3ClientBuilder builder = S3Client.builder()
-                    .region(region)
-                    .credentialsProvider(credentialsProvider);
+        S3ClientBuilder builder = S3Client.builder()
+                .region(region)
+                .credentialsProvider(credentialsProvider);
 
-            final String endpointStr = config.getString(ENDPOINT_CONFIG);
-            if (endpointStr != null && !endpointStr.isBlank()) {
-                LOGGER.info("Using custom S3 endpoint: {}", endpointStr);
-                builder.endpointOverride(URI.create(endpointStr));
-                builder.forcePathStyle(true);
-            }
-
-            s3Client = builder.build();
+        final String endpointStr = config.getString(ENDPOINT_CONFIG);
+        if (!Strings.isNullOrBlank(endpointStr)) {
+            LOGGER.info("Using custom S3 endpoint: {}", endpointStr);
+            builder.endpointOverride(URI.create(endpointStr));
+            builder.forcePathStyle(true);
         }
+
+        s3Client = builder.build();
+    }
+
+    private AwsCredentialsProvider createCredentialsProvider(Configuration config) {
+        final String accessKeyId = config.getString(ACCESS_KEY_ID_CONFIG);
+        final String secretAccessKey = config.getString(SECRET_ACCESS_KEY_CONFIG);
+        if (!Strings.isNullOrBlank(accessKeyId) && !Strings.isNullOrBlank(secretAccessKey)) {
+            LOGGER.info("Using StaticCredentialsProvider for S3 authentication.");
+            AwsCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
+            return StaticCredentialsProvider.create(credentials);
+        }
+        LOGGER.info("Using DefaultCredentialsProvider for S3 authentication.");
+        return DefaultCredentialsProvider.create();
     }
 
     @Override
@@ -298,41 +299,42 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         if (value == null) {
             return false;
         }
-        switch (schema.type()) {
-            case STRING:
-                return ((String) value).getBytes(StandardCharsets.UTF_8).length >= thresholdBytes;
-            case BYTES:
-                if (value instanceof byte[]) {
-                    return ((byte[]) value).length >= thresholdBytes;
-                }
-                else if (value instanceof ByteBuffer) {
-                    return ((ByteBuffer) value).remaining() >= thresholdBytes;
-                }
-                return false;
-            default:
-                return false;
+        return switch (schema.type()) {
+            case STRING -> ((String) value).getBytes(StandardCharsets.UTF_8).length >= thresholdBytes;
+            case BYTES -> meetsThresholdForBytes(value);
+            default -> false;
+        };
+    }
+
+    private boolean meetsThresholdForBytes(Object value) {
+        if (value instanceof byte[] byteData) {
+            return byteData.length >= thresholdBytes;
         }
+        if (value instanceof ByteBuffer buffer) {
+            return buffer.remaining() >= thresholdBytes;
+        }
+        return false;
     }
 
     private byte[] toBytes(Schema schema, Object value) {
-        switch (schema.type()) {
-            case STRING:
-                return ((String) value).getBytes(StandardCharsets.UTF_8);
-            case BYTES:
-                if (value instanceof byte[]) {
-                    return (byte[]) value;
-                }
-                else if (value instanceof ByteBuffer) {
-                    final ByteBuffer buf = ((ByteBuffer) value).duplicate();
-                    final byte[] bytes = new byte[buf.remaining()];
-                    buf.get(bytes);
-                    return bytes;
-                }
-                break;
-            default:
-                break;
+        return switch (schema.type()) {
+            case STRING -> ((String) value).getBytes(StandardCharsets.UTF_8);
+            case BYTES -> toBytesForBytes(value);
+            default -> throw new DebeziumException("Unsupported field type for S3 offloading: " + schema.type());
+        };
+    }
+
+    private byte[] toBytesForBytes(Object value) {
+        if (value instanceof byte[] byteData) {
+            return byteData;
         }
-        throw new DebeziumException("Unsupported field type for S3 offloading: " + schema.type());
+        if (value instanceof ByteBuffer buffer) {
+            final ByteBuffer buf = buffer.duplicate();
+            final byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            return bytes;
+        }
+        throw new DebeziumException("Unsupported field type for S3 offloading: BYTES");
     }
 
     String buildObjectKey(Struct source, String fieldName, String qualifier) {
