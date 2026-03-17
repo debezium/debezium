@@ -2866,11 +2866,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 |[[sqlserver-property-schema-name-adjustment-mode]]<<sqlserver-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-<<<<<<< Updated upstream
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
-=======
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
->>>>>>> Stashed changes
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -2878,11 +2874,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 |[[sqlserver-property-field-name-adjustment-mode]]<<sqlserver-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-<<<<<<< Updated upstream
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
-=======
 |Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
->>>>>>> Stashed changes
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -3152,17 +3144,10 @@ For example, if you set `poll.interval.ms` to `100`, set `heartbeat.interval.ms`
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
 This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database.
-<<<<<<< Updated upstream
-Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
- +
-`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
- +
-=======
 Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
 
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
 
->>>>>>> Stashed changes
 This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents offsets from become stale.
 
 |[[sqlserver-property-snapshot-delay-ms]]<<sqlserver-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
@@ -3371,11 +3356,7 @@ If you experience this problem, revert the value of `snapshot.max.threads` to `1
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-<<<<<<< Updated upstream
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
-=======
 Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
->>>>>>> Stashed changes
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
