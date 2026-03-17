@@ -775,11 +775,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 return;
             }
 
-            final LogMinerDmlEntry parsedEvent = xmlBeginParser.parse(event.getRedoSql(), table);
-            parsedEvent.setObjectName(event.getTableName());
-            parsedEvent.setObjectOwner(event.getTablespaceName());
+            final XmlBeginParser.XmlBegin result = xmlBeginParser.parse(event, table);
+            result.parsedEvent().setObjectName(event.getTableName());
+            result.parsedEvent().setObjectOwner(event.getTablespaceName());
 
-            enqueueEvent(event, new XmlBeginEvent(event, parsedEvent, xmlBeginParser.getColumnName()));
+            enqueueEvent(event, new XmlBeginEvent(event, result.parsedEvent(), result.columnName()));
         }
     }
 
@@ -794,7 +794,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             final TableId tableId = event.getTableId();
             final Table table = getSchema().tableFor(tableId);
             if (table != null) {
-                final XmlWriteParser.XmlWrite parsedEvent = XmlWriteParser.parse(event.getRedoSql());
+                final XmlWriteParser.XmlWrite parsedEvent = XmlWriteParser.parse(event);
                 enqueueEvent(event, new XmlWriteEvent(event, parsedEvent.data(), parsedEvent.length()));
             }
         }
