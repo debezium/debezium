@@ -62,6 +62,7 @@ import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
@@ -242,11 +243,17 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
+            // Initialize MDC with the connector name before preStart so that any logs emitted
+            // during initialization already carry the connector name in their context
+            String logicalName = props.getOrDefault(CommonConnectorConfig.TOPIC_PREFIX.name(), "");
+            if (!logicalName.isEmpty()) {
+                LoggingContext.forConnector("", logicalName, "lifecycle");
+            }
+
             cdcSourceTaskContext = preStart(config);
 
-            // Configure MDC logging context early to ensure all subsequent logs include connector context
-            // This addresses DBZ-3438 by setting MDC before any logging occurs in the task startup
-            // Using "lifecycle" context to cover both startup and shutdown phases
+            // Re-initialize MDC with the full context (connector type + name) once preStart has
+            // created the CdcSourceTaskContext and the connector type is available
             if (cdcSourceTaskContext != null && cdcSourceTaskContext.getConnectorType() != null) {
                 cdcSourceTaskContext.configureLoggingContext("lifecycle");
             }
