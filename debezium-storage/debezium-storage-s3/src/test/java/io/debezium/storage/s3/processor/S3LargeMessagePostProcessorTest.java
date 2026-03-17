@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -66,27 +67,34 @@ public class S3LargeMessagePostProcessorTest {
 
     @Test
     void testConfigureMissingBucket() {
+
         Map<String, Object> config = baseConfig();
         config.remove(S3LargeMessagePostProcessor.BUCKET_NAME_CONFIG);
+
         assertThrows(DebeziumException.class, () -> processor.configure(config));
     }
 
     @Test
     void testConfigureMissingRegion() {
+
         Map<String, Object> config = baseConfig();
         config.remove(S3LargeMessagePostProcessor.REGION_NAME_CONFIG);
+
         assertThrows(DebeziumException.class, () -> processor.configure(config));
     }
 
     @Test
     void testConfigureInvalidThreshold() {
+
         Map<String, Object> config = baseConfig();
         config.put(S3LargeMessagePostProcessor.THRESHOLD_BYTES_CONFIG, "0");
+
         assertThrows(DebeziumException.class, () -> processor.configure(config));
     }
 
     @Test
     void testDefaultThreshold() {
+
         processor.configure(Map.of(
                 S3LargeMessagePostProcessor.BUCKET_NAME_CONFIG, BUCKET,
                 S3LargeMessagePostProcessor.REGION_NAME_CONFIG, REGION));
@@ -97,14 +105,18 @@ public class S3LargeMessagePostProcessorTest {
         after.put("payload", "small");
 
         Struct envelope = buildSimpleEnvelope(null, after);
+
         processor.apply(null, envelope);
+
         verify(mockS3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
     @Test
     void testApplyNullValue() {
         processor.configure(baseConfig());
+
         processor.apply(null, null);
+
         verify(mockS3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
@@ -124,22 +136,23 @@ public class S3LargeMessagePostProcessorTest {
         verify(mockS3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 
         Struct resultAfter = envelope.getStruct(Envelope.FieldName.AFTER);
+
         assertNotNull(resultAfter);
         assertInstanceOf(byte[].class, resultAfter.get("data"));
     }
 
     @Test
     void testApplyStringFieldAboveThreshold() {
-        processor.configure(baseConfig());
 
+        processor.configure(baseConfig());
         String largeString = "x".repeat(SMALL_THRESHOLD + 1);
         Schema schema = SchemaBuilder.struct()
                 .field("content", Schema.STRING_SCHEMA)
                 .build();
         Struct after = new Struct(schema);
         after.put("content", largeString);
-
         Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
         processor.apply(null, envelope);
 
         verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
@@ -147,31 +160,30 @@ public class S3LargeMessagePostProcessorTest {
         Struct resultAfter = envelope.getStruct(Envelope.FieldName.AFTER);
         Object replacedValue = resultAfter.get("content");
         assertInstanceOf(Struct.class, replacedValue);
+
         Struct ref = (Struct) replacedValue;
         assertEquals(BUCKET, ref.getString("bucket"));
+
         String objectId = ref.getString("objectId");
         assertNotNull(objectId);
-        assert objectId.contains("content");
-        assert objectId.endsWith("/after");
+        assertTrue(objectId.contains("content"));
+        assertTrue(objectId.endsWith("/after"));
     }
 
     @Test
     void testBeforeFieldProcessedOnUpdateEvent() {
+
         processor.configure(baseConfig());
-
         String largeString = "y".repeat(SMALL_THRESHOLD + 5);
-
         Schema schema = SchemaBuilder.struct()
                 .field("notes", Schema.STRING_SCHEMA)
                 .build();
-
         Struct before = new Struct(schema);
         before.put("notes", largeString);
-
         Struct after = new Struct(schema);
         after.put("notes", largeString);
-
         Struct envelope = buildUpdateEnvelope(buildSourceStruct(), before, after);
+
         processor.apply(null, envelope);
 
         verify(mockS3Client, times(2)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
@@ -184,12 +196,13 @@ public class S3LargeMessagePostProcessorTest {
 
         String beforeObjectId = ((Struct) resultBefore.get("notes")).getString("objectId");
         String afterObjectId = ((Struct) resultAfter.get("notes")).getString("objectId");
-        assert beforeObjectId.endsWith("/before");
-        assert afterObjectId.endsWith("/after");
+        assertTrue(beforeObjectId.endsWith("/before"));
+        assertTrue(afterObjectId.endsWith("/after"));
     }
 
     @Test
     void testReferenceStructContainsCorrectBucket() {
+
         processor.configure(baseConfig());
 
         String largeString = "Z".repeat(SMALL_THRESHOLD + 1);
@@ -200,6 +213,7 @@ public class S3LargeMessagePostProcessorTest {
         after.put("payload", largeString);
 
         Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
         processor.apply(null, envelope);
 
         Struct ref = (Struct) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
@@ -208,6 +222,7 @@ public class S3LargeMessagePostProcessorTest {
 
     @Test
     void testNullSourceDoesNotThrow() {
+
         processor.configure(baseConfig());
 
         String largeString = "X".repeat(SMALL_THRESHOLD + 1);
@@ -218,9 +233,11 @@ public class S3LargeMessagePostProcessorTest {
         after.put("payload", largeString);
 
         Struct envelope = buildSimpleEnvelope(null, after);
+
         processor.apply(null, envelope);
 
         verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
         Struct ref = (Struct) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
         assertNotNull(ref.getString("objectId"));
     }
