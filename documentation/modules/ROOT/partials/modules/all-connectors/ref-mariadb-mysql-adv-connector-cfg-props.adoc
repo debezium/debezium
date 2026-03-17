@@ -96,7 +96,7 @@ Description:::
 An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 +
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 +
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 `"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"`
@@ -785,6 +785,8 @@ Default value::: No default
 Description:::
 Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
+Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
++
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log.
 +
