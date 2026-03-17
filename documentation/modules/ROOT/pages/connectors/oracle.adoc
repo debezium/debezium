@@ -1213,7 +1213,7 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 [IMPORTANT]
 ====
 The Infinispan buffer implementation utilizes multiple cache configurations with different names.
-There should be a cache defined for `transactions`, `events`, `processed-transactions`, and `schema-changes`.
+There should be a cache defined for `transactions`, `events`, `rollbacks`, `processed-transactions`, and `schema-changes`.
 Each configuration can be tuned to your performance needs or be identical other than the cache name.
 ====
 
@@ -4370,6 +4370,11 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |[[oracle-property-log-mining-buffer-infinispan-cache-events]]<<oracle-property-log-mining-buffer-infinispan-cache-events, `+log.mining.buffer.infinispan.cache.events+`>>
 |No default
 |The XML configuration for the Infinispan events cache.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-rollbacks]]<<oracle-property-log-mining-buffer-infinispan-cache-rollbacks, `+log.mining.buffer.infinispan.cache.rollbacks+`>>
+|No default
+|The XML configuration for the Infinispan rollback events cache.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
