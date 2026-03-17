@@ -17,7 +17,6 @@
     <properties>
         <!-- Other artifact versions -->
         <version.hibernate>7.1.0.Final</version.hibernate>
-        <version.c3p0>0.12.0</version.c3p0>
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
@@ -96,16 +95,9 @@
             <version>${version.hibernate}</version>
         </dependency>
         <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-c3p0</artifactId>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-agroal</artifactId>
             <version>${version.hibernate}</version>
-        </dependency>
-
-        <!-- Connection pool -->
-        <dependency>
-            <groupId>com.mchange</groupId>
-            <artifactId>c3p0</artifactId>
-            <version>${version.c3p0}</version>
         </dependency>
 
         <!-- Testing -->

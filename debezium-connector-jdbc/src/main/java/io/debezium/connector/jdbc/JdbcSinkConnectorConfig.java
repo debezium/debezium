@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc;
 
 import static io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -14,7 +15,8 @@ import java.util.function.Consumer;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.c3p0.internal.C3P0ConnectionProvider;
+import org.hibernate.agroal.internal.AgroalConnectionProvider;
+import org.hibernate.cfg.AgroalSettings;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.DialectSpecificSettings;
 import org.hibernate.tool.schema.Action;
@@ -51,7 +53,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String CONNECTION_PASSWORD = "connection.password";
     public static final String CONNECTION_POOL_MIN_SIZE = "connection.pool.min_size";
     public static final String CONNECTION_POOL_MAX_SIZE = "connection.pool.max_size";
-    public static final String CONNECTION_POOL_ACQUIRE_INCREMENT = "connection.pool.acquire_increment";
     public static final String CONNECTION_POOL_TIMEOUT = "connection.pool.timeout";
     public static final String INSERT_MODE = "insert.mode";
     public static final String TRUNCATE_ENABLED = "truncate.enabled";
@@ -76,8 +77,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(C3P0ConnectionProvider.class.getName())
-            .withDescription("Fully qualified class name of the connection provider, defaults to " + C3P0ConnectionProvider.class.getName());
+            .withDefault(AgroalConnectionProvider.class.getName())
+            .withDescription("Fully qualified class name of the connection provider, defaults to " + AgroalConnectionProvider.class.getName());
 
     public static final Field CONNECTION_URL_FIELD = Field.create(CONNECTION_URL)
             .withDisplayName("Hostname")
@@ -122,15 +123,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(32)
             .withDescription("Maximum number of connection in the connection pool");
-
-    public static final Field CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD = Field.create(CONNECTION_POOL_ACQUIRE_INCREMENT)
-            .withDisplayName("Connection pool acquire increment")
-            .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(32)
-            .withDescription("Connection pool acquire increment");
 
     public static final Field CONNECTION_POOL_TIMEOUT_FIELD = Field.create(CONNECTION_POOL_TIMEOUT)
             .withDisplayName("Connection pool timeout")
@@ -285,7 +277,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     CONNECTION_PASSWORD_FIELD,
                     CONNECTION_POOL_MIN_SIZE_FIELD,
                     CONNECTION_POOL_MAX_SIZE_FIELD,
-                    CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD,
                     CONNECTION_POOL_TIMEOUT_FIELD,
                     INSERT_MODE_FIELD,
                     DELETE_ENABLED_FIELD,
@@ -580,16 +571,30 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
      */
     public org.hibernate.cfg.Configuration getHibernateConfiguration() {
         org.hibernate.cfg.Configuration hibernateConfig = new org.hibernate.cfg.Configuration();
-        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, config.getString(CONNECTION_PROVIDER_FIELD));
+
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_URL, config.getString(CONNECTION_URL_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_USER, config.getString(CONNECTION_USER_FIELD));
         String password = config.getString(CONNECTION_PASSWORD_FIELD);
         if (password != null && !password.isEmpty()) {
             hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, password);
         }
-        hibernateConfig.setProperty(AvailableSettings.C3P0_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.C3P0_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));
+
+        // Connection Pool Settings
+        final String connectionProvider = config.getString(CONNECTION_PROVIDER_FIELD);
+        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, connectionProvider);
+        // With some connection pool systems, the initial size starts at the min size; however Agroal does not
+        // use this pattern. So to make the behavior consistent with C3P0, we initially set the pool size to
+        // be equal to the min size.
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_INITIAL_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT, Duration.ofMillis(config.getInteger(CONNECTION_POOL_TIMEOUT_FIELD)).toString());
+
+        // Unless we explicitly set the connectionValidator as default, which checks if the connection is valid
+        // the validation on borrow from the pool is not triggered.
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_VALIDATE_ON_BORROW, Boolean.TRUE);
+        hibernateConfig.setProperty(AgroalSettings.AGROAL_CONFIG_PREFIX + ".connectionValidator", "default");
+
         hibernateConfig.setProperty(AvailableSettings.GLOBALLY_QUOTED_IDENTIFIERS, Boolean.toString(config.getBoolean(QUOTE_IDENTIFIERS_FIELD)));
         hibernateConfig.setProperty(AvailableSettings.JDBC_TIME_ZONE, useTimeZone());
 
