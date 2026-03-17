@@ -502,7 +502,7 @@ The default topic name is `outbox.event.` followed by the `aggregatetype` column
 
 For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`.
 
-To change the topic name, you can:
+To change the topic name, you can perform one of the following operations:
 
 * Set the xref:outbox-event-router-property-route-by-field[`route.by.field`] option to a different column.
 * Set the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] option to a different regular expression.

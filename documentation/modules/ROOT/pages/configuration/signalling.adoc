@@ -238,7 +238,7 @@ You can apply different filters to each data collection.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`.
 +
 The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values.
-
++
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
 * For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
@@ -488,7 +488,7 @@ Optionally, you can configure the signal so that the resulting message includes 
 
 [id="debezium-signaling-example-of-a-logging-record"]
 .Example of a signaling record for adding a log message
-[cols="1,9a,9a",options="header"]
+[cols="3a,10a,9a",options="header"]
 |===
 |Column | Value | Description
 
@@ -501,10 +501,7 @@ Optionally, you can configure the signal so that the resulting message includes 
 |The action type of the signal.
 
 |data
-|[source,json]
-----
-{"message": "Signal message at offset {}"}
-----
+|`{"message": "Signal message at offset {}"}`
 | The `message` parameter specifies the string to print to the log.
 
 If you add a placeholder (`{}`) to the message, it is replaced with streaming coordinates.

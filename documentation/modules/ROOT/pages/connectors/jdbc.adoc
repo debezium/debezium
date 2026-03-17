@@ -314,7 +314,7 @@ After you apply the configuration, the connection pool begins to assess unused c
 === Changing how table names are resolved
 
 The {prodname} JDBC sink connector uses a `io.debezium.sink.naming.CollectionNamingStrategy` to control how an event is mapped to a target table.
-The default behavior is to use the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property and apply the following rules:
+By default, the connector uses the following strategies to generate table names:
 
 * Replace all occurrences of `.` with `_` in the event's topic name.
 * Replace any reference to `+${topic}+` in the `collection.name.format` with the sanitized topic name.
@@ -1298,7 +1298,7 @@ spec:
     topics: orders // <7>
 
 ----
-=====================================================================
+
 .Descriptions of connector configuration settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
