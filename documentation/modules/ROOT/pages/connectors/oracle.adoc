@@ -1306,7 +1306,7 @@ Additionally, the following illustrates what the specific embedded cache configu
   "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-
+  "log.mining.buffer.ehcache.rollbacks.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
 }
 ----
 endif::community[]
@@ -4467,6 +4467,11 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 |[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
 |No default
 |The XML configuration for the Ehcache events configuration.
+For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
+
+|[[oracle-property-log-mining-buffer-ehcache-rollbacks-config]]<<oracle-property-log-mining-buffer-ehcache-rollbacks-config, `+log.mining.buffer.ehcache.rollbacks.config+`>>
+|No default
+|The XML configuration for the Ehcache rollback events configuration.
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
