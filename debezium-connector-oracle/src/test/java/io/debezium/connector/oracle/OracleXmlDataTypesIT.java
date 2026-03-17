@@ -772,6 +772,79 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#1373")
+    public void shouldHandleStreamingXmlDocumentStoredAsClob() throws Exception {
+        TestHelper.dropTable(connection, "dbz1373");
+        try {
+            // Tests CLOB storage in DATA and combines with BLOB storage in DATA2
+            connection.execute("CREATE TABLE dbz1373 (ID numeric(9,0), DATA xmltype, DATA2 xmltype, primary key(ID)) xmltype column data store as securefile clob");
+            TestHelper.streamTable(connection, "dbz1373");
+
+            connection.prepareUpdate("INSERT INTO dbz1373 values (1,?,?)", ps -> {
+                ps.setObject(1, toXmlType(XML_LONG_DATA));
+                ps.setObject(2, toXmlType(XML_LONG_DATA));
+            });
+            connection.commit();
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1373")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1373");
+            assertThat(records).hasSize(1);
+
+            Struct after = after(records.get(0));
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA);
+
+            connection.prepareUpdate("INSERT INTO dbz1373 values (2,?,?)", ps -> {
+                ps.setObject(1, toXmlType(XML_LONG_DATA2));
+                ps.setObject(2, toXmlType(XML_LONG_DATA2));
+            });
+            connection.commit();
+
+            records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1373");
+            assertThat(records).hasSize(1);
+
+            after = after(records.get(0));
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA2);
+
+            connection.prepareUpdate("UPDATE dbz1373 SET DATA = ? WHERE ID = 2", ps -> ps.setObject(1, toXmlType(XML_LONG_DATA)));
+            connection.commit();
+
+            records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1373");
+            assertThat(records).hasSize(1);
+
+            after = after(records.get(0));
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA);
+            assertFieldIsUnavailablePlaceholder(after, "DATA2", config);
+
+            connection.execute("DELETE FROM dbz1373 WHERE ID = 2");
+
+            records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1373");
+            assertThat(records).hasSize(1);
+
+            Struct before = before(records.get(0));
+            assertThat(before.get("ID")).isEqualTo(2);
+            assertFieldIsUnavailablePlaceholder(before, "DATA", config);
+            assertFieldIsUnavailablePlaceholder(before, "DATA2", config);
+
+            after = after(records.get(0));
+            assertThat(after).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1373");
+        }
+    }
+
     private Configuration.Builder getDefaultXmlConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, true);
     }
