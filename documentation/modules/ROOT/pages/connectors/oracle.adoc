@@ -4423,6 +4423,23 @@ This should be enabled if you experience excessive Oracle SGA growth with LogMin
 |The starting SCN interval size that the connector uses for reading data from redo/archive logs.
 This also servers as a measure for adjusting batch size - when the difference between current SCN and beginning/end SCN of the batch is bigger than this value, batch size is increased/decreased.
 
+|[[oracle-property-log-mining-batch-size-window-scale]]<<oracle-property-log-mining-batch-size-window-scale, `+log.mining.batch.size.window.scale+`>>
+|`linear`
+|The algorithm used to scale the mining window after reaching the maximum log mining batch size.
+Set the property to one of the following values:
+
+`linear`::
+Increases the current batch size by adding `log.mining.batch.size.max` on each mining iteration.
+This is ideal when the connector rarely experiences high surges of log switches or changes, but when it does the connector can recover in a linear way.
+
+`exponential`::
+Increases the current batch size by exponentially adding multiplies of `log.mining.batch.size.max` on each mining iteration.
+This is ideal when more frequent surges of log switches or changes occur and the database has sufficient resources to allow for larger mining passes.
+
+`current_write`::
+Increases the current batch size to read to the current database write position.
+This is ideal when stalls and brief spikes in latency are acceptable in order to reduce the overall IO load on the database and consume as many changes in a single pass.
+
 |[[oracle-property-log-mining-sleep-time-min-ms]]<<oracle-property-log-mining-sleep-time-min-ms, `+log.mining.sleep.time.min.ms+`>>
 |`0`
 |The minimum amount of time that the connector sleeps after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
