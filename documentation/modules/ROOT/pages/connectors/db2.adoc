@@ -2701,12 +2701,13 @@ For more information, see xref:db2-temporal-types[temporal types].
 
 |[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event. +
- +
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
- +
-`false` - only a _delete_ event is emitted. +
- +
+|Specifies whether _delete_ events are followed by tombstone events.
+Set one of the following options:
+
+`true`:: To represent a delete operation, the connector emits a _delete_ event, followed by a tombstone event.
+
+`false`:: To represent a delete operation, the connector emits only a _delete_ event.
+
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[db2-property-include-schema-changes]]<<db2-property-include-schema-changes, `+include.schema.changes+`>>
@@ -2804,7 +2805,7 @@ For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as 
 |[[db2-property-schema-name-adjustment-mode]]<<db2-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector.
-Possible settings:  +
+Possible settings:
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -2814,7 +2815,7 @@ Note: _ is an escape sequence like backslash in Java +
 |[[db2-property-field-name-adjustment-mode]]<<db2-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
 |Specifies how field names should be adjusted for compatibility with the message converter used by the connector.
-Possible settings:  +
+Possible settings:
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -3109,6 +3110,8 @@ Other possible settings are: +
 |No default
 |Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
+Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log.
 
@@ -3257,7 +3260,8 @@ If you experience this problem, revert the value of `snapshot.max.threads` to `1
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
+
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
@@ -3270,7 +3274,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 

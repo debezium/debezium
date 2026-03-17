@@ -922,8 +922,8 @@ However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization
 
 |6
 |`before`
-a|An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.  +
- +
+a|An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
+
 [NOTE]
 ====
 Whether or not this field is available is dependent on the xref:postgresql-replica-identity[`REPLICA IDENTITY`] setting for each table.
@@ -961,8 +961,8 @@ a|Mandatory string that describes the type of operation that caused the connecto
 |10
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -1045,8 +1045,8 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -1140,8 +1140,8 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
@@ -1220,8 +1220,8 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |3
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1344,8 +1344,8 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |3
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 For transactional _message_ events, the `ts_ms` attribute of the `source` object indicates the time that the change was made in the database for transactional _message_ events. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 For non-transactional _message_ events, the `source` object's `ts_ms` indicates time at which the connector encounters the _message_ event, while the `payload.ts_ms` indicates the time at which the connector processed the event. This difference is due to the fact that the commit timestamp is not present in Postgres's generic logical message format and non-transactional logical messages are not preceded by a `BEGIN` event (which has timestamp information).
@@ -2072,7 +2072,7 @@ The PostgreSQL connector supports all link:https://github.com/pgvector/pgvector[
 Contains a structure that includes the following fields:
 
 `dimensions (INT16)`:: The total length of the sparse vector.
-`vector (MAP (INT16, FLOAT64))`:: A map that represents the sparse vector.  +
+`vector (MAP (INT16, FLOAT64))`:: A map that represents the sparse vector.
 Each map value includes the following elements:
 
 * Index number of the vector element (starting with `1`).
@@ -3403,12 +3403,12 @@ For more information, see link:https://www.postgresql.org/docs/current/static/li
 
 |[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event. +
- +
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
- +
-`false` - only a _delete_ event is emitted. +
- +
+|Controls whether a _delete_ event is followed by a tombstone event.
+
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.
+
+`false` - only a _delete_ event is emitted.
+
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
@@ -3916,6 +3916,8 @@ That is, the specified expression is matched against the entire name string of t
 |No default
 |Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
+Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log.
 
@@ -4008,12 +4010,12 @@ Heartbeat messages are needed when there are many updates in a database that is 
 
 |[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
-|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
- +
-This is useful for resolving the situation described in xref:postgresql-wal-disk-space[WAL disk space consumption], where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from processing WAL records and thus acknowledging WAL positions with the database. To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
- +
-`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
- +
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message.
+
+This is useful for resolving the situation described in xref:postgresql-wal-disk-space[WAL disk space consumption], where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from processing WAL records and thus acknowledging WAL positions with the database. To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
+
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
+
 This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents unbounded WAL growth on the database host.
 
 |[[postgresql-property-schema-refresh-mode]]<<postgresql-property-schema-refresh-mode, `+schema.refresh.mode+`>>
@@ -4268,7 +4270,7 @@ If you experience this problem, revert the value of `snapshot.max.threads` to `1
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
@@ -4281,7 +4283,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
