@@ -294,20 +294,20 @@ This validation ensures that connections remain active, and prevents the databas
 In the event of a network disruption, if {prodname} attempts to use a terminated connection, the connector prompts the pool to generate a new connection.
 
 By default, the {prodname} JDBC sink connector does not conduct idle timeout tests.
-However, you can configure the connector to request the pool to perform timeout tests at a specified interval by setting the `hibernate.c3p0.idle_test_period` property.
+However, you can configure the connector to request the pool to perform timeout tests at a specified interval by setting the `hibernate.agroal.idleValidation` property.
 For example:
 
 .Example timeout configuration
 [source,json]
 ----
 {
-  "hibernate.c3p0.idle_test_period": "300"
+  "hibernate.agroal.idleValidation": "300"
 }
 ----
 
-The {prodname} JDBC sink connector uses the Hibernate C3P0 connection pool.
-You can customize the CP30 connection pool by setting properties in the hibernate.c3p0.*` configuration namespace.
-In the preceding example, the setting of the hibernate.c3p0.idle_test_period property configures the connection pool to perform idle timeout tests every 300 seconds.
+The {prodname} JDBC sink connector uses the Hibernate Agroal connection pool.
+You can customize the Agroal connection pool by setting properties in the `hibernate.agroal.*` configuration namespace.
+In the preceding example, the setting of the hibernate.agroal.idleValidation property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
 [[jdbc-changing-how-table-names-are-resolved]]
@@ -1495,7 +1495,7 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |Property |Default |Description
 
 |[[jdbc-property-connection-provider]]<<jdbc-property-connection-provider, `+connection.provider+`>>
-|`org.hibernate.c3p0.internal.C3P0ConnectionProvider`
+|`org.hibernate.agroal.internal.AgroalConnectionProvider`
 |The connection provider implementation to use.
 
 |[[jdbc-property-connection-url]]<<jdbc-property-connection-url, `+connection.url+`>>
@@ -1517,10 +1517,6 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |[[jdbc-property-connection-pool-max-size]]<<jdbc-property-connection-pool-max-size, `+connection.pool.max_size+`>>
 |`32`
 |Specifies the maximum number of concurrent connections that the pool maintains.
-
-|[[jdbc-property-connection-pool-acquire-increment]]<<jdbc-property-connection-pool-acquire-increment, `+connection.pool.acquire_increment+`>>
-|`32`
-|Specifies the number of connections that the connector attempts to acquire if the connection pool exceeds its maximum size.
 
 |[[jdbc-property-connection-pool-timeout]]<<jdbc-property-connection-pool-timeout, `+connection.pool.timeout+`>>
 |`1800`
