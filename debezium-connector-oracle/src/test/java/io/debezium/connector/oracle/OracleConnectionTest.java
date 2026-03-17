@@ -29,6 +29,7 @@ public class OracleConnectionTest {
 
     private Statement statement;
     private JdbcConfiguration jdbcConfiguration;
+    private Connection connection;
     private JdbcConnection.ConnectionFactory connectionFactory;
 
     @BeforeEach
@@ -37,7 +38,7 @@ public class OracleConnectionTest {
         jdbcConfiguration = mock(JdbcConfiguration.class);
         when(jdbcConfiguration.getQueryTimeout()).thenReturn(Duration.ZERO);
         connectionFactory = mock(JdbcConnection.ConnectionFactory.class);
-        Connection connection = mock(Connection.class);
+        connection = mock(Connection.class);
         doNothing().when(connection).setAutoCommit(anyBoolean());
         statement = mock(Statement.class);
         when(connection.createStatement()).thenReturn(statement);
@@ -50,6 +51,9 @@ public class OracleConnectionTest {
     void whenOracleConnectionGetSQLRecoverableExceptionThenARetriableExceptionWillBeThrown() throws SQLException {
 
         when(statement.executeQuery(any()))
+                .thenThrow(new SQLRecoverableException("IO Error: The Network Adapter could not establish the connection (CONNECTION_ID=u/VErjYySfO0HgLtwdCuTQ==)"));
+
+        when(connection.getMetaData())
                 .thenThrow(new SQLRecoverableException("IO Error: The Network Adapter could not establish the connection (CONNECTION_ID=u/VErjYySfO0HgLtwdCuTQ==)"));
 
         assertThrows(RetriableException.class, () -> {
