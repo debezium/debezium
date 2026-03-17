@@ -2049,7 +2049,7 @@ The Informix connector always uses a single task and therefore does not use this
 |No default
 |Topic prefix that provides a namespace for the particular Informix database server that hosts the database for which {prodname} is capturing changes.
 The prefix should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. 
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
 
 [WARNING]
 ====
@@ -2063,10 +2063,10 @@ The connector is also unable to recover its database schema history topic.
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
 When this property is set, the connector captures changes only from the specified tables.
 Each identifier is of the form _databaseName_._schemaName_._tableName_.
-By default, the connector captures changes in every non-system table. 
+By default, the connector captures changes in every non-system table.
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. 
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name.
 
 If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
@@ -2074,10 +2074,10 @@ If you include this property in the configuration, do not also set the `table.ex
 |No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
 The connector captures changes in each non-system table that is not included in the exclude list.
-Each identifier is of the form _databaseName_._schemaName_._tableName_. 
+Each identifier is of the form _databaseName_._schemaName_._tableName_.
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire identifier for the table it does not match substrings that might be present in a table name. 
+That is, the specified expression is matched against the entire identifier for the table it does not match substrings that might be present in a table name.
 
 If you include this property in the configuration, do not also set the `table.include.list` property.
 
@@ -2203,11 +2203,11 @@ When this property is set, for columns with matching data types, the connector e
 * `pass:[_]pass:[_]debezium.source.column.length`
 * `pass:[_]pass:[_]debezium.source.column.scale`
 
-These parameters propagate a column's original type name and length (for variable-width types), respectively. 
+These parameters propagate a column's original type name and length (for variable-width types), respectively.
 
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. 
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
 
 To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
@@ -2526,10 +2526,10 @@ Enable the connector to send heartbeat messages to ensure that it sends the late
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
 This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last commited/restart LSN before the physical log files rotate.
-To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
- +
-`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
- +
+To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
+
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
+
 This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotate.
 
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
@@ -2576,6 +2576,8 @@ The snapshot fails if the connector cannot obtain a lock before the specified in
 |No default
 |Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
+Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log during the streaming phase.
 
@@ -2722,7 +2724,7 @@ If you experience this problem, revert the value of `snapshot.max.threads` to `1
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
@@ -2735,7 +2737,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
