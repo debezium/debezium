@@ -1925,34 +1925,8 @@ a|_n/a_
 For {prodname} to capture change events from SQL Server tables, a SQL Server administrator with the necessary privileges must first run a query to enable CDC on the database.
 The administrator must then enable CDC for each table that you want Debezium to capture.
 
-==== Encrypting connections
-
-By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
-If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of the `driver.encrypt` property in connector configuration to `false`.
-
-Conversely, to enforce SSL with a valid certificate, you configure the connection using JDBC pass-through properties:
-
-[source,json]
-----
-{
-  "driver.encrypt": true,
-  "driver.trustServerCertificate": false,
-  "driver.trustStore": "path/to/trust-store",
-  "driver.trustStorePassword": "password-for-trust-store"
-}
-----
-
-If the SQL Server is using a self-signed certificate, you can set `driver.trustServerCertificate` to bypass certificate path validation:
-
-[source,json]
-----
-{
-  "driver.encrypt": true,
-  "driver.trustServerCertificate": true
-}
-----
-
-====
+After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDC is enabled.
+The {prodname} connector can then capture these events and emit them to Kafka topics.
 
 ifdef::product[]
 
@@ -1967,8 +1941,38 @@ For details about setting up SQL Server for use with the {prodname} connector, s
 
 endif::product[]
 
-After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDC is enabled.
-The {prodname} connector can then capture these events and emit them to Kafka topics.
+=== Encrypting connections
+
+By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
+If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of the `driver.encrypt` property in connector configuration to `false`.
+
+.Procedure
+
+* To enforce SSL with a valid certificate, set the following JDBC pass-through properties to configure the connection:
++
+[source,json]
+----
+{
+  "driver.encrypt": true,
+  "driver.trustServerCertificate": false,
+  "driver.trustStore": "path/to/trust-store",
+  "driver.trustStorePassword": "password-for-trust-store"
+}
+----
+
+* In non-production environments, if SQL Server is configured to use a known self-signed certificate that you trust, you can enable encryption and bypass certificate path validation by setting the following properties:
++
+[source,json]
+----
+{
+  "driver.encrypt": true,
+  "driver.trustServerCertificate": true
+}
+----
++
+WARNING: Do not enable automatic trust of server certificates in production environments.
+If you disable validation, the connector skips certificate chain and host name validation, which can leave connections vulnerable to man‑in‑the‑middle attacks.
+Use an explicit trust configuration only as a convenience in testing and development environments 
 
 // Type: procedure
 // ModuleID: enabling-cdc-on-the-sql-server-database
@@ -2613,7 +2617,7 @@ Can be omitted when using Kerberos authentication, which can be configured using
 |[[sqlserver-property-database-password]]<<sqlserver-property-database-password, `+database.password+`>>
 |No default
 |Password to use when connecting to the SQL Server database server.
-Optional when using Microsoft Entra authentication. 
+Optional when using Microsoft Entra authentication.
 
 |[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
 |No default
@@ -3363,7 +3367,7 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
 
 By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
-To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
 
 For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
 
