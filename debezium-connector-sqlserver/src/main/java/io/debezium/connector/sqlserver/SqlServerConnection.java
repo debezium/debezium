@@ -625,10 +625,12 @@ public class SqlServerConnection extends JdbcConnection {
         try {
             return prepareQueryAndMap(GET_DATABASE_NAME,
                     ps -> ps.setString(1, databaseName),
-                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve exactly one database name"));
+                    singleResultMapper(rs -> rs.getString(1),
+                            "Could not retrieve exactly one database name for '" + databaseName
+                                    + "'. The database may not exist or the name matched more than one entry."));
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain database name", e);
+            throw new RuntimeException("Couldn't obtain database name for '" + databaseName + "'", e);
         }
     }
 
