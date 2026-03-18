@@ -47,4 +47,5 @@ runs:
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -Ddebezium.test.records.waittime=5
         -DfailFlakyTests=false
-        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
+        -DskipITs=true
+        ${{ inputs.only-build == 'true' && '-DskipTests=true' || '' }}
