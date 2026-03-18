@@ -501,9 +501,9 @@ public class LogMinerRangeContextTest {
 
     @Test
     @FixFor("dbz#1713")
-    public void shouldRetainOriginalBoundaryWhenDeviatedScnIsOutsideMiningRange() throws Exception {
+    public void shouldNotRetainOriginalBoundaryWhenDeviatedScnIsOutsideMiningRange() throws Exception {
         // The deviated SCN (500) is at or below the lower boundary (1000).
-        // calculateDeviatedEndScn returns Optional.empty(), so calculateUpperBoundary keeps the original upper boundary.
+        // calculateDeviatedEndScn returns Optional.empty(), so calculateUpperBoundary should return NULL
         final Duration deviation = Duration.ofMillis(5000);
         final OracleConnectorConfig config = createConnectorConfig(
                 DEFAULT_BATCH_SIZE, DEFAULT_BATCH_MIN, DEFAULT_BATCH_MAX, DEFAULT_BATCH_INCREMENT,
@@ -520,7 +520,7 @@ public class LogMinerRangeContextTest {
         when(connection.getScnAdjustedByTime(any(), any())).thenReturn(deviatedScn);
 
         final Scn result = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(100000L));
-        assertThat(result).isEqualTo(Scn.valueOf(21000L));
+        assertThat(result).isEqualTo(Scn.NULL);
     }
 
     // -------------------------------------------------------------------------
