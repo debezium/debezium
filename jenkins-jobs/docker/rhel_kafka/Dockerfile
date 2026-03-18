@@ -4,6 +4,11 @@ FROM $IMAGE
 LABEL maintainer="Debezium QE"
 
 #
+# Remove Red Hat Java Insights
+#
+ENV RHT_INSIGHTS_JAVA_OPT_OUT=true
+
+#
 # Set the source path for kafka, debezium connectors and data directories.
 #
 ARG KAFKA_SOURCE_PATH
