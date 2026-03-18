@@ -26,10 +26,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.config.ConfigurationDefaults;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.Sizeable;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -65,7 +66,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
+    // pollInterval is primarily intended for throttling poll calls,
+    // though it indirectly allows events to accumulate within each #poll() call,
+    // before returning the final polled records.
     private final Duration pollInterval;
+    // pollDispatchInterval is primarily intended to accumulate events for batch processing,
+    // and it doesn't have any throttling effect.
+    private final Duration pollDispatchInterval;
+    private ElapsedTimeStrategy pollDispatchTimer;
     private final int maxBatchSize;
     private final int maxQueueSize;
     private final long maxQueueSizeInBytes;
@@ -91,9 +99,11 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     private volatile RuntimeException producerException;
 
-    private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
+    private ChangeEventQueue(Duration pollInterval, Duration pollDispatchInterval, int maxQueueSize, int maxBatchSize,
+                             Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
                              long maxQueueSizeInBytes, boolean buffering, QueueProvider<T> queueProvider) {
         this.pollInterval = pollInterval;
+        this.pollDispatchInterval = pollDispatchInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
 
@@ -117,6 +127,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     public static class Builder<T extends Sizeable> {
 
         private Duration pollInterval;
+        private Duration pollDispatchInterval;
         private int maxQueueSize;
         private int maxBatchSize;
         private Supplier<LoggingContext.PreviousContext> loggingContextSupplier;
@@ -126,6 +137,11 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
         public Builder<T> pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
+            return this;
+        }
+
+        public Builder<T> pollDispatchInterval(Duration pollDispatchInterval) {
+            this.pollDispatchInterval = pollDispatchInterval;
             return this;
         }
 
@@ -170,7 +186,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
         public ChangeEventQueue<T> build() {
             QueueProvider<T> effectiveQueueProvider = (queueProvider != null) ? queueProvider : new DefaultQueueProvider<>(maxQueueSize);
-            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, effectiveQueueProvider);
+            return new ChangeEventQueue<>(pollInterval, pollDispatchInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering,
+                    effectiveQueueProvider);
         }
     }
 
@@ -233,6 +250,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         buffering = true;
     }
 
+    private ElapsedTimeStrategy getPollDispatchTimer() {
+        if (pollDispatchTimer == null) {
+            pollDispatchTimer = (pollDispatchInterval != null && pollDispatchInterval.toMillis() > 0) ? ElapsedTimeStrategy.constant(Clock.system(), pollDispatchInterval)
+                    : () -> true;
+        }
+        return pollDispatchTimer;
+    }
+
     protected void doEnqueue(T record) throws InterruptedException {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Enqueuing source record '{}'", maybeRedactSensitiveData(record));
@@ -280,28 +305,43 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
         try {
             LOGGER.debug("polling records...");
-            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, Duration.ofMillis(CommonConnectorConfig.MAX_ALLOWED_POLL_INTERVAL_MILLIS)));
             try {
                 this.lock.lock();
                 List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
                 throwProducerExceptionIfPresent();
-                while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
-                        && (maxQueueSizeInBytes == 0 || currentQueueSizeInBytes < maxQueueSizeInBytes)
-                        && !timeout.expired()) {
-                    throwProducerExceptionIfPresent();
-
-                    LOGGER.debug("no records available or batch size not reached yet, sleeping a bit...");
-                    long remainingTimeoutMills = timeout.remaining().toMillis();
-                    if (remainingTimeoutMills > 0) {
-                        // signal doEnqueue() to add more records
-                        this.isNotFull.signalAll();
-                        // no records available or batch size not reached yet, so wait a bit
-                        this.isFull.await(remainingTimeoutMills, TimeUnit.MILLISECONDS);
-                    }
-                    LOGGER.debug("checking for more records...");
+                boolean isQueueFull = queue.size() >= maxQueueSize
+                        || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes);
+                boolean pollDispatchTimerElapsed = getPollDispatchTimer().hasElapsed();
+                if (!pollDispatchTimerElapsed && !isQueueFull) {
+                    // should leave records to accumulate in the queue for now
+                    // wait for poll.interval.ms or util the queue is full and needs to be drained.
+                    this.isFull.await(timeout.remaining().toMillis(), TimeUnit.MILLISECONDS);
                 }
-                // signal doEnqueue() to add more records
-                this.isNotFull.signalAll();
+                else {
+                    if (!pollDispatchTimerElapsed) {
+                        LOGGER.warn("draining records before poll dispatch interval elapses, because the queue is full.");
+                    }
+                    while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
+                            && !isQueueFull
+                            && !timeout.expired()) {
+                        throwProducerExceptionIfPresent();
+
+                        LOGGER.debug("no records available or batch size not reached yet, sleeping a bit...");
+                        long remainingTimeoutMills = timeout.remaining().toMillis();
+                        if (remainingTimeoutMills > 0) {
+                            // signal doEnqueue() to add more records
+                            this.isNotFull.signalAll();
+                            // no records available or batch size not reached yet, so wait a bit
+                            this.isFull.await(remainingTimeoutMills, TimeUnit.MILLISECONDS);
+                        }
+                        LOGGER.debug("checking for more records...");
+                        isQueueFull = queue.size() >= maxQueueSize
+                                || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes);
+                    }
+                    // signal doEnqueue() to add more records
+                    this.isNotFull.signalAll();
+                }
                 return records;
             }
             finally {
