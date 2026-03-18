@@ -1212,9 +1212,14 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 
 [IMPORTANT]
 ====
-The Infinispan buffer implementation utilizes multiple cache configurations with different names.
-There should be a cache defined for `transactions`, `events`, `rollbacks`, `processed-transactions`, and `schema-changes`.
-Each configuration can be tuned to your performance needs or be identical other than the cache name.
+The {prodname} Infinispan buffer implementation requires that you configure a set of distinct cache configurations, each identified by a {prodname}-defined cache name.
+You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, `rollbacks`, and `schema-changes`.
+
+Each cache name is a hardcoded identifier that you specify in the XML of a {prodname} Oracle connector configuration property in the `log.mining.buffer.infinispan.cache` namespace.
+For example, the property `log.mining.buffer.infinispan.cache.transactions` contains the XML configuration for the cache that must include `name="transactions"` in its XML definition.
+
+The XML `name` attribute in each cache configuration must match the required {prodname} cache identifier exactly.
+Aside from the cache name, depending on your performance requirements, you can either configure all caches to use the same configuration, or adjust the configuration of each cache independently.
 ====
 
 [NOTE]
