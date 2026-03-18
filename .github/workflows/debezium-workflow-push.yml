@@ -306,6 +306,33 @@ jobs:
           path-core: core
           path-ibmi: ibmi
 
+  build_ingres:
+    name: "Ingres"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Checkout Action (Ingres)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-ingres
+          path: ingres
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-ingres
+        with:
+          path-core: core
+          path-ingres: ingres
+
   # Approx 20m
   build_vitess:
     name: "Vitess"
