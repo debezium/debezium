@@ -121,7 +121,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.schema = schema;
         this.notificationService = notificationService;
         this.pollInterval = connectorConfig.getPollInterval();
-        this.endTransactionTimerDelay = metadataConnection.getCdcCapturePollingInterval()
+        final Integer configuredPollingInterval = connectorConfig.getCdcCapturePollingIntervalSeconds();
+        final Duration cdcPollingInterval = configuredPollingInterval != null
+                ? Duration.ofSeconds(configuredPollingInterval)
+                : metadataConnection.getCdcCapturePollingInterval();
+        this.endTransactionTimerDelay = cdcPollingInterval
                 .multipliedBy(INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR);
         this.snapshotterService = snapshotterService;
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);

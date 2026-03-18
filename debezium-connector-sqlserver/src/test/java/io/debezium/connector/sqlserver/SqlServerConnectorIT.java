@@ -63,6 +63,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
+import io.debezium.data.Uuid;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -3618,6 +3619,103 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         SourceRecords records = consumeRecordsByTopic(1 + 1);
         assertThat(records).isNotNull();
         assertThat(records.topics()).hasSize(2);
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldEmitUniqueidentifierColumnsWithUuidSchemaType() throws Exception {
+        connection.execute(
+                "CREATE TABLE uuid_test (id int primary key, uid uniqueidentifier not null, uid_optional uniqueidentifier)");
+        TestHelper.enableTableCdc(connection, "uuid_test");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        connection.execute(
+                "INSERT INTO uuid_test VALUES(1, '6F9619FF-8B86-D011-B42D-00C04FC964FF', 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')");
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.testDB1.dbo.uuid_test");
+        assertThat(records).hasSize(1);
+
+        SourceRecord record = records.get(0);
+
+        // Verify the schema uses io.debezium.data.Uuid logical type
+        Schema afterSchema = record.valueSchema().field(AFTER).schema();
+        assertThat(afterSchema.field("uid").schema().name()).isEqualTo(Uuid.LOGICAL_NAME);
+        assertThat(afterSchema.field("uid_optional").schema().name()).isEqualTo(Uuid.LOGICAL_NAME);
+
+        // Verify the values are correct UUID strings
+        Struct after = ((Struct) record.value()).getStruct(AFTER);
+        assertThat(after.getString("uid")).isEqualToIgnoringCase("6F9619FF-8B86-D011-B42D-00C04FC964FF");
+        assertThat(after.getString("uid_optional")).isEqualToIgnoringCase("A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11");
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldEmitUniqueidentifierColumnsWithUuidSchemaTypeOnSnapshot() throws Exception {
+        connection.execute(
+                "CREATE TABLE uuid_snapshot_test (id int primary key, uid uniqueidentifier not null)");
+        TestHelper.enableTableCdc(connection, "uuid_snapshot_test");
+
+        connection.execute(
+                "INSERT INTO uuid_snapshot_test VALUES(1, '6F9619FF-8B86-D011-B42D-00C04FC964FF')");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.uuid_snapshot_test")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.testDB1.dbo.uuid_snapshot_test");
+        assertThat(records).hasSize(1);
+
+        SourceRecord record = records.get(0);
+
+        // Verify the schema uses io.debezium.data.Uuid logical type on snapshot
+        Schema afterSchema = record.valueSchema().field(AFTER).schema();
+        assertThat(afterSchema.field("uid").schema().name()).isEqualTo(Uuid.LOGICAL_NAME);
+
+        Struct after = ((Struct) record.value()).getStruct(AFTER);
+        assertThat(after.getString("uid")).isEqualToIgnoringCase("6F9619FF-8B86-D011-B42D-00C04FC964FF");
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldHandleUniqueidentifierDefaultValue() throws Exception {
+        connection.execute(
+                "CREATE TABLE uuid_default_test (id int primary key,"
+                        + "uid uniqueidentifier not null default ('6F9619FF-8B86-D011-B42D-00C04FC964FF'))");
+        TestHelper.enableTableCdc(connection, "uuid_default_test");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        connection.execute("INSERT INTO uuid_default_test (id) VALUES(1)");
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.testDB1.dbo.uuid_default_test");
+        assertThat(records).hasSize(1);
+
+        SourceRecord record = records.get(0);
+
+        // Verify schema has Uuid logical type and a default value
+        Schema uidSchema = record.valueSchema().field(AFTER).schema().field("uid").schema();
+        assertThat(uidSchema.name()).isEqualTo(Uuid.LOGICAL_NAME);
+        assertThat(uidSchema.defaultValue()).isEqualTo("6F9619FF-8B86-D011-B42D-00C04FC964FF");
 
         stopConnector();
     }

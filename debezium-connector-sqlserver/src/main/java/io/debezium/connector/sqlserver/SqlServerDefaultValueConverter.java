@@ -167,7 +167,10 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         result.put("image", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
         result.put("varbinary", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
 
-        // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
+        // Uniqueidentifier
+        result.put("uniqueidentifier", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('6F9619FF-8B86-D011-B42D-00C04FC964FF')
+
+        // Other data types, such as cursor or xml, have been omitted.
         return result;
     }
 

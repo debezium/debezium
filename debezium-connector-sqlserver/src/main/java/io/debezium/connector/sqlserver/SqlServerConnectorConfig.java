@@ -480,6 +480,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("Specifies the maximum number of rows that should be read in one go from each table while streaming. "
                     + "The connector will read the table contents in multiple batches of this size. Defaults to 0 which means no limit.");
 
+    public static final Field CDC_CAPTURE_POLLING_INTERVAL = Field.create("cdc.capture.polling.interval.seconds")
+            .withDisplayName("CDC capture polling interval (seconds)")
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withDescription("Overrides the CDC capture job polling interval used to calculate transaction end check delays. "
+                    + "Normally this value is read from sys.sp_cdc_help_jobs which requires db_owner privileges. "
+                    + "Set this to match your CDC capture job's polling interval (in seconds) to avoid granting db_owner. "
+                    + "When not set, the value is read from SQL Server (or falls back to 5 seconds if the query fails).");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -501,7 +510,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
                     QUERY_FETCH_SIZE,
                     DATA_QUERY_MODE,
-                    STREAMING_FETCH_SIZE)
+                    STREAMING_FETCH_SIZE,
+                    CDC_CAPTURE_POLLING_INTERVAL)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -529,6 +539,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int queryFetchSize;
     private final DataQueryMode dataQueryMode;
     private final int streamingFetchSize;
+    private final Integer cdcCapturePollingIntervalSeconds;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -578,6 +589,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.dataQueryMode = DataQueryMode.parse(config.getString(DATA_QUERY_MODE), DATA_QUERY_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.streamingFetchSize = config.getInteger(STREAMING_FETCH_SIZE);
+        this.cdcCapturePollingIntervalSeconds = config.hasKey(CDC_CAPTURE_POLLING_INTERVAL.name())
+                ? config.getInteger(CDC_CAPTURE_POLLING_INTERVAL)
+                : null;
     }
 
     public List<String> getDatabaseNames() {
@@ -730,5 +744,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public int getStreamingFetchSize() {
         return streamingFetchSize;
+    }
+
+    public Integer getCdcCapturePollingIntervalSeconds() {
+        return cdcCapturePollingIntervalSeconds;
     }
 }

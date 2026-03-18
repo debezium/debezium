@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.Uuid;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -55,6 +56,9 @@ public class SqlServerValueConverters extends JdbcValueConverters {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
+        if ("uniqueidentifier".equalsIgnoreCase(column.typeName())) {
+            return Uuid.builder();
+        }
         switch (column.jdbcType()) {
             // Numeric integers
             case Types.TINYINT:
@@ -74,6 +78,9 @@ public class SqlServerValueConverters extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
+        if ("uniqueidentifier".equalsIgnoreCase(column.typeName())) {
+            return (data) -> convertString(column, fieldDefn, data);
+        }
         switch (column.jdbcType()) {
             // Numeric integers
             case Types.TINYINT:

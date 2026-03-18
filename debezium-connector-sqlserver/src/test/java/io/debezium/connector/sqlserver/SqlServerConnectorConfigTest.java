@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -103,6 +104,35 @@ public class SqlServerConnectorConfigTest {
                         .with(SqlServerConnectorConfig.QUERY_FETCH_SIZE, 20_000)
                         .build());
         assertEquals(connectorConfig.getQueryFetchSize(), 20_000);
+    }
+
+    @Test
+    void cdcCapturePollingIntervalNotSetReturnsNull() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                        .build());
+        assertNull(connectorConfig.getCdcCapturePollingIntervalSeconds());
+    }
+
+    @Test
+    void cdcCapturePollingIntervalSetToZero() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                        .with(SqlServerConnectorConfig.CDC_CAPTURE_POLLING_INTERVAL, 0)
+                        .build());
+        assertEquals(0, connectorConfig.getCdcCapturePollingIntervalSeconds());
+    }
+
+    @Test
+    void cdcCapturePollingIntervalSetToPositiveValue() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                        .with(SqlServerConnectorConfig.CDC_CAPTURE_POLLING_INTERVAL, 5)
+                        .build());
+        assertEquals(5, connectorConfig.getCdcCapturePollingIntervalSeconds());
     }
 
     private Configuration.Builder defaultConfig() {
