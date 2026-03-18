@@ -135,20 +135,23 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                             connection.username());
                     LOGGER.info("Checking if user has access to CDC table");
-                    if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
-                        final List<String> noAccessDatabaseNames = new ArrayList<>();
-                        for (String databaseName : sqlServerConfig.getDatabaseNames()) {
+                    final List<String> noAccessDatabaseNames = new ArrayList<>();
+                    for (String databaseName : sqlServerConfig.getDatabaseNames()) {
+                        if (sqlServerConfig.getSnapshotMode() == SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
+                            connection.retrieveRealDatabaseName(databaseName);
+                        }
+                        else {
                             if (!connection.checkIfConnectedUserHasAccessToCDCTable(databaseName)) {
                                 noAccessDatabaseNames.add(databaseName);
                             }
                         }
-                        if (!noAccessDatabaseNames.isEmpty()) {
-                            String errorMessage = String.format(
-                                    "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
-                                    config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
-                            LOGGER.error(errorMessage);
-                            userValue.addErrorMessage(errorMessage);
-                        }
+                    }
+                    if (!noAccessDatabaseNames.isEmpty()) {
+                        String errorMessage = String.format(
+                                "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
+                                config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
+                        LOGGER.error(errorMessage);
+                        userValue.addErrorMessage(errorMessage);
                     }
                 }
                 catch (Exception e) {
