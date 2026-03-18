@@ -118,18 +118,11 @@ public class LogMinerRangeContext {
         final Duration deviationTime = connectorConfig.getLogMiningMaxScnDeviation();
         if (!deviationTime.isZero()) {
             final Optional<Scn> deviatedScn = calculateDeviatedEndScn(lowerBoundary, upperBoundary, deviationTime);
-            if (deviatedScn.isPresent()) {
-                LOGGER.debug("Adjusting upper boundary {} based on deviation to {}.", upperBoundary, deviatedScn.get());
-                upperBoundary = deviatedScn.get();
+            if (deviatedScn.isEmpty()) {
+                return Scn.NULL;
             }
-            else {
-                LOGGER.warn(
-                        "Failed to resolve upper boundary with '{}' because the SCN {} is no longer in undo retention. " +
-                                "If this continues, consider removing the connector configuration property '{}'.",
-                        OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS.name(),
-                        upperBoundary,
-                        OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS.name());
-            }
+            LOGGER.debug("Adjusting upper boundary {} based on deviation to {}.", upperBoundary, deviatedScn.get());
+            upperBoundary = deviatedScn.get();
         }
 
         upperBoundary = getMinimumOpenRedoThreadScn(lowerBoundary, upperBoundary);
