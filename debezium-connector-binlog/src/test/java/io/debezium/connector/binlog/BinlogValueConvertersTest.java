@@ -81,7 +81,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
-    void testJsonValues() {
+    public void testJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         final BinlogValueConverters converters = getValueConverters(
