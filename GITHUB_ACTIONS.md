@@ -26,7 +26,7 @@ These checks ensure that the metadata and legal standing of the commits meet pro
 |---|---|---|
 | Commit Message Format | `sanity-check.yml` | Enforces the `debezium/dbz#xxx` prefix required for automated changelog generation. A failure here prevents the PR from being merged. |
 | DCO Sign-off | `debezium-workflow-pr.yml` | Validates the **Developer Certificate of Origin (DCO)**. This check is a prerequisite for the entire pipeline; if it fails, all downstream connector tests are skipped. |
-| Contributor Metadata | `contributor-check.yml` | Verifies that new authors have correctly updated `COPYRIGHT.txt` and `Aliases.txt`. |
+| Contributor Metadata | `contributor-check.yml` | Verifies that the `COPYRIGHT.txt` and `Aliases.txt` files are properly updated to reflect new contributors. |
 | Identity Integrity | `octocat-commits-check.yml` | Ensures the author email is linked to a valid GitHub account, maintaining accurate contribution metrics and accountability. |
 
 > **Important**: Correcting Compliance Failures
@@ -94,9 +94,11 @@ Correct these locally by running:
 ```
 
 ### Flaky Tests
-Integration tests depend on Docker and network stability. If a failure appears transient, check if the failing test is annotated with `@Flaky` in the source code. These annotations typically reference a JIRA issue (e.g., `DBZ-xxxx`) that documents the known instability.
+Integration tests depend on Docker and network stability. If a failure appears transient, check if the failing test is annotated with `@Flaky` in the source code. These annotations typically reference a known issue that documents the instability.
 
-To identify if a failure is related to a known JIRA issue, you can search the codebase for the issue key using the following command:
+> **Note**: Debezium has migrated from JIRA to GitHub Issues. Older legacy issues are marked using a JIRA ID (e.g., `DBZ-xxxx`), while newer issues use the GitHub issue format (`dbz#xxxx`).
+
+To identify if a failure is related to a known issue, you can search the codebase for the issue key using the following command:
 
 ```bash
 grep -rni "@Flaky"
