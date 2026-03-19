@@ -973,8 +973,12 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void doClose() throws SQLException {
+        final Map<String, String> mdcContext = org.slf4j.MDC.getCopyOfContextMap();
         try {
             Threads.runWithTimeout(JdbcConnection.class, () -> {
+                if (mdcContext != null) {
+                    org.slf4j.MDC.setContextMap(mdcContext);
+                }
                 try {
                     conn.close();
                     LOGGER.info("Connection gracefully closed");
