@@ -821,7 +821,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
-                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), "snapshot");
+                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
                     try {
                         doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
                                 selectStatement, rowCount, rowCountTablesKeySet, connection);
@@ -846,7 +846,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
-                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), "snapshot");
+                            connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
                     try {
                         doCreateDataEventsForChunk(sourceContext, snapshotContext, offset, snapshotReceiver, chunk, progressMap, snapshotProgress, connection);
                     }
