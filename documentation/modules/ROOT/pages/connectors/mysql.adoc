@@ -190,16 +190,16 @@ You can send a {prodname} `set-binlog-position` signal at run time to dynamicall
 
 [IMPORTANT]
 ====
-Depending on the position that you specify in the `set-binlog-position` signal, the connector either excludes events from the log, or sends duplicate events. 
+Depending on the position that you specify in the `set-binlog-position` signal, the connector either excludes events from the log, or sends duplicate events.
 
-If you specify a binlog position that is later than the current position, the connector skips change events in the history between the current position and the new position. 
+If you specify a binlog position that is later than the current position, the connector skips change events in the history between the current position and the new position.
 The connector does not capture or stream changes in the skipped range.
 
 On the other hand, if the signal directs the connector to resume reading from a point earlier than the current position, the connector replays log entries that it previously sent, emitting duplicate events to the destination topic.
 ====
 
 You might want to reset the connector's binlog position under the following circumstances:
- 
+
 Disaster recovery:: Direct the connector to resume streaming from the last known good position in the log after a system failure.
 Restarting from a specified position helps to maintain data consistency across the pipeline by ensuring that data is not lost or duplicated.
 Corrupted data:: You detect corrupted or incorrect data in the database or in the destination Kafka topics, and want to skip the corrupted data and resume from a known good position.
@@ -217,7 +217,7 @@ Testing:: Test the connector with a specific subset of data, excluding the full 
 
 A {prodname} `set-binlog-position` signal message includes the standard `id`, `type`, and `data` properties.
 The exact format of the message depends on which signaling channel you use.
-For more information about the format of {prodname} signals, see {link-prefix}:{link-signaling}#debezium-signaling-overview}[Sending signals to a {prodname} connector].
+For more information about the format of {prodname} signals, see {link-prefix}:{link-signalling}#debezium-signaling-overview}[Sending signals to a {prodname} connector].
 
 To designate the binlog position in a `set-binlog-position` signal, in the data portion of the signal, you specify either the binlog file and position, or a GTID set, depending on whether GTID (Global Transaction Identifier) mode is enabled.
 You cannot use both formats in the same signal.
