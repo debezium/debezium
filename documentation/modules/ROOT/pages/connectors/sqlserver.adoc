@@ -1968,7 +1968,7 @@ If SSL is not enabled for a SQL Server database, or if you want to connect to th
 +
 WARNING: Do not enable automatic trust of server certificates in production environments.
 If you disable validation, the connector skips certificate chain and host name validation, which can leave connections vulnerable to man‑in‑the‑middle attacks.
-Use an explicit trust configuration only as a convenience in testing and development environments 
+Use an explicit trust configuration only as a convenience in testing and development environments
 
 // Type: procedure
 // ModuleID: enabling-cdc-on-the-sql-server-database
@@ -3172,35 +3172,47 @@ When set to `0` the connector will fail immediately when it cannot obtain the lo
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
-|Specifies the table rows to include in a snapshot.
-Use the property if you want a snapshot to include only a subset of the rows in a table.
-Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+|Specifies the tables for which the connector uses custom `SELECT` statements to determine which rows to include in a snapshot.
 
 This property affects snapshots only.
-It does not apply to events that the connector reads from the log.
+It does not apply to events that the connector reads from the log during the streaming phase.
 
-The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
- +
-`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
- +
-For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
-The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
-Use the following format to specify the name of this `SELECT` statement property: +
- +
-`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+This property consists of two parts that work together:
+
+Main property::
+A comma-separated list of fully-qualified table names in the format `_<databaseName>.<schemaName>.<tableName>_`.
+This list identifies the tables for which you want to specify custom snapshot queries.
++
 For example,
-`snapshot.select.statement.overrides.customers.orders`. +
- +
-Example:
++
+`+"snapshot.select.statement.overrides": "mydb.inventory.products,mydb.customers.orders"+`
++
+NOTE: If the fully qualified database, schema, or table name contains special characters, such as spaces, square brackets (`[` or `]`), or period characters (`.`),
+enclose the string in double quotes to prevent the connector from interpreting the special characters as delimiters.
+Double quotes around table names are optional if the fully qualified table name does not include spaces or special characters.
 
-From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
-
+Secondary properties::
+For each table that you list in the main property, you must define a corresponding `snapshot.select.statement.overrides._<databaseName>_._<schemaName>_._<tableName>_` property that specifies the custom `SELECT` statement to run during the snapshot.
+The `SELECT` statement determines which rows from the table to include in the snapshot.
++
+For example, to specify a SELECT statement for the `mydb.customer.orders` table, add the following property:
++
+`snapshot.select.statement.overrides.mydb.customers.orders`
++
+[WARNING]
+====
+If a table is listed in the main property, but its corresponding secondary property is missing, the connector logs a warning and uses the default snapshot behavior for that table.
+====
++
+Example configuration::
+The following example shows how to configure the `snapshot.select.statement.overrides` property to perform a snapshot of the `mydb.customers.orders` table that includes only records that are not soft-deleted; that is, the value of the soft-delete field, `delete_flag`, is set to `0`.
+====
 ----
-"snapshot.select.statement.overrides": "customer.orders",
-"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
+"snapshot.select.statement.overrides": "mydb.customer.orders",
+"snapshot.select.statement.overrides.mydb.customer.orders": "SELECT * FROM mydb.customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
 ----
+====
 
-In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
 ifdef::community[]
 |[[sqlserver-property-source-struct-version]]<<sqlserver-property-source-struct-version, `+source.struct.version+`>>
 |v2

@@ -783,36 +783,47 @@ xref:{context}-property-snapshot-select-statement-overrides[`snapshot.select.sta
 Default value::: No default
 
 Description:::
-Specifies the table rows to include in a snapshot.
-Use the property if you want a snapshot to include only a subset of the rows in a table.
-Double quotes around table names are optional unless the schema or table name contains spaces or special characters.
+Specifies the tables for which the connector uses custom `SELECT` statements to determine which rows to include in a snapshot.
 +
 This property affects snapshots only.
-It does not apply to events that the connector reads from the log.
+It does not apply to events that the connector reads from the log during the streaming phase.
 +
-The property contains a comma-separated list of fully-qualified table names in the form `_<databaseName>.<tableName>_`. For example,
+This property consists of two parts that work together:
+
+Main property::::
+A comma-separated list of fully-qualified table names in the format `_<databaseName>.<tableName>_`.
+This list identifies the tables for which you want to specify custom snapshot queries.
++
+For example:
 +
 `+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+`
 +
-For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
-The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
-Use the following format to specify the name of this `SELECT` statement property:
+NOTE: If the fully qualified schema or table name contains special characters, such as spaces, square brackets (`[` or `]`), or period characters (`.`),
+enclose the string in double quotes to prevent the connector from interpreting the special characters as delimiters.
+Double quotes around table names are optional if the fully qualified table name does not include spaces or special characters.
+
+Secondary properties::::
+For each table listed in the main property, you must define a corresponding `snapshot.select.statement.overrides._<databaseName>_._<tableName>_` property that specifies the custom `SELECT` statement to run during the snapshot.
 +
-`snapshot.select.statement.overrides._<databaseName>_._<tableName>_`
+The `SELECT` statement determines which rows from the table to include in the snapshot.
 +
-For example,
+For example, to specify the `SELECT` statement for the `customers.orders` table:, add the following property:
 +
 `snapshot.select.statement.overrides.customers.orders`
 +
-From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
+[WARNING]
+====
+If a table is listed in the main property but its corresponding secondary property is missing, the connector logs a warning and uses the default snapshot behavior for that table.
+====
+Example configuration::::
 +
+The following example shows how to configure the `snapshot.select.statement.overrides` property to perform a snapshot of the `customers.orders` table that includes only records that are not soft-deleted; that is, the value of the soft-delete field, `delete_flag`, is set to `0`.
+====
 ----
 "snapshot.select.statement.overrides": "customer.orders",
-"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
 ----
-+
-In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
-
+====
 
 [id="{context}-property-snapshot-tables-order-by-row-count"]
 xref:{context}-property-snapshot-tables-order-by-row-count[`snapshot.tables.order.by.row.count`]::
