@@ -509,9 +509,12 @@ public final class Field {
                         Field::mergeRecommenders));
     }
 
-    // Helper method added to convert Debezium's internal Validator into Kafka's ConfigDef.Validator,
-    // ensuring that our custom validation logic (like Enum validations) is properly hooked into the Kafka Connect framework.
+    // Only converts the validator for fields that have explicitly opted in via withConfigDefValidation().
+    // This ensures existing connector fields are unaffected and only selected fields get REST API validation.
     private static ConfigDef.Validator convertToKafkaValidator(Field field) {
+        if (!field.isKafkaValidationEnabled()) {
+            return null;
+        }
         if (field.validator() == null) {
             return null;
         }
@@ -586,6 +589,7 @@ public final class Field {
     private final GroupEntry group;
     private final boolean isRequired;
     private final java.util.Set<String> deprecatedAliases;
+    private boolean enableKafkaValidation;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     Supplier<Object> defaultValueGenerator, Validator validator) {
@@ -637,6 +641,7 @@ public final class Field {
         this.group = group;
         this.allowedValues = allowedValues;
         this.deprecatedAliases = deprecatedAliases;
+        this.enableKafkaValidation = false;
         assert this.name != null;
     }
 
@@ -1143,6 +1148,31 @@ public final class Field {
         }
         return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(), valueDependants, valueDependantMatchers,
                 defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues, aliases);
+    }
+
+    /**
+     * Opt-in to having this field's validator passed to Kafka Connect's ConfigDef during
+     * Field.group(). This enables Kafka Connect's REST API to reject invalid values at
+     * connector creation time, rather than failing later during task startup.
+     *
+     * Must be called as the LAST method in the builder chain since other builder methods
+     * create copies that do not preserve this flag.
+     *
+     * @return the new field with Kafka validation enabled; never null
+     */
+    public Field withConfigDefValidation() {
+        Field copy = new Field(name(), displayName(), type(), width(), description(), importance(),
+                dependents, valueDependants, valueDependantMatchers,
+                defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+        copy.enableKafkaValidation = true;
+        return copy;
+    }
+
+    /**
+     * Returns whether this field has opted in to Kafka Connect ConfigDef validation.
+     */
+    public boolean isKafkaValidationEnabled() {
+        return enableKafkaValidation;
     }
 
     /**
