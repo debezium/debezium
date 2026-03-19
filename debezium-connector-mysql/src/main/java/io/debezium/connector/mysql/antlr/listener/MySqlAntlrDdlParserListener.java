@@ -118,7 +118,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
     }
 
     @Override
-    public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
+    public void enterStoredRoutineBody(MySqlParser.StoredRoutineBodyContext ctx) {
         // this is a grammar rule for BEGIN ... END part of statements. Skip it.
         skipNodes = true;
     }

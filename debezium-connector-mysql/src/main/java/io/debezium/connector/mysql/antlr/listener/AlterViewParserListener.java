@@ -40,7 +40,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
     @Override
     public void enterAlterView(MySqlParser.AlterViewContext ctx) {
         if (!parser.skipViews()) {
-            TableId tableId = parser.parseQualifiedTableId(ctx.fullId());
+            TableId tableId = parser.parseQualifiedTableId(ctx.viewRef());
 
             tableEditor = parser.databaseTables().editTable(tableId);
             if (tableEditor == null) {
@@ -50,10 +50,12 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
             // alter view will override existing columns for a new one
             tableEditor.columnNames().forEach(tableEditor::removeColumn);
             // create new columns just with specified name for now
-            if (ctx.uidList() != null) {
-                ctx.uidList().uid().stream().map(parser::parseName).forEach(columnName -> {
-                    tableEditor.addColumn(Column.editor().name(columnName).create());
-                });
+            if (ctx.viewTail().columnInternalRefList() != null) {
+                ctx.viewTail().columnInternalRefList().columnInternalRef().stream()
+                        .map(colRef -> parser.parseName(colRef.identifier()))
+                        .forEach(columnName -> {
+                            tableEditor.addColumn(Column.editor().name(columnName).create());
+                        });
             }
             selectColumnsListener = new ViewSelectedColumnsParserListener(tableEditor, parser);
             listeners.add(selectColumnsListener);
@@ -73,7 +75,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
             listeners.remove(selectColumnsListener);
         }, tableEditor);
         // signal view even if it was skipped
-        parser.signalAlterView(parser.parseQualifiedTableId(ctx.fullId()), null, ctx);
+        parser.signalAlterView(parser.parseQualifiedTableId(ctx.viewRef()), null, ctx);
         super.exitAlterView(ctx);
     }
 }
