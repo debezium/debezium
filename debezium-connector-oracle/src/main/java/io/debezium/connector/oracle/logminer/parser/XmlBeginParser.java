@@ -37,7 +37,7 @@ public class XmlBeginParser {
      * @return the parsed begin event data, never {@code null}
      */
     public XmlBegin parse(LogMinerEventRow event, Table table) {
-        final AbstractSingleColumnSqlRedoPreambleParser parser = getParserForEvent(event);
+        final SingleColumnSqlRedoPreambleParser parser = getParserForEvent(event);
 
         final LogMinerDmlEntry result = parser.parse(event.getRedoSql(), table);
         final String columnName = parser.getColumnName();
