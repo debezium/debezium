@@ -133,7 +133,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldFailOnUnparseableDdl() throws InterruptedException {
+    public void shouldFailOnUnparseableDdl() throws InterruptedException {
         assertThrows(ParsingException.class, () -> {
             // Testing.Print.enable();
             final Configuration config = DATABASE.defaultConfig()
@@ -186,7 +186,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
+    public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)

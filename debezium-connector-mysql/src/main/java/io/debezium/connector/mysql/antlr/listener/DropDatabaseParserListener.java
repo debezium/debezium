@@ -25,10 +25,11 @@ public class DropDatabaseParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterDropDatabase(MySqlParser.DropDatabaseContext ctx) {
-        String databaseName = parser.parseName(ctx.uid());
+        String databaseName = parser.parseName(ctx.schemaRef().identifier());
         parser.databaseTables().removeTablesForDatabase(databaseName);
         parser.charsetNameForDatabase().remove(databaseName);
-        parser.signalDropDatabase(databaseName, ctx);
+        // Use parent context to include DROP keyword
+        parser.signalDropDatabase(databaseName, ctx.getParent());
         super.enterDropDatabase(ctx);
     }
 }

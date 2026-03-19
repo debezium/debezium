@@ -231,13 +231,13 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     }
 
     @Test
-    void parseStringDefaultValue() {
+    public void parseStringDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_STRING_TABLE (\n" +
                 "  A CHAR NULL DEFAULT 'A',\n" +
                 "  B CHAR CHARACTER SET utf8 NULL DEFAULT 'b',\n" +
                 "  C VARCHAR(10) NULL DEFAULT 'CC',\n" +
                 "  D NCHAR(10) NULL DEFAULT '10',\n" +
-                "  E NVARCHAR NULL DEFAULT '0',\n" +
+                "  E NVARCHAR(100) NULL DEFAULT '0',\n" +
                 "  F CHAR DEFAULT NULL,\n" +
                 "  G VARCHAR(10) DEFAULT NULL,\n" +
                 "  H NCHAR(10) DEFAULT NULL\n" +
