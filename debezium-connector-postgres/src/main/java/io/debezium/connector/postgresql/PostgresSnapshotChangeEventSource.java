@@ -7,11 +7,15 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +38,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> {
 
@@ -295,6 +300,41 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         // DEFERRABLE only takes affect for READY ONLY and SERIALIZABLE
         // https://www.postgresql.org/docs/current/sql-set-transaction.html
         return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
+    }
+
+    @Override
+    protected Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+        // Get the table.include.list configuration
+        String tableIncludeList = connectorConfig.tableIncludeList();
+        List<String> signalingDataCollections = connectorConfig.getSignalingDataCollectionIds();
+
+        // Parse patterns from table.include.list, preserving order
+        List<Pattern> captureTablePatterns = new ArrayList<>();
+        if (!Strings.isNullOrBlank(tableIncludeList)) {
+            captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
+        }
+        else {
+            // If no table.include.list, match all tables
+            captureTablePatterns.add(Pattern.compile(".*", Pattern.CASE_INSENSITIVE));
+        }
+
+        // Add signaling collection patterns
+        for (String signalingDataCollection : signalingDataCollections) {
+            captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
+        }
+
+        // Sort tables by pattern order: for each pattern, find matching tables and sort them alphabetically
+        return captureTablePatterns
+                .stream()
+                .flatMap(pattern -> toTableIds(capturedTables, pattern))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
+        return tableIds
+                .stream()
+                .filter(tid -> pattern.asMatchPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
+                .sorted();
     }
 
     /**
