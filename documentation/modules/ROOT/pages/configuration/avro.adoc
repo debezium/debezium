@@ -507,7 +507,7 @@ endif::community[]
 [[avro-naming]]
 == Naming
 
-As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
+As stated in the Avro link:{link-avro-naming}[documentation], names must adhere to the following rules:
 
 * Start with `[A-Za-z_]`
 * Subsequently contains only `[A-Za-z0-9_]` characters
