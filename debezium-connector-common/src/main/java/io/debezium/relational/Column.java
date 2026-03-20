@@ -129,6 +129,13 @@ public interface Column extends Comparable<Column> {
     boolean isGenerated();
 
     /**
+     * Determine whether this column is a synthetic column.
+     *
+     * @return {@code true} if it is a synthetic column, or {@code false} otherwise
+     */
+    boolean isSynthetic();
+
+    /**
      * Get the database-specific complete expression defining the column's default value.
      *
      * @return the complete type expression
