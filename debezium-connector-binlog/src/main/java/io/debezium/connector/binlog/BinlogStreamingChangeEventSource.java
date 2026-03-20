@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static io.debezium.util.Strings.isNullOrEmpty;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -1088,24 +1089,41 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, null);
     }
 
-    private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
+    private boolean validateChangeEventWithTable(Table table, Serializable[] before, Serializable[] after) {
         if (table != null) {
             int columnSize = table.columns().size();
+            int expectedSize = columnSize;
+
             String message = "Error processing {} of row in {} because it's different column size with internal schema size {}, but {} size {}, " +
                     "restart connector with schema recovery mode.";
-            if (before != null && columnSize != before.length) {
-                LOGGER.error(message, "before", table.id().table(), columnSize, "before", before.length);
-                throw new DebeziumException(
-                        "Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + before.length + " , " +
-                                "restart connector with schema recovery mode.");
+            if (before != null && expectedSize != before.length) {
+                if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                    LOGGER.error(message, "before", table.id().table(), columnSize, "before", before.length);
+                    throw new DebeziumException(
+                            "Error processing row in " + table.id().table() + ", internal schema size " + columnSize
+                                    + ", but row size " + before.length + ", restart connector with schema recovery mode.");
+                }
+
+                LOGGER.warn(message, "before", table.id().table(), columnSize, "before", before.length);
+                LOGGER.warn("Skipping before row for table {} due to schema/row length mismatch "
+                        + "to avoid potential column misalignment.", table.id().table());
+                return false;
             }
-            if (after != null && columnSize != after.length) {
-                LOGGER.error(message, "after", table.id().table(), columnSize, "after", after.length);
-                throw new DebeziumException(
-                        "Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + after.length + " , " +
-                                "restart connector with schema recovery mode.");
+            if (after != null && expectedSize != after.length) {
+                if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                    LOGGER.error(message, "after", table.id().table(), columnSize, "after", after.length);
+                    throw new DebeziumException(
+                            "Error processing row in " + table.id().table() + ", internal schema size " + columnSize
+                                    + ", but row size " + after.length + ", restart connector with schema recovery mode.");
+                }
+
+                LOGGER.warn(message, "after", table.id().table(), columnSize, "after", after.length);
+                LOGGER.warn("Skipping after row for table {} due to schema/row length mismatch "
+                        + "to avoid potential column misalignment.", table.id().table());
+                return false;
             }
         }
+        return true;
     }
 
     private <T extends EventData, U> void handleChange(P partition,
@@ -1138,7 +1156,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             if (startingRowNumber < numRows) {
                 for (int rowIndex = startingRowNumber; rowIndex != numRows; ++rowIndex) {
                     U row = rows.get(rowIndex);
-                    changeEventValidator.validate(tableId, row);
+                    // Skip this row if validation fails (e.g., schema/row column count mismatch)
+                    if (!changeEventValidator.validate(tableId, row)) {
+                        continue;
+                    }
                     offsetContext.setRowNumber(rowIndex, numRows);
                     offsetContext.event(tableId, eventTimestamp);
                     changeEmitter.emit(tableId, row);
@@ -1399,7 +1420,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     @FunctionalInterface
     private interface ChangeEventValidator<U> {
-        void validate(TableId tableId, U row);
+        boolean validate(TableId tableId, U row);
     }
 
     /**
