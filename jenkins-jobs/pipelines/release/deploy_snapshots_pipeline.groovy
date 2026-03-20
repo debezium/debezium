@@ -125,6 +125,18 @@ node('Slave') {
                         git commit -m '[snapshot] ${snapshotVersion} from debezium/debezium@${debeziumCommit} at ${buildTimestamp}' || echo 'No changes to commit'
                         git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${params.DEBEZIUM_DESCRIPTOR_REPOSITORY} HEAD:${params.DEBEZIUM_DESCRIPTOR_BRANCH}
                     """
+
+                    def repoPath = params.DEBEZIUM_DESCRIPTOR_REPOSITORY
+                            .replaceAll(/^github\.com\//, '')
+                            .replaceAll(/\.git$/, '')
+
+                    sh """
+                        curl -X POST \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: token ${GIT_PASSWORD}" \
+                        https://api.github.com/repos/${repoPath}/dispatches \\
+                        -d '{"event_type": "snapshot-updated"}'
+                    """
                 }
             }
         }
