@@ -88,8 +88,9 @@ You are working on Debezium, a Change Data Capture platform. Use the maven versi
 - 
 
 **Instructions:**
-- Always run code formatting before builds when making code changes
-- Use `-Dquick` for fastest iteration during development
+- Always run code formatting before builds when making code changes. Use the styleguide config in `support/checkstyle/src/main/resources/checkstyle.xml`
+- Use `-Dquick` for fastest build check iteration during development
+- Use `-Dtest=` or `-Dit.test=` to execute a single test during development
 - Build with `-am` to include dependencies when working on modules
 - Code style is enforced; CI will fail on violations
 
@@ -102,35 +103,30 @@ You are working on Debezium, a Change Data Capture platform. Use the maven versi
 **When to use:**
 - Running unit or integration tests
 - Debugging test failures
-- Setting up Docker containers for integration tests
-- Running connector-specific test configurations
+- Setting up Containers for integration tests
+- Running connector-specific test configurations taking into account the supported version matrix
 
 **Context:**
-Debezium integration tests use Docker containers via testcontainers. Each connector module can start its own database container. Tests expect specific system properties for database connection info.
+Debezium integration tests use containers via `testcontainers`. Each connector module can start its own database container. Tests expect specific system properties for database connection info.
 
 **Key commands:**
-- Run all tests: `mvn clean install`
-- Skip integration tests: `mvn clean install -DskipITs`
-- Run specific test: `mvn -Dit.test=ConnectionIT install`
-- Run test pattern: `mvn -Dit.test=Connect*IT install`
-- Start database container: `cd <connector-module> && mvn docker:build docker:start`
-- Stop container: `mvn docker:stop`
+- Run all tests: `./mvnw clean install`
+- Skip integration tests: `./mvnw clean install -DskipITs`
+- Run specific test: `./mvnw -Dtest=ConnectionIT install`
+- Run specific test method: `./mvnw -Dtest=ConnectionIT#testSomething install`
+- Run specific integration test: `./mvnw -Dit.test=ConnectionIT install`
+- Run specific integration test method: `./mvn -Dit.test=ConnectionIT#testSomething install`
+- Run unit test pattern: `./mvnw -Dtest=Connect*IT install`
+- Stop container: `./mvnw docker:stop`
 
 **Connector-specific test profiles:**
-- PostgreSQL wal2json: `mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder`
-- PostgreSQL pgoutput: `mvn clean install -pl debezium-connector-postgres -Ppgoutput-decoder,postgres-10`
-- Oracle XStream: `mvn clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path>`
-- MongoDB oplog: `mvn docker:start -Dcapture.mode=oplog -Dversion.mongo.server=3.6`
-
-**IDE testing properties:**
-- MySQL: `-Ddatabase.hostname=localhost -Ddatabase.port=3306`
-- PostgreSQL: `-Ddatabase.hostname=localhost -Ddatabase.port=5432`
+- PostgreSQL pgoutput: `./mvnw clean install -pl debezium-connector-postgres -Ppgoutput-decoder,postgres-10`
+- Oracle XStream: `./mvnw clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path>`
 
 **Instructions:**
-- For manual/IDE testing, start the database container first with `mvn docker:build docker:start`
-- Integration tests require Docker to be running
+- Integration tests require a container engine to be running
 - Different PostgreSQL decoders have different capabilities; check `DecoderDifferences` class
-- Always stop containers after testing to free resources
+- Always check that containers are stopped after testing to free resources
 
 ---
 
@@ -147,14 +143,14 @@ Debezium integration tests use Docker containers via testcontainers. Each connec
 **Context:**
 Debezium connectors follow a consistent architecture pattern. Each connector has: Connector class, ConnectorTask, ConnectorConfig, OffsetContext, Partition, SnapshotChangeEventSource, StreamingChangeEventSource, DatabaseSchema, and SourceInfo classes.
 
-**Connector architecture pattern:**
+**Source Connector architecture pattern:**
 1. **Connector class** (e.g., MySqlConnector) - Entry point, returns Task class
 2. **ConnectorTask** (e.g., MySqlConnectorTask) - Executes CDC logic
-3. **ConnectorConfig** (e.g., MySqlConnectorConfig) - Configuration with @ConfigDef annotations
-4. **OffsetContext** (e.g., MySqlOffsetContext) - Tracks position in change stream
-5. **Partition** (e.g., MySqlPartition) - Defines partition key
+3. **ConnectorConfig** (e.g., MySqlConnectorConfig) - Configuration class
+4. **OffsetContext** (e.g., MySqlOffsetContext) - Tracks position in source change stream
+5. **Partition** (e.g., MySqlPartition) - Defines source partition info
 6. **SnapshotChangeEventSource** - Initial snapshot logic
-7. **StreamingChangeEventSource** - Continuous change streaming
+7. **StreamingChangeEventSource** - Continuous change data capture streaming
 8. **DatabaseSchema** - Schema management and evolution
 9. **SourceInfo** - Source metadata in events
 
@@ -185,10 +181,17 @@ Debezium connectors follow a consistent architecture pattern. Each connector has
 
 **Instructions:**
 - Follow the established connector architecture pattern
-- All connectors share common base classes from debezium-core
-- Document new features in the corresponding AsciiDoc file
-- Test both snapshot and streaming modes
+- All connectors share common base classes and logic from debezium-core
+- Document relevant features in the corresponding AsciiDoc file
+- Test both snapshot and streaming modes following the test suite
+- create new tests for changed or added functionality and in case of bugs
 - Consider backward compatibility for configuration changes
+- Use camelCase convention for naming identifiers, avoid underscores
+- Acronyms in names should have only first letter in upper case - SQL -> Sql, LLM -> Llm
+- Every new Java source file must have copyright header
+- Prefer `var` in declaring a variable but use interface types with Java collections
+- Use `final` for local variables where possible
+- follow always the guideline in the `checkstyle.xml`
 
 ---
 
@@ -203,7 +206,7 @@ Debezium connectors follow a consistent architecture pattern. Each connector has
 - Understanding documentation structure
 
 **Context:**
-Debezium documentation uses Antora framework with AsciiDoc format. Documentation is in the `documentation/` directory and should be updated in the same PR as code changes.
+Debezium documentation uses Antora framework with AsciiDoc format. Documentation is in the `documentation/` directory and should be updated in the same pull request as code changes.
 
 **Documentation structure:**
 ```
@@ -233,7 +236,7 @@ documentation/
 **Instructions:**
 - Use AsciiDoc format with .adoc extension
 - Update `nav.adoc` if adding new pages to navigation
-- Include documentation updates in the same PR as code changes
+- Include documentation updates in the same pull request as code changes
 - Follow existing documentation patterns and structure
 - Reference CLAUDE.md for technical details to document
 
@@ -253,8 +256,7 @@ documentation/
 Debezium uses a strongly-typed configuration framework. Each connector has a `*ConnectorConfig` class that defines all configuration options with validation, defaults, and documentation.
 
 **Configuration patterns:**
-- Configuration fields use `@ConfigDef` annotations
-- All fields must be added to `ALL_FIELDS` static list
+- review the type of configuration option with a human (internal or hidden, etc.)
 - Configuration is validated at connector startup
 - Field definitions include: name, type, default, importance, documentation, validators
 
@@ -265,16 +267,15 @@ Debezium uses a strongly-typed configuration framework. Each connector has a `*C
 
 **Adding new options:**
 1. Define field with `Field.create()` or `Field.Builder`
-2. Add to `ALL_FIELDS` list
-3. Implement validation logic if needed
-4. Add getter method if needed
-5. Document in connector's .adoc file
-6. Add test coverage
+2. Implement validation logic if needed 
+3. Add getter method if needed
+4. Document in connector's .adoc file
+5. Add test coverage
 
 **Instructions:**
 - Configuration changes affect users; maintain backward compatibility
 - Use appropriate Field validators (required, width, regex, etc.)
-- Set correct `Importance` level (HIGH, MEDIUM, LOW)
+- ask the correct `Importance` level (HIGH, MEDIUM, LOW)
 - Provide clear documentation strings
 - Consider default values carefully
 
@@ -291,16 +292,16 @@ Debezium uses a strongly-typed configuration framework. Each connector has a `*C
 - Analyzing schema evolution problems
 
 **Context:**
-Debezium connectors process events through a pipeline: Database → ChangeEventSource → Pipeline → Kafka Connect. Understanding this flow is key to debugging issues.
+Debezium connectors process events through a pipeline: Database → ChangeEventSource → Pipeline → Runtime (like Kafka Connect, Debezium Server, Debezium Engine, etc.). Understanding this flow is key to debugging issues.
 
-**Event flow:**
+**Event flow for source connectors:**
 1. Database changes → ChangeEventSource (Snapshot or Streaming)
 2. ChangeEventSource → ChangeRecordEmitter
 3. ChangeRecordEmitter → EventDispatcher
 4. EventDispatcher → Pipeline → Transformations
 5. Pipeline → Kafka Connect framework → Kafka topics
 
-**Debugging checklist:**
+**Debugging source connector checklist:**
 1. **Offset issues** - Check `*OffsetContext` for position tracking
 2. **Streaming problems** - Review `*StreamingChangeEventSource` logic
 3. **Snapshot problems** - Check `*SnapshotChangeEventSource` implementation
@@ -328,7 +329,7 @@ Debezium connectors process events through a pipeline: Database → ChangeEventS
 - Verify offset tracking is working correctly
 - For schema issues, check both source database and Debezium schema registry
 - Consider database-specific decoder/capture mechanism differences
-- Use integration tests with Docker containers to reproduce issues
+- Use integration tests with Containers to reproduce issues
 
 ---
 
@@ -350,13 +351,16 @@ Debezium has strict conventions for branches, commit messages, and PRs. All chan
 - Example: `git checkout -b dbz#1234`
 
 **Commit message format:**
+- Additions should start with a `+`
+- Removals should start with a `-`
+- Changes should start with a `*`
 ```
 debezium/dbz#<issue> Brief summary of change
 
 Optional detailed description:
-- Specific implementation details
-- Reasoning for approach
-- Related changes
++ added new SnapshotMode
+- removed deprecated `FieldHandler` class
+* fixed MongoDB CI issue with downloading kubeapi-server
 ```
 
 **For trivial docs:**
@@ -368,17 +372,18 @@ Optional detailed description:
 - `[release]`, `[jenkins-jobs]`, `[maven-release-plugin]`, `[ci]`
 
 **Pull request checklist:**
-1. Single GitHub issue per PR
-2. Issue number in branch name and all commit messages
+1. Single GitHub issue per pull request
+2. Issue identifier at the beginning of the branch name and all commit messages
 3. Documentation updates for feature/behavior changes
-4. Full build passes: `mvn clean install`
+4. Full build passes: `./mvnw clean install`
 5. Rebase on latest main before submitting
 6. Code formatting applied (automatic during build)
-7. DCO: sign off all commits with `git commit -s`
+7. While Debezium expects commits to be signed off, You, the agent, are not permitted to sign off commits. This must be done by a human.
 
 **Code style:**
 - Auto-formatted during build
 - Eclipse formatter config: `support/ide-configs/src/main/resources/eclipse/debezium-formatter.xml`
+- Style: `support/checkstyle/src/main/resources/checkstyle.xml`
 - Import to IDE for development-time formatting
 - CI fails on formatting violations
 
@@ -391,7 +396,7 @@ Optional detailed description:
 **Instructions:**
 - Always reference the GitHub issue number
 - Keep commit messages descriptive but concise
-- Run `mvn clean install` before creating PR
-- Rebase on main before pushing
-- Include documentation in same PR as code changes
+- Run `./mvn clean install` before creating PR
+- Rebase on main before pushing and resolve merge conflicts
+- Include documentation in same pull request as code changes
 - Format code before committing
