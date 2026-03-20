@@ -57,6 +57,7 @@ If you do end up using AI tools, we ask that you only do so **assistively** (lik
 - Submit code you don't understand
 - Generate documentation or comments without your review
 - Automate the submission of code changes
+- Apply commit sign-offs to Git commits. All AI-generated code must be reviewed by the human contributor before submission, and the contributor is responsible for commit sign-offs, certifying that the contributor has the right to submit the code.
 
 ## Why do we have this policy?
 
