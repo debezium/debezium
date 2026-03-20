@@ -91,6 +91,12 @@
             <artifactId>debezium-storage-azure-blob</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-rocksdb</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Source system -->
         <dependency>

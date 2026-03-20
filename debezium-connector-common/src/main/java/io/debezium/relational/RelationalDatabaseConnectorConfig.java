@@ -535,13 +535,41 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "A `ascending` value will order the tables by row count ascending. "
                     + "A value of `disabled` (the default) will disable ordering by row count.");
 
+    /**
+     * The fully-qualified class name of the storage implementation for schema metadata.
+     * Due to the serialization currently only in-memory storage implementations are supported, and the default is {@link ConcurrentMapTableMappingStorage}.
+     */
+    public static final Field SCHEMA_STORAGE_CLASS = Field.create(TableMappingStorage.STORAGE_PREFIX_SCHEMAS + "class")
+            .withDisplayName("Schema storage class")
+            .withType(Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 21))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDefault(ConcurrentMapTableMappingStorage.class.getName())
+            .withDescription("The fully-qualified class name of the storage implementation for schema metadata. "
+                    + "The class must implement io.debezium.relational.TableMappingStorage<io.debezium.relational.TableSchema>. "
+                    + "Defaults to io.debezium.relational.ConcurrentMapTableMappingStorage for in-memory storage.");
+
+    public static final Field TABLE_STORAGE_CLASS = Field.create(TableMappingStorage.STORAGE_PREFIX_TABLES + "class")
+            .withDisplayName("Table storage class")
+            .withType(Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 22))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDefault(ConcurrentMapTableMappingStorage.class.getName())
+            .withDescription("The fully-qualified class name of the storage implementation for table metadata. "
+                    + "The class must implement io.debezium.relational.TableMappingStorage<io.debezium.relational.Table>. "
+                    + "Defaults to io.debezium.relational.ConcurrentMapTableMappingStorage for in-memory storage.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     CommonConnectorConfig.TOPIC_PREFIX)
             .connector(
                     DECIMAL_HANDLING_MODE,
                     TIME_PRECISION_MODE,
-                    SNAPSHOT_LOCK_TIMEOUT_MS)
+                    SNAPSHOT_LOCK_TIMEOUT_MS,
+                    SCHEMA_STORAGE_CLASS,
+                    TABLE_STORAGE_CLASS)
             .events(
                     COLUMN_INCLUDE_LIST,
                     COLUMN_EXCLUDE_LIST,
@@ -808,5 +836,31 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public FieldNamer<Column> getFieldNamer() {
         return fieldNamer;
+    }
+
+    /**
+     * Creates and configures a schema storage instance.
+     *
+     * @param tableIdCaseInsensitive whether table identifiers should be treated case-insensitively
+     * @return the configured schema storage instance
+     */
+    @SuppressWarnings("unchecked")
+    public TableMappingStorage<TableSchema> createSchemaStorage(boolean tableIdCaseInsensitive) {
+        TableMappingStorage<TableSchema> storage = getConfig().getInstance(SCHEMA_STORAGE_CLASS, TableMappingStorage.class);
+        storage.configure(this, tableIdCaseInsensitive, TableMappingStorage.Type.SCHEMAS);
+        return storage;
+    }
+
+    /**
+     * Creates and configures a table storage instance.
+     *
+     * @param tableIdCaseInsensitive whether table identifiers should be treated case-insensitively
+     * @return the configured table storage instance
+     */
+    @SuppressWarnings("unchecked")
+    public TableMappingStorage<Table> createTableStorage(boolean tableIdCaseInsensitive) {
+        TableMappingStorage<Table> storage = getConfig().getInstance(TABLE_STORAGE_CLASS, TableMappingStorage.class);
+        storage.configure(this, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
+        return storage;
     }
 }
