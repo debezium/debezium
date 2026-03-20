@@ -63,15 +63,17 @@ Ask one question at a time, and give the contributor a chance to respond before 
 - Creating release artifacts
 
 **Context:**
-You are working on Debezium, a Change Data Capture platform. The project uses Maven 3.9.8+ and requires JDK 21 for building (targets Java 17 for connectors).
+You are working on Debezium, a Change Data Capture platform. Use the maven version used in the .mvn and the target jdk defined in the `pom.xml`.
 
 **Key commands:**
-- Full build: `mvn clean install`
-- Quick build (no tests/checks): `mvn clean verify -Dquick`
-- Skip integration tests: `mvn clean install -DskipITs`
-- Build specific module: `mvn clean install -pl <module-name> -am`
-- Format code: `mvn process-sources`
-- Validate formatting: `mvn clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check`
+- Full build: `./mvnw clean install`
+- Quick build (no tests/checks): `./mvnw clean verify -Dquick`
+- Skip integration tests: `./mvnw clean install -DskipITs`
+- Build specific module: `./mvnw clean install -pl <module-name> -am`
+- Format code: `./mvnw process-sources`
+- Validate formatting: `./mvn clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check`
+- run single unit test: `./mvn test install -Dtest=<class or method reference of a unit test>`
+- run single unit integration test: `./mvn test install --Dit.test=<class or method reference of an integration test>`
 
 **Common modules:**
 - debezium-core, debezium-api, debezium-connector-mysql, debezium-connector-postgres, debezium-connector-mongodb, debezium-connector-sqlserver, debezium-connector-oracle, debezium-connector-binlog, debezium-connector-mariadb
