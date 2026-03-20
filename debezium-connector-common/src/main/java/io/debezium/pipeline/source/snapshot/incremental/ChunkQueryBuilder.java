@@ -52,4 +52,18 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
     default Table prepareTable(IncrementalSnapshotContext<T> context, Table table) {
         return table;
     }
+
+    /**
+     * Resolves the chunk-end position for the next chunk.
+     * <p>
+     * Defaults to {@code lastRowKey}. Implementations may return a separately computed boundary when chunk ordering differs from result ordering.
+     *
+     * @param context the current incremental snapshot context
+     * @param table the table being snapshotted
+     * @param lastRowKey the key from the last row of the current chunk
+     * @return the key to use as the next chunk start position
+     */
+    default Object[] resolveChunkEndPosition(IncrementalSnapshotContext<T> context, Table table, Object[] lastRowKey) {
+        return lastRowKey;
+    }
 }
