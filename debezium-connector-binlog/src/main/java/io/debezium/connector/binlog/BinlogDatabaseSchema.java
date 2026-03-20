@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         extends HistorizedRelationalDatabaseSchema {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(BinlogDatabaseSchema.class);
+    private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
@@ -323,6 +325,13 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
 
         // No need to send schema events or store DDL if no table has changed
+        // Also skip if DDL matches the filter (e.g., CREATE FUNCTION, PROCEDURE, VIEW, TRIGGER)
+        // BUT do NOT filter TRUNCATE statements as they need special handling based on skipped.operations config
+        if (!TRUNCATE_STATEMENT_PATTERN.matcher(ddlStatements).matches() && ddlFilter().test(ddlStatements)) {
+            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
+            return schemaChangeEvents;
+        }
+
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
