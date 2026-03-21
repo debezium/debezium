@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.util.TestHelper.TEST_DATABASE_1;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -21,6 +22,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 
 /**
  * Integration Tests for config skip.messages.without.change
@@ -29,6 +31,12 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
  *
  */
 public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngineConnectorTest {
+
+    private static final String METRICS_CONNECTOR_TYPE = "sql_server";
+    private static final String METRICS_CONTEXT_STREAMING = "streaming";
+    private static final String METRICS_TASK_ID = "0";
+    private static final String METRICS_UNCHANGED_SKIPPED = "NumberOfUnchangedEventsSkipped";
+
     private SqlServerConnection connection;
 
     private final Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -56,6 +64,7 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
     }
 
     @Test
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
         Configuration config = configBuilder
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
@@ -63,6 +72,9 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
 
         start(SqlServerConnector.class, config);
         TestHelper.waitForStreamingStarted();
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
 
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
@@ -82,11 +94,15 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
         assertThat(((Struct) secondMessage.get("after")).get("white")).isEqualTo(2);
         final Struct thirdMessage = (Struct) tableMessages.get(2).value();
         assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
+
         stopConnector();
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
@@ -98,6 +114,9 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
         start(SqlServerConnector.class, config);
         TestHelper.waitForStreamingStarted();
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
+
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
@@ -116,11 +135,15 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
         assertThat(((Struct) secondMessage.get("after")).get("white")).isEqualTo(2);
         final Struct thirdMessage = (Struct) tableMessages.get(2).value();
         assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
+
         stopConnector();
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         Configuration config = configBuilder
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
@@ -128,6 +151,9 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
 
         start(SqlServerConnector.class, config);
         TestHelper.waitForStreamingStarted();
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(-1);
 
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
@@ -149,7 +175,20 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngi
         assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(2);
         final Struct forthMessage = (Struct) tableMessages.get(3).value();
         assertThat(((Struct) forthMessage.get("after")).get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(-1);
+
         stopConnector();
     }
 
+    private long getNumberOfUnchangedEventsSkipped() {
+        return MetricsHelper.getStreamingMetric(
+                METRICS_CONNECTOR_TYPE,
+                TestHelper.TEST_SERVER_NAME,
+                METRICS_CONTEXT_STREAMING,
+                METRICS_TASK_ID,
+                TEST_DATABASE_1,
+                METRICS_UNCHANGED_SKIPPED);
+    }
 }

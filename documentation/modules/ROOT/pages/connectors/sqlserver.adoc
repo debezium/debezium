@@ -13,6 +13,7 @@
 :connector-name: SQL Server
 :include-list-example: dbo.customers
 :collection-container: database.schema
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 

@@ -13,6 +13,7 @@
 :include-list-example: inventory.*
 :MYSQL:
 :collection-container: database
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 :toc:

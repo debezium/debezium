@@ -12,6 +12,7 @@
 :connector-name: Informix
 :include-list-example: public.inventory
 :collection-container:  database.schema
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 
