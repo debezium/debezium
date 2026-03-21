@@ -418,6 +418,17 @@ public interface Configuration {
          * @param value the value
          * @return this builder object so methods can be chained together; never null
          */
+        default B withDefault(Field field, EnumeratedValue value) {
+            return withDefault(field.name(), value);
+        }
+
+        /**
+         * If the field does not have a value, then associate the given value with the key of the specified field.
+         *
+         * @param field the predefined field for the key
+         * @param value the value
+         * @return this builder object so methods can be chained together; never null
+         */
         default B withDefault(Field field, int value) {
             return withDefault(field.name(), value);
         }
