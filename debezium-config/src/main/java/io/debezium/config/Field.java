@@ -888,7 +888,7 @@ public final class Field {
      * @param enumType the enumeration type for the field
      * @return the new field; never null
      */
-    public <T extends Enum<T>> Field withEnum(Class<T> enumType) {
+    public <T extends Enum<T> & EnumeratedValue> Field withEnum(Class<T> enumType) {
         return withEnum(enumType, null);
     }
 
@@ -901,18 +901,12 @@ public final class Field {
      * @param defaultOption the default enumeration value; may be null
      * @return the new field; never null
      */
-    public <T extends Enum<T>> Field withEnum(Class<T> enumType, T defaultOption) {
+    public <T extends Enum<T> & EnumeratedValue> Field withEnum(Class<T> enumType, T defaultOption) {
         EnumRecommender<T> recommendator = new EnumRecommender<>(enumType, defaultOption);
         Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator)
                 .withAllowedValues(getEnumLiterals(enumType));
-        // Not all enums support EnumeratedValue yet
         if (defaultOption != null) {
-            if (defaultOption instanceof EnumeratedValue) {
-                result = result.withDefault(((EnumeratedValue) defaultOption).getValue());
-            }
-            else {
-                result = result.withDefault(defaultOption.name().toLowerCase());
-            }
+            result = result.withDefault(defaultOption.getValue());
         }
         return result;
     }
@@ -1302,22 +1296,14 @@ public final class Field {
         }
     }
 
-    private static <T extends Enum<T>> java.util.Set<String> getEnumLiterals(Class<T> enumType) {
-        if (Arrays.asList(enumType.getInterfaces()).contains(EnumeratedValue.class)) {
-            return Arrays.stream(enumType.getEnumConstants())
-                    .map(x -> ((EnumeratedValue) x).getValue())
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toSet());
-        }
-        else {
-            return Arrays.stream(enumType.getEnumConstants())
-                    .map(Enum::name)
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toSet());
-        }
+    private static <T extends Enum<T> & EnumeratedValue> java.util.Set<String> getEnumLiterals(Class<T> enumType) {
+        return Arrays.stream(enumType.getEnumConstants())
+                .map(EnumeratedValue::getValue)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
     }
 
-    public static class EnumRecommender<T extends Enum<T>> implements Recommender, Validator {
+    public static class EnumRecommender<T extends Enum<T> & EnumeratedValue> implements Recommender, Validator {
 
         private final List<Object> validValues;
         private final java.util.Set<String> literals;
@@ -1325,11 +1311,10 @@ public final class Field {
         private final String defaultOption;
 
         public EnumRecommender(Class<T> enumType, T defaultOption) {
-            // Not all enums support EnumeratedValue yet
             this.literals = getEnumLiterals(enumType);
             this.validValues = Collections.unmodifiableList(new ArrayList<>(this.literals));
             this.literalsStr = Strings.join(", ", validValues);
-            this.defaultOption = defaultOption != null ? defaultOption.name().toLowerCase() : null;
+            this.defaultOption = defaultOption != null ? defaultOption.getValue() : null;
         }
 
         @Override

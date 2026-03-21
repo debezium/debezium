@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -44,7 +45,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private static final String COPY_OPERATION = "copy";
     private static final int CACHE_SIZE = 64;
 
-    enum Operation {
+    enum Operation implements EnumeratedValue {
         MOVE(MOVE_OPERATION),
         COPY(COPY_OPERATION);
 
@@ -55,14 +56,12 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         }
 
         static Operation fromName(String name) {
-            switch (name) {
-                case MOVE_OPERATION:
-                    return MOVE;
-                case COPY_OPERATION:
-                    return COPY;
-                default:
-                    throw new IllegalArgumentException();
-            }
+            return EnumeratedValue.parse(Operation.class, name);
+        }
+
+        @Override
+        public String getValue() {
+            return name;
         }
 
         public String toString() {
