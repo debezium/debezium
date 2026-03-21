@@ -57,4 +57,26 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> extends Abst
     // Field set for configuration validation
     private final Field.Set configFields = CONFIG_FIELDS.with(SCHEMA_MAPPING, ADD_MISSING_FIELDS);
 
+    // Instance variables - initialized in configure()
+    private MongoDataConverter converter; // for converting BSON to Structs
+    private boolean addMissingFields;
+    private String schemaMappingJson; 
+
+    @Override
+    public void configure(final Map<String, ?> configs) {
+        super.configure(configs);
+
+        // Get our custom configuration values
+        addMissingFields = config.getBoolean(ADD_MISSING_FIELDS);
+        schemaMappingJson = config.getString(SCHEMA_MAPPING);
+
+        // Initialize the MongoDB data converter
+        // Using ARRAY encoding and default field naming (similar to ExtractNewDocumentState)
+        converter = new MongoDataConverter(ExtractNewDocumentState.ArrayEncoding.ARRAY);
+
+        LOGGER.info("MongoToRelationalConverter configured with addMissingFields={}", addMissingFields);
+    }
+
+    
+
 }
