@@ -90,6 +90,7 @@ public class TransactionMonitor {
             if (transactionContext.isTransactionInProgress()) {
                 LOGGER.trace("Transaction was in progress, executing implicit transaction commit");
                 endTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
+                transactionContext.endTransaction();
             }
             return;
         }
