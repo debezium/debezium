@@ -47,4 +47,9 @@ class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServ
     public void connected(boolean connected) {
         connectionMeter.connected(connected);
     }
+
+    @Override
+    public void onUnchangedEventSkipped(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerStreamingPartitionMetrics::onUnchangedEventSkipped);
+    }
 }

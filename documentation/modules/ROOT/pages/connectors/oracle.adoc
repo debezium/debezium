@@ -12,6 +12,7 @@
 :connector-name: Oracle
 :include-list-example: PUBLIC.INVENTORY
 :collection-container: database.schema
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 :toc:

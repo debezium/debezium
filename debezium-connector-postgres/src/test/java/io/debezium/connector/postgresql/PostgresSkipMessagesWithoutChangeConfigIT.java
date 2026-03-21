@@ -21,6 +21,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 
 /**
  * Integration Tests for config skip.messages.without.change
@@ -61,6 +62,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
+
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
@@ -80,6 +84,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         assertThat(secondMessage.get("white")).isEqualTo(2);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
@@ -101,6 +108,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
+
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
@@ -120,6 +130,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         assertThat(secondMessage.get("white")).isEqualTo(2);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
@@ -138,6 +151,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
 
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
@@ -159,6 +175,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         assertThat(thirdMessage.get("white")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(forthMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(0);
     }
 
     @Test
@@ -180,6 +199,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(-1);
+
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
@@ -201,6 +223,12 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngi
         assertThat(thirdMessage.get("white")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(forthMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(-1);
     }
 
+    private long getNumberOfUnchangedEventsSkipped() {
+        return MetricsHelper.getStreamingMetric("postgres", TestHelper.TEST_SERVER, "streaming", "NumberOfUnchangedEventsSkipped");
+    }
 }

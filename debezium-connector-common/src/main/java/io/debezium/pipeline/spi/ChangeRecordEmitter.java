@@ -56,5 +56,8 @@ public interface ChangeRecordEmitter<P extends Partition> {
         void changeRecord(P partition, DataCollectionSchema schema, Operation operation, Object key, Struct value,
                           OffsetContext offset, ConnectHeaders headers)
                 throws InterruptedException;
+
+        default void unchangedEventSkipped(P partition) {
+        }
     }
 }

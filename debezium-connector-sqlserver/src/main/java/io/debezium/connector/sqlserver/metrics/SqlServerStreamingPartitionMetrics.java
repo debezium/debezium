@@ -28,12 +28,19 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
                                        CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, tags, metadataProvider);
         streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        if (taskContext.getConfig().skipMessagesWithoutChange()) {
+            streamingMeter.enableUnchangedEventsMetric();
+        }
     }
 
     @Override
     void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
         super.onEvent(source, offset, key, value, operation);
         streamingMeter.onEvent(source, offset, key, value);
+    }
+
+    public void onUnchangedEventSkipped() {
+        streamingMeter.onUnchangedEventSkipped();
     }
 
     @Override
@@ -59,6 +66,11 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
     @Override
     public String getLastTransactionId() {
         return streamingMeter.getLastTransactionId();
+    }
+
+    @Override
+    public long getNumberOfUnchangedEventsSkipped() {
+        return streamingMeter.getNumberOfUnchangedEventsSkipped();
     }
 
     @Override
