@@ -22,6 +22,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 
 /**
  * Integration tests for config skip.messages.without.change
@@ -50,7 +51,7 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
@@ -69,6 +70,9 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
         start(OracleConnector.class, config);
         waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
+
         connection.execute("INSERT INTO debezium.test VALUES (1, 1, 1)");
         connection.execute("UPDATE debezium.test SET black=2 where id = 1");
         connection.execute("UPDATE debezium.test SET white=2 where id = 1");
@@ -89,10 +93,13 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
         assertThat(secondMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
@@ -111,6 +118,9 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
         start(OracleConnector.class, config);
         waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
+
         connection.execute("INSERT INTO debezium.test VALUES (1, 1, 1)");
         connection.execute("UPDATE debezium.test SET black=2 where id = 1");
         connection.execute("UPDATE debezium.test SET white=2 where id = 1");
@@ -131,10 +141,13 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
         assertThat(secondMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
@@ -152,6 +165,9 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
 
         start(OracleConnector.class, config);
         waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(-1);
 
         connection.execute("INSERT INTO debezium.test VALUES (1, 1, 1)");
         connection.execute("UPDATE debezium.test SET black=2 where id = 1");
@@ -175,9 +191,16 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngine
         assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(forthMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(-1);
     }
 
     private static String topicName(String tableName) {
         return TestHelper.SERVER_NAME + ".DEBEZIUM." + tableName.toUpperCase();
+    }
+
+    private long getNumberOfUnchangedEventsSkipped() {
+        return MetricsHelper.getStreamingMetric(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME, "streaming", "NumberOfUnchangedEventsSkipped");
     }
 }

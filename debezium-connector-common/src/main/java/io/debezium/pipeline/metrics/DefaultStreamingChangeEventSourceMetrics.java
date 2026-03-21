@@ -42,6 +42,9 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
+        if (taskContext.getConfig().skipMessagesWithoutChange()) {
+            streamingMeter.enableUnchangedEventsMetric();
+        }
     }
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -51,6 +54,9 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
+        if (taskContext.getConfig().skipMessagesWithoutChange()) {
+            streamingMeter.enableUnchangedEventsMetric();
+        }
     }
 
     @Override
@@ -141,5 +147,15 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     @Override
     public Map<String, Long> getNumberOfTruncateEventsSeen() {
         return activityMonitoringMeter.getNumberOfTruncateEventsSeen();
+    }
+
+    @Override
+    public long getNumberOfUnchangedEventsSkipped() {
+        return streamingMeter.getNumberOfUnchangedEventsSkipped();
+    }
+
+    @Override
+    public void onUnchangedEventSkipped(P partition) {
+        streamingMeter.onUnchangedEventSkipped();
     }
 }

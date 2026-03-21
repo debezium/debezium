@@ -330,6 +330,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                         }
                     }
 
+                    @Override
+                    public void unchangedEventSkipped(P partition) {
+                        if (connectorConfig.skipMessagesWithoutChange()) {
+                            eventListener.onUnchangedEventSkipped(partition);
+                        }
+                    }
+
                     private boolean isASignalEventToProcess(T dataCollectionId, Operation operation) {
                         return (operation == Operation.CREATE ||
                                 (operation == Operation.DELETE && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == INSERT_DELETE)) &&

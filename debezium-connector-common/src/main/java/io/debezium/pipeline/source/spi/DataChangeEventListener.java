@@ -52,6 +52,9 @@ public interface DataChangeEventListener<P extends Partition> {
      */
     void onConnectorEvent(P partition, ConnectorEvent event);
 
+    default void onUnchangedEventSkipped(P partition) {
+    }
+
     static <P extends Partition> DataChangeEventListener<P> NO_OP() {
         return new DataChangeEventListener<P>() {
 

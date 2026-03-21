@@ -12,6 +12,7 @@
 :connector-name: Db2
 :include-list-example: public.inventory
 :collection-container: schema
+:supports-skipping-unchanged-events:
 ifdef::community[]
 
 :toc:

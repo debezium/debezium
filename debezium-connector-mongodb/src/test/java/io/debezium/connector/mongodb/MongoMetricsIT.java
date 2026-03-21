@@ -147,6 +147,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         assertThat((Long) mBeanServer.getAttribute(objectName, "MilliSecondsBehindSource")).isGreaterThanOrEqualTo(0);
         assertThat(mBeanServer.getAttribute(objectName, "NumberOfDisconnects")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(objectName, "NumberOfPrimaryElections")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(objectName, "NumberOfUnchangedEventsSkipped")).isEqualTo(-1L);
     }
 
     @Test

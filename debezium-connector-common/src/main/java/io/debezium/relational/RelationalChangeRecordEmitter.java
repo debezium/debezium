@@ -115,6 +115,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         if (skipMessagesWithoutChange() && Objects.nonNull(newValue) && newValue.equals(oldValue)) {
             LOGGER.debug("No new values found for table '{}' in included columns from update message at '{}'; skipping record", tableSchema,
                     getOffset().getSourceInfo());
+            receiver.unchangedEventSkipped(getPartition());
             return;
         }
         // some configurations does not provide old values in case of updates

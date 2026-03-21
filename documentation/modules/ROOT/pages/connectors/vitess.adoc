@@ -10,6 +10,7 @@
 :icons: font
 :source-highlighter: highlight.js
 :connector-name: Vitess
+:supports-skipping-unchanged-events:
 
 toc::[]
 
