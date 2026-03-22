@@ -6,6 +6,9 @@
 package io.debezium.connector.mongodb.transforms;
 
 import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -77,6 +80,70 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> extends Abst
         LOGGER.info("MongoToRelationalConverter configured with addMissingFields={}", addMissingFields);
     }
 
-    
+    @Override
+    protected R doApply(R record) {
+        // Skip if not a valid envelope
+        if (!smtManager.isValidEnvelope(record)) {
+            return record;
+        }
 
+        Struct value = Requirements.requireStruct(record.value(), "MongoDB envelope");
+        
+        // Get the before and after JSON strings from MongoDB envelope
+        String beforeJson = value.getString(Envelope.FieldName.BEFORE);
+        String afterJson = value.getString(Envelope.FieldName.AFTER);
+        
+        // Convert JSON strings to BsonDocument
+        BsonDocument beforeDoc = beforeJson != null ? BsonDocument.parse(beforeJson) : null;
+        BsonDocument afterDoc = afterJson != null ? BsonDocument.parse(afterJson) : null;
+        
+        // Build schemas and convert to Structs
+        Schema beforeSchema = buildDocumentSchema(beforeDoc);
+        Schema afterSchema = buildDocumentSchema(afterDoc);
+        
+        Struct beforeStruct = convertToStruct(beforeDoc, beforeSchema);
+        Struct afterStruct = convertToStruct(afterDoc, afterSchema);
+        
+        // Build the relational-style envelope schema
+        Schema envelopeSchema = buildEnvelopeSchema(beforeSchema, afterSchema, value.schema());
+        
+        // Create the new envelope value with nested Structs
+        Struct envelopeValue = new Struct(envelopeSchema);
+        envelopeValue.put(Envelope.FieldName.BEFORE, beforeStruct);
+        envelopeValue.put(Envelope.FieldName.AFTER, afterStruct);
+        envelopeValue.put(Envelope.FieldName.OPERATION, value.getString(Envelope.FieldName.OPERATION));
+        envelopeValue.put(Envelope.FieldName.SOURCE, value.getStruct(Envelope.FieldName.SOURCE));
+        envelopeValue.put(Envelope.FieldName.TIMESTAMP, value.getInt64(Envelope.FieldName.TIMESTAMP));
+        
+        // Copy other envelope fields if present
+        if (envelopeSchema.field(Envelope.FieldName.TIMESTAMP_NS) != null) {
+            envelopeValue.put(Envelope.FieldName.TIMESTAMP_NS, value.getInt64(Envelope.FieldName.TIMESTAMP_NS));
+        }
+        if (envelopeSchema.field(Envelope.FieldName.TRANSACTION) != null) {
+            envelopeValue.put(Envelope.FieldName.TRANSACTION, value.getStruct(Envelope.FieldName.TRANSACTION));
+        }
+        
+        // Return new record with converted envelope
+        return record.newRecord(
+                record.topic(),
+                record.kafkaPartition(),
+                record.keySchema(),
+                record.key(),
+                envelopeSchema,
+                envelopeValue,
+                record.timestamp());
+    }
+
+    @Override
+    public Iterable<Field> validateConfigFields() {
+        return configFields;
+    }
+
+    @Override
+    public ConfigDef config() {
+        final ConfigDef config = new ConfigDef();
+        Field.group(config, null, configFields.asArray());
+        return config;
+    }
+   
 }
