@@ -58,6 +58,55 @@ public class EnvelopeTest {
     }
 
     @Test
+    public void shouldUseDefaultEnvelopeSchemaFactory() {
+        // Verify that the new Envelope.defineSchema(factory) overload with the DefaultEnvelopeSchemaFactory
+        // produces a schema identical to the existing no-args Envelope.defineSchema() path.
+        EnvelopeSchemaFactory defaultFactory = new DefaultEnvelopeSchemaFactory();
+
+        Envelope envViaFactory = Envelope.defineSchema(defaultFactory)
+                .withName("factoryTest")
+                .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
+                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+
+        Envelope envDefault = Envelope.defineSchema()
+                .withName("factoryTest")
+                .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
+                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+
+        // Both envelopes must have exactly the same schema structure.
+        assertThat(envViaFactory.schema().fields().size()).isEqualTo(envDefault.schema().fields().size());
+        assertThat(envViaFactory.schema().version()).isEqualTo(Envelope.SCHEMA_VERSION);
+        assertOptionalField(envViaFactory, Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA);
+        assertOptionalField(envViaFactory, Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA);
+        assertOptionalField(envViaFactory, Envelope.FieldName.SOURCE, Schema.OPTIONAL_INT64_SCHEMA);
+        assertRequiredField(envViaFactory, Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA);
+    }
+
+    @Test
+    public void shouldUseCustomEnvelopeSchemaFactory() {
+        // Verify that a custom EnvelopeSchemaFactory is actually called, and its builder is used.
+        // The custom factory injects a doc string into the envelope schema.
+        final String customDoc = "Custom envelope for Iceberg sink";
+
+        EnvelopeSchemaFactory customFactory = () -> Envelope.defineSchema().withDoc(customDoc);
+
+        Envelope env = Envelope.defineSchema(customFactory)
+                .withName("customFactoryTest")
+                .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
+                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+
+        // The custom doc should be present on the built schema.
+        assertThat(env.schema().doc()).isEqualTo(customDoc);
+        assertThat(env.schema().name()).isEqualTo("customFactoryTest");
+        assertThat(env.schema().version()).isEqualTo(Envelope.SCHEMA_VERSION);
+        assertOptionalField(env, Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA);
+        assertRequiredField(env, Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA);
+    }
+
+    @Test
     public void envelopeOperationLookupByCode() {
         assertThat(Envelope.Operation.forCode(null)).isNull();
         assertThat(Envelope.Operation.forCode("")).isNull();
