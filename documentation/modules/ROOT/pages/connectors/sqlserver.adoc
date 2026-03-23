@@ -564,7 +564,7 @@ For more information about using the logical topic routing SMT to customize topi
 [[sqlserver-schema-history-topic]]
 === Schema history topic
 
-When a database client queries a database, the client uses the database’s current schema.
+When a database client queries a database, the client uses the databaseâ€™s current schema.
 However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
 Also, a connector cannot necessarily apply the current schema to every event.
 If an event is relatively old, it's possible that it was recorded before the current schema was applied.
@@ -1302,7 +1302,7 @@ a|Mandatory string that describes the type of operation that caused the connecto
 |`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task.
- +
+
 In the `source` object, `ts_ms` indicates the time when a change was committed in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1489,7 +1489,7 @@ SQL Server connector events are designed to work with link:{link-kafka-docs}/#co
 
 [[sqlserver-tombstone-events]]
 .Tombstone events
-When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s SQL Server connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}â€™s SQL Server connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
 
 // Type: assembly
 // ModuleID: debezium-sql-server-connector-generated-events-that-represent-transaction-boundaries
@@ -1967,7 +1967,7 @@ If SSL is not enabled for a SQL Server database, or if you want to connect to th
 ----
 +
 WARNING: Do not enable automatic trust of server certificates in production environments.
-If you disable validation, the connector skips certificate chain and host name validation, which can leave connections vulnerable to man‑in‑the‑middle attacks.
+If you disable validation, the connector skips certificate chain and host name validation, which can leave connections vulnerable to manâ€‘inâ€‘theâ€‘middle attacks.
 Use an explicit trust configuration only as a convenience in testing and development environments
 
 // Type: procedure
