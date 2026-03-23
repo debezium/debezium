@@ -40,6 +40,36 @@ public class TracingSpanUtil {
     }
 
     /**
+     * Holds the result of tracing a record while keeping the span scope active.
+     * The caller is responsible for closing the scope and ending the span when done.
+     *
+     * @param <R> the subtype of {@link ConnectRecord}
+     */
+    public static class TracingResult<R extends ConnectRecord<R>> {
+        private final R record;
+        private final Span span;
+        private final Scope scope;
+
+        TracingResult(R record, Span span, Scope scope) {
+            this.record = record;
+            this.span = span;
+            this.scope = scope;
+        }
+
+        public R getRecord() {
+            return record;
+        }
+
+        public Span getSpan() {
+            return span;
+        }
+
+        public Scope getScope() {
+            return scope;
+        }
+    }
+
+    /**
      * Create tracing spans representing the write operation in the database (the span timestamp is taken
      * from the source event if available), as well as Debezium's processing operation (the span timestamp
      * is taken from the envelope's timestamp).
@@ -94,6 +124,60 @@ public class TracingSpanUtil {
         }
 
         return connectRecord;
+    }
+
+    /**
+     * Same as {@link #traceRecord(ConnectRecord, Struct, Struct, String, String)} but keeps the
+     * {@code txLogSpan} scope active after the method returns. This allows downstream components
+     * (e.g. schema registry HTTP calls) to be included in the distributed trace as child spans.
+     * <p>
+     * The caller is responsible for closing the scope and ending the span via the returned
+     * {@link TracingResult}.
+     *
+     * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+     * @param connectRecord the Connect record that is to be enriched with tracing information
+     * @param envelope the envelope wrapped by the record
+     * @param source the source field of the envelope, or {@code null}
+     * @param propagatedSpanContext a String serialization of a {@link java.util.Properties} instance representing
+     *   the parent span context that should be used for trace propagation, or {@code null}
+     * @param operationName the operation name of the debezium processing span
+     * @return a {@link TracingResult} containing the record, the active span and scope
+     */
+    public static <R extends ConnectRecord<R>> TracingResult<R> traceRecordKeepingScope(R connectRecord, Struct envelope, Struct source,
+                                                                                        String propagatedSpanContext, String operationName) {
+        SpanBuilder txLogSpanBuilder = tracer.spanBuilder(TX_LOG_WRITE_OPERATION_NAME)
+                .setSpanKind(SpanKind.INTERNAL);
+
+        if (propagatedSpanContext != null) {
+            Properties props = PropertiesGetter.extract(propagatedSpanContext);
+
+            Context parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
+                    .extract(Context.current(), props, PropertiesGetter.INSTANCE);
+
+            txLogSpanBuilder.setParent(parentSpanContext);
+        }
+
+        if (source != null) {
+            Long eventTimestamp = source.getInt64(AbstractSourceInfo.TIMESTAMP_KEY);
+            if (eventTimestamp != null) {
+                txLogSpanBuilder.setStartTimestamp(eventTimestamp, TimeUnit.MILLISECONDS);
+            }
+        }
+
+        Span txLogSpan = txLogSpanBuilder.startSpan();
+        Scope txLogScope = txLogSpan.makeCurrent();
+
+        if (source != null) {
+            for (org.apache.kafka.connect.data.Field field : source.schema().fields()) {
+                addFieldToSpan(txLogSpan, source, field.name(), DB_FIELDS_PREFIX);
+            }
+        }
+        debeziumSpan(envelope, operationName);
+
+        TextMapPropagator textMapPropagator = openTelemetry.getPropagators().getTextMapPropagator();
+        textMapPropagator.inject(Context.current(), connectRecord.headers(), KafkaConnectHeadersSetter.INSTANCE);
+
+        return new TracingResult<>(connectRecord, txLogSpan, txLogScope);
     }
 
     private static void debeziumSpan(Struct envelope, String operationName) {
