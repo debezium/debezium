@@ -41,8 +41,10 @@ import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.data.DefaultEnvelopeSchemaFactory;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.data.EnvelopeSchemaFactory;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
@@ -794,6 +796,18 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "Class to make transaction context & transaction struct/schemas");
 
+    public static final Field ENVELOPE_SCHEMA_FACTORY = Field.create("envelope.schema.factory")
+            .withDisplayName("Factory class for the Debezium change event envelope schema")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(DefaultEnvelopeSchemaFactory.class.getName())
+            .withDescription("Class implementing EnvelopeSchemaFactory that is used to define the Kafka Connect Schema " +
+                    "of the change event envelope emitted by this connector. " +
+                    "Sinks that do not require the standard CDC format can supply a custom implementation " +
+                    "to avoid the overhead of reshaping records via SMTs after the fact. " +
+                    "Defaults to " + DefaultEnvelopeSchemaFactory.class.getName() + ".");
+
     public static final Field EVENT_PROCESSING_FAILURE_HANDLING_MODE = Field.create("event.processing.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 12))
@@ -1514,6 +1528,7 @@ public abstract class CommonConnectorConfig {
                     NOTIFICATION_ENABLED_CHANNELS,
                     SinkNotificationChannel.NOTIFICATION_TOPIC,
                     TRANSACTION_METADATA_FACTORY,
+                    ENVELOPE_SCHEMA_FACTORY,
                     CUSTOM_METRIC_TAGS)
             .create();
 
@@ -1540,6 +1555,7 @@ public abstract class CommonConnectorConfig {
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final TransactionMetadataFactory transactionMetadataFactory;
+    private final EnvelopeSchemaFactory envelopeSchemaFactory;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final BinaryHandlingMode binaryHandlingMode;
@@ -1593,6 +1609,7 @@ public abstract class CommonConnectorConfig {
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
         this.transactionMetadataFactory = getTransactionMetadataFactory();
+        this.envelopeSchemaFactory = getEnvelopeSchemaFactory(ENVELOPE_SCHEMA_FACTORY);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
@@ -1909,6 +1926,34 @@ public abstract class CommonConnectorConfig {
 
     public TransactionMetadataFactory getTransactionMetadataFactory() {
         return getTransactionMetadataFactory(TRANSACTION_METADATA_FACTORY);
+    }
+
+    /**
+     * Returns the {@link EnvelopeSchemaFactory} configured for this connector.
+     *
+     * <p>By default this returns a {@link DefaultEnvelopeSchemaFactory} that produces the
+     * standard Debezium CDC envelope. A different implementation may be provided via the
+     * {@code envelope.schema.factory} connector configuration property.
+     *
+     * @return the envelope schema factory; never {@code null}
+     */
+    public EnvelopeSchemaFactory getEnvelopeSchemaFactory() {
+        return envelopeSchemaFactory;
+    }
+
+    /**
+     * Loads and returns the {@link EnvelopeSchemaFactory} specified by the given config field.
+     *
+     * @param envelopeSchemaFactoryField the field containing the fully-qualified class name
+     * @return the instantiated factory; never {@code null}
+     */
+    public EnvelopeSchemaFactory getEnvelopeSchemaFactory(Field envelopeSchemaFactoryField) {
+        final EnvelopeSchemaFactory factory = config.getInstance(envelopeSchemaFactoryField, EnvelopeSchemaFactory.class);
+        if (factory == null) {
+            throw new DebeziumException("Unable to instantiate envelope schema factory class " + config.getString(envelopeSchemaFactoryField));
+        }
+        LOGGER.info("Using envelope schema factory: {}", factory.getClass().getName());
+        return factory;
     }
 
     public EnumSet<Envelope.Operation> getSkippedOperations() {
