@@ -633,6 +633,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     final List<String> ids = databaseSchema
                             .tableIds()
                             .stream()
+                            .map(databaseSchema::tableFor) // Get the id from the Table object to get original tableId case
+                            .map(Table::id)
                             .map(TableId::identifier)
                             .filter(t -> Pattern.compile(x).matcher(t).matches())
                             .collect(Collectors.toList());
