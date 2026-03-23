@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.sql.Array;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +78,13 @@ public class TypeRegistry {
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
             + "WHERE n.nspname != 'pg_toast'";
 
+    /**
+     * Schema-filtered variant; caller must supply a {@code text[]} parameter for the {@code ANY(?)} predicate.
+     * {@code pg_catalog} and {@code information_schema} are always included.
+     */
+    private static final String SQL_TYPES_SCHEMA_FILTERED = SQL_TYPES
+            + " AND (n.nspname = ANY(?) OR n.nspname IN ('pg_catalog', 'information_schema'))";
+
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
     private static final String SQL_OID_LOOKUP = SQL_TYPES + " AND t.oid = ?";
@@ -127,11 +136,26 @@ public class TypeRegistry {
     private int tsVectorOid = Integer.MIN_VALUE;
 
     public TypeRegistry(PostgresConnection connection) {
+        this(connection, Collections.emptySet());
+    }
+
+    /**
+     * Creates a {@link TypeRegistry} that limits the bulk type load to the given schemas.
+     * {@code pg_catalog} and {@code information_schema} are always included.
+     * Pass an empty set to load all schemas.
+     *
+     * @param connection   the Postgres connection to query type metadata from
+     * @param schemaFilter schema names to pre-load; empty means all schemas
+     */
+    public TypeRegistry(PostgresConnection connection, Set<String> schemaFilter) {
         try {
             this.connection = connection;
-            sqlTypeMapper = new SqlTypeMapper(this.connection);
+            final Set<String> filter = (schemaFilter == null || schemaFilter.isEmpty())
+                    ? Collections.emptySet()
+                    : Collections.unmodifiableSet(new HashSet<>(schemaFilter));
+            sqlTypeMapper = new SqlTypeMapper(this.connection, filter);
 
-            prime();
+            prime(filter);
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't initialize type registry", e);
@@ -378,32 +402,54 @@ public class TypeRegistry {
     }
 
     /**
-     * Prime the {@link TypeRegistry} with all existing database types
+     * Prime the {@link TypeRegistry} with all existing database types.
+     * When a non-empty {@code schemaFilter} is provided, only types from those schemas (plus the always-included
+     * built-in schemas) are loaded, reducing heap usage for databases with many custom types (DBZ-9455).
      */
-    private void prime() throws SQLException {
-        try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(SQL_TYPES)) {
-            final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
-            while (rs.next()) {
-                PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
+    private void prime(Set<String> schemaFilter) throws SQLException {
+        final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
 
-                // If the type has neither a base type nor an element type,
-                // we can build and add it immediately.
-                if (!builder.hasParentType() && !builder.hasElementType()) {
-                    addType(builder.build());
-                    continue;
+        if (schemaFilter.isEmpty()) {
+            try (Statement statement = connection.connection().createStatement();
+                    ResultSet rs = statement.executeQuery(SQL_TYPES)) {
+                collectBuilders(rs, delayResolvedBuilders);
+            }
+        }
+        else {
+            LOGGER.info("TypeRegistry schema filter active; pre-loading types from schemas: {}", schemaFilter);
+            try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPES_SCHEMA_FILTERED)) {
+                final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
+                try {
+                    statement.setArray(1, schemaArray);
+                    try (ResultSet rs = statement.executeQuery()) {
+                        collectBuilders(rs, delayResolvedBuilders);
+                    }
                 }
-
-                // For types with base or element type mappings, they need to be delayed.
-                // Otherwise their base/element types has not yet be registered,
-                // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
-                delayResolvedBuilders.add(builder);
+                finally {
+                    schemaArray.free();
+                }
             }
+        }
 
-            // Resolve delayed builders
-            for (PostgresType.Builder builder : delayResolvedBuilders) {
+        // Resolve delayed builders
+        for (PostgresType.Builder builder : delayResolvedBuilders) {
+            addType(builder.build());
+        }
+    }
+
+    private void collectBuilders(ResultSet rs, List<PostgresType.Builder> builders) throws SQLException {
+        while (rs.next()) {
+            PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
+            // If the type has neither a base type nor an element type,
+            // we can build and add it immediately.
+            if (!builder.hasParentType() && !builder.hasElementType()) {
                 addType(builder.build());
+                continue;
             }
+            // For types with base or element type mappings, they need to be delayed.
+            // Otherwise their base/element types has not yet be registered,
+            // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
+            builders.add(builder);
         }
     }
 
@@ -505,6 +551,24 @@ public class TypeRegistry {
                 + "    ON sp.nspoid = typnamespace "
                 + " ORDER BY typname, sp.r, pg_type.oid;";
 
+        /**
+         * Schema-filtered variant of {@link #SQL_TYPE_DETAILS}. Caller must supply a {@code text[]} array parameter
+         * for the {@code ANY(?)} predicate. Built-in schemas are always included.
+         */
+        private static final String SQL_TYPE_DETAILS_SCHEMA_FILTERED = "SELECT DISTINCT ON (typname) typname, typinput='array_in'::regproc, typtype, sp.r, pg_type.oid "
+                + "  FROM pg_catalog.pg_type "
+                + "  JOIN pg_catalog.pg_namespace ns2 ON ns2.oid = pg_type.typnamespace "
+                + "  LEFT "
+                + "  JOIN (select ns.oid as nspoid, ns.nspname, r.r "
+                + "          from pg_namespace as ns "
+                + "          join ( select s.r, (current_schemas(false))[s.r] as nspname "
+                + "                   from generate_series(1, array_upper(current_schemas(false), 1)) as s(r) ) as r "
+                + "         using ( nspname ) "
+                + "       ) as sp "
+                + "    ON sp.nspoid = pg_type.typnamespace "
+                + " WHERE (ns2.nspname = ANY(?) OR ns2.nspname IN ('pg_catalog', 'information_schema'))"
+                + " ORDER BY typname, sp.r, pg_type.oid;";
+
         private final PostgresConnection connection;
 
         @Immutable
@@ -513,10 +577,10 @@ public class TypeRegistry {
         @Immutable
         private final Map<String, Integer> sqlTypesByPgTypeNames;
 
-        private SqlTypeMapper(PostgresConnection connection) throws SQLException {
+        private SqlTypeMapper(PostgresConnection connection, Set<String> schemaFilter) throws SQLException {
             this.connection = connection;
             this.preloadedSqlTypes = Collect.unmodifiableSet(getTypeInfo(connection).getPGTypeNamesWithSQLTypes());
-            this.sqlTypesByPgTypeNames = Collections.unmodifiableMap(getSqlTypes(connection));
+            this.sqlTypesByPgTypeNames = Collections.unmodifiableMap(getSqlTypes(connection, schemaFilter));
         }
 
         public int getSqlType(String typeName) throws SQLException {
@@ -548,39 +612,59 @@ public class TypeRegistry {
         }
 
         /**
-         * Builds up a map of SQL (JDBC) types by PG type name; contains only values for non-core types.
+         * Builds a map of SQL (JDBC) types by PG type name for non-core types.
+         * When {@code schemaFilter} is non-empty, only types from those schemas (plus built-ins) are loaded.
          */
-        private static Map<String, Integer> getSqlTypes(PostgresConnection connection) throws SQLException {
+        private static Map<String, Integer> getSqlTypes(PostgresConnection connection, Set<String> schemaFilter) throws SQLException {
             Map<String, Integer> sqlTypesByPgTypeNames = new HashMap<>();
 
-            try (Statement statement = connection.connection().createStatement()) {
-                try (ResultSet rs = statement.executeQuery(SQL_TYPE_DETAILS)) {
-                    while (rs.next()) {
-                        int type;
-                        boolean isArray = rs.getBoolean(2);
-                        String typtype = rs.getString(3);
-                        if (isArray) {
-                            type = Types.ARRAY;
+            if (schemaFilter.isEmpty()) {
+                try (Statement statement = connection.connection().createStatement();
+                        ResultSet rs = statement.executeQuery(SQL_TYPE_DETAILS)) {
+                    populateSqlTypes(rs, sqlTypesByPgTypeNames);
+                }
+            }
+            else {
+                try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPE_DETAILS_SCHEMA_FILTERED)) {
+                    final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
+                    try {
+                        statement.setArray(1, schemaArray);
+                        try (ResultSet rs = statement.executeQuery()) {
+                            populateSqlTypes(rs, sqlTypesByPgTypeNames);
                         }
-                        else if ("c".equals(typtype)) {
-                            type = Types.STRUCT;
-                        }
-                        else if ("d".equals(typtype)) {
-                            type = Types.DISTINCT;
-                        }
-                        else if ("e".equals(typtype)) {
-                            type = Types.VARCHAR;
-                        }
-                        else {
-                            type = Types.OTHER;
-                        }
-
-                        sqlTypesByPgTypeNames.put(rs.getString(1), type);
+                    }
+                    finally {
+                        schemaArray.free();
                     }
                 }
             }
 
             return sqlTypesByPgTypeNames;
+        }
+
+        private static void populateSqlTypes(ResultSet rs, Map<String, Integer> sqlTypesByPgTypeNames) throws SQLException {
+            while (rs.next()) {
+                int type;
+                boolean isArray = rs.getBoolean(2);
+                String typtype = rs.getString(3);
+                if (isArray) {
+                    type = Types.ARRAY;
+                }
+                else if ("c".equals(typtype)) {
+                    type = Types.STRUCT;
+                }
+                else if ("d".equals(typtype)) {
+                    type = Types.DISTINCT;
+                }
+                else if ("e".equals(typtype)) {
+                    type = Types.VARCHAR;
+                }
+                else {
+                    type = Types.OTHER;
+                }
+
+                sqlTypesByPgTypeNames.put(rs.getString(1), type);
+            }
         }
     }
 
