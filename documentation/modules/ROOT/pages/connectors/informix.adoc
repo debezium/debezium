@@ -497,7 +497,7 @@ For more information about using the logical topic routing SMT to customize topi
 [[informix-schema-history-topic]]
 === Schema history topic
 
-When a database client queries a database, the client uses the databaseâ€™s current schema.
+When a database client queries a database, the client uses the database’s current schema.
 However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time that each insert, update, or delete operation was recorded.
 Also, a connector cannot necessarily apply the current schema to every event.
 If an event is relatively old, it's possible that it was recorded before the current schema was applied.
@@ -1605,7 +1605,7 @@ Retaining the most recent message enables Kafka to reclaim storage space while e
 [[informix-tombstone-events]]
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key.
 However, for Kafka to remove all messages that have that same key, the message value must be `null`.
-To make this possible, after {prodname}â€™s Informix connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+To make this possible, after {prodname}’s Informix connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
 
 // Type: reference
 // ModuleID: how-debezium-informix-connectors-map-data-types
