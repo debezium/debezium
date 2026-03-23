@@ -14,6 +14,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 public class ThreadsTest {
 
@@ -33,6 +34,7 @@ public class ThreadsTest {
         Threads.runWithTimeout(
                 ThreadsTest.class,
                 operation,
+                MDC.getCopyOfContextMap(),
                 Duration.ofMillis(1000),
                 "test-connector",
                 "test-operation");
@@ -54,6 +56,7 @@ public class ThreadsTest {
         assertThrows(TimeoutException.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
                 operation,
+                MDC.getCopyOfContextMap(),
                 Duration.ofMillis(500),
                 "test-connector",
                 "test-operation"));
@@ -68,6 +71,7 @@ public class ThreadsTest {
         Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
                 operation,
+                MDC.getCopyOfContextMap(),
                 Duration.ofMillis(1000),
                 "test-connector",
                 "test-operation"));
@@ -86,6 +90,7 @@ public class ThreadsTest {
         Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
                 operation,
+                MDC.getCopyOfContextMap(),
                 Duration.ofMillis(1000),
                 "test-connector",
                 "test-operation"));
@@ -106,6 +111,7 @@ public class ThreadsTest {
         assertThrows(Exception.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
                 operation,
+                MDC.getCopyOfContextMap(),
                 Duration.ofMillis(1000),
                 "test-connector",
                 "test-operation"));
