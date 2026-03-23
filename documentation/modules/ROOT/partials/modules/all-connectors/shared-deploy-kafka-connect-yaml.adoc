@@ -43,7 +43,7 @@ spec:
 ----
 
 
-The following list describes the purpose of select line in the preceding Kafka Connect configuration example:
+The following list describes the purpose of select lines in the preceding Kafka Connect configuration example:
 
 `strimzi.io/use-connector-resources: "true"`::
 Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
