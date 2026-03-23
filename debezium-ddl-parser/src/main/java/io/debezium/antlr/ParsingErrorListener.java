@@ -39,7 +39,7 @@ public class ParsingErrorListener extends BaseErrorListener {
      */
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-        final String errorMessage = "DDL statement couldn't be parsed. Please open a Jira issue with the statement '" + parsedDdl + "'\n" + msg;
+        final String errorMessage = "DDL statement couldn't be parsed. Please open a GitHub issue at https://github.com/debezium/dbz/issues with the statement '" + parsedDdl + "'\n" + msg;
         accumulateError.apply(new ParsingException(new Position(0, line, charPositionInLine), errorMessage, e), errors);
     }
 
