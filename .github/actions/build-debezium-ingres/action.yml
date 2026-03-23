@@ -24,7 +24,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-connector-common,debezium-config,debezium-util,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
         -am
         -DskipTests=true
         -DskipITs=true
