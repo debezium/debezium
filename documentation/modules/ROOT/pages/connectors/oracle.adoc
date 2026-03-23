@@ -1278,7 +1278,7 @@ You can customize the Ehcache configuration through a set of cache configuration
 For details about the available properties, see the xref:oracle-connector-properties[configuration properties] in the `log.mining.buffer.ehcache` namespace.
 
 Some properties apply globally to all Ehcache instances associated with the connector, for example, you might specify a common location for storing all cache data.
-You can set properties to apply only to specific cache instances,for example, specifying the number of entries permitted in memory, or the overall size of the persistence store.
+Alongside the global configuration, you can set some properties to apply only to specific cache instances, for example, you might set a limit on the number of entries that the cache holds in memory, or specify the maximum size of the persistence store.
 The following example shows a possible Ehcache configuration:
 
 [source,xml]
@@ -1286,7 +1286,7 @@ The following example shows a possible Ehcache configuration:
 <persistence directory="./data" />
 ----
 
-Additionally, the following illustrates what the specific embedded cache configurations would look like:
+Additionally, the following example shows some settings that you might configure for a specific embedded cache:
 
 [source,xml]
 ----
@@ -1295,6 +1295,7 @@ Additionally, the following illustrates what the specific embedded cache configu
     <disk unit="B">1024000000</disk>
 </resources>
 ----
+The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, `events`, and `rollbacks` caches.
 
 .Example configuration
 [source,json]
