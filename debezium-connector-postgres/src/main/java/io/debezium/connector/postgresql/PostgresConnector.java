@@ -21,6 +21,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -118,7 +119,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
                         hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                     }
                 }
-            }, timeout, postgresConfig.getLogicalName(), "connection-validation");
+            }, MDC.getCopyOfContextMap(), timeout, postgresConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");

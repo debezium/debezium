@@ -7,6 +7,7 @@ package io.debezium.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -22,6 +23,7 @@ import java.util.function.LongSupplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * Utilities related to threads and threading.
@@ -340,17 +342,26 @@ public class Threads {
 
     /**
      * Runs an operation with a timeout using a single-threaded executor.
+     * The provided MDC context is propagated into the new thread.
      *
      * @param componentClass the class of the component using this method
      * @param operation the operation to run
+     * @param mdcContext the MDC context to propagate into the new thread; may be null
      * @param timeout the timeout duration
      * @param componentName the name of the component
      * @param operationName the name of the operation being executed with timeout
      * @throws Exception if the operation fails or times out
      */
-    public static void runWithTimeout(Class<?> componentClass, Runnable operation, Duration timeout, String componentName, String operationName) throws Exception {
+    public static void runWithTimeout(Class<?> componentClass, Runnable operation, Map<String, String> mdcContext,
+                                      Duration timeout, String componentName, String operationName)
+            throws Exception {
         ExecutorService executor = newSingleThreadExecutor(componentClass, componentName, operationName);
-        Future<?> future = executor.submit(operation);
+        Future<?> future = executor.submit(() -> {
+            if (mdcContext != null) {
+                MDC.setContextMap(mdcContext);
+            }
+            operation.run();
+        });
         try {
             future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         }

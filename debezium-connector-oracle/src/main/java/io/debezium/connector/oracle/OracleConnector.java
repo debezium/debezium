@@ -20,6 +20,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -101,7 +102,7 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
                     LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, MDC.getCopyOfContextMap(), timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");

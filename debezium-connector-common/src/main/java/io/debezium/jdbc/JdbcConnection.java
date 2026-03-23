@@ -47,6 +47,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
@@ -973,12 +974,8 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void doClose() throws SQLException {
-        final Map<String, String> mdcContext = org.slf4j.MDC.getCopyOfContextMap();
         try {
             Threads.runWithTimeout(JdbcConnection.class, () -> {
-                if (mdcContext != null) {
-                    org.slf4j.MDC.setContextMap(mdcContext);
-                }
                 try {
                     conn.close();
                     LOGGER.info("Connection gracefully closed");
@@ -986,7 +983,7 @@ public class JdbcConnection implements AutoCloseable {
                 catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-            }, Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
+            }, MDC.getCopyOfContextMap(), Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
