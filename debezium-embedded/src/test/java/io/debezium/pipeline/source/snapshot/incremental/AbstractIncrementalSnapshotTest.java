@@ -1353,4 +1353,139 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return stopMessageFound.get();
     }
 
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldSerializePausedStateToOffsets() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(additionalConfiguration());
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait for pause signal to be processed and verify paused flag appears in offsets
+        final AtomicBoolean pausedFlagFound = new AtomicBoolean(false);
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .until(() -> {
+                    consumeAvailableRecords(record -> {
+                        final Map<String, ?> offset = record.sourceOffset();
+                        if (offset.containsKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED)) {
+                            final Boolean paused = (Boolean) offset.get(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+                            if (Boolean.TRUE.equals(paused)) {
+                                pausedFlagFound.set(true);
+                            }
+                        }
+                    });
+                    return pausedFlagFound.get();
+                });
+    }
+
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldRemainPausedAfterRestart() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(additionalConfiguration());
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait for pause signal to be processed
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused."));
+
+        // Stop and restart connector
+        stopConnector();
+        logInterceptor.clear();
+
+        startConnector(additionalConfiguration(), loggingCompletion(), false);
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot in progress, need to read new chunk on start")
+                && logInterceptor.containsMessage("Incremental snapshot was paused."));
+
+        // Resume and verify snapshot continues
+        sendResumeSignal();
+        final Map<Integer, SourceRecord> remainingChanges = consumeRecordsMixedWithIncrementalSnapshot(ROW_COUNT - expectedRecordCount);
+        assertThat(remainingChanges).hasSize(ROW_COUNT - expectedRecordCount);
+    }
+
+    @Test
+    @FixFor("DBZ-8384")
+    public void shouldRemovePausedFlagAfterResume() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(additionalConfiguration());
+
+        // Start incremental snapshot
+        sendAdHocSnapshotSignal();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // Consume some records to ensure snapshot is running
+        final int expectedRecordCount = ROW_COUNT / 2;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        assertThat(dbChanges).hasSize(expectedRecordCount);
+
+        // Pause the snapshot
+        sendPauseSignal();
+
+        // Wait for pause signal to be processed
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> logInterceptor.containsMessage("Incremental snapshot was paused."));
+
+        // Resume the snapshot
+        sendResumeSignal();
+
+        // Consume remaining records and verify paused flag is eventually cleared after resume.
+        // Window records buffered before the pause may be dispatched with paused=true (they carry
+        // the paused offset so that a restart can detect the paused state). Once those transition
+        // records are past, all subsequent records must NOT have paused=true.
+        final AtomicBoolean resumeConfirmed = new AtomicBoolean(false);
+        final AtomicBoolean pausedFlagAfterResume = new AtomicBoolean(false);
+        final Map<Integer, SourceRecord> remainingChanges = consumeRecordsMixedWithIncrementalSnapshot(
+                ROW_COUNT - expectedRecordCount,
+                entry -> true,
+                records -> {
+                    records.forEach(record -> {
+                        final Map<String, ?> offset = record.sourceOffset();
+                        final boolean hasPausedKey = offset.containsKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+                        final Boolean paused = hasPausedKey
+                                ? (Boolean) offset.get(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED)
+                                : null;
+                        if (!Boolean.TRUE.equals(paused)) {
+                            // paused key absent or explicitly false — resume is in effect
+                            resumeConfirmed.set(true);
+                        }
+                        else if (resumeConfirmed.get()) {
+                            // paused=true seen AFTER we already observed it cleared — real bug
+                            pausedFlagAfterResume.set(true);
+                        }
+                    });
+                });
+
+        assertThat(remainingChanges).hasSize(ROW_COUNT - expectedRecordCount);
+        assertThat(resumeConfirmed.get()).as("Paused flag should have been cleared after resume").isTrue();
+        assertThat(pausedFlagAfterResume.get()).as("Paused flag must not re-appear after being cleared").isFalse();
+    }
+
 }
