@@ -810,7 +810,7 @@ jobs:
 
       - name: Delete Build Artifacts
         if: always()
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             core-build
