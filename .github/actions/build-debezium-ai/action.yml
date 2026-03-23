@@ -26,7 +26,7 @@ runs:
     - name: Build Debezium AI module
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :debezium-core,:debezium-transforms,:debezium-ai -am
+        ./mvnw clean install -B -pl :debezium-connector-common,:debezium-connect-plugins,:debezium-ai -am
         -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
