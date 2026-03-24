@@ -15,9 +15,12 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.converters.SinkRecordConverter;
+import io.debezium.connector.mongodb.sink.eventhandler.mongodb.MongoDbEventHandler;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
+import io.debezium.data.Envelope;
 import io.debezium.sink.DebeziumSinkRecord;
 
 public class MongoProcessedSinkRecordData {
@@ -74,8 +77,36 @@ public class MongoProcessedSinkRecordData {
 
     private WriteModel<BsonDocument> createWriteModel() {
         return tryProcess(
-                () -> new RelationalEventHandler(config).handle(sinkDocument))
+                () -> {
+                    BsonDocument valueDoc = sinkDocument.getValueDoc().orElseGet(BsonDocument::new);
+                    if (isMongoDbFormat(valueDoc)) {
+                        return new MongoDbEventHandler(config).handle(sinkDocument);
+                    }
+                    return new RelationalEventHandler(config).handle(sinkDocument);
+                })
                 .orElse(null);
+    }
+
+    private boolean isMongoDbFormat(BsonDocument valueDoc) {
+        // Full-document update or insert: after is a JSON string (MongoDB format)
+        if (valueDoc.containsKey(Envelope.FieldName.AFTER) && valueDoc.get(Envelope.FieldName.AFTER).isString()) {
+            return true;
+        }
+        // Partial update or schemaless delete: updateDescription signals MongoDB CDC
+        if (valueDoc.containsKey(MongoDbFieldName.UPDATE_DESCRIPTION)) {
+            return true;
+        }
+        // Schema-based detection via connector namespace in schema name
+        if (sinkRecord.valueSchema() != null && sinkRecord.valueSchema().name() != null
+                && sinkRecord.valueSchema().name().contains("io.debezium.connector.mongodb")) {
+            return true;
+        }
+        // Schemaless delete: key document contains only the MongoDB "id" field
+        BsonDocument keyDoc = sinkDocument.getKeyDoc().orElseGet(BsonDocument::new);
+        if (keyDoc.size() == 1 && keyDoc.containsKey("id")) {
+            return true;
+        }
+        return false;
     }
 
     private <T> Optional<T> tryProcess(final Supplier<Optional<T>> supplier) {
