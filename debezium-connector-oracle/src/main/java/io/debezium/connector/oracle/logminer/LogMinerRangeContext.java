@@ -195,7 +195,7 @@ public class LogMinerRangeContext {
         int effectiveBatchSize = batchSize;
         if (LINEAR == connectorConfig.getLogMiningBatchSizeWindowScale()) {
             // Permits the growth of a linear batch to Integer.MAX_VALUE
-            ticks = Math.min(ticks + 1, Integer.MAX_VALUE);
+            ticks = (int) Math.min((long) ticks + 1, Integer.MAX_VALUE);
             effectiveBatchSize = (int) Math.min((long) batchSize + (batchSizeMax * ticks), Integer.MAX_VALUE);
         }
         else if (EXPONENTIAL == connectorConfig.getLogMiningBatchSizeWindowScale()) {
