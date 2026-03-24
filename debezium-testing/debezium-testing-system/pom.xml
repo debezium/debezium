@@ -687,7 +687,6 @@
                 <test.database.informix.dbz.username>${database.informix.dbz.username}</test.database.informix.dbz.username>
                 <test.database.informix.dbz.password>${database.informix.dbz.password}</test.database.informix.dbz.password>
                 <test.database.informix.dbname>${database.informix.dbname}</test.database.informix.dbname>
-                <test.database.informix.cdc.schema>${database.informix.cdc.schema}</test.database.informix.cdc.schema>
 
                 <!-- Oracle configuration-->
                 <test.database.oracle>${database.oracle}</test.database.oracle>

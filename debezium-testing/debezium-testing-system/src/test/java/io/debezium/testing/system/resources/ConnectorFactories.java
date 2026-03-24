@@ -35,7 +35,7 @@ public class ConnectorFactories {
                 .put("topic.prefix", cb.getDbServerName())
                 .put("database.server.id", 5400 + random.nextInt(1000))
                 .put("connector.class", "io.debezium.connector.mysql.MySqlConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
@@ -55,7 +55,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mariadb.MariaDbConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.server.id", 5400 + random.nextInt(1000))
                 .put("database.ssl.mode", "disable")
                 .put("database.hostname", dbHost)
@@ -76,7 +76,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_POSTGRESQL_DBZ_USERNAME)
@@ -95,7 +95,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME)
@@ -112,7 +112,7 @@ public class ConnectorFactories {
         cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
                 .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
                 .addOperationRouterForTable("u", "customers")
@@ -125,7 +125,7 @@ public class ConnectorFactories {
         cb
                 .put("topic.prefix", connectorName)
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
                 .put("mongodb.connection.mode", "sharded")
                 .addMongoDbzUser()
@@ -140,7 +140,7 @@ public class ConnectorFactories {
         cb
                 .put("topic.prefix", connectorName)
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
-                .put("task.max", 4)
+                .put("tasks.max", 4)
                 .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
                 .put("mongodb.connection.mode", "replica_set")
                 .addMongoDbzUser()
@@ -156,7 +156,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.db2.Db2Connector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_DB2_DBZ_USERNAME)
@@ -176,7 +176,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.oracle.OracleConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_ORACLE_DBZ_USERNAME)
@@ -199,7 +199,7 @@ public class ConnectorFactories {
         String connectionUrl = String.format("jdbc:mysql://%s:%s/inventory", dbHost, dbPort);
         return cb
                 .put("connector.class", "io.debezium.connector.jdbc.JdbcSinkConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("connection.url", connectionUrl)
                 .put("connection.username", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
                 .put("connection.password", ConfigProperties.DATABASE_MYSQL_DBZ_PASSWORD)
@@ -218,7 +218,7 @@ public class ConnectorFactories {
         return cb
                 .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.informix.InformixConnector")
-                .put("task.max", 1)
+                .put("tasks.max", 1)
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_INFORMIX_DBZ_USERNAME)
