@@ -128,7 +128,7 @@ Only if this is the case can you proceed with the release.
 
 Once the codebase is in a state that is ready to be released, use the following command to automatically update the POM to use the release number, commit the changes to your local Git repository, tag that commit, and then update the POM to use snapshot versions and commit to your local Git repository:
 
-    $ mvn release:clean release:prepare
+    $ ./mvnw release:clean release:prepare
 
 This will prompt for several inputs:
 
@@ -178,7 +178,7 @@ At this point, the code on the branch in the [official Debezium repository](http
 
 Now that the [official Debezium repository](https://github.com/debezium/debezium) has a tag with the code that we want to release, the next step is to actually build and release what we tagged:
 
-    $ mvn release:perform
+    $ ./mvnw release:perform
 
 This performs the following steps:
 
