@@ -230,6 +230,7 @@ tyrantlucifer,Chao Tian
 ryanvanhuuksloot,Ryan van Huuksloot
 vsantona,Vincenzo Santonastaso
 “vsantonastaso”,Vincenzo Santonastaso
+vsantonastaso,Vincenzo Santonastaso
 rolevinks,Stein Rolevink
 matan-cohen,Matan Cohen
 BigGillyStyle,Andy Pickler
@@ -335,7 +336,7 @@ jw-itq,Shiwanming
 archiedx,Archie David
 shinsj4653,Seongjun Shin
 redboyben,Benoit Audigier
-kartikangiras, Kartik Angiras
+kartikangiras,Kartik Angiras
 gmarav05,Aravind Gm
 Binayak490-cyber,Binayak Das
 d1vyanshu-kumar,Divyanshu Kumar
@@ -345,3 +346,7 @@ lingyangma,Lingyang Ma
 viragtripathi,Virag Tripathi
 siddhantcvdi,Siddhant Chaturvedi
 sonagaras,Sarthak Sonagara
+shrsu,Sujal Shrestha
+backtrack5r3,Tom Flenner
+Monish,Kodukulla Mohnish Mythreya
+nonononoonononon,Yuang Li
