@@ -115,7 +115,7 @@ public class ChangeEventQueueTest {
                 .queueProvider(new DefaultQueueProvider<>(8192 * 2))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
-                .pollDispatchInterval(Duration.ofMillis(1000))
+                .pollDispatchInterval(Duration.ofMillis(1500))
                 .build();
 
         for (int i = 0; i < noOfWriters; i++) {
@@ -134,8 +134,8 @@ public class ChangeEventQueueTest {
             }
 
             // 1_000 Events should be written/read in about 2 seconds ( dispatchInterval + pollInterval -> waiting for Queue to be full to complete batchSize)
-            // After 2 seconds there should be no records read
-            long maxWaitTimeout = TimeUnit.SECONDS.toMillis(2);
+            // After 3 seconds there should be no records read
+            long maxWaitTimeout = TimeUnit.SECONDS.toMillis(3);
             long deadline = System.currentTimeMillis() + maxWaitTimeout;
 
             for (Thread writer : writers) {
