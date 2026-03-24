@@ -52,7 +52,7 @@ for driver in **/jdbc/*.{zip,jar}; do
 done
 
 for groovy_script in **/groovy/*.{zip,jar}; do
-    name=$(echo "$groovy_script" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    name=$(echo "$groovy_script" | sed -rn 's@^(.*)-[0-9][0-9A-Za-z_.-]*\..*$@\1@p')
     artifact="$name"
     if [[ ! $artifact ]]; then
         continue
@@ -62,7 +62,7 @@ for groovy_script in **/groovy/*.{zip,jar}; do
 done
 
 for jackson_lib in **/jackson/*.jar; do
-    name=$(echo "$jackson_lib" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    name=$(echo "$jackson_lib" | sed -rn 's@^(.*)-[0-9][0-9A-Za-z_.-]*\..*$@\1@p')
     artifact="$name"
     if [[ ! $artifact ]]; then
         continue
@@ -72,7 +72,7 @@ for jackson_lib in **/jackson/*.jar; do
 done
 
 for informix_lib in **/ifx/*.jar; do
-    name=$(echo "$informix_lib" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    name=$(echo "$informix_lib" | sed -rn 's@^(.*)-[0-9][0-9A-Za-z_.-]*\..*$@\1@p')
     artifact="$name"
     if [[ ! $artifact ]]; then
         continue
