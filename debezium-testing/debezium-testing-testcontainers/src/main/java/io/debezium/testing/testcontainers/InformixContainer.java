@@ -16,20 +16,17 @@ import org.testcontainers.utility.DockerImageName;
 public class InformixContainer extends JdbcDatabaseContainer<InformixContainer> {
 
     public static final String NAME = "informix";
-
-    private static final String FALLBACK_INFORMIX_VERSION = "14";
-    public static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("quay.io/rh_integration/dbz-informix");
-    public static final String DEFAULT_TAG = parameterWithDefault(System.getProperty("version.informix.server"), FALLBACK_INFORMIX_VERSION);
-    private static final String INFORMIX_USERNAME = parameterWithDefault(System.getProperty("database.username"), "informix");
-    private static final String INFORMIX_PASSWORD = parameterWithDefault(System.getProperty("database.password"), "in4mix");
-    public static final String INFORMIX_DBNAME = System.getProperty("test.database.informix.dbz.dbname", "testdb");
+    public static final String DOCKER_IMAGE = parameterWithDefault("test.docker.image.informix", "quay.io/rh_integration/dbz-informix:14");
+    private static final String INFORMIX_USERNAME = parameterWithDefault("test.database.informix.username", "informix");
+    private static final String INFORMIX_PASSWORD = parameterWithDefault("test.database.informix.password", "in4mix");
+    public static final String INFORMIX_DBNAME = parameterWithDefault("test.database.informix.dbz.dbname", "testdb");
 
     public static final int INFORMIX_PORT = 9088;
     private static final int INFORMIX_DEFAULT_STARTUP_TIMEOUT_SECONDS = 240;
     private static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 120;
 
     public InformixContainer() {
-        this(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+        this(DOCKER_IMAGE);
     }
 
     public InformixContainer(String dockerImageName) {
@@ -46,18 +43,19 @@ public class InformixContainer extends JdbcDatabaseContainer<InformixContainer> 
         preconfigure();
     }
 
-    private static String parameterWithDefault(String value, String defaultValue) {
+    private static String parameterWithDefault(String key, String defaultValue) {
+        String value = System.getProperty(key);
         if (value == null || value.isEmpty()) {
             return defaultValue;
         }
         return value;
     }
 
-    public static WaitAllStrategy getWaitStrategyForVersion(String version) {
+    private WaitAllStrategy getWaitStrategyForVersion(String version) {
         WaitAllStrategy waitStrategy = new WaitAllStrategy(WaitAllStrategy.Mode.WITH_OUTER_TIMEOUT)
                 .withStartupTimeout(Duration.ofSeconds(INFORMIX_DEFAULT_STARTUP_TIMEOUT_SECONDS));
 
-        if ("12".equals(version)) {
+        if (version != null && version.startsWith("12")) {
             waitStrategy.withStrategy(new LogMessageWaitStrategy()
                     .withRegEx(".*Logical Log \\d+ Complete.*\\s")
                     .withTimes(1)
@@ -79,7 +77,7 @@ public class InformixContainer extends JdbcDatabaseContainer<InformixContainer> 
         withConnectTimeoutSeconds(DEFAULT_CONNECT_TIMEOUT_SECONDS);
         // WaitStrategy needs to be set like this, otherwise is being ignored for JdbcDatabaseContainer
         // Check: https://github.com/testcontainers/testcontainers-java/issues/2994
-        this.waitStrategy = getWaitStrategyForVersion(DEFAULT_TAG);
+        this.waitStrategy = getWaitStrategyForVersion(DockerImageName.parse(DOCKER_IMAGE).getVersionPart());
     }
 
     public String getDriverClassName() {
