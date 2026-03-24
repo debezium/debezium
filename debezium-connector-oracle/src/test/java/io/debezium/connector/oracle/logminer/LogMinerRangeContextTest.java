@@ -324,9 +324,38 @@ public class LogMinerRangeContextTest {
     }
 
     @Test
-    @FixFor("dbz#1713")
-    public void shouldCapTicksAt30ToPreventOverflow() throws Exception {
-        // After 30 window-scale calls ticks is capped at 30; subsequent calls return the same result
+    @FixFor({ "dbz#1713", "dbz#1740" })
+    public void shouldCapExponentialTicksAt31ToPreventOverflow() throws Exception {
+        // After 31 window-scale calls ticks is capped at 31; subsequent calls return the same result.
+        // The cap of 31 prevents bit-shift beyond long for exponential growth (batchSizeMax << 31).
+        final OracleConnectorConfig config = createConnectorConfig(
+                DEFAULT_BATCH_MAX, DEFAULT_BATCH_MIN, DEFAULT_BATCH_MAX, DEFAULT_BATCH_INCREMENT,
+                EXPONENTIAL, Duration.ZERO, DEFAULT_REDO_ADJUSTMENT, false);
+        final LogMinerRangeContext context = setupMocks(config);
+
+        // Call 1: sets previousUpperBounds (no window scale, ticks stays 0)
+        context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        // Window-scale calls 1–30: ticks advances from 0 to 30
+        for (int i = 1; i <= 30; i++) {
+            context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+        }
+
+        // Call at ticks=30=>31 (reaches cap): effectiveBatch = min(batchSizeMax << 31, Integer.MAX_VALUE) = Integer.MAX_VALUE
+        final Scn resultAtCap = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        // Call at ticks=31=>31 (capped, stays at 31): same effective batch size, same result
+        final Scn resultPastCap = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        assertThat(resultAtCap).isEqualTo(resultPastCap);
+        assertThat(resultAtCap).isEqualTo(Scn.valueOf(1000L + Integer.MAX_VALUE));
+    }
+
+    @Test
+    @FixFor({ "dbz#1713", "dbz#1740" })
+    public void shouldLinearTicksGrowBeyondThirty() throws Exception {
+        // With LINEAR scale, ticks is not capped at 30 — it continues growing beyond 30.
+        // This verifies that the 31st window-scale call produces a larger result than the 30th.
         final OracleConnectorConfig config = createConnectorConfig(
                 DEFAULT_BATCH_MAX, DEFAULT_BATCH_MIN, DEFAULT_BATCH_MAX, DEFAULT_BATCH_INCREMENT,
                 LINEAR, Duration.ZERO, DEFAULT_REDO_ADJUSTMENT, false);
@@ -335,19 +364,44 @@ public class LogMinerRangeContextTest {
         // Call 1: sets previousUpperBounds (no window scale, ticks stays 0)
         context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
 
-        // Window-scale calls 1–29: ticks advances from 0 to 29
+        // Window-scale calls 1–29: ticks advances to 29
         for (int i = 1; i <= 29; i++) {
             context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
         }
 
-        // Call at ticks=29=>30 (reaches cap): effective = 100000 + (100000 * 30) = 3100000, upper = 3101000
-        final Scn resultAtCap = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+        // ticks=29=>30: effective = 100000 + (100000 * 30) = 3_100_000, upper = 3_101_000
+        final Scn resultAtTick30 = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
 
-        // Call at ticks=30=>30 (capped, stays at 30): same effective batch size, same result
-        final Scn resultPastCap = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+        // ticks=30=>31: effective = 100000 + (100000 * 31) = 3_200_000, upper = 3_201_000 (not capped at 30)
+        final Scn resultAtTick31 = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
 
-        assertThat(resultAtCap).isEqualTo(resultPastCap);
-        assertThat(resultAtCap).isEqualTo(Scn.valueOf(3101000L));
+        assertThat(resultAtTick30).isEqualTo(Scn.valueOf(3_101_000L));
+        assertThat(resultAtTick31).isEqualTo(Scn.valueOf(3_201_000L));
+    }
+
+    @Test
+    @FixFor({ "dbz#1713", "dbz#1740" })
+    public void shouldLinearBatchSizeCappedAtIntegerMaxValue() throws Exception {
+        // With a large batchSizeMax, the LINEAR formula (batchSize + batchSizeMax * ticks) can exceed
+        // Integer.MAX_VALUE. The Math.min(..., Integer.MAX_VALUE) guard ensures the effective batch
+        // size is safely bounded, preventing integer overflow.
+        final int largeBatchMax = 1_500_000_000;
+        final OracleConnectorConfig config = createConnectorConfig(
+                largeBatchMax, DEFAULT_BATCH_MIN, largeBatchMax, largeBatchMax,
+                LINEAR, Duration.ZERO, DEFAULT_REDO_ADJUSTMENT, false);
+        final LogMinerRangeContext context = setupMocks(config);
+
+        // Call 1: sets previousUpperBounds (no window scale); upper = 1000 + 1_500_000_000 = 1_500_001_000
+        context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        // Call 2: ticks=1, effective = min(1_500_000_000 + 1_500_000_000 * 1, MAX) = min(3_000_000_000, MAX) = MAX
+        final Scn resultAtMax = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        // Call 3: ticks=2, still capped at MAX — no overflow from the larger computation
+        final Scn resultStillAtMax = context.calculateUpperBoundary(Scn.valueOf(1000L), Scn.valueOf(500L), Scn.valueOf(Long.MAX_VALUE / 2));
+
+        assertThat(resultAtMax).isEqualTo(resultStillAtMax);
+        assertThat(resultAtMax).isEqualTo(Scn.valueOf(1000L + Integer.MAX_VALUE));
     }
 
     // -------------------------------------------------------------------------

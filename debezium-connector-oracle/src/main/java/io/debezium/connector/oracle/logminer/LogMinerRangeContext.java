@@ -42,6 +42,7 @@ public class LogMinerRangeContext {
     private int ticks = 0;
     private long sleepTime;
     private Scn previousUpperBounds = Scn.NULL;
+    private boolean maxBatchWarningLogged = false;
 
     public LogMinerRangeContext(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection, LogMinerStreamingChangeEventSourceMetrics metrics) {
         this.connectorConfig = connectorConfig;
@@ -83,6 +84,9 @@ public class LogMinerRangeContext {
 
             // At this point the connector has caught up, it's safe to reset all window scale state
             ticks = 0;
+
+            // Reset warning state
+            maxBatchWarningLogged = false;
 
             metrics.setBatchSize(batchSize);
         }
@@ -186,20 +190,33 @@ public class LogMinerRangeContext {
     }
 
     private int updateAndGetEffectiveBatchSize() {
-        final int batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
-
-        // This is limited to a max of 30 ticks to avoid bit shift beyond long when using exponential
-        ticks = Math.min(ticks + 1, 30);
+        final long batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
 
         int effectiveBatchSize = batchSize;
         if (LINEAR == connectorConfig.getLogMiningBatchSizeWindowScale()) {
-            effectiveBatchSize = batchSize + (batchSizeMax * ticks);
+            // Permits the growth of a linear batch to Integer.MAX_VALUE
+            ticks = Math.min(ticks + 1, Integer.MAX_VALUE);
+            effectiveBatchSize = (int) Math.min((long) batchSize + (batchSizeMax * ticks), Integer.MAX_VALUE);
         }
         else if (EXPONENTIAL == connectorConfig.getLogMiningBatchSizeWindowScale()) {
-            effectiveBatchSize = (int) Math.min((long) batchSizeMax << ticks, Integer.MAX_VALUE);
+            // Permits the growth of an exponential batch to Integer.MAX_VALUE
+            // This is limited to a max of 31 ticks to avoid bit shift beyond long when using exponential
+            ticks = Math.min(ticks + 1, 31);
+            effectiveBatchSize = (int) Math.min(batchSizeMax << ticks, Integer.MAX_VALUE);
         }
 
         metrics.setBatchSize(effectiveBatchSize);
+
+        if (effectiveBatchSize == Integer.MAX_VALUE && !maxBatchWarningLogged) {
+            maxBatchWarningLogged = true;
+            LOGGER.warn("The effective batch size is now at the maximum of {}. " +
+                    "If the batch size needs to grow larger, please increase your {} value.",
+                    effectiveBatchSize, OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX.name());
+        }
+        else {
+            maxBatchWarningLogged = false;
+        }
+
         return effectiveBatchSize;
     }
 
