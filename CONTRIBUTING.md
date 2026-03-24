@@ -27,7 +27,7 @@ See the links above for installation instructions on your platform. You can veri
 
     $ git --version
     $ javac -version
-    $ mvn -version
+    $ ./mvnw -version
     $ docker --version
 
 ### GitHub account
@@ -85,23 +85,23 @@ To build the source code locally, checkout and update the `main` branch:
 
 Then use Maven to compile everything, run all unit and integration tests, build all artifacts, and install all JAR, ZIP, and TAR files into your local Maven repository:
 
-    $ mvn clean install -Passembly
+    $ ./mvnw clean install -Passembly
 
 If you want to skip the integration tests (e.g., if you don't have Docker installed) or the unit tests, you can add `-DskipITs` and/or `-DskipTests` to that command:
 
-    $ mvn clean install -Passembly -DskipITs -DskipTests
+    $ ./mvnw clean install -Passembly -DskipITs -DskipTests
 
 ### Running and debugging tests
 
 A number of the modules use Docker during their integration tests to run a database. During development it's often desirable to start the Docker container and leave it running so that you can compile/run/debug tests repeatedly from your IDE. To do this, simply go into one of the modules (e.g., `cd debezium-connector-mysql`) and run the following command:
 
-    $ mvn docker:build docker:start
+    $ ./mvnw docker:build docker:start
 
 This will first force the build to create a new Docker image for the database container, and then will start a container named "database". You can then run any integration tests from your IDE, though all of our integration tests expect the database connection information to be passed in as system variables (like our Maven build does). For example, the MySQL connector integration tests expect something like `-Ddatabase.hostname=localhost -Ddatabase.port=3306` to be passed as arguments to your test.
 
 When your testing is complete, you can stop the Docker container by running:
 
-    $ mvn docker:stop
+    $ ./mvnw docker:stop
 
 or the following Docker commands:
 
@@ -120,7 +120,7 @@ Before you make any changes, be sure to switch to the `main` branch and pull the
 
     $ git checkout main
     $ git pull upstream main
-    $ mvn clean install
+    $ ./mvnw clean install
 
 Once everything builds, create a *topic branch* named appropriately (we recommend using the issue number, such as `dbz#1234`):
 
@@ -130,7 +130,7 @@ This branch exists locally and it is there you should make all of your proposed 
 
 Your changes should include changes to existing tests or additional unit and/or integration tests that verify your changes work. We recommend frequently running related unit tests (in your IDE or using Maven) to make sure your changes didn't break anything else, and that you also periodically run a complete build using Maven to make sure that everything still works:
 
-    $ mvn clean install
+    $ ./mvnw clean install
 
 Feel free to commit your changes locally as often as you'd like, though we generally prefer that each commit represent a complete and atomic change to the code. Often, this means that most issues will be addressed with a single commit in a single pull-request, but other more complex issues might be better served with a few commits that each make separate but atomic changes. (Some developers prefer to commit frequently and to ammend their first commit with additional changes. Other developers like to make multiple commits and to then squash them. How you do this is up to you. However, *never* change, squash, or ammend a commit that appears in the history of the upstream repository.) When in doubt, use a few separate atomic commits; if the Debezium reviewers think they should be squashed, they'll let you know when they review your pull request.
 
@@ -171,7 +171,7 @@ This project utilizes a set of code style rules that are automatically applied b
 
 2. If your IDE does not support importing the Eclipse-based formatter file or you'd rather tidy up the formatting after making your changes locally, you can run a project build to make sure that all code changes adhere to the project's desired style.  Instructions on how to run a build locally are provided below.
 
-3. With the command `mvn process-sources` the code style rules can be applied automatically.
+3. With the command `./mvnw process-sources` the code style rules can be applied automatically.
 
 In the event that a pull request is submitted with code style violations, continuous integration will fail the pull request build.  
 
@@ -179,11 +179,11 @@ To fix pull requests with code style violations, simply run the project's build 
 
 To run the build, navigate to the project's root directory and run:
 
-    $ mvn clean install
+    $ ./mvnw clean install
 
 It might be useful to simply run a _validate_ check against the code instead of automatically applying code style changes.  If you want to simply run validation, navigate to the project's root directory and run:
 
-    $ mvn clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check     
+    $ ./mvnw clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check     
 
 Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.
 
