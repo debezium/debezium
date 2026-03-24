@@ -88,4 +88,4 @@ If you're unsure whether your use of AI tools complies with this policy, ask in 
 
 ## AI Disclosure
 
-Portions of this document were borrowed by AI Usage Policy for [p5.js](https://github.com/SableRaf/p5.js/blob/main/AI_USAGE_POLICY.md).
+Portions of this document were borrowed by AI Usage Policy for [p5.js](https://github.com/processing/p5.js/blob/main/AI_USAGE_POLICY.md).
