@@ -31,7 +31,16 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-common</artifactId>
-            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-config</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
     </dependencies>
 </project>
