@@ -139,7 +139,17 @@ Committing is as simple as:
     $ git commit -s .
 
 Notice the `-s` flag. The Debezium project enforces a Developer Certificate of Origin (DCO) check on all pull requests. By adding `-s` to your commit command, Git will automatically append a *Signed-off-by* line to your commit message, confirming you have the right to submit the code. If you forget this flag, the automated CI checks will fail.
-    
+
+---
+**NOTE**
+
+You can automate sign-off e.g. by using Git hooks.
+Enable `commit-msg` in `.git/hooks/` of this repository and add following sample into it
+
+    SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+    grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+---
+
 Executing the commit command will pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the GitHub issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
     debezium/dbz#1234 Expanded the MySQL integration test and correct a unit test.
