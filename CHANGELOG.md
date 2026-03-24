@@ -3,6 +3,68 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.5.0.CR1
+March 24th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.CR1)
+
+### New features since 3.5.0.Beta2
+
+* Cache invalidation with Debezium Quarkus Extensions [debezium/dbz#1522](https://github.com/debezium/dbz/issues/1522)
+* Implement REST API for serving component descriptors [debezium/dbz#1547](https://github.com/debezium/dbz/issues/1547)
+* Configure Helm chart for descriptor OCI artifact mounting [debezium/dbz#1548](https://github.com/debezium/dbz/issues/1548)
+* Quarkus compatibility mode for external Source Connectors [debezium/dbz#1612](https://github.com/debezium/dbz/issues/1612)
+* CockroachDB connector: Signal-based incremental snapshots [debezium/dbz#1630](https://github.com/debezium/dbz/issues/1630)
+* Switch Oracle version resolution logic to use DatabaseMetadata [debezium/dbz#1655](https://github.com/debezium/dbz/issues/1655)
+* Add connection validator for RabbitMQ [DBZ-9436] [debezium/dbz#1093](https://github.com/debezium/dbz/issues/1093)
+* Add connection validator for Pravega [DBZ-9434] [debezium/dbz#1091](https://github.com/debezium/dbz/issues/1091)
+* add net_write_timeout and net_read_timeout configuration options [debezium/dbz#1701](https://github.com/debezium/dbz/issues/1701)
+* Add connection validator for NATS Streaming [DBZ-9433] [debezium/dbz#1090](https://github.com/debezium/dbz/issues/1090)
+* Make the database schema and collection list to use the Virtualized TreeView so that it prevent the DOM bloating [debezium/dbz#1710](https://github.com/debezium/dbz/issues/1710)
+* Add configurable way to scale the Oracle LogMiner batch size window. [debezium/dbz#1713](https://github.com/debezium/dbz/issues/1713)
+
+
+### Breaking changes since 3.5.0.Beta2
+
+* Create a dedicated module for Debezium Kafka Connect plugins [debezium/dbz#1616](https://github.com/debezium/dbz/issues/1616)
+
+
+### Fixes since 3.5.0.Beta2
+
+* XMLType using non-Binary storage throws parser failure [DBZ-9228] [debezium/dbz#1373](https://github.com/debezium/dbz/issues/1373)
+* Savepoint (Partial) rollback not handled correctly for tables with LOB columns [DBZ-9615] [debezium/dbz#1422](https://github.com/debezium/dbz/issues/1422)
+* HeaderToValue nested headers do not work [debezium/dbz#1669](https://github.com/debezium/dbz/issues/1669)
+* nested json coming as null in modify event [DBZ-1258] [debezium/dbz#221](https://github.com/debezium/dbz/issues/221)
+* PgOutputMessageDecoder corrupts multi-byte UTF-8 table/column names during CDC streaming [debezium/dbz#1682](https://github.com/debezium/dbz/issues/1682)
+* PostgreSQL: Connector startup is very slow with many custom types and network latency [debezium/dbz#1683](https://github.com/debezium/dbz/issues/1683)
+* MYSQL CDC | Table name blank space issue [debezium/dbz#1687](https://github.com/debezium/dbz/issues/1687)
+* Skip sleeps between journal entry fetches [debezium/dbz#1688](https://github.com/debezium/dbz/issues/1688)
+* Informix connector DELETE does not unwatch properly [debezium/dbz#1704](https://github.com/debezium/dbz/issues/1704)
+* Fix MongoDB connector crash loop when snapshot is interrupted [debezium/dbz#1708](https://github.com/debezium/dbz/issues/1708)
+* Debezium mapped diagnostic context doesn't work [DBZ-3750] [debezium/dbz#486](https://github.com/debezium/dbz/issues/486)
+* SQL Server connector with initial_only snapshot mode gets stuck in infinite retry loop when database name is invalid [debezium/dbz#1717](https://github.com/debezium/dbz/issues/1717)
+* Duplicate END records of a transaction [debezium/dbz#1724](https://github.com/debezium/dbz/issues/1724)
+
+
+### Other changes since 3.5.0.Beta2
+
+* Resolve circular dependency between debezium-generator-plugin and debezium-core [debezium/dbz#1617](https://github.com/debezium/dbz/issues/1617)
+* Add maven repo artifact size check [debezium/dbz#1667](https://github.com/debezium/dbz/issues/1667)
+* Db2ChunkedSnapshotIT is unstable [debezium/dbz#1692](https://github.com/debezium/dbz/issues/1692)
+* Create test-jar for debezium-server-core [debezium/dbz#1696](https://github.com/debezium/dbz/issues/1696)
+* Add PULL_REQUEST_TEMPLATE.md to guide contributors on DCO sign-off and issue linking [debezium/dbz#1697](https://github.com/debezium/dbz/issues/1697)
+* Support component discoverability via ConfigDescriptor interface [debezium/dbz#1698](https://github.com/debezium/dbz/issues/1698)
+* Missing some Helm chart releases for debezium-operator [debezium/dbz#1700](https://github.com/debezium/dbz/issues/1700)
+* Ensure spaces are used for indentation in XML files [DBZ-275] [debezium/dbz#1706](https://github.com/debezium/dbz/issues/1706)
+* DBZ-275: Ensure spaces are used for indentation in XML files [debezium/dbz#1707](https://github.com/debezium/dbz/issues/1707)
+* Allow to run specific MySQL ITs with a given database [DBZ-4831] [debezium/dbz#591](https://github.com/debezium/dbz/issues/591)
+* Reduce number of database connection creations during PG tests [DBZ-2028] [debezium/dbz#301](https://github.com/debezium/dbz/issues/301)
+* Demo: Fail-over with MongoDB [DBZ-2107] [debezium/dbz#315](https://github.com/debezium/dbz/issues/315)
+* Extract top-level example for Apicurio registry [DBZ-2789] [debezium/dbz#391](https://github.com/debezium/dbz/issues/391)
+* Integrate debezium-connector-ingres in Java Quality Outreach, PR and Push GitHub Workflows [debezium/dbz#1714](https://github.com/debezium/dbz/issues/1714)
+* Remove insights from docker rhel_kafka images [debezium/dbz#1720](https://github.com/debezium/dbz/issues/1720)
+* XStream user reports insufficient privileges during snapshot for table locks [debezium/dbz#1733](https://github.com/debezium/dbz/issues/1733)
+
+
+
 ## 3.5.0.Beta2
 March 13rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Beta2)
 
