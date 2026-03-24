@@ -114,6 +114,7 @@ Brandon Brown
 Brandon Maguire
 Brennan Vincent
 Breno Moreira
+Brian Hughes
 Bue Von Hun
 Byron Ruth
 Camile Sing
@@ -377,6 +378,7 @@ Keri Harris
 Kevin Pullin
 Kevin Rothenberger
 Kewei Shang
+Kodukulla Mohnish Mythreya
 Kosta Kostelnik
 Krizhan Mariampillai
 Krzysztof Grzechnik
@@ -566,6 +568,7 @@ Sagar Rao
 Sahan Dilshan
 Sahap Asci
 Sreedev R
+Sujal Shrestha
 Sumit Jha
 Sylvain Marty
 René Kerner
@@ -659,6 +662,7 @@ Timo Wilhelm
 Tin Nguyen
 Tom Bentley
 Tom Billiet
+Tom Flenner
 Tom Sharp
 Tomasz Gawęda
 Tim Patterson
@@ -722,6 +726,7 @@ Yoann Rodière
 Yohei Yoshimuta
 Yossi Shirizli
 Yuan Zhang
+Yuang Li
 Yue Wang
 Yuiham Chan
 Yuriy Vikulov
@@ -792,3 +797,4 @@ Shiwanming
 Divyansh Agrawal
 Divyanshu Kumar
 Rajender Passi
+Zahid Iqbal

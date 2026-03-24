@@ -39,7 +39,7 @@ jobs:
           path-cassandra: cassandra
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cassandra-build
           path: |
@@ -72,7 +72,7 @@ jobs:
           path-db2: db2
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: db2-build
           path: |
@@ -105,7 +105,7 @@ jobs:
           path-ibmi: ibmi
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ibmi-build
           path: |
@@ -138,7 +138,7 @@ jobs:
           path-ingres: ingres
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingres-build
           path: |
@@ -171,7 +171,7 @@ jobs:
           path-informix: informix
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informix-build
           path: |
@@ -204,7 +204,7 @@ jobs:
           path-vitess: vitess
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vitess-build
           path: |
@@ -237,7 +237,7 @@ jobs:
           path-spanner: spanner
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: spanner-build
           path: |
@@ -270,7 +270,7 @@ jobs:
           path-cockroachdb: cockroachdb
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cockroachdb-build
           path: |
@@ -303,7 +303,7 @@ jobs:
           path-server: server
           only-build: 'true'
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: server-build
           path: |
@@ -338,7 +338,7 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: core-build
           path: |
@@ -358,7 +358,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: storage-build
           path: |
@@ -378,7 +378,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openlineage-build
           path: |
@@ -398,7 +398,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ai-build
           path: |
@@ -418,7 +418,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: schema-generator-build
           path: |
@@ -438,7 +438,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: testing-build
           path: |
@@ -458,7 +458,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mysql-build
           path: |
@@ -478,7 +478,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: postgres-build
           path: |
@@ -498,7 +498,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: oracle-build
           path: |
@@ -518,7 +518,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlserver-build
           path: |
@@ -538,7 +538,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mongodb-build
           path: |
@@ -558,7 +558,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mariadb-build
           path: |
@@ -578,7 +578,7 @@ jobs:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jdbc-build
           path: |
@@ -594,133 +594,133 @@ jobs:
 
     steps:
       - name: Download Core artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: core-build
           path: ./debezium
 
       - name: Download Storage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: storage-build
           path: ./debezium
 
       - name: Download OpenLineage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: openlineage-build
           path: ./debezium
 
       - name: Download AI artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ai-build
           path: ./debezium
 
       - name: Download Schema Generator artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: schema-generator-build
           path: ./debezium
 
       - name: Download Testing artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: testing-build
           path: ./debezium
 
       - name: Download MySQL artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mysql-build
           path: ./debezium
 
       - name: Download PostgreSQL artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: postgres-build
           path: ./debezium
 
       - name: Download Oracle artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: oracle-build
           path: ./debezium
 
       - name: Download SQL Server artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sqlserver-build
           path: ./debezium
 
       - name: Download MongoDB artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mongodb-build
           path: ./debezium
 
       - name: Download MariaDB artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mariadb-build
           path: ./debezium
 
       - name: Download JDBC artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: jdbc-build
           path: ./debezium
 
       - name: Download Cassandra artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: cassandra-build
           path: ./debezium-connector-cassandra
 
       - name: Download Db2 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: db2-build
           path: ./debezium-connector-db2
 
       - name: Download IBMi artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ibmi-build
           path: ./debezium-connector-ibmi
 
       - name: Download Ingres artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ingres-build
           path: ./debezium-connector-ingres
 
       - name: Download Server artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: server-build
           path: ./debezium-server
 
       - name: Download Informix artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: informix-build
           path: ./debezium-connector-informix
 
       - name: Download Vitess artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vitess-build
           path: ./debezium-connector-vitess
 
       - name: Download Spanner artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: spanner-build
           path: ./debezium-connector-spanner
 
       - name: Download CockroachDB artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: cockroachdb-build
           path: ./debezium-connector-cockroachdb
@@ -810,7 +810,7 @@ jobs:
 
       - name: Delete Build Artifacts
         if: always()
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             core-build
