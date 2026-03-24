@@ -6,23 +6,18 @@
 package io.debezium.connector.mongodb.transforms;
 
 import java.util.Map;
-import java.util.Map.Entry;
-
-import org.apache.kafka.connect.data.SchemaBuilder;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.util.Requirements;
-import org.bson.BsonDocument;
+import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.transforms.AbstractExtractNewRecordState;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFIG_FIELDS;
+import io.debezium.transforms.Module;
+import io.debezium.transforms.SmtManager;
 
 /**
  * Converts MongoDB CDC events to relational-style format where 'before' and 'after'
@@ -32,7 +27,7 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFI
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Divyansh Agrawal
  */
-public class MongoToRelationalConverter<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> {
+public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalConverter.class);
 
@@ -57,84 +52,39 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> extends Abst
             .withDescription("When true and schema mapping is provided, missing fields will be "
                     + "added with null values to ensure schema consistency.");
 
-    // Field set for configuration validation
-    private final Field.Set configFields = CONFIG_FIELDS.with(SCHEMA_MAPPING, ADD_MISSING_FIELDS);
+    private final Field.Set configFields = Field.setOf(SCHEMA_MAPPING, ADD_MISSING_FIELDS);
 
-    // Instance variables - initialized in configure()
-    private MongoDataConverter converter; // for converting BSON to Structs
+    private Configuration config;
+    private SmtManager<R> smtManager;
+    private MongoDataConverter converter;
     private boolean addMissingFields;
     private String schemaMappingJson; 
 
     @Override
     public void configure(final Map<String, ?> configs) {
-        super.configure(configs);
+        this.config = Configuration.from(configs);
+        this.smtManager = new SmtManager<>(config);
 
-        // Get our custom configuration values
         addMissingFields = config.getBoolean(ADD_MISSING_FIELDS);
         schemaMappingJson = config.getString(SCHEMA_MAPPING);
 
         // Initialize the MongoDB data converter
-        // Using ARRAY encoding and default field naming (similar to ExtractNewDocumentState)
+        // Using ARRAY encoding and default field naming
         converter = new MongoDataConverter(ExtractNewDocumentState.ArrayEncoding.ARRAY);
 
         LOGGER.info("MongoToRelationalConverter configured with addMissingFields={}", addMissingFields);
     }
 
     @Override
-    protected R doApply(R record) {
-        // Skip if not a valid envelope
+    public R apply(R record) {
         if (!smtManager.isValidEnvelope(record)) {
             return record;
         }
 
-        Struct value = Requirements.requireStruct(record.value(), "MongoDB envelope");
-        
-        // Get the before and after JSON strings from MongoDB envelope
-        String beforeJson = value.getString(Envelope.FieldName.BEFORE);
-        String afterJson = value.getString(Envelope.FieldName.AFTER);
-        
-        // Convert JSON strings to BsonDocument
-        BsonDocument beforeDoc = beforeJson != null ? BsonDocument.parse(beforeJson) : null;
-        BsonDocument afterDoc = afterJson != null ? BsonDocument.parse(afterJson) : null;
-        
-        // Build schemas and convert to Structs
-        Schema beforeSchema = buildDocumentSchema(beforeDoc);
-        Schema afterSchema = buildDocumentSchema(afterDoc);
-        
-        Struct beforeStruct = convertToStruct(beforeDoc, beforeSchema);
-        Struct afterStruct = convertToStruct(afterDoc, afterSchema);
-        
-        // Build the relational-style envelope schema
-        Schema envelopeSchema = buildEnvelopeSchema(beforeSchema, afterSchema, value.schema());
-        
-        // Create the new envelope value with nested Structs
-        Struct envelopeValue = new Struct(envelopeSchema);
-        envelopeValue.put(Envelope.FieldName.BEFORE, beforeStruct);
-        envelopeValue.put(Envelope.FieldName.AFTER, afterStruct);
-        envelopeValue.put(Envelope.FieldName.OPERATION, value.getString(Envelope.FieldName.OPERATION));
-        envelopeValue.put(Envelope.FieldName.SOURCE, value.getStruct(Envelope.FieldName.SOURCE));
-        envelopeValue.put(Envelope.FieldName.TIMESTAMP, value.getInt64(Envelope.FieldName.TIMESTAMP));
-        
-        // Copy other envelope fields if present
-        if (envelopeSchema.field(Envelope.FieldName.TIMESTAMP_NS) != null) {
-            envelopeValue.put(Envelope.FieldName.TIMESTAMP_NS, value.getInt64(Envelope.FieldName.TIMESTAMP_NS));
-        }
-        if (envelopeSchema.field(Envelope.FieldName.TRANSACTION) != null) {
-            envelopeValue.put(Envelope.FieldName.TRANSACTION, value.getStruct(Envelope.FieldName.TRANSACTION));
-        }
-        
-        // Return new record with converted envelope
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                record.keySchema(),
-                record.key(),
-                envelopeSchema,
-                envelopeValue,
-                record.timestamp());
+        // Return the record
+        return record;
     }
 
-    @Override
     public Iterable<Field> validateConfigFields() {
         return configFields;
     }
@@ -145,5 +95,13 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> extends Abst
         Field.group(config, null, configFields.asArray());
         return config;
     }
-   
+    
+    @Override
+    public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
+    }
 }
