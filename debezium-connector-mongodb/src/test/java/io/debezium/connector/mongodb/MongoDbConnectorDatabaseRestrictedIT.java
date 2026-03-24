@@ -39,7 +39,6 @@ import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
@@ -159,7 +158,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     @Test
     void shouldFailWithoutPermissions() {
-        var logInterceptor = new LogInterceptor(ErrorHandler.class);
+        var logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
 
         // Populate collection
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
@@ -177,7 +176,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     @Test
     void shouldFailInGuardRailValidationWhenCollectionLimitExceeded() {
-        var logInterceptor = new LogInterceptor(ErrorHandler.class);
+        var logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
 
         // Create two collections to guarantee guardrail limit of 1 is exceeded
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
@@ -196,7 +195,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
         // Connector should fail during guardrail validation
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        Assertions.assertThat(logInterceptor.containsMessage("Guardrail limit exceeded")).isTrue();
+        Assertions.assertThat(logInterceptor.containsErrorMessage("Guardrail limit exceeded")).isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
