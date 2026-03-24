@@ -392,6 +392,7 @@ Optional detailed description:
 - Multiple commits are fine for complex changes
 - Don't amend commits that exist in upstream
 - Always rebase, never merge (linear history required)
+- if adding other changes (e.g. addressing pull request review comments) don't squash the changes into previous commit, but create new one
 
 **Instructions:**
 - Always reference the GitHub issue number
