@@ -16,15 +16,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.junit.SkipLongRunning;
-import io.debezium.junit.SkipTestRule;
 
 import ai.docling.testcontainers.serve.DoclingServeContainer;
 import ai.docling.testcontainers.serve.config.DoclingServeContainerConfig;
@@ -36,11 +33,7 @@ import ai.docling.testcontainers.serve.config.DoclingServeContainerConfig;
  */
 @SkipLongRunning("Downloading Docling container takes too long")
 public class DoclingSmtIT {
-
-    @Rule
-    public final TestRule skipLongRunning = new SkipTestRule();
-
-    private static final String DOCLING_IMAGE_NAME = "quay.io/docling-project/docling-serve:v1.9.0";
+    private static final String DOCLING_IMAGE_NAME = "quay.io/docling-project/docling-serve:v1.15.0";
 
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("mysql.inventory.products.Value")
@@ -73,17 +66,18 @@ public class DoclingSmtIT {
                     .enableUi(false)
                     .build());
 
-    @Before
+    @BeforeEach
     public void startDoclingServe() {
         doclingContainer.start();
     }
 
-    @After
+    @AfterEach
     public void stopDoclingServe() {
         doclingContainer.stop();
     }
 
     @Test
+    @SkipLongRunning
     public void testAsciidocToMarkdown() throws InterruptedException, IOException {
         assertDoclingSmtForConfig(Map.of(
                 "field.source", "after.manual",
