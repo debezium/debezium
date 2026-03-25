@@ -7,7 +7,6 @@ package io.debezium.ai.docling;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,17 +77,15 @@ public class DoclingSmtIT {
 
     @Test
     @SkipLongRunning
-    public void testAsciidocToMarkdown() throws InterruptedException, IOException {
-        assertDoclingSmtForConfig(Map.of(
+    public void testAsciidocToMarkdown() {
+        Map<String, ?> config = Map.of(
                 "field.source", "after.manual",
                 "field.docling", "after.docling",
                 "serve.url", String.format("http://%S:%d", doclingContainer.getHost(), doclingContainer.getPort()),
                 "input.source", "text",
                 "input.format", "asciidoc",
-                "output.format", "markdown"));
-    }
+                "output.format", "markdown");
 
-    private void assertDoclingSmtForConfig(Map<String, ?> config) throws InterruptedException, IOException {
         doclingSmt.configure(config);
         SourceRecord transformedRecord = doclingSmt.apply(SOURCE_RECORD);
 
@@ -96,6 +93,24 @@ public class DoclingSmtIT {
         assertThat(payloadStruct.getStruct("after").getString("manual")).contains("= Manual\nThis is a manual how to use this product.");
 
         Struct doclingDocument = payloadStruct.getStruct("after").getStruct("docling");
+        assertThat(doclingDocument.getString("type")).isEqualTo("markdown");
+        assertThat(doclingDocument.getString("content")).isEqualTo("# Manual\n\nThis is a manual how to use this product.");
+    }
+
+    @Test
+    @SkipLongRunning
+    public void testNoDoclingFieldSpecified() {
+        Map<String, ?> config = Map.of(
+                "field.source", "after.manual",
+                "serve.url", String.format("http://%S:%d", doclingContainer.getHost(), doclingContainer.getPort()),
+                "input.source", "text",
+                "input.format", "asciidoc",
+                "output.format", "markdown");
+
+        doclingSmt.configure(config);
+        SourceRecord transformedRecord = doclingSmt.apply(SOURCE_RECORD);
+
+        Struct doclingDocument = (Struct) transformedRecord.value();
         assertThat(doclingDocument.getString("type")).isEqualTo("markdown");
         assertThat(doclingDocument.getString("content")).isEqualTo("# Manual\n\nThis is a manual how to use this product.");
     }

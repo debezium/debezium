@@ -77,7 +77,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription(
-                    "Name of the field which will be appended to the record and which would contain Docling document created from `field.source` field. Supports also nested fields.");
+                    "Name of the field which will be appended to the record and which would contain Docling document created from `field.source` field. Supports also nested fields. If the field is not specified, records will be replaced by record containing only Docling document.");
 
     private static final Field SERVE_URL = Field.create("serve.url")
             .withDisplayName("URL of Docling serve API.")
@@ -106,10 +106,10 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
 
     private static final Field INCLUDE_IMAGES = Field.create("include.images")
             .withDisplayName("Whether to include images.")
-            .withType(ConfigDef.Type.STRING)
+            .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault("true")
+            .withDefault(true)
             .withDescription("Specifies if the images should or shouldn't be included into the resulting document.");
 
     private static final Field OUTPUT_FORMAT = Field.create("output.format")
@@ -128,7 +128,9 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withImportance(ConfigDef.Importance.HIGH)
             .withDefault(false)
             .withDescription(
-                    "Adding Docling field requires schema update. Debezium caches the schemas, but even cache lookup can be expensive. If the schema doesn't change over time, the schema lookup can be looked up in the cache by its name. Turn on only when you are sure the schema evolution is not happening during the Debezium run.");
+                    "Adding Docling field requires schema update. Debezium caches the schemas, but even cache lookup can be expensive. "
+                            + "If the schema doesn't change over time, the schema lookup can be looked up in the cache by its name. Turn on only when "
+                            + "you are sure the schema evolution is not happening during the Debezium run.");
 
     public static final Field.Set ALL_FIELDS = Field.setOf(SOURCE_FIELD, DOCLING_FIELD, SERVE_URL, INPUT_SOURCE, INPUT_FORMAT, INCLUDE_IMAGES, OUTPUT_FORMAT,
             SIMPLE_SCHEMA_LOOKUP);
