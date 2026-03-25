@@ -138,6 +138,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     private SmtManager<R> smtManager;
     private String sourceField;
     private String doclingField;
+    private String serveUrl;
     private InputSource inputSource;
     private InputFormat inputFormat;
     private boolean includeImages;
@@ -172,6 +173,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
 
         sourceField = config.getString(SOURCE_FIELD);
         doclingField = config.getString(DOCLING_FIELD);
+        serveUrl = config.getString(SERVE_URL);
         inputSource = InputSource.parse(config.getString(INPUT_SOURCE));
         inputFormat = parseInputFormat(config.getString(INPUT_FORMAT));
         includeImages = config.getBoolean(INCLUDE_IMAGES);
@@ -180,7 +182,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
         validateConfiguration();
 
         sourceFieldPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
-        doclingServeApi = DoclingServeClientBuilderFactory.newBuilder().baseUrl(config.getString(SERVE_URL)).build();
+        doclingServeApi = DoclingServeClientBuilderFactory.newBuilder().baseUrl(serveUrl).build();
     }
 
     @Override
@@ -196,6 +198,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
         if (sourceField == null || sourceField.isBlank()) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", SOURCE_FIELD));
         }
+        validateUrl(serveUrl);
     }
 
     /**
