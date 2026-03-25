@@ -59,7 +59,6 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldToDocling.class);
 
-    private static final Schema DOCLING_SCHEMA = Schema.STRING_SCHEMA;
     private static final String NESTING_SPLIT_REG_EXP = "\\.";
     private static final int CACHE_SIZE = 64;
     private final Map<Object, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
@@ -256,14 +255,15 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             case TEXT -> response.getDocument().getTextContent();
         };
 
+        final Struct doclingDocument = DoclingDocument.doclingContent(outputFormat.getValue(), doclingContent);
         final Schema updatedSchema;
         final Object updatedValue;
         if (doclingField == null) {
-            updatedSchema = DOCLING_SCHEMA;
-            updatedValue = doclingContent;
+            updatedSchema = doclingDocument.schema();
+            updatedValue = doclingDocument;
         }
         else {
-            final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(doclingField, DOCLING_SCHEMA, doclingContent));
+            final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(doclingField, doclingDocument.schema(), doclingDocument));
             final Schema oldSchema = value.schema();
             final Object cacheKey = simpleSchemaLookup ? value.schema().name() : value.schema();
             updatedSchema = schemaUpdateCache.computeIfAbsent(cacheKey, valueSchema -> ConnectRecordUtil.makeNewSchema(oldSchema, newEntries));

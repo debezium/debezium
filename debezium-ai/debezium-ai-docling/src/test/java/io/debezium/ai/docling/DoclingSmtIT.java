@@ -94,7 +94,9 @@ public class DoclingSmtIT {
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("manual")).contains("= Manual\nThis is a manual how to use this product.");
-        String doclingContent = payloadStruct.getStruct("after").getString("docling");
-        assertThat(doclingContent).isEqualTo("# Manual\n\nThis is a manual how to use this product.");
+
+        Struct doclingDocument = payloadStruct.getStruct("after").getStruct("docling");
+        assertThat(doclingDocument.getString("type")).isEqualTo("markdown");
+        assertThat(doclingDocument.getString("content")).isEqualTo("# Manual\n\nThis is a manual how to use this product.");
     }
 }
