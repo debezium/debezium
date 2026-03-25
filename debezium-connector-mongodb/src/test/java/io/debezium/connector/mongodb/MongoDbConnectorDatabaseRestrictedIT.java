@@ -33,14 +33,12 @@ import com.mongodb.client.MongoClients;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
-import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
@@ -160,7 +158,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     @Test
     void shouldFailWithoutPermissions() {
-        var logInterceptor = new LogInterceptor(ErrorHandler.class);
+        var logInterceptor = new LogInterceptor(MongoDbConnector.class);
 
         // Populate collection
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
@@ -173,27 +171,36 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
         // Connector should fail after 2 retries
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
+        Assertions.assertThat(logInterceptor
+                .containsMessage("Could not validate connector config: User doesn't have rights to list databases. Please verify credentials and database permissions."))
+                .isTrue();
     }
 
     @Test
-    void shouldFailInGuardRailValidationWithoutPermissions() {
-        var logInterceptor = new LogInterceptor(MongoDbConnections.class);
+    void shouldFailInGuardRailValidationWhenCollectionLimitExceeded() {
+        var logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
-        // Populate collection
+        // Create two collections to guarantee guardrail limit of 1 is exceeded
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
+        populateCollection(TEST_DATABASE, "items2", INIT_DOCUMENT_COUNT);
 
-        // Use the DB configuration to define the connector's configuration ...
-        var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD);
+        // Use a valid user - guardrail failure is triggered by collection count exceeding the limit
+        var config = connectorConfiguration(TEST_ALLOWED_USER, TEST_ALLOWED_PWD);
         // Set the guardrail to 1 collection, which should enforce the guardrail validation check
-        config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1).build();
+        config = Configuration.create().with(config)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
 
         // Connector should fail during guardrail validation
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        Assertions.assertThat(logInterceptor.containsMessage("Error while attempting to")).isTrue();
+        Assertions
+                .assertThat(logInterceptor.containsErrorMessage(
+                        "Failed to validate guardrail limits! Guardrail limit exceeded: 2 tables/collections configured for capture, but maximum allowed is 1."))
+                .isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
