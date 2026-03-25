@@ -27,8 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.mongodb.Module;
 import io.debezium.data.Envelope;
-import io.debezium.transforms.Module;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
@@ -90,42 +90,62 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         if (!Strings.isNullOrBlank(schemaMappingJson)) {
             try {
                 JsonNode rootNode = MAPPER.readTree(schemaMappingJson);
-                
+
                 // Iterate through the JSON definition, where keys are the expected collection names
                 rootNode.fields().forEachRemaining(collectionEntry -> {
                     String collectionName = collectionEntry.getKey();
                     JsonNode fieldsNode = collectionEntry.getValue();
-                    
+
                     SchemaBuilder builder = SchemaBuilder.struct().optional().name(collectionName + ".envelope");
-                    
+
                     // Translate the user's string type definitions into actual Connect Schema types
                     fieldsNode.fields().forEachRemaining(fieldEntry -> {
                         String fieldName = fieldEntry.getKey();
                         String fieldType = fieldEntry.getValue().asText().toLowerCase();
-                        
+
                         switch (fieldType) {
-                            case "int8":     builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA); break;
-                            case "int16":    builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA); break;
+                            case "int8":
+                                builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
+                                break;
+                            case "int16":
+                                builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
+                                break;
                             case "int32":
-                            case "integer":  builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA); break;
+                            case "integer":
+                                builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
+                                break;
                             case "int64":
-                            case "long":     builder.field(fieldName, Schema.OPTIONAL_INT64_SCHEMA); break;
+                            case "long":
+                                builder.field(fieldName, Schema.OPTIONAL_INT64_SCHEMA);
+                                break;
                             case "float32":
-                            case "float":    builder.field(fieldName, Schema.OPTIONAL_FLOAT32_SCHEMA); break;
+                            case "float":
+                                builder.field(fieldName, Schema.OPTIONAL_FLOAT32_SCHEMA);
+                                break;
                             case "float64":
-                            case "double":   builder.field(fieldName, Schema.OPTIONAL_FLOAT64_SCHEMA); break;
-                            case "boolean":  builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA); break;
-                            case "string":   builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA); break;
-                            case "bytes":    builder.field(fieldName, Schema.OPTIONAL_BYTES_SCHEMA); break;
-                            default:         builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
+                            case "double":
+                                builder.field(fieldName, Schema.OPTIONAL_FLOAT64_SCHEMA);
+                                break;
+                            case "boolean":
+                                builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+                                break;
+                            case "string":
+                                builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
+                                break;
+                            case "bytes":
+                                builder.field(fieldName, Schema.OPTIONAL_BYTES_SCHEMA);
+                                break;
+                            default:
+                                builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
                         }
                     });
-                    
+
                     // Cache the compiled schema so we can instantly apply it to incoming records
                     customSchemaMap.put(collectionName, builder.build());
                 });
                 LOGGER.info("Successfully loaded {} custom schema mappings from configuration", customSchemaMap.size());
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 LOGGER.error("Failed to parse the schema.mapping JSON configuration", e);
             }
         }
@@ -145,11 +165,11 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         }
 
         Struct value = Requirements.requireStruct(record.value(), "MongoDB envelope");
-        
+
         // MongoDB uses JSON strings for 'before' and 'after' fields
         String beforeJson = value.getString(Envelope.FieldName.BEFORE);
         String afterJson = value.getString(Envelope.FieldName.AFTER);
-        
+
         // If both are null, there's nothing for us to convert
         if (beforeJson == null && afterJson == null) {
             return record;
@@ -158,39 +178,39 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         // Parse the JSON strings into BSON documents
         BsonDocument beforeDoc = beforeJson != null ? BsonDocument.parse(beforeJson) : null;
         BsonDocument afterDoc = afterJson != null ? BsonDocument.parse(afterJson) : null;
-        
+
         // Relational records expect 'before' and 'after' to share the same schema
         Schema unifiedPayloadSchema = getOrInferPayloadSchema(record, beforeDoc, afterDoc);
-        
+
         // Convert the BSON documents into Kafka Connect Structs
         Struct beforeStruct = convertToStruct(beforeDoc, unifiedPayloadSchema);
         Struct afterStruct = convertToStruct(afterDoc, unifiedPayloadSchema);
-        
+
         // Create a new envelope schema that uses nested Structs instead of JSON strings
         Schema envelopeSchema = buildEnvelopeSchema(unifiedPayloadSchema, value.schema());
-        
+
         // Construct the new envelope value
         Struct envelopeValue = new Struct(envelopeSchema);
-        
+
         if (beforeStruct != null) {
             envelopeValue.put(Envelope.FieldName.BEFORE, beforeStruct);
         }
         if (afterStruct != null) {
             envelopeValue.put(Envelope.FieldName.AFTER, afterStruct);
         }
-        
+
         // Replicate the original envelope's metadata
         envelopeValue.put(Envelope.FieldName.OPERATION, value.getString(Envelope.FieldName.OPERATION));
         envelopeValue.put(Envelope.FieldName.SOURCE, value.getStruct(Envelope.FieldName.SOURCE));
         envelopeValue.put(Envelope.FieldName.TIMESTAMP, value.getInt64(Envelope.FieldName.TIMESTAMP));
-        
+
         if (envelopeSchema.field(Envelope.FieldName.TIMESTAMP_NS) != null) {
             envelopeValue.put(Envelope.FieldName.TIMESTAMP_NS, value.getInt64(Envelope.FieldName.TIMESTAMP_NS));
         }
         if (envelopeSchema.field(Envelope.FieldName.TRANSACTION) != null) {
             envelopeValue.put(Envelope.FieldName.TRANSACTION, value.getStruct(Envelope.FieldName.TRANSACTION));
         }
-        
+
         // Return a new record with the updated envelope
         return record.newRecord(
                 record.topic(),
@@ -207,31 +227,31 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
      * Use custom mapping if available, otherwise infer it from the documents.
      */
     private Schema getOrInferPayloadSchema(R record, BsonDocument beforeDoc, BsonDocument afterDoc) {
-        //Use explicitly configured schema map
+        // Use explicitly configured schema map
         if (customSchemaMap.containsKey(record.topic())) {
             return customSchemaMap.get(record.topic());
         }
 
-        //Infer schema from the combined field set of before/after
+        // Infer schema from the combined field set of before/after
         String schemaName = record.valueSchema().name();
         if (Envelope.isEnvelopeSchema(schemaName)) {
             schemaName = schemaName.substring(0, schemaName.length() - 9); // Remove "Envelope"
         }
-        
+
         BsonDocument mergedDoc = new BsonDocument();
         if (beforeDoc != null) {
             mergedDoc.putAll(beforeDoc);
         }
         if (afterDoc != null) {
             // 'after' state typically has the most complete/recent field set
-            mergedDoc.putAll(afterDoc); 
+            mergedDoc.putAll(afterDoc);
         }
 
         // Use MongoDataConverter to derive the schema from the merged document
         Map<String, Map<Object, BsonType>> parsedMap = converter.parseBsonDocument(mergedDoc);
         SchemaBuilder builder = SchemaBuilder.struct().name(schemaName).optional();
         converter.buildSchema(parsedMap, builder);
-        
+
         return builder.build();
     }
 
@@ -242,20 +262,22 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         if (doc == null || schema == null) {
             return null;
         }
-        
+
         Struct struct = new Struct(schema);
-        
+
         if (addMissingFields) {
             // Ensure all schema fields are present, even if not in the document
             for (org.apache.kafka.connect.data.Field field : schema.fields()) {
                 String fieldName = field.name();
                 if (doc.containsKey(fieldName)) {
                     converter.buildStruct(new java.util.AbstractMap.SimpleEntry<>(fieldName, doc.get(fieldName)), schema, struct);
-                } else {
+                }
+                else {
                     struct.put(fieldName, null);
                 }
             }
-        } else {
+        }
+        else {
             // Only process fields that exist in the document
             for (Map.Entry<String, BsonValue> entry : doc.entrySet()) {
                 if (schema.field(entry.getKey()) != null) {
@@ -268,7 +290,7 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
     }
 
     /**
-     * Constructs a relational-style envelope schema by replacing 'before' and 'after' 
+     * Constructs a relational-style envelope schema by replacing 'before' and 'after'
      * string fields with nested struct fields.
      */
     private Schema buildEnvelopeSchema(Schema payloadSchema, Schema originalEnvelopeSchema) {
@@ -280,7 +302,8 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
             if (Envelope.FieldName.BEFORE.equals(field.name()) || Envelope.FieldName.AFTER.equals(field.name())) {
                 // Swap string schema with our nested struct schema
                 builder.field(field.name(), payloadSchema);
-            } else {
+            }
+            else {
                 // Keep all other fields (source, op, ts_ms, etc.) the same
                 builder.field(field.name(), field.schema());
             }
@@ -299,7 +322,7 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         Field.group(config, null, configFields.asArray());
         return config;
     }
-    
+
     @Override
     public void close() {
         // No persistent resources to release
@@ -310,4 +333,3 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         return Module.version();
     }
 }
-
