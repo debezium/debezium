@@ -199,6 +199,29 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     }
 
     /**
+     * Validate URL provided by the user.
+     * Allows only HTTP(S) links to prevent e.g. files on the disk.
+     */
+    protected void validateUrl(String urlString) {
+        if (urlString == null || urlString.isBlank()) {
+            throw new DebeziumException("Source configured as URL, but URL is empty");
+        }
+
+        try {
+            URI uri = URI.create(urlString);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                throw new DebeziumException(format(
+                        "URI scheme '%s' is not allowed. Only 'http' and 'https' schemes are permitted for security reasons.",
+                        scheme));
+            }
+        }
+        catch (IllegalArgumentException e) {
+            throw new DebeziumException(format("Invalid URL: %s", urlString), e);
+        }
+    }
+
+    /**
      *
      * Based on the configuration, obtains value of the record field from which the Docling document will be computed.
      * This field has to be of type {@link String}.
@@ -238,7 +261,10 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 String filename = String.format("debezium-smt-%s.%s", UUID.randomUUID(), inputFormat.name());
                 yield FileSource.builder().base64String(fieldInputEncoded).filename(filename).build();
             }
-            case LINK -> HttpSource.builder().url(URI.create(fieldInput)).build();
+            case LINK -> {
+                validateUrl(fieldInput);
+                yield HttpSource.builder().url(URI.create(fieldInput)).build();
+            }
         };
 
         ConvertDocumentRequest request = ConvertDocumentRequest.builder()
