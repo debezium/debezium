@@ -81,7 +81,7 @@ public class DoclingSmtIT {
         Map<String, ?> config = Map.of(
                 "field.source", "after.manual",
                 "field.docling", "after.docling",
-                "serve.url", String.format("http://%S:%d", doclingContainer.getHost(), doclingContainer.getPort()),
+                "serve.url", String.format("http://%s:%d", doclingContainer.getHost(), doclingContainer.getPort()),
                 "input.source", "text",
                 "input.format", "asciidoc",
                 "output.format", "markdown");
