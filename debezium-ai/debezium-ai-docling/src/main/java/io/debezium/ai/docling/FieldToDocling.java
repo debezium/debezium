@@ -62,7 +62,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     private static final Schema DOCLING_SCHEMA = Schema.STRING_SCHEMA;
     private static final String NESTING_SPLIT_REG_EXP = "\\.";
     private static final int CACHE_SIZE = 64;
-    private final BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
+    private final Map<Object, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
 
     private static final Field SOURCE_FIELD = Field.create("field.source")
             .withDisplayName("Name of the record field which should be used as an Docling input.")
@@ -118,11 +118,21 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .required()
+            .withDefault(SupportedOutputFormat.TEXT.name)
             .withAllowedValues(new HashSet<>(Arrays.asList(SupportedOutputFormat.values())))
             .withDescription("Format of the document provided by the Docling. Can be on of 'html', 'markdown' or 'text'.");
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(SOURCE_FIELD, DOCLING_FIELD, SERVE_URL, INPUT_SOURCE, INPUT_FORMAT, INCLUDE_IMAGES, OUTPUT_FORMAT);
+    private static final Field SIMPLE_SCHEMA_LOOKUP = Field.create("simple.schema.lookup")
+            .withDisplayName("Use simple schema lookup.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .withDefault(false)
+            .withDescription(
+                    "Adding Docling field requires schema update. Debezium caches the schemas, but even cache lookup can be expensive. If the schema doesn't change over time, the schema lookup can be looked up in the cache by its name. Turn on only when you are sure the schema evolution is not happening during the Debezium run.");
+
+    public static final Field.Set ALL_FIELDS = Field.setOf(SOURCE_FIELD, DOCLING_FIELD, SERVE_URL, INPUT_SOURCE, INPUT_FORMAT, INCLUDE_IMAGES, OUTPUT_FORMAT,
+            SIMPLE_SCHEMA_LOOKUP);
 
     private SmtManager<R> smtManager;
     private String sourceField;
@@ -132,6 +142,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     private boolean includeImages;
     private SupportedOutputFormat outputFormat;
     private List<String> sourceFieldPath;
+    private boolean simpleSchemaLookup;
     DoclingServeApi doclingServeApi;
 
     @Override
@@ -148,7 +159,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, SOURCE_FIELD, DOCLING_FIELD, SERVE_URL, INPUT_SOURCE, INPUT_FORMAT, INCLUDE_IMAGES, OUTPUT_FORMAT);
+        Field.group(config, null, SOURCE_FIELD, DOCLING_FIELD, SERVE_URL, INPUT_SOURCE, INPUT_FORMAT, INCLUDE_IMAGES, OUTPUT_FORMAT, SIMPLE_SCHEMA_LOOKUP);
         return config;
     }
 
@@ -164,6 +175,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
         inputFormat = parseInputFormat(config.getString(INPUT_FORMAT));
         includeImages = config.getBoolean(INCLUDE_IMAGES);
         outputFormat = SupportedOutputFormat.parseOutputFormat(config.getString(OUTPUT_FORMAT));
+        simpleSchemaLookup = config.getBoolean(SIMPLE_SCHEMA_LOOKUP);
         validateConfiguration();
 
         sourceFieldPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
@@ -252,7 +264,9 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
         }
         else {
             final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(doclingField, DOCLING_SCHEMA, doclingContent));
-            updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
+            final Schema oldSchema = value.schema();
+            final Object cacheKey = simpleSchemaLookup ? value.schema().name() : value.schema();
+            updatedSchema = schemaUpdateCache.computeIfAbsent(cacheKey, valueSchema -> ConnectRecordUtil.makeNewSchema(oldSchema, newEntries));
             updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
         }
 
