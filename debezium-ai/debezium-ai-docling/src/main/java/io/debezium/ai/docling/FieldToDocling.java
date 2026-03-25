@@ -12,7 +12,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +26,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -49,8 +49,8 @@ import ai.docling.client.serve.DoclingServeClientBuilderFactory;
 
 /**
  * Single message transform which appends to the record <a href="https://github.com/docling-project/">Docling</a> transformation of selected {@link String} field
- * or replace this field with it.
- * Docling is able to parse various kinds of inpout formats and convert them to selected output format, making it more easy and efficient to consume these documents
+ * or replace entire record with Docling record.
+ * Docling is able to parse various kinds of input formats and convert them to selected output format, making it more easy and efficient to consume these documents
  * by LLMs and AI in general.
  *
  * @author vjuranek
@@ -64,12 +64,12 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     private final Map<Object, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
 
     private static final Field SOURCE_FIELD = Field.create("field.source")
-            .withDisplayName("Name of the record field which should be used as an Docling input.")
+            .withDisplayName("Name of the record field which should be used as a Docling input.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
-            .withDescription("Name of the record field which should be used as an Docling input. Supports also nested fields.");
+            .withDescription("Name of the record field which should be used as a Docling input. Supports also nested fields.");
 
     private static final Field DOCLING_FIELD = Field.create("field.docling")
             .withDisplayName("Name of the field which would contain Docling output.")
@@ -93,6 +93,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
+            .withEnum(InputSource.class, InputSource.TEXT)
             .withDescription("Specifies how Docling should treat the source field - it can contain either directly the document to be "
                     + "transformed ('text' option) or a link to the document to be transformed ('link' option).");
 
@@ -117,9 +118,8 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault(SupportedOutputFormat.TEXT.name)
-            .withAllowedValues(new HashSet<>(Arrays.asList(SupportedOutputFormat.values())))
-            .withDescription("Format of the document provided by the Docling. Can be on of 'html', 'markdown' or 'text'.");
+            .withEnum(SupportedOutputFormat.class, SupportedOutputFormat.TEXT)
+            .withDescription("Format of the document provided by the Docling. Can be one of 'html', 'markdown' or 'text'.");
 
     private static final Field SIMPLE_SCHEMA_LOOKUP = Field.create("simple.schema.lookup")
             .withDisplayName("Use simple schema lookup.")
@@ -200,12 +200,12 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
 
     /**
      *
-     * Based on the configuration, obtains value of the record field from which the embeddings will be computed.
+     * Based on the configuration, obtains value of the record field from which the Docling document will be computed.
      * This field has to be of type {@link String}.
      */
     protected String getSourceString(R record) {
         if (record.value() != null && smtManager.isValidEnvelope(record) && record.valueSchema().type() == Schema.Type.STRUCT) {
-            Struct struct = requireStruct(record.value(), "Obtaining source field for embeddings");
+            Struct struct = requireStruct(record.value(), "Obtaining source field for Docling SMT");
             for (int i = 0; i < sourceFieldPath.size() - 1; i++) {
                 if (struct.schema().type() == Schema.Type.STRUCT) {
                     struct = struct.getStruct(sourceFieldPath.get(i));
@@ -310,7 +310,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 }
             }
 
-            return TEXT;
+            throw new DebeziumException(String.format("Invalid input source %s", source));
         }
     }
 
@@ -339,7 +339,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 }
             }
 
-            return TEXT;
+            throw new DebeziumException(String.format("Invalid output format %s", outputFormat));
         }
 
         @Override
@@ -363,6 +363,6 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             }
         }
 
-        return InputFormat.ASCIIDOC;
+        throw new DebeziumException(format("Invalid input format %s", inputFormat));
     }
 }
