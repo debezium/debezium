@@ -79,8 +79,6 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
     private int thresholdBytes;
     private volatile S3Client s3Client;
 
-    S3Client s3ClientOverride = null;
-
     @Override
     public void configure(Map<String, ?> properties) {
         final Configuration config = Configuration.from(properties);
@@ -103,14 +101,13 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         LOGGER.info("S3LargeMessagePostProcessor configured: bucket='{}', region='{}', thresholdBytes={}",
                 bucket, regionName, thresholdBytes);
 
-        if (s3ClientOverride != null) {
-            s3Client = s3ClientOverride;
-            return;
-        }
-
         final Region region = Region.of(regionName);
         final AwsCredentialsProvider credentialsProvider = createCredentialsProvider(config);
 
+        s3Client = createS3Client(config, region, credentialsProvider);
+    }
+
+    protected S3Client createS3Client(Configuration config, Region region, AwsCredentialsProvider credentialsProvider) {
         S3ClientBuilder builder = S3Client.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider);
@@ -122,7 +119,7 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
             builder.forcePathStyle(true);
         }
 
-        s3Client = builder.build();
+        return builder.build();
     }
 
     private AwsCredentialsProvider createCredentialsProvider(Configuration config) {
