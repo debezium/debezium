@@ -35,17 +35,19 @@ import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
 
-import ai.docling.api.serve.DoclingServeApi;
-import ai.docling.api.serve.convert.request.ConvertDocumentRequest;
-import ai.docling.api.serve.convert.request.options.ConvertDocumentOptions;
-import ai.docling.api.serve.convert.request.options.InputFormat;
-import ai.docling.api.serve.convert.request.options.OutputFormat;
-import ai.docling.api.serve.convert.request.source.FileSource;
-import ai.docling.api.serve.convert.request.source.HttpSource;
-import ai.docling.api.serve.convert.request.source.Source;
-import ai.docling.api.serve.convert.request.target.InBodyTarget;
-import ai.docling.api.serve.convert.response.ConvertDocumentResponse;
-import ai.docling.client.serve.DoclingServeClientBuilderFactory;
+import ai.docling.serve.api.DoclingServeApi;
+import ai.docling.serve.api.convert.request.ConvertDocumentRequest;
+import ai.docling.serve.api.convert.request.options.ConvertDocumentOptions;
+import ai.docling.serve.api.convert.request.options.InputFormat;
+import ai.docling.serve.api.convert.request.options.OutputFormat;
+import ai.docling.serve.api.convert.request.source.FileSource;
+import ai.docling.serve.api.convert.request.source.HttpSource;
+import ai.docling.serve.api.convert.request.source.Source;
+import ai.docling.serve.api.convert.request.target.InBodyTarget;
+import ai.docling.serve.api.convert.response.InBodyConvertDocumentResponse;
+import ai.docling.serve.client.DoclingServeClientBuilderFactory;
+
+;
 
 /**
  * Single message transform which appends to the record <a href="https://github.com/docling-project/">Docling</a> transformation of selected {@link String} field
@@ -279,7 +281,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 .target(InBodyTarget.builder().build())
                 .build();
 
-        ConvertDocumentResponse response = doclingServeApi.convertSource(request);
+        InBodyConvertDocumentResponse response = (InBodyConvertDocumentResponse) doclingServeApi.convertSource(request);
         String doclingContent = switch (outputFormat) {
             case HTML -> response.getDocument().getHtmlContent();
             case MARKDOWN -> response.getDocument().getMarkdownContent();
