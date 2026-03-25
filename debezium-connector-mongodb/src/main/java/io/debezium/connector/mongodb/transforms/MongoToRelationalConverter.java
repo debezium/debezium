@@ -29,6 +29,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
@@ -40,7 +41,7 @@ import io.debezium.util.Strings;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Divyansh Agrawal
  */
-public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalConverter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -312,7 +313,8 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         return builder.build();
     }
 
-    public Iterable<Field> validateConfigFields() {
+    @Override
+    public Field.Set getConfigFields() {
         return configFields;
     }
 
