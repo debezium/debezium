@@ -11,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,8 +53,8 @@ public class S3LargeMessagePostProcessorTest {
         when(mockS3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
                 .thenReturn(PutObjectResponse.builder().build());
 
-        processor = new S3LargeMessagePostProcessor();
-        processor.s3ClientOverride = mockS3Client;
+        processor = spy(new S3LargeMessagePostProcessor());
+        doReturn(mockS3Client).when(processor).createS3Client(any(), any(), any());
     }
 
     @AfterEach
