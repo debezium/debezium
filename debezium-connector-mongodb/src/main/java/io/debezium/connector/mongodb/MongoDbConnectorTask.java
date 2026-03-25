@@ -364,5 +364,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             Thread.currentThread().interrupt();
             throw new DebeziumException("Interrupted while validating guardrail limits", e);
         }
+        catch (DebeziumException e) {
+            LOGGER.error("Failed to validate guardrail limits! " + e.getMessage(), e);
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 }
