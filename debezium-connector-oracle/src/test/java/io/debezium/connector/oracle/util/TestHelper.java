@@ -76,6 +76,9 @@ public class TestHelper {
     public static final String OPENLOGREPLICATOR_HOST = System.getProperty("openlogreplicator.host", "localhost");
     public static final String OPENLOGREPLICATOR_PORT = System.getProperty("openlogreplicator.port", "9000");
 
+    // Maximum SCN value from Oracle 19+
+    public static final Scn SCN_MAX = Scn.valueOf("18446744073709551615");
+
     /**
      * Key for schema parameter used to store a source column's type name.
      */
