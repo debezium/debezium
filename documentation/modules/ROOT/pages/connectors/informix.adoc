@@ -25,10 +25,13 @@ toc::[]
 
 endif::community[]
 
-{prodname}'s Informix connector can capture row-level changes in the tables of a Informix database.
+The {prodname} Informix connector can capture row-level changes in the tables of a Informix database.
 ifdef::community[]
 For information about the Informix Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
+ifdef::product[]
+For information about the Informix Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
 
 This connector is strongly inspired by the {prodname} implementation of IBM Db2, but uses the Informix Change Streams API for Java to capture transactional data.
 The Change Data Capture API captures data from databases that have full row logging enabled and captures transactions from the current logical log.
@@ -1834,6 +1837,25 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 
 * xref:informix-example-configuration[Configure the connector] and xref:informix-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 endif::community[]
+
+ifdef::product[]
+// Type: concept
+[id="openshift-streams-informix-connector-deployment"]
+=== {prodname} Informix connector deployment using {StreamsName}
+
+You deploy a {prodname} connector by using {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
+
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Informix connector does not include the JDBC driver or the Informix Change Stream client that it requires to connect to an Informix database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+You can add a command to the Kafka Connect custom resource to enable Streams to retrieve the driver automatically from Maven Central.
+====
+
+include::{partialsdir}/modules/all-connectors/con-connector-ifx-streams-deployment.adoc[leveloffset=+1]
+
+
+endif::product[]
 
 ifdef::community[]
 [[informix-example-configuration]]
