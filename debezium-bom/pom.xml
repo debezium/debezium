@@ -59,7 +59,7 @@
 
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
-        <version.docling>0.1.4</version.docling>
+        <version.docling>0.5.0</version.docling>
 
         <!-- Open Lineage -->
         <version.openlineage>1.31.0</version.openlineage>
