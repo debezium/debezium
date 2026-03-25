@@ -147,9 +147,10 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                         var dbNames = new ArrayList<String>();
                         client.listDatabaseNames().into(dbNames);
                         if (dbNames.isEmpty()) {
-                            connectionStringValidation.addErrorMessage(
-                                    "User doesn't have rights to list databases. " +
-                                            "Please verify credentials and database permissions");
+                            String errorMessage = "User doesn't have rights to list databases. " +
+                                    "Please verify credentials and database permissions.";
+                            LOGGER.error("Could not validate connector config: " + errorMessage);
+                            connectionStringValidation.addErrorMessage(errorMessage);
                         }
                     }
                     catch (MongoCommandException e) {
