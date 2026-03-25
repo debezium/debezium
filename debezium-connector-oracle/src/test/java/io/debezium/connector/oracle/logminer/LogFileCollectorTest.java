@@ -1472,7 +1472,7 @@ public class LogFileCollectorTest {
         final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
         assertThat(result).hasSize(2);
         assertThat(getLogFileWithName(result, "logfile1").getNextScn()).isEqualTo(Scn.valueOf(103700));
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(104000));
     }
 
     @Test
@@ -1510,7 +1510,7 @@ public class LogFileCollectorTest {
 
         final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
         assertThat(result).hasSize(3);
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
 
     @Test
@@ -1529,7 +1529,7 @@ public class LogFileCollectorTest {
 
         final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
         assertThat(result).hasSize(3);
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
 
     @Test
@@ -2339,7 +2339,7 @@ public class LogFileCollectorTest {
     }
 
     private static LogFile createRedoLogWithNullEndScn(String name, long startScn, int sequence, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), null, BigInteger.valueOf(sequence), LogFile.Type.REDO, true, threadId);
+        return new LogFile(name, Scn.valueOf(startScn), TestHelper.SCN_MAX, BigInteger.valueOf(sequence), LogFile.Type.REDO, true, threadId);
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int sequence, int threadId) {

@@ -17,7 +17,6 @@ public class Scn implements Comparable<Scn> {
 
     private static final long OVERFLOW_MARKER = Long.MIN_VALUE;
 
-    public static final Scn MAX = new Scn(-2L, null);
     public static final Scn NULL = new Scn(0L, null, true);
     public static final Scn ONE = new Scn(1L, null);
 
