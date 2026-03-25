@@ -41,15 +41,7 @@ public interface EnumeratedValue {
      */
     static <T extends Enum<T> & EnumeratedValue> T parse(Class<T> enumType, String value) {
         Objects.requireNonNull(enumType, "enumType must not be null");
-        if (value == null) {
-            return null;
-        }
-        for (T option : enumType.getEnumConstants()) {
-            if (option.matches(value)) {
-                return option;
-            }
-        }
-        return null;
+        return parse(enumType, value, null);
     }
 
     /**
@@ -63,13 +55,24 @@ public interface EnumeratedValue {
      * @throws IllegalArgumentException if no match can be found
      */
     static <T extends Enum<T> & EnumeratedValue> T parse(Class<T> enumType, String value, String defaultValue) {
-        T mode = parse(enumType, value);
-        if (mode == null && defaultValue != null) {
-            mode = parse(enumType, defaultValue);
+        Objects.requireNonNull(enumType, "enumType must not be null");
+
+        T result = null;
+        for (T option : enumType.getEnumConstants()) {
+            if (value != null && option.matches(value)) {
+                return option;
+            }
+            if (defaultValue != null && option.matches(defaultValue)) {
+                result = option;
+            }
         }
-        if (mode == null) {
+
+        if (result != null) {
+            return result;
+        }
+        if (defaultValue != null) {
             throw new IllegalArgumentException("Unknown value '" + value + "' for enum " + enumType.getName());
         }
-        return mode;
+        return null;
     }
 }
