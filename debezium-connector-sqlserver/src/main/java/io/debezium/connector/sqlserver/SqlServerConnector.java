@@ -23,7 +23,6 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.config.Configuration;
@@ -165,7 +164,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
                     hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                             + e.getMessage());
                 }
-            }, MDC.getCopyOfContextMap(), timeout, sqlServerConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, sqlServerConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
