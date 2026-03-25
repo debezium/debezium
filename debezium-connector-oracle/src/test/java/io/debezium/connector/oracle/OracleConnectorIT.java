@@ -78,7 +78,6 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.LogMinerRangeContext;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -5490,8 +5489,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, "100")
                     .build();
 
-            final LogInterceptor sourceLogging = new LogInterceptor(LogMinerRangeContext.class);
-            sourceLogging.setLoggerLevel(LogMinerRangeContext.class, Level.DEBUG);
+            final LogInterceptor sourceLogging = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+            sourceLogging.setLoggerLevel(AbstractLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             final LogInterceptor processorLogging = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
             processorLogging.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);

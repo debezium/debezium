@@ -252,13 +252,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(MAX_BATCH_SIZE)
             .withDescription("The maximum SCN interval size that this connector will use when reading from redo/archive logs.");
 
-    public static final Field LOG_MINING_BATCH_SIZE_WINDOW_SCALE = Field.create("log.mining.batch.size.window.scale")
-            .withDisplayName("The scale algorithm to apply when incrementing or decrementing the current batch size")
-            .withEnum(LogMiningBatchSizeWindowScale.class, LogMiningBatchSizeWindowScale.LINEAR)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("The mining window scale to apply when mining at the maximum batch size");
-
     public static final Field LOG_MINING_SLEEP_TIME_MIN_MS = Field.create("log.mining.sleep.time.min.ms")
             .withDisplayName("Minimum sleep time in milliseconds when reading redo/archive logs.")
             .withType(Type.LONG)
@@ -976,7 +969,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningBatchSizeMax;
     private final int logMiningBatchSizeDefault;
     private final int logMiningBatchSizeIncrement;
-    private final LogMiningBatchSizeWindowScale logMiningBatchSizeWindowScale;
     private final Duration logMiningSleepTimeMin;
     private final Duration logMiningSleepTimeMax;
     private final Duration logMiningSleepTimeDefault;
@@ -1064,7 +1056,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
         this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
         this.logMiningBatchSizeIncrement = config.getInteger(LOG_MINING_BATCH_SIZE_INCREMENT);
-        this.logMiningBatchSizeWindowScale = LogMiningBatchSizeWindowScale.parse(config.getString(LOG_MINING_BATCH_SIZE_WINDOW_SCALE));
         this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
         this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
@@ -1783,75 +1774,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * The Oracle connector maintains a {@code batchSize} that adapts over time by increasing or decreasing with
-     * the currently configured {@code log.mining.batch.size.min} and {@code log.mining.batch.size.max} values.
-     * These values should be configured ideally for constant activity windows.
-     * <p>
-     * The new {@code log.mining.batch.size.window.scale} is a feature that takes the batch size and scales the
-     * batch based on a desired algorithm. This allows the deployment to have agency over how the window is
-     * maintained during constant activity windows but also how it responds to spikes in activity.
-     * <p>
-     * The scale only applies when the {@code batchSize} has reached the maximum value for more than one mining
-     * pass, and is not used when batch range using the configured mining window satisfies the mining operation.
-     */
-    public enum LogMiningBatchSizeWindowScale implements EnumeratedValue {
-        /**
-         * This is the default mode, where the current batch size will be incremented by the configured
-         * {@link OracleConnectorConfig#LOG_MINING_BATCH_SIZE_MAX} value, providing linear scaling. Given a
-         * maximum batch size of 1000, the batch would scale 1000, 2000, 3000, 4000, 5000, etc.
-         * <p>
-         * This is ideal when the connector rarely experiences high surges of log switches or changes, but
-         * when it does it need's to recover faster, but in a linear, controlled fashion.
-         */
-        LINEAR("linear"),
-
-        /**
-         * This mode works similarly to {@link LogMiningBatchSizeWindowScale#LINEAR}, however, rather than
-         * linearly increment the batch window, the window is scaled exponentially. Given a maximum
-         * batch size of 1000, the batch would scale 1000, 2000, 4000, 8000, 16000, etc.
-         * <p>
-         * This is ideal when more frequent surges of log switches or changes may occur and the database
-         * has sufficient RAM and IO to allow for larger increases to the batch window.
-         */
-        EXPONENTIAL("exponential"),
-
-        /**
-         * This mode works similar to older behavior from Debezium 2.x days. When the maximum batch size is
-         * reached, and it is insufficient to catch up, this mode will attempt to mine all changes from the
-         * current read position of Debezium to the current write position of the database.
-         * <p>
-         * This is ideal when stalls and brief spikes in latency are acceptable, but you'd rather reduce the
-         * overall IO back pressure on the database and consume changes in a single pass. Depending on the
-         * volume of data the connector must read, sufficient RAM, CPU, and IO should exist to support a
-         * longer than normal LogMiner process to read and emit changes across a larger result set.
-         */
-        CURRENT_WRITE("current_write");
-
-        private final String value;
-
-        LogMiningBatchSizeWindowScale(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public static LogMiningBatchSizeWindowScale parse(String value) {
-            if (!Strings.isNullOrBlank(value)) {
-                value = value.trim();
-                for (LogMiningBatchSizeWindowScale windowScale : LogMiningBatchSizeWindowScale.values()) {
-                    if (windowScale.getValue().equalsIgnoreCase(value)) {
-                        return windowScale;
-                    }
-                }
-            }
-            return null;
-        }
-    }
-
-    /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
      * @author Gunnar Morling
@@ -1975,13 +1897,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public int getLogMiningBatchSizeIncrement() {
         return logMiningBatchSizeIncrement;
-    }
-
-    /**
-     * @return the mining window scale
-     */
-    public LogMiningBatchSizeWindowScale getLogMiningBatchSizeWindowScale() {
-        return logMiningBatchSizeWindowScale;
     }
 
     /**
