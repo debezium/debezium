@@ -258,7 +258,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
         Source source = switch (inputSource) {
             case TEXT -> {
                 String fieldInputEncoded = Base64.getEncoder().encodeToString(fieldInput.getBytes(StandardCharsets.UTF_8));
-                String filename = String.format("debezium-smt-%s.%s", UUID.randomUUID(), inputFormat.name());
+                String filename = format("debezium-smt-%s.%s", UUID.randomUUID(), inputFormat.name());
                 yield FileSource.builder().base64String(fieldInputEncoded).filename(filename).build();
             }
             case LINK -> {
@@ -336,7 +336,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 }
             }
 
-            throw new DebeziumException(String.format("Invalid input source %s", source));
+            throw new DebeziumException(format("Invalid input source %s", source));
         }
     }
 
@@ -365,7 +365,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                 }
             }
 
-            throw new DebeziumException(String.format("Invalid output format %s", outputFormat));
+            throw new DebeziumException(format("Invalid output format %s", outputFormat));
         }
 
         @Override
