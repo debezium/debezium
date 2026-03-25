@@ -11,6 +11,7 @@ import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbSinkConnector;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
+import io.debezium.connector.mongodb.transforms.MongoToRelationalConverter;
 import io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
@@ -29,6 +30,7 @@ public class MongoDbMetadataProvider implements ComponentMetadataProvider {
                 componentMetadataFactory.createComponentMetadata(new MongoDbConnector(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new MongoDbSinkConnector(), io.debezium.connector.mongodb.sink.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewDocumentState<>(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new MongoToRelationalConverter<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new MongoEventRouter<>(), Module.version()));
     }
 }
