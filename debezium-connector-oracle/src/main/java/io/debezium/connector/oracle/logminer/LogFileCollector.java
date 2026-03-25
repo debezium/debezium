@@ -34,7 +34,6 @@ import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.Strings;
 
 /**
  * A collector that is responsible for fetching, deduplication, and supplying Debezium with a set of
@@ -582,7 +581,7 @@ public class LogFileCollector {
      * @return the system change number for the specified value
      */
     private Scn getScnFromString(String value) {
-        return Strings.isNullOrBlank(value) ? Scn.MAX : Scn.valueOf(value);
+        return Scn.valueOf(value);
     }
 
     /**

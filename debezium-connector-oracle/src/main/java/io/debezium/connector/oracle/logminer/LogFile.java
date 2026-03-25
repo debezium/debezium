@@ -72,7 +72,7 @@ public class LogFile {
     }
 
     public Scn getNextScn() {
-        return isCurrent() ? Scn.MAX : nextScn;
+        return nextScn;
     }
 
     public BigInteger getSequence() {
@@ -95,7 +95,7 @@ public class LogFile {
     }
 
     public boolean isScnInLogFileRange(Scn scn) {
-        return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || getNextScn().equals(Scn.MAX));
+        return getFirstScn().compareTo(scn) <= 0 && getNextScn().compareTo(scn) > 0;
     }
 
     public boolean isArchive() {
