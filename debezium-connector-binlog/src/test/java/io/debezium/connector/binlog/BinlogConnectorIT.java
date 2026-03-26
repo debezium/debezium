@@ -177,6 +177,8 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.TIME_PRECISION_MODE);
+        assertNoConfigurationErrors(result, BinlogConnectorConfig.BINLOG_NET_WRITE_TIMEOUT);
+        assertNoConfigurationErrors(result, BinlogConnectorConfig.BINLOG_NET_READ_TIMEOUT);
     }
 
     protected void assertValidConfiguration(Config result) {
@@ -213,6 +215,8 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         validateConfigField(result, BinlogConnectorConfig.SSL_TRUSTSTORE_PASSWORD, null);
         validateConfigField(result, BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE);
         validateConfigField(result, BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+        validateConfigField(result, BinlogConnectorConfig.BINLOG_NET_WRITE_TIMEOUT, 0L);
+        validateConfigField(result, BinlogConnectorConfig.BINLOG_NET_READ_TIMEOUT, 0L);
     }
 
     protected <T> void validateConfigField(Config config, Field field, T expectedValue) {

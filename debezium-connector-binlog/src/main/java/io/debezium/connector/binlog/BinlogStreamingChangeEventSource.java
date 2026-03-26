@@ -426,6 +426,19 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // heartbeatIntervalFactor is 0.0, and we believe the left time (0.2 * keepAliveInterval) is enough
         // to process the packet received from the database server.
         client.setHeartbeatInterval((long) (keepAliveInterval * heartbeatIntervalFactor));
+
+        final long netWriteTimeout = connectorConfig.getBinlogNetWriteTimeout();
+        if (netWriteTimeout > 0) {
+            client.setNetWriteTimeout(netWriteTimeout);
+            LOGGER.info("Applied net_write_timeout {} seconds to binlog client", netWriteTimeout);
+        }
+
+        final long netReadTimeout = connectorConfig.getBinlogNetReadTimeout();
+        if (netReadTimeout > 0) {
+            client.setNetReadTimeout(netReadTimeout);
+            LOGGER.info("Applied net_read_timeout {} seconds to binlog client", netReadTimeout);
+        }
+
         client.setEventDeserializer(createEventDeserializer());
     }
 
