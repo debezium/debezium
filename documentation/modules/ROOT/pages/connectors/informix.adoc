@@ -55,6 +55,21 @@ It is expected that the connector would also work on other platforms such as Win
 and we'd love to get your feedback if you can confirm this to be the case.
 endif::community[]
 
+ifdef::product[]
+
+Information and procedures for using a {prodname} Informix connector is organized as follows:
+
+* xref:overview-of-debezium-informix-connector[]
+* xref:how-debezium-informix-connectors-work[]
+* xref:descriptions-of-debezium-informix-connector-data-change-events[]
+* xref:how-debezium-informix-connectors-map-data-types[]
+* xref:setting-up-db2-to-run-a-debezium-connector[]
+* xref:deployment-of-debezium-informix-connectors[]
+* xref:monitoring-debezium-informix-connector-performance[]
+* xref:updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors[]
+
+endif::product[]
+
 // Type: concept
 // Title: Overview of {prodname} Informix connector
 // ModuleID: overview-of-debezium-informix-connector
@@ -92,6 +107,20 @@ That is, if the snapshot was not complete when the connector stopped, after a re
 
 To optimally configure and run a {prodname} Informix connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and handles schema changes.
 
+ifdef::product[]
+Details are in the following topics:
+
+* xref:how-debezium-informix-connectors-perform-database-snapshots[]
+* xref:debezium-informix-ad-hoc-snapshots[]
+* xref:debezium-informix-incremental-snapshots[]
+* xref:how-debezium-informix-connectors-read-change-stream-records[]
+* xref:default-names-of-kafka-topics-that-receive-informix-change-event-records[]
+* xref:how-debezium-informix-connectors-handle-database-schema-changes[]
+* xref:about-the-debezium-informix-connector-schema-change-topic[]
+* xref:debezium-informix-connector-generated-events-that-represent-transaction-boundaries[]
+
+endif::product[]
+
 // Type: concept
 // ModuleID: how-debezium-informix-connectors-perform-database-snapshots
 // Title: How {prodname} Informix connectors perform database snapshots
@@ -102,6 +131,16 @@ The Informix replication feature is not designed to store the complete history o
 As a result, the {prodname} Informix connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in capture mode.
 For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
+
+ifdef::product[]
+
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-informix-ad-hoc-snapshots[]
+* xref:debezium-informix-incremental-snapshots[]
+* xref:informix-blocking-snapshots[]
+
+endif::product[]
 
 [[default-workflow-for-performing-an-initial-snapshot]]
 .Default workflow that the {prodname} Informix connector uses to perform an initial snapshot
@@ -439,7 +478,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 === Change stream records
 
 After a complete snapshot, when a {prodname} Informix connector starts for the first time, the connector starts consuming change stream records for the source tables that are in capture mode.
-The connector does the following:
+The connector performs the following actions:
 
 . Reads available change records from the current LSN.
 . Groups records by transaction Id and orders them according to the change LSN for each record.
@@ -447,12 +486,13 @@ The connector does the following:
 . Passes begin, commit and change LSNs as offsets to Kafka Connect.
 . Stores the highest commit LSN and the lowest, uncommitted begin LSN that the connector passed to Kafka Connect.
 
-After a restart, the connector resumes emitting change events from the offset (begin, commit and change LSNs) where it left off. It does so by:
+After a restart, the connector resumes emitting change events from the offset (begin, commit and change LSNs) where it left off.
+As it resumes normal activity, the connector performs the following steps, in order:
 
-. Reading change records that were created between the last stored, lowest uncommitted begin LSN and the current LSN.
-. Grouping records by transaction Id and ordering them according to the change LSN for each event.
-. Discarding already processed transactions (commit LSN lower than last stored commit LSN).
-. Discarding already processed records of the last incompletely processed transaction, if any (change LSN lower than last stored change LSN and commit LSN equal to last stored commit LSN).
+. Reads change records that were created between the last stored, lowest uncommitted begin LSN and the current LSN.
+. Groups records by transaction Id and ordering them according to the change LSN for each event.
+. Discards already processed transactions (commit LSN lower than last stored commit LSN).
+. Discards already processed records of the last incompletely processed transaction, if any (change LSN lower than last stored change LSN and commit LSN equal to last stored commit LSN).
 . Processes the remaining records of any incompletely processed transaction.
 . Continues processing records as transactions are committed.
 
@@ -628,20 +668,20 @@ The message contains a logical representation of the table schema.
       "txId": null,
       "begin_lsn": "0"
     },
-    "ts_ms": 1588252618953, // <1>
-    "databaseName": "testdb", // <2>
+    "ts_ms": 1588252618953,
+    "databaseName": "testdb",
     "schemaName": "informix",
-    "ddl": null, // <3>
-    "tableChanges": [ // <4>
+    "ddl": null,
+    "tableChanges": [
       {
-        "type": "CREATE", // <5>
-        "id": "\"testdb\".\"informix\".\"customers\"", // <6>
-        "table": { // <7>
+        "type": "CREATE",
+        "id": "\"testdb\".\"informix\".\"customers\"",
+        "table": {
           "defaultCharsetName": null,
-          "primaryKeyColumnNames": [ // <8>
+          "primaryKeyColumnNames": [
             "id"
           ],
-          "columns": [ // <9>
+          "columns": [
             {
               "name": "id",
               "jdbcType": 4,
@@ -699,7 +739,7 @@ The message contains a logical representation of the table schema.
               "generated": false
             }
           ],
-          "attributes": [ // <10>
+          "attributes": [
             {
               "customAttribute": "attributeValue"
             }
@@ -711,65 +751,49 @@ The message contains a logical representation of the table schema.
 }
 ----
 
-.Descriptions of fields in messages emitted to the schema change topic
-[cols="1,3a,6a",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the preceding schema change message:
 
-|1
-|`ts_ms`
-|Optional field that displays the time at which the connector processed the event.
+`ts_ms`::
+Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.
-
++
 In the source object, `ts_ms` indicates the time that the change was made in the database.
 To determine the time lag between when a change occurs at the source database and when {prodname} processes the change, compare the values for `payload.source.ts_ms` and `payload.ts_ms`.
 
-|2
-|`databaseName`
+`databaseName`, `schemaName`::
+Identifies the database and the schema that contain the change.
 
-`schemaName`
-|Identifies the database and the schema that contain the change.
-
-|3
-|`ddl`
-|Always `null` for the Informix connector.
+`ddl`::
+Always `null` for the Informix connector.
 For other connectors, this field contains the DDL responsible for the schema change.
 This DDL is not available to Informix connectors.
 
-|4
-|`tableChanges`
-|An array of one or more items that contain the schema changes generated by a DDL command.
+`tableChanges`::
+An array of one or more items that contain the schema changes generated by a DDL command.
 
-|5
-|`type`
-a|Describes the type of change.
+`tableChanges.type`::
+Describes the type of change.
 The field contains one of the following values:
++
 [horizontal]
-`CREATE`:: A table was created.
-`ALTER`:: A table was modified.
-`DROP`:: A table was deleted.
+`CREATE`::: A table was created.
+`ALTER`::: A table was modified.
+`DROP`::: A table was deleted.
 
-|6
-|`id`
-|Full identifier of the table that was created, altered, or dropped.
+`tableChanges.id`::
+Full identifier of the table that was created, altered, or dropped.
 
-|7
-|`table`
-|Represents table metadata after the applied change.
+`tableChanges.table`::
+Represents table metadata after the applied change.
 
-|8
-|`primaryKeyColumnNames`
-|List of columns that comprise the table's primary key.
+`tableChanges.table.primaryKeyColumnNames`::
+List of columns that comprise the table's primary key.
 
-|9
-|`columns`
-|Metadata for each column in the changed table.
+`tableChanges.table.columns`::
+Metadata for each column in the changed table.
 
-|10
-|`attributes`
-|Custom attribute metadata for each table change.
-
-|===
+`tableChanges.table.attributes`::
+Custom attribute metadata for each table change.
 
 In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the key:
