@@ -207,4 +207,44 @@ public class MongoDataConverterTest {
                         + "}");
 
     }
+
+    @Test
+    @FixFor("DBZ-1392")
+    public void shouldProcessHeterogeneousArrayWithEmptyNestedDocument() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : ObjectId(\"66bf4a1c2f8e3b4d5a7c9e12\"),\n" +
+                "    \"users\" : [\n" +
+                "        {\"name\" : \"John\", \"age\" : 30, \"address\" : {\"street\" : \"123 Main St\", \"city\" : \"NYC\"}},\n" +
+                "        {\"name\" : \"Jane\", \"email\" : \"jane@example.com\", \"address\" : {}},\n" +
+                "        {\"name\" : \"Bob\", \"age\" : 25, \"phone\" : \"555-1234\"}\n" +
+                "    ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("heterogeneous");
+        converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        // The schema name for array elements will be the parent field name plus index (e.g., users._0)
+        assertThat(finalSchema.field("users")).isNotNull();
+
+        // Verify struct was built successfully and contains the expected data
+        // For heterogeneous arrays in DOCUMENT mode, elements are indexed as _0, _1, _2...
+        assertThat(struct.getStruct("users")).isNotNull();
+        Struct usersStruct = struct.getStruct("users");
+
+        assertThat(usersStruct.getStruct("_0").get("name")).isEqualTo("John");
+        assertThat(usersStruct.getStruct("_1").get("email")).isEqualTo("jane@example.com");
+        assertThat(usersStruct.getStruct("_2").get("age")).isEqualTo(25);
+
+        // This ensures the empty address document didn't cause a crash and was handled
+        assertThat(usersStruct.getStruct("_1").getStruct("address")).isNotNull();
+        assertThat(usersStruct.getStruct("_1").getStruct("address").schema().fields()).isEmpty();
+    }
 }
