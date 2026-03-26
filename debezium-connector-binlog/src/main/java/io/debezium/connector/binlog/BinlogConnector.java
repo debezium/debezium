@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
@@ -79,7 +78,7 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
                 catch (SQLException e) {
                     LOGGER.error("Unexpected error shutting down the database connection", e);
                 }
-            }, MDC.getCopyOfContextMap(), timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
