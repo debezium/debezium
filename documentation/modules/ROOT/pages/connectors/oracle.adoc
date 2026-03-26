@@ -3222,7 +3222,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 // Type: procedure
 [id="using-streams-to-deploy-debezium-oracle-connectors"]
 === Using {StreamsName} to deploy a {prodname} Oracle connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ora-pg-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ifx-ora-pg-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-oracle-connectors"]
