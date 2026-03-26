@@ -1855,6 +1855,32 @@ You can add a command to the Kafka Connect custom resource to enable Streams to 
 include::{partialsdir}/modules/all-connectors/con-connector-ifx-streams-deployment.adoc[leveloffset=+1]
 
 
+
+.Additional resources
+
+* xref:descriptions-of-debezium-informix-connector-configuration-properties[Informix connector configuration properties]
+
+// Type: procedure
+[id="obtaining-the-informix-jdbc-driver"]
+=== Obtaining the Informix JDBC driver
+
+Due to licensing requirements, the Informix JDBC driver file that {prodname} requires to connect to an Informix database is not included in the {prodname} Informix connector archive.
+The driver is available for download from Maven Central.
+To retrieve the driver, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-informix-connectors[].
+
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-informix-connectors"]
+=== Using {StreamsName} to deploy a {prodname} Informix connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ifx-ora-pg-connector.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="verifying-that-the-debezium-informix-connector-is-running"]
+=== Verifying that the {prodname} Informix connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
+
 endif::product[]
 
 ifdef::community[]
