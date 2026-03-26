@@ -2468,6 +2468,37 @@ end::cfg-session-timeouts[]
 
 
 
+=== Configuring binlog streaming timeouts
+
+tag::cfg-binlog-streaming-timeouts[]
+During binlog streaming, the {connector-name} server uses session-level `net_write_timeout` and `net_read_timeout` values to determine how long to wait before closing the binlog connection.
+If the server default values for these timeouts are too low, the connector might experience unexpected `EOFException` errors and disconnects, especially in the following scenarios:
+
+* Large transactions that take a long time to transmit over the network.
+* High-latency network environments where read operations take longer than expected.
+
+You can configure the following connector properties to override the server default timeout values at the session level for the binlog streaming connection:
+
+* `binlog.net.write.timeout` - The number of seconds to wait for a block to be written to the binlog connection.
+See xref:{context}-property-binlog-net-write-timeout[`binlog.net.write.timeout`] in the advanced connector configuration properties for more details.
+* `binlog.net.read.timeout` - The number of seconds to wait for more data from the binlog connection.
+See xref:{context}-property-binlog-net-read-timeout[`binlog.net.read.timeout`] in the advanced connector configuration properties for more details.
+
+A value of `0` for either property means that the connector uses the {connector-name} server default.
+
+.Example configuration
+[source,json,subs="+attributes"]
+----
+{
+    ...
+    "binlog.net.write.timeout": 120,
+    "binlog.net.read.timeout": 120,
+    ...
+}
+----
+end::cfg-binlog-streaming-timeouts[]
+
+
 
 === Validating binlog row value options
 

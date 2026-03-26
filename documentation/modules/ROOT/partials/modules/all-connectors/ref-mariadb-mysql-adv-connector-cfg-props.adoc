@@ -30,6 +30,38 @@ It is expected that this feature is not completely polished.
 endif::community[]
 
 
+[id="{context}-property-binlog-net-read-timeout"]
+xref:{context}-property-binlog-net-read-timeout[`binlog.net.read.timeout`]::
+
+Default value::: `0`
+
+Description:::
+The number of seconds to wait for a read from the binlog connection to complete before the server times out.
+A value of `0` means that the connector uses the MySQL server default.
++
+In high-latency network environments, the default server value for `net_read_timeout` might be too low, causing the server to close the binlog streaming connection prematurely with an `EOFException`.
+Increase this value to prevent unexpected disconnects during binlog streaming.
++
+NOTE: This value is set at the session level on the binlog streaming connection using `SET net_read_timeout=<value>`.
+It does not affect the global server setting.
+
+
+[id="{context}-property-binlog-net-write-timeout"]
+xref:{context}-property-binlog-net-write-timeout[`binlog.net.write.timeout`]::
+
+Default value::: `0`
+
+Description:::
+The number of seconds to wait for a write to the binlog connection to complete before the server times out.
+A value of `0` means that the connector uses the MySQL server default.
++
+When the server transfers large data volumes through the binlog, the default server value for `net_write_timeout` might be too low, causing the server to close the connection with an `EOFException`.
+Increase this value to prevent unexpected disconnects during streaming of large transactions.
++
+NOTE: This value is set at the session level on the binlog streaming connection using `SET net_write_timeout=<value>`.
+It does not affect the global server setting.
+
+
 [id="{context}-property-connect-keep-alive"]
 xref:{context}-property-connect-keep-alive[`connect.keep.alive`]::
 
