@@ -63,7 +63,7 @@ Ask one question at a time, and give the contributor a chance to respond before 
 - Creating release artifacts
 
 **Context:**
-You are working on Debezium, a Change Data Capture platform. Use the maven version used in the .mvn and the target jdk defined in the `pom.xml`.
+You are working on Debezium, a Change Data Capture platform. Use the Maven version provided by the wrapper by using `./mvnw`, and the target JDK defined in the `pom.xml`.
 
 **Key commands:**
 - Full build: `./mvnw clean install`
@@ -79,13 +79,10 @@ You are working on Debezium, a Change Data Capture platform. Use the maven versi
 - debezium-bom, debezium-connector-common, debezium-util, debezium-config, debezium-api, debezium-common, debezium-connect-plugins
 
 **Core Connectors:**
-- debezium-connector-mysql, debezium-connector-postgres, debezium-connector-mongodb, debezium-connector-sqlserver, debezium-connector-oracle, debezium-connector-mariadb, 
+- debezium-connector-mysql, debezium-connector-postgres, debezium-connector-mongodb, debezium-connector-sqlserver, debezium-connector-oracle, debezium-connector-mariadb, debezium-connector-jdbc
 
 **Common modules for Core Connectors:**
-- debezium-connector-jdbc, debezium-connector-binlog
-
-**Community Connectors:**
-- 
+- debezium-connector-binlog
 
 **Instructions:**
 - Always run code formatting before builds when making code changes. Use the styleguide config in `support/checkstyle/src/main/resources/checkstyle.xml`
