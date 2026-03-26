@@ -305,4 +305,81 @@ public class MongoToRelationalConverterTest {
         assertThat(after.get("priority")).isNull();
     }
 
+    @Test
+    public void shouldConvertReadOperation() {
+        // GIVEN: A 'Read' (op=r) record emitted during a snapshot.
+        // Snapshot events look like creates — 'before' is always null and 'after' contains the document.
+        // This verifies the SMT handles the 'r' operation code correctly.
+
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, null);
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"name\": \"snapshot_item\", \"active\": true}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.READ.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN: The SMT should treat 'r' just like 'c' — no 'before', valid 'after' Struct
+        Struct val = (Struct) transformed.value();
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE)).isNull();
+        assertThat(val.getStruct(Envelope.FieldName.AFTER)).isNotNull();
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).getString("name")).isEqualTo("snapshot_item");
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).getBoolean("active")).isTrue();
+        assertThat(val.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.READ.code());
+    }
+
+    @Test
+    public void shouldConvertUpdateWithFullPreImage() {
+        // GIVEN: An 'Update' (op=u) where BOTH 'before' and 'after' are present.
+        // This happens when the capture mode is 'change_streams_update_full_with_pre_image',
+        // which tells MongoDB to include the full document state before the change.
+
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"status\": \"pending\"}");
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"status\": \"complete\"}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN: Both 'before' and 'after' should be valid Structs sharing the same schema
+        Struct val = (Struct) transformed.value();
+        Struct before = val.getStruct(Envelope.FieldName.BEFORE);
+        Struct after = val.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(before).isNotNull();
+        assertThat(after).isNotNull();
+        assertThat(before.getString("status")).isEqualTo("pending");
+        assertThat(after.getString("status")).isEqualTo("complete");
+
+        // Both payloads must share the exact same schema reference
+        assertThat(before.schema()).isSameAs(after.schema());
+    }
+
 }
