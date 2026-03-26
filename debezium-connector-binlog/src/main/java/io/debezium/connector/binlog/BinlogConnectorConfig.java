@@ -411,6 +411,30 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Whether to use `socket.setSoLinger(true, 0)` when BinaryLogClient"
                     + " keepalive thread triggers a disconnect for a stale connection.");
 
+    public static final Field BINLOG_NET_WRITE_TIMEOUT = Field.create("binlog.net.write.timeout")
+            .withDisplayName("Binlog Net Write Timeout")
+            .withType(ConfigDef.Type.LONG)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 6))
+            .withDescription("The number of seconds to wait for a write to the binlog connection to complete "
+                    + "before the server times out. A value of 0 means use the MySQL server default. "
+                    + "May need to be increased when large data volumes cause EOFException during streaming.");
+
+    public static final Field BINLOG_NET_READ_TIMEOUT = Field.create("binlog.net.read.timeout")
+            .withDisplayName("Binlog Net Read Timeout")
+            .withType(ConfigDef.Type.LONG)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withDescription("The number of seconds to wait for a read from the binlog connection to complete "
+                    + "before the server times out. A value of 0 means use the MySQL server default. "
+                    + "May need to be increased in high-latency network environments to prevent EOFException during streaming.");
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
             .withDisplayName("Stream result set of size")
             .withType(ConfigDef.Type.INT)
@@ -617,6 +641,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     KEEP_ALIVE,
                     KEEP_ALIVE_INTERVAL_MS,
                     USE_NONGRACEFUL_DISCONNECT,
+                    BINLOG_NET_WRITE_TIMEOUT,
+                    BINLOG_NET_READ_TIMEOUT,
                     SNAPSHOT_MODE,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
@@ -898,5 +924,19 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
 
     public boolean usesNonGracefulDisconnect() {
         return config.getBoolean(USE_NONGRACEFUL_DISCONNECT);
+    }
+
+    /**
+     * @return the net_write_timeout in seconds, 0 means use server default
+     */
+    public long getBinlogNetWriteTimeout() {
+        return config.getLong(BINLOG_NET_WRITE_TIMEOUT);
+    }
+
+    /**
+     * @return the net_read_timeout in seconds, 0 means use server default
+     */
+    public long getBinlogNetReadTimeout() {
+        return config.getLong(BINLOG_NET_READ_TIMEOUT);
     }
 }
