@@ -644,7 +644,7 @@ public class OracleConnection extends JdbcConnection {
                 final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
                         columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                         quotedTableIdString(oracleTableId),
-                        keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+                        keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
                 final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
                 bindValues.add(commitScn);
                 bindValues.addAll(keyValues);
