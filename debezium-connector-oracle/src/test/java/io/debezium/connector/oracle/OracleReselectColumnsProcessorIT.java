@@ -134,6 +134,61 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
     }
 
     @Test
+    @FixFor("dbz#1750")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
+    public void testColumnReselectWithCaseSensitivity() throws Exception {
+        TestHelper.dropTable(connection, "\"dbz1750SampleTable\"");
+        try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+            connection.execute("CREATE TABLE \"dbz1750SampleTable\" (\"Id\" numeric(9,0) primary key, \"Data\" clob, \"Data2\" numeric(9,0))");
+            TestHelper.streamTable(connection, "\"dbz1750SampleTable\"");
+
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.dbz1750SampleTable")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("post.processors.reselector.reselect.columns.include.list", "DEBEZIUM.dbz1750SampleTable:Data")
+                    .build();
+
+            start(getConnectorClass(), config);
+            assertConnectorIsRunning();
+
+            waitForStreamingStarted();
+
+            // Insert will always include the data
+            final String clobData = RandomStringUtils.randomAlphabetic(10000);
+            final Clob clob = connection.connection().createClob();
+            clob.setString(1, clobData);
+            connection.prepareQuery("INSERT INTO \"dbz1750SampleTable\" values (1,?,1)", ps -> ps.setClob(1, clob), null);
+            connection.commit();
+
+            // Update row without changing clob
+            connection.execute("UPDATE \"dbz1750SampleTable\" set \"Data2\"=10 where \"Id\" = 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.dbz1750SampleTable");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update = tableRecords.get(1);
+            VerifyRecord.isValidUpdate(update, true);
+
+            Struct key = ((Struct) update.key());
+            assertThat(key.schema().fields()).hasSize(1);
+            assertThat(key.get("Id")).isEqualTo(1);
+
+            Struct after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("Id")).isEqualTo(1);
+            assertThat(after.get("Data")).isEqualTo(clobData);
+            assertThat(after.get("Data2")).isEqualTo(10);
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.dbz1750SampleTable", "Data");
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"dbz1750SampleTable\"");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-7729")
     @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void testColumnReselectionUsesPrimaryKeyColumnAndValuesDespiteMessageKeyColumnConfigs() throws Exception {
