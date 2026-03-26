@@ -54,48 +54,43 @@ For example, create the following `KafkaConnector` CR, and save it as `{context}
 =====================================================================
 include::../{partialsdir}/modules/all-connectors/ref-deploy-{context}-connector-yaml.adoc[]
 +
-.Descriptions of connector configuration settings
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
+The connector configuration has the following properties:
 
-|1
-|The name of the connector to register with the Kafka Connect cluster.
+`metadata.name`::
+The name of the connector to register with the Kafka Connect cluster.
 
-|2
-|The name of the connector class.
+`spec.class`::
+The name of the connector class.
 
-|3
-|The number of tasks that can operate concurrently.
+`spec.tasksMax`::
+The number of tasks that can operate concurrently.
 
-|4
-|The connector’s configuration.
+`spec.config`::
+The connector's configuration.
 
-|5
-|The address of the host database instance.
+`database.hostname`::
+The address of the host database instance.
 
-|6
-|The port number of the database instance.
+`database.port`::
+The port number of the database instance.
 
-|7
-|The name of the account that {prodname} uses to connect to the database.
+`database.user`::
+The name of the account that {prodname} uses to connect to the database.
 
-|8
-|The password that {prodname} uses to connect to the database user account.
+`database.password`::
+The password that {prodname} uses to connect to the database user account.
 
-|9
-|The name of the database to capture changes from.
+`database.dbname`::
+The name of the database to capture changes from.
 
-|10
-|The topic prefix for the database instance or cluster. +
+`topic.prefix`::
+The topic prefix for the database instance or cluster. +
 The specified name must be formed only from alphanumeric characters or underscores. +
 Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster. +
 This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro connector].
 
-|11
-|The list of tables from which the connector captures change events.
-
-|===
+`table.include.list`::
+The list of tables from which the connector captures change events.
 
 . Create the connector resource by running the following command:
 +
