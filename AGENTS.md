@@ -76,7 +76,7 @@ You are working on Debezium, a Change Data Capture platform. Use the maven versi
 - run single unit integration test: `./mvn test install --Dit.test=<class or method reference of an integration test>`
 
 **Core modules:**
-- debezium-bom, debezium-core, debezium-api, debezium-common
+- debezium-bom, debezium-connector-common, debezium-util, debezium-config, debezium-api, debezium-common, debezium-connect-plugins
 
 **Core Connectors:**
 - debezium-connector-mysql, debezium-connector-postgres, debezium-connector-mongodb, debezium-connector-sqlserver, debezium-connector-oracle, debezium-connector-mariadb, 
