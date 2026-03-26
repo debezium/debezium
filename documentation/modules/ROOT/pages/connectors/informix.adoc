@@ -1615,6 +1615,16 @@ To make this possible, after {prodname}’s Informix connector emits a _delete_ 
 
 For a complete description of the data types that Informix supports, see the https://www.ibm.com/docs/en/informix-servers/15.0.x?topic=types-data[Data Types] section in the Informix documentation.
 
+[NOTE]
+====
+.The following data types are not supported for data capture:
+- Simple large objects (`TEXT` and `BYTE` data types)
+- User-defined data types
+- Collection data types (`SET`, `MULTISET`, `LIST`, and `ROW` data types)
+
+For more information, see https://www.ibm.com/docs/en/informix-servers/15.0.x?topic=api-data-capture[Data for capture]
+====
+
 The Informix connector represents changes to rows by emitting events whose structures mirror the structure of the source tables in which the change events occur.
 Event records contain fields for each column value.
 To populate values in these fields from the source columns, the connector uses a default mapping to convert the values from the original Informix data types  to a Kafka Connect schema type or a semantic type.
@@ -1657,10 +1667,6 @@ The following table describes how the connector maps each Informix data type to 
 
 |`BOOLEAN`
 |`BOOLEAN`
-|n/a
-
-|`BYTE`
-|`BYTES`
 |n/a
 
 |`CHAR[(N)]`
@@ -1726,10 +1732,6 @@ A timestamp without timezone information
 |`TINYINT`
 |`INT16`
 |8-bit unsigned integer value between 0 and 255, thus needs to be stored as int16
-
-|`TEXT`
-|`STRING`
-|n/a
 
 |`VARCHAR[(N)]`
 |`STRING`
