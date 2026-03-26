@@ -134,4 +134,175 @@ public class MongoToRelationalConverterTest {
         // the SMT must inject a null value for 'age' in the 'before' doc rather than crashing.
         assertThat(beforeStruct.get("age")).isNull();
     }
+
+    @Test
+    public void shouldConvertCreateOperation() {
+        // GIVEN: A 'Create' (op=c) record where 'before' is null
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, null);
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"name\": \"new_item\"}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN
+        Struct val = (Struct) transformed.value();
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE)).isNull();
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).getString("name")).isEqualTo("new_item");
+        assertThat(val.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+    }
+
+    @Test
+    public void shouldConvertDeleteOperation() {
+        // GIVEN: A 'Delete' (op=d) record where 'after' is null
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"name\": \"deleted_item\"}");
+        recordValue.put(Envelope.FieldName.AFTER, null);
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.DELETE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN
+        Struct val = (Struct) transformed.value();
+        assertThat(val.getStruct(Envelope.FieldName.AFTER)).isNull();
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE).getString("name")).isEqualTo("deleted_item");
+        assertThat(val.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.DELETE.code());
+    }
+
+    @Test
+    public void shouldConvertUpdateWithoutPreImage() {
+        // GIVEN: An 'Update' (op=u) where 'before' is null (happens in some capture modes)
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, null);
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"status\": \"updated\"}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN
+        Struct val = (Struct) transformed.value();
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE)).isNull();
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).getString("status")).isEqualTo("updated");
+    }
+
+    @Test
+    public void shouldApplyStaticSchemaMapping() {
+        // GIVEN: Configuration with a strict schema mapping
+        java.util.Map<String, String> configs = new HashMap<>();
+        configs.put("schema.mapping", "{\"server.db.collection\": {\"_id\": \"int32\", \"priority\": \"int32\"}}");
+        transformation.configure(configs);
+
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        // The document has 'extra_field' but the mapping doesn't.
+        // Also it is missing 'priority' which the mapping DOES have.
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"extra_field\": \"ignored\"}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN
+        Struct val = (Struct) transformed.value();
+        Struct after = val.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(after.schema().fields()).hasSize(2);
+        assertThat(after.getInt32("_id")).isEqualTo(1);
+        assertThat(after.get("priority")).isNull(); // Injected null because of mapping
+        assertThat(after.schema().field("extra_field")).isNull(); // Dropped because not in mapping
+    }
+
+    @Test
+    public void shouldNotAddMissingFieldsWhenDisabled() {
+        // GIVEN: Configuration where add.missing.fields is false
+        java.util.Map<String, String> configs = new HashMap<>();
+        configs.put("schema.mapping", "{\"server.db.collection\": {\"_id\": \"int32\", \"priority\": \"int32\"}}");
+        configs.put("add.missing.fields", "false");
+        transformation.configure(configs);
+
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
+
+        // WHEN
+        SourceRecord transformed = transformation.apply(record);
+
+        // THEN
+        Struct val = (Struct) transformed.value();
+        Struct after = val.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(after.getInt32("_id")).isEqualTo(1);
+        // With add.missing.fields=false, we expect the SMT to skip injecting null for the 'priority' field,
+        // even though it exists in the schema mapping.
+
+        assertThat(after.get("priority")).isNull();
+    }
+
 }
