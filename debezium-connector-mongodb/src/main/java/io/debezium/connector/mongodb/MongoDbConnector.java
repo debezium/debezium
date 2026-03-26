@@ -19,7 +19,6 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
@@ -174,7 +173,7 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                 catch (MongoException e) {
                     connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, MDC.getCopyOfContextMap(), timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
