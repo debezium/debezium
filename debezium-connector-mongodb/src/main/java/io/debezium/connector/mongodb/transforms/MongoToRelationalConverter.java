@@ -11,9 +11,13 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Date;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Time;
+import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.Requirements;
 import org.bson.BsonDocument;
@@ -22,16 +26,21 @@ import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.data.Envelope;
+import io.debezium.data.Json;
+import io.debezium.data.Uuid;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.metadata.ConfigDescriptor;
+import io.debezium.time.MicroDuration;
+import io.debezium.time.MicroTime;
+import io.debezium.time.NanoDuration;
+import io.debezium.time.NanoTime;
+import io.debezium.time.Year;
+import io.debezium.time.ZonedTime;
 import io.debezium.transforms.SmtManager;
-import io.debezium.util.Strings;
 
 /**
  * Converts MongoDB CDC events to relational-style format where 'before' and 'after'
@@ -44,18 +53,15 @@ import io.debezium.util.Strings;
 public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalConverter.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // Configuration field for schema mapping
-    private static final Field SCHEMA_MAPPING = Field.create("schema.mapping")
-            .withDisplayName("Schema mapping configuration")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault("")
-            .withDescription("JSON configuration for mapping MongoDB documents to a target schema. "
-                    + "When provided, the SMT will normalize documents to match this schema, "
-                    + "adding null values for missing fields.");
+    // Prefix for per-collection schema mapping properties.
+    // Usage: schema.mapping.<topic>=fieldName:type,fieldName:type,...
+    // Supports primitive types (string, int32, float64, boolean, etc.),
+    // logical types (io.debezium.time.Date, org.apache.kafka.connect.data.Decimal), and timestamps.
+    private static final String SCHEMA_MAPPING_PREFIX = "schema.mapping.";
+
+    // Default scale for Decimal types when not explicitly specified
+    private static final int DEFAULT_DECIMAL_SCALE = 0;
 
     // Configuration for handling missing fields
     private static final Field ADD_MISSING_FIELDS = Field.create("add.missing.fields")
@@ -67,13 +73,12 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
             .withDescription("When true and schema mapping is provided, missing fields will be "
                     + "added with null values to ensure schema consistency.");
 
-    private final Field.Set configFields = Field.setOf(SCHEMA_MAPPING, ADD_MISSING_FIELDS);
+    private final Field.Set configFields = Field.setOf(ADD_MISSING_FIELDS);
 
     private Configuration config;
     private SmtManager<R> smtManager;
     private MongoDataConverter converter;
     private boolean addMissingFields;
-    private String schemaMappingJson;
     private Map<String, Schema> customSchemaMap = new HashMap<>();
 
     @Override
@@ -82,73 +87,21 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         this.smtManager = new SmtManager<>(config);
 
         addMissingFields = config.getBoolean(ADD_MISSING_FIELDS);
-        schemaMappingJson = config.getString(SCHEMA_MAPPING);
 
-        // Implementation of the Schema Mapping Strategy:
-        // MongoDB's dynamic schemas can cause missing field scenarios.
-        // This strategy allows users to define a strict target schema per collection via JSON configuration.
-        // If provided, we pre-compile these mappings into standard Kafka Connect Schemas at startup.
-        if (!Strings.isNullOrBlank(schemaMappingJson)) {
-            try {
-                JsonNode rootNode = MAPPER.readTree(schemaMappingJson);
-
-                // Iterate through the JSON definition, where keys are the expected collection names
-                rootNode.fields().forEachRemaining(collectionEntry -> {
-                    String collectionName = collectionEntry.getKey();
-                    JsonNode fieldsNode = collectionEntry.getValue();
-
-                    SchemaBuilder builder = SchemaBuilder.struct().optional().name(collectionName + ".envelope");
-
-                    // Translate the user's string type definitions into actual Connect Schema types
-                    fieldsNode.fields().forEachRemaining(fieldEntry -> {
-                        String fieldName = fieldEntry.getKey();
-                        String fieldType = fieldEntry.getValue().asText().toLowerCase();
-
-                        switch (fieldType) {
-                            case "int8":
-                                builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
-                                break;
-                            case "int16":
-                                builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
-                                break;
-                            case "int32":
-                            case "integer":
-                                builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
-                                break;
-                            case "int64":
-                            case "long":
-                                builder.field(fieldName, Schema.OPTIONAL_INT64_SCHEMA);
-                                break;
-                            case "float32":
-                            case "float":
-                                builder.field(fieldName, Schema.OPTIONAL_FLOAT32_SCHEMA);
-                                break;
-                            case "float64":
-                            case "double":
-                                builder.field(fieldName, Schema.OPTIONAL_FLOAT64_SCHEMA);
-                                break;
-                            case "boolean":
-                                builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
-                                break;
-                            case "string":
-                                builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
-                                break;
-                            case "bytes":
-                                builder.field(fieldName, Schema.OPTIONAL_BYTES_SCHEMA);
-                                break;
-                            default:
-                                builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
-                        }
-                    });
-
-                    // Cache the compiled schema so we can instantly apply it to incoming records
-                    customSchemaMap.put(collectionName, builder.build());
-                });
-                LOGGER.info("Successfully loaded {} custom schema mappings from configuration", customSchemaMap.size());
+        // Per-collection schema mapping strategy:
+        // Users define a strict target schema for each collection/topic using individual properties.
+        // Example: schema.mapping.myserver.mydb.orders=_id:string,total:float64,created:io.debezium.time.Date
+        for (Map.Entry<String, ?> entry : configs.entrySet()) {
+            if (entry.getKey().startsWith(SCHEMA_MAPPING_PREFIX)) {
+                String collectionName = entry.getKey().substring(SCHEMA_MAPPING_PREFIX.length());
+                String fieldDefinitions = entry.getValue().toString();
+                Schema schema = parseFieldDefinitions(collectionName, fieldDefinitions);
+                customSchemaMap.put(collectionName, schema);
             }
-            catch (Exception e) {
-                LOGGER.error("Failed to parse the schema.mapping JSON configuration", e);
-            }
+        }
+
+        if (!customSchemaMap.isEmpty()) {
+            LOGGER.info("Successfully loaded {} custom schema mappings from configuration", customSchemaMap.size());
         }
 
         // Initialize the MongoDB data converter
@@ -156,6 +109,114 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         converter = new MongoDataConverter(ExtractNewDocumentState.ArrayEncoding.ARRAY);
 
         LOGGER.info("MongoToRelationalConverter initialized. Missing fields injection is set to: {}", addMissingFields);
+    }
+
+    /**
+     * Parses a comma-separated field definition string into a Kafka Connect Schema.
+     * Format: "fieldName:type,fieldName:type,..."
+     *
+     * Supported types:
+     * - Primitive: string, int8, int16, int32, int64, float32, float64, boolean, bytes
+     * - Logical: io.debezium.time.Date, io.debezium.time.Timestamp, org.apache.kafka.connect.data.Decimal
+     */
+    private Schema parseFieldDefinitions(String collectionName, String fieldDefinitions) {
+        // Initialize an optional Struct schema for the collection's payload
+        SchemaBuilder builder = SchemaBuilder.struct().optional().name(collectionName + ".envelope");
+
+        // Iterate through each comma-separated field entry (e.g., "id:int32")
+        for (String pair : fieldDefinitions.split(",")) {
+            String[] parts = pair.trim().split(":", 2);
+            if (parts.length != 2) {
+                LOGGER.warn("Skipping malformed field definition '{}' for collection '{}'", pair.trim(), collectionName);
+                continue;
+            }
+
+            String fieldName = parts[0].trim();
+            String fieldType = parts[1].trim();
+            // Resolve the type string to a Kafka Connect Schema and add to builder
+            builder.field(fieldName, resolveSchema(fieldType));
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Resolves a type string into a Kafka Connect Schema.
+     * Handles both primitive types (by short name) and logical types (by fully-qualified class name).
+     */
+    private Schema resolveSchema(String fieldType) {
+        // Check for logical types first (fully-qualified names)
+        switch (fieldType) {
+            case "io.debezium.time.Date":
+                return io.debezium.time.Date.builder().optional().build();
+            case "io.debezium.time.Timestamp":
+                return io.debezium.time.Timestamp.builder().optional().build();
+            case "io.debezium.time.MicroTimestamp":
+                return io.debezium.time.MicroTimestamp.builder().optional().build();
+            case "io.debezium.time.NanoTimestamp":
+                return io.debezium.time.NanoTimestamp.builder().optional().build();
+            case "io.debezium.time.ZonedTimestamp":
+                return io.debezium.time.ZonedTimestamp.builder().optional().build();
+            case "io.debezium.time.Time":
+                return io.debezium.time.Time.builder().optional().build();
+            case "io.debezium.time.MicroTime":
+                return MicroTime.builder().optional().build();
+            case "io.debezium.time.NanoTime":
+                return NanoTime.builder().optional().build();
+            case "io.debezium.time.ZonedTime":
+                return ZonedTime.builder().optional().build();
+            case "io.debezium.time.Year":
+                return Year.builder().optional().build();
+            case "io.debezium.time.MicroDuration":
+                return MicroDuration.builder().optional().build();
+            case "io.debezium.time.NanoDuration":
+                return NanoDuration.builder().optional().build();
+            case "io.debezium.data.Json":
+                return Json.builder().optional().build();
+            case "io.debezium.data.Uuid":
+                return Uuid.builder().optional().build();
+            case "io.debezium.data.VariableScaleDecimal":
+                return VariableScaleDecimal.builder().optional().build();
+            case "org.apache.kafka.connect.data.Decimal":
+                return Decimal.builder(DEFAULT_DECIMAL_SCALE).optional().build();
+            case "org.apache.kafka.connect.data.Timestamp":
+                return Timestamp.builder().optional().build();
+            case "org.apache.kafka.connect.data.Date":
+                return Date.builder().optional().build();
+            case "org.apache.kafka.connect.data.Time":
+                return Time.builder().optional().build();
+            default:
+                break;
+        }
+
+        // Fall back to primitive type resolution (case-insensitive)
+        switch (fieldType.toLowerCase()) {
+            case "int8":
+                return Schema.OPTIONAL_INT8_SCHEMA;
+            case "int16":
+                return Schema.OPTIONAL_INT16_SCHEMA;
+            case "int32":
+            case "integer":
+                return Schema.OPTIONAL_INT32_SCHEMA;
+            case "int64":
+            case "long":
+                return Schema.OPTIONAL_INT64_SCHEMA;
+            case "float32":
+            case "float":
+                return Schema.OPTIONAL_FLOAT32_SCHEMA;
+            case "float64":
+            case "double":
+                return Schema.OPTIONAL_FLOAT64_SCHEMA;
+            case "boolean":
+                return Schema.OPTIONAL_BOOLEAN_SCHEMA;
+            case "string":
+                return Schema.OPTIONAL_STRING_SCHEMA;
+            case "bytes":
+                return Schema.OPTIONAL_BYTES_SCHEMA;
+            default:
+                LOGGER.warn("Unknown type '{}', defaulting to STRING", fieldType);
+                return Schema.OPTIONAL_STRING_SCHEMA;
+        }
     }
 
     @Override
