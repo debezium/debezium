@@ -229,9 +229,9 @@ public class MongoToRelationalConverterTest {
 
     @Test
     public void shouldApplyStaticSchemaMapping() {
-        // GIVEN: Configuration with a strict schema mapping
+        // GIVEN: Configuration with a strict per-collection schema mapping
         java.util.Map<String, String> configs = new HashMap<>();
-        configs.put("schema.mapping", "{\"server.db.collection\": {\"_id\": \"int32\", \"priority\": \"int32\"}}");
+        configs.put("schema.mapping.server.db.collection", "_id:int32,priority:int32");
         transformation.configure(configs);
 
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
@@ -270,7 +270,7 @@ public class MongoToRelationalConverterTest {
     public void shouldNotAddMissingFieldsWhenDisabled() {
         // GIVEN: Configuration where add.missing.fields is false
         java.util.Map<String, String> configs = new HashMap<>();
-        configs.put("schema.mapping", "{\"server.db.collection\": {\"_id\": \"int32\", \"priority\": \"int32\"}}");
+        configs.put("schema.mapping.server.db.collection", "_id:int32,priority:int32");
         configs.put("add.missing.fields", "false");
         transformation.configure(configs);
 
