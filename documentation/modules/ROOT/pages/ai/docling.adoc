@@ -122,7 +122,7 @@ Supports nested fields (e.g., `after.document`).
 |No default value
 |Specifies the name of the field that the SMT adds to the record to contain the Docling document.
 If no value is specified, the resulting record contains only the Docling document value.
-Supports nested fields (e.g., `after.document_parsed`).
+Supports nested fields (e.g., `after.document_parsed`), but the nested structure has to exists (e.g. in case of `after.document_parsed.markdown`, `after.document_parsed` has to exists).
 
 |[[docling-serve-url]]xref:docling-serve-url[`serve.url`]
 |No default value
