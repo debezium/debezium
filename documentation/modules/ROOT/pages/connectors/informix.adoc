@@ -114,7 +114,7 @@ Details are in the following topics:
 * xref:debezium-informix-ad-hoc-snapshots[]
 * xref:debezium-informix-incremental-snapshots[]
 * xref:how-debezium-informix-connectors-read-change-stream-records[]
-* xref:default-names-of-kafka-topics-that-receive-informix-change-event-records[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-informix-change-event-records[]
 * xref:how-debezium-informix-connectors-handle-database-schema-changes[]
 * xref:about-the-debezium-informix-connector-schema-change-topic[]
 * xref:debezium-informix-connector-generated-events-that-represent-transaction-boundaries[]
@@ -2929,6 +2929,13 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+[[informix-schema-history-metrics]]
+=== Schema history metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+
 
 // Type: assembly
 // ModuleID: updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors
