@@ -107,6 +107,10 @@ public class AlterTableParserListener extends BaseParserListener {
     @Override
     public void enterAdd_column_clause(PlSqlParser.Add_column_clauseContext ctx) {
         parser.runIfNotNull(() -> {
+            if (!ctx.virtual_column_definition().isEmpty()) {
+                throw new ParsingException(null, "trying to add a virtual column in "
+                        + tableEditor.tableId().toString() + " table: virtual columns are not supported.");
+            }
             List<PlSqlParser.Column_definitionContext> columns = ctx.column_definition();
             columnEditors = new ArrayList<>(columns.size());
             for (PlSqlParser.Column_definitionContext column : columns) {
