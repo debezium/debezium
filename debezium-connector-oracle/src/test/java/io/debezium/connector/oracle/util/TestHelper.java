@@ -49,6 +49,12 @@ import io.debezium.util.Testing;
 
 public class TestHelper {
 
+    /**
+     * Sentinel SCN value ({@code 18446744073709551615}) formerly exposed as {@code Scn.MAX}.
+     * Retained only for test assertions that need to verify current-log behavior.
+     */
+    public static final Scn SCN_MAX = Scn.valueOf("18446744073709551615");
+
     private static final String PDB_NAME = "pdb.name";
     private static final String DATABASE_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";

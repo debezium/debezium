@@ -17,6 +17,11 @@ import io.debezium.connector.oracle.Scn;
  */
 public class LogFile {
 
+    /**
+     * Sentinel SCN value used internally for current online redo logs where the next SCN is not yet known.
+     */
+    private static final Scn CURRENT_LOG_NEXT_SCN = Scn.valueOf("18446744073709551615");
+
     public enum Type {
         ARCHIVE,
         REDO
@@ -72,7 +77,7 @@ public class LogFile {
     }
 
     public Scn getNextScn() {
-        return isCurrent() ? Scn.MAX : nextScn;
+        return isCurrent() ? CURRENT_LOG_NEXT_SCN : nextScn;
     }
 
     public BigInteger getSequence() {
@@ -95,7 +100,7 @@ public class LogFile {
     }
 
     public boolean isScnInLogFileRange(Scn scn) {
-        return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || getNextScn().equals(Scn.MAX));
+        return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || isCurrent());
     }
 
     public boolean isArchive() {

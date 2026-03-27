@@ -582,7 +582,7 @@ public class LogFileCollector {
      * @return the system change number for the specified value
      */
     private Scn getScnFromString(String value) {
-        return Strings.isNullOrBlank(value) ? Scn.MAX : Scn.valueOf(value);
+        return Strings.isNullOrBlank(value) ? Scn.valueOf("18446744073709551615") : Scn.valueOf(value);
     }
 
     /**
