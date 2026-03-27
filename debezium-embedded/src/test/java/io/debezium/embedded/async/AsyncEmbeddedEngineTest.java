@@ -1268,6 +1268,42 @@ public class AsyncEmbeddedEngineTest {
         stopEngine();
     }
 
+    @Test
+    @FixFor("DBZ-4664")
+    void testOffsetsAreFlushedDuringIdlePeriod() throws Exception {
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.NoOpConnector.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "100");
+
+        final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
+        interceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.DEBUG);
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
+        engine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying((records, committer) -> {
+                })
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+        waitForTasksToStart(1);
+
+        Awaitility.await()
+                .alias("Offset flush during idle period was not triggered")
+                .pollInterval(50, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Flushing offsets during idle period."));
+
+        stopEngine();
+    }
+
     protected void stopEngine() {
         try {
             LOGGER.info("Stopping engine");
