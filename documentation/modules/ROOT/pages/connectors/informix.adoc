@@ -1617,12 +1617,13 @@ For a complete description of the data types that Informix supports, see the htt
 
 [NOTE]
 ====
-.The following data types are not supported for data capture:
+The following data types are not supported for data capture:
+
 - Simple large objects (`TEXT` and `BYTE` data types)
 - User-defined data types
 - Collection data types (`SET`, `MULTISET`, `LIST`, and `ROW` data types)
 
-For more information, see https://www.ibm.com/docs/en/informix-servers/15.0.x?topic=api-data-capture[Data for capture]
+For more information, see https://www.ibm.com/docs/en/informix-servers/15.0.x?topic=api-data-capture[Data for capture^] in the Informix documentation.
 ====
 
 The Informix connector represents changes to rows by emitting events whose structures mirror the structure of the source tables in which the change events occur.
