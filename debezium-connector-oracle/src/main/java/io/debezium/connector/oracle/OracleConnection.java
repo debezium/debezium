@@ -666,7 +666,7 @@ public class OracleConnection extends JdbcConnection {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
-                keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+                keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
         return reselectColumns(query, oracleTableId, columns, keyValues, resultConsumer);
     }
