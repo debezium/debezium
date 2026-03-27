@@ -138,7 +138,7 @@ You can find more information about snapshots in the following sections:
 
 * xref:debezium-informix-ad-hoc-snapshots[]
 * xref:debezium-informix-incremental-snapshots[]
-* xref:informix-blocking-snapshots[]
+* xref:debezium-informix-blocking-snapshots[]
 
 endif::product[]
 
@@ -425,9 +425,8 @@ The {prodname} connector for Informix does not support schema changes while an i
 ====
 
 // Type: procedure
-// ModuleID: debezium-informix-triggering-an-incremental-snapshot
 [id="informix-triggering-an-incremental-snapshot"]
-==== Triggering an incremental snapshot
+==== Triggering an Informix connector incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
@@ -439,21 +438,18 @@ include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-wi
 
 
 // Type: procedure
-// ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="informix-triggering-an-incremental-snapshot-kafka"]
-==== Using the Kafka signaling channel to trigger an incremental snapshot
+==== Using the Kafka signaling channel to trigger an Informix connector incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-informix-stopping-an-incremental-snapshot
 [id="informix-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="informix-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
@@ -466,7 +462,7 @@ include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[levelo
 endif::community[]
 
 // Type: concept
-[id="informix-blocking-snapshots"]
+[id="debezium-informix-blocking-snapshots"]
 === Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
