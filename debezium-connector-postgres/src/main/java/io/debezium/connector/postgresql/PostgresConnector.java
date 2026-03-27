@@ -64,6 +64,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
 
     @Override
     public void start(Map<String, String> props) {
+        super.start(props);
         this.props = props;
     }
 
@@ -80,7 +81,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
 
     @Override
     public ConfigDef config() {
-        return PostgresConnectorConfig.configDef();
+        return enrichConfigDef(PostgresConnectorConfig.configDef());
     }
 
     @Override

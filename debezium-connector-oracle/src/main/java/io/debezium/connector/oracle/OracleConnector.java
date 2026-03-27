@@ -44,6 +44,7 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
 
     @Override
     public void start(Map<String, String> props) {
+        super.start(props);
         this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
@@ -67,7 +68,7 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
 
     @Override
     public ConfigDef config() {
-        return OracleConnectorConfig.configDef();
+        return enrichConfigDef(OracleConnectorConfig.configDef());
     }
 
     @Override

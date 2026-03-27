@@ -44,6 +44,7 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
 
     @Override
     public void start(Map<String, String> props) {
+        super.start(props);
         this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
