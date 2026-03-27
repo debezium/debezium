@@ -42,7 +42,7 @@ public class DoclingDocument {
      */
     public static Struct doclingContent(String type, String content) {
         return new Struct(DoclingDocument.schema())
-                .put("type", type)
-                .put("content", content);
+                .put(TYPE_FIELD_NAME, type)
+                .put(CONTENT_FIELD_NAME, content);
     }
 }

@@ -48,8 +48,6 @@ import ai.docling.serve.api.convert.request.target.InBodyTarget;
 import ai.docling.serve.api.convert.response.InBodyConvertDocumentResponse;
 import ai.docling.serve.client.DoclingServeClientBuilderFactory;
 
-;
-
 /**
  * Single message transform which appends to the record <a href="https://github.com/docling-project/">Docling</a> transformation of selected {@link String} field
  * or replace entire record with Docling record.
@@ -80,7 +78,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription(
-                    "Name of the field which will be appended to the record and which would contain Docling document created from `field.source` field. Supports also nested fields. If the field is not specified, records will be replaced by record containing only Docling document.");
+                    "Name of the field which will be appended to the record and which would contain Docling document created from `field.source` field. Supports also nested fields, but the nested structure has to exists. If the field is not specified, records will be replaced by record containing only Docling document.");
 
     private static final Field SERVE_URL = Field.create("serve.url")
             .withDisplayName("URL of Docling serve API.")
@@ -215,7 +213,7 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
      */
     protected void validateUrl(String urlString) {
         if (urlString == null || urlString.isBlank()) {
-            throw new DebeziumException("Source configured as URL, but URL is empty");
+            throw new DebeziumException("URL is empty");
         }
 
         try {
