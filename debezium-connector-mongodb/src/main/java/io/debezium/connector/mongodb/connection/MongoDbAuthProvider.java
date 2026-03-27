@@ -13,7 +13,7 @@ import io.debezium.config.Configuration;
  * An interface that defines the MongoDB Authentication strategy.
  *
  */
-public interface MongoDbAuthProvider {
+public interface MongoDbAuthProvider extends AutoCloseable {
     /**
      * Initializes the provider.
      * Called on MongoDB connector initialization.
@@ -27,4 +27,14 @@ public interface MongoDbAuthProvider {
      * @return The builder with authentication configuration applied
      */
     Builder addAuthConfig(Builder builder);
+
+    /**
+     * Releases any resources held by this provider.
+     * Called when the connector task stops.
+     * Implementations that hold resources (e.g., HTTP connection pools) should override this method.
+     */
+    @Override
+    default void close() {
+        // no-op by default
+    }
 }

@@ -284,6 +284,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             if (schema != null) {
                 schema.close();
             }
+            if (connectionContext != null) {
+                try {
+                    connectionContext.close();
+                }
+                catch (Exception e) {
+                    LOGGER.warn("Failed to close connection context", e);
+                }
+            }
         }
         finally {
             previousLogContext.restore();

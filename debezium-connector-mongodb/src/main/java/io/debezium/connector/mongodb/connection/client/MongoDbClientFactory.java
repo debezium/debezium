@@ -31,7 +31,7 @@ import com.mongodb.client.MongoClients;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 
-public interface MongoDbClientFactory {
+public interface MongoDbClientFactory extends AutoCloseable {
 
     Logger LOGGER = LoggerFactory.getLogger(MongoDbClientFactory.class);
 
@@ -50,6 +50,16 @@ public interface MongoDbClientFactory {
     default MongoClient getMongoClient() {
         var clientSettings = getMongoClientSettings();
         return MongoClients.create(clientSettings);
+    }
+
+    /**
+     * Releases any resources held by this factory.
+     * Called when the connector task stops.
+     * Implementations that hold resources should override this method.
+     */
+    @Override
+    default void close() throws Exception {
+        // no-op by default
     }
 
     /**

@@ -33,6 +33,11 @@ public class DefaultMongoDbClientFactory implements MongoDbClientFactory {
         return clientSettings;
     }
 
+    @Override
+    public void close() throws Exception {
+        authProvider.close();
+    }
+
     protected MongoClientSettings createMongoClientSettings() {
         var sslContext = MongoDbClientFactory.createSSLContext(connectorConfig);
 

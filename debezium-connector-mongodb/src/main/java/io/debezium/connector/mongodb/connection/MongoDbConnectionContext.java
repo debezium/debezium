@@ -27,7 +27,7 @@ import io.debezium.connector.mongodb.connection.client.MongoDbClientFactory;
  * @author Randall Hauch
  *
  */
-public class MongoDbConnectionContext {
+public class MongoDbConnectionContext implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectionContext.class);
 
@@ -118,5 +118,10 @@ public class MongoDbConnectionContext {
             return true;
         }
         return getClusterDescription().getType() != ClusterType.REPLICA_SET;
+    }
+
+    @Override
+    public void close() throws Exception {
+        clientFactory.close();
     }
 }
