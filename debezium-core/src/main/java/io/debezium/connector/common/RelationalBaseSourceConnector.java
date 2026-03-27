@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
 
@@ -31,6 +32,13 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
 
         // Validate all the individual fields, which is easy since don't make any of the fields invisible ...
         Map<String, ConfigValue> results = validateAllFields(config);
+
+        // Add per-table snapshot select statement override properties as PASSWORD type
+        for (Field field : RelationalDatabaseConnectorConfig.getSnapshotSelectOverrideFields(connectorConfigs)) {
+            ConfigValue configValue = new ConfigValue(field.name());
+            configValue.value(connectorConfigs.get(field.name()));
+            results.put(field.name(), configValue);
+        }
 
         if (Strings.isNullOrEmpty(config.getString(RelationalDatabaseConnectorConfig.PASSWORD))) {
             LOGGER.debug("The connection password is empty");

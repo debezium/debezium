@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -774,6 +776,57 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
+
+    /**
+     * Enriches the given {@link ConfigDef} with per-table snapshot select statement override
+     * properties defined as {@link Type#PASSWORD}, since these contain user-provided SQL queries
+     * that should be treated as sensitive values.
+     *
+     * @param configDef the config definition to enrich
+     * @param connectorConfigs the raw connector configuration properties
+     */
+    public static void addSnapshotSelectOverridesToConfigDef(ConfigDef configDef, Map<String, String> connectorConfigs) {
+        String overridesValue = connectorConfigs.get(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name());
+        if (overridesValue != null && !overridesValue.trim().isEmpty()) {
+            for (String table : overridesValue.split(",")) {
+                table = table.trim();
+                if (!table.isEmpty()) {
+                    String propName = SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + "." + table;
+                    if (!configDef.names().contains(propName)) {
+                        configDef.define(propName, Type.PASSWORD, null, Importance.MEDIUM,
+                                "The select statement to use when retrieving data from " + table + " during snapshotting.");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns {@link Field} definitions for per-table snapshot select statement override
+     * properties with {@link Type#PASSWORD} type.
+     *
+     * @param connectorConfigs the raw connector configuration properties
+     * @return list of per-table override fields typed as PASSWORD
+     */
+    public static List<Field> getSnapshotSelectOverrideFields(Map<String, String> connectorConfigs) {
+        List<Field> fields = new ArrayList<>();
+        String overridesValue = connectorConfigs.get(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name());
+        if (overridesValue != null && !overridesValue.trim().isEmpty()) {
+            for (String table : overridesValue.split(",")) {
+                table = table.trim();
+                if (!table.isEmpty()) {
+                    fields.add(Field.create(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + "." + table)
+                            .withDisplayName("Snapshot select statement override for " + table)
+                            .withType(Type.PASSWORD)
+                            .withWidth(Width.LONG)
+                            .withImportance(Importance.MEDIUM)
+                            .withDescription(
+                                    "The select statement to use when retrieving data from " + table + " during snapshotting."));
+                }
+            }
+        }
+        return fields;
     }
 
     @Override
