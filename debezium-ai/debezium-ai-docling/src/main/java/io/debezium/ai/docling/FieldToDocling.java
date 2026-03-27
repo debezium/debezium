@@ -31,6 +31,7 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -57,7 +58,7 @@ import ai.docling.serve.client.DoclingServeClientBuilderFactory;
  *
  * @author vjuranek
  */
-public class FieldToDocling<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class FieldToDocling<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldToDocling.class);
 
@@ -194,6 +195,11 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return ALL_FIELDS;
     }
 
     protected void validateConfiguration() {
