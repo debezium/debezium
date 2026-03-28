@@ -1,0 +1,32 @@
+name: "Build Debezium Core modules"
+description: "Builds the Debezium Core modules (connect-plugins, connector-common, config, util)"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+  
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: Build Debezium Core modules
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl :debezium-config,:debezium-util,:debezium-connector-common,:debezium-connect-plugins -am
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
