@@ -138,7 +138,7 @@ You can find more information about snapshots in the following sections:
 
 * xref:debezium-informix-ad-hoc-snapshots[]
 * xref:debezium-informix-incremental-snapshots[]
-* xref:debezium-informix-blocking-snapshots[]
+* xref:informix-blocking-snapshots[]
 
 endif::product[]
 
@@ -462,7 +462,7 @@ include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[levelo
 endif::community[]
 
 // Type: concept
-[id="debezium-informix-blocking-snapshots"]
+[id="informix-blocking-snapshots"]
 === Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
@@ -1114,6 +1114,7 @@ The payload of each event value varies according to the event type:
 * <<informix-update-events,_update_ events>>
 * <<informix-delete-events,_delete_ events>>
 
+// Type: concept
 [[informix-create-events]]
 === _create_ events
 
@@ -1385,7 +1386,7 @@ The timestamp (in microseconds since the Unix epoch) when the connector processe
 `payload.ts_ns`:::
 The timestamp (in nanoseconds since the Unix epoch) when the connector processed the event.
 
-// Type: continue
+// Type: concept
 [[informix-update-events]]
 === _update_ events
 
