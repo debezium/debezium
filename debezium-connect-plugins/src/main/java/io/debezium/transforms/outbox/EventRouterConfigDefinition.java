@@ -133,6 +133,41 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public enum AdditionalFieldMissingBehavior implements EnumeratedValue {
+        ERROR("error"),
+        IGNORE("ignore");
+
+        private final String value;
+
+        AdditionalFieldMissingBehavior(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static AdditionalFieldMissingBehavior parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (AdditionalFieldMissingBehavior option : AdditionalFieldMissingBehavior.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     public static class AdditionalField {
         private final AdditionalFieldPlacement placement;
         private final String field;
@@ -216,14 +251,14 @@ public class EventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias,field_name:partition</code> ");
 
-    public static final Field FIELDS_ADDITIONAL_ERROR_ON_MISSING = Field.create("table.fields.additional.error.on.missing")
-            .withDisplayName("Should the transform error if an additional field is missing in the change data")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(true)
+    public static final Field FIELDS_ADDITIONAL_MISSING = Field.create("table.field.additional.missing")
+            .withDisplayName("Behavior when an additional field is missing in the change data")
+            .withEnum(AdditionalFieldMissingBehavior.class, AdditionalFieldMissingBehavior.ERROR)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("When transforming the 'table.fields.additional.placement' fields, should the transform throw" +
-                    " an exception if one of the fields is missing in the change data");
+            .withDescription("When transforming the 'table.fields.additional.placement' fields, defines the behavior" +
+                    " when one of the configured fields is missing in the change data." +
+                    " 'error' (default) will throw an exception; 'ignore' will silently skip the missing field.");
 
     public static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
@@ -294,7 +329,7 @@ public class EventRouterConfigDefinition {
             FIELD_PAYLOAD,
             FIELD_EVENT_TIMESTAMP,
             FIELDS_ADDITIONAL_PLACEMENT,
-            FIELDS_ADDITIONAL_ERROR_ON_MISSING,
+            FIELDS_ADDITIONAL_MISSING,
             FIELD_SCHEMA_VERSION,
             ROUTE_BY_FIELD,
             ROUTE_TOPIC_REGEX,
@@ -319,7 +354,7 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELDS_ADDITIONAL_ERROR_ON_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
+                FIELDS_ADDITIONAL_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
         Field.group(
                 config,
                 "Router",
