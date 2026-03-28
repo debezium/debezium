@@ -314,9 +314,21 @@ jobs:
   ## Please define callable workflows here in alphabetical connector name order.
   ########################################################################################
 
+  build_core:
+    name: "Core Components Testing"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-core
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          only-build: ${{ needs.file_changes.outputs.common-changed != 'true' }}
+
   build_cassandra:
     name: Cassandra
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -341,7 +353,7 @@ jobs:
 
   build_db2:
     name: Db2
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -366,7 +378,7 @@ jobs:
 
   build_ingres:
     name: Ingres
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true'}}
     steps:
@@ -391,7 +403,7 @@ jobs:
 
   build_ibmi:
     name: IBMi
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -416,7 +428,7 @@ jobs:
 
   build_informix:
     name: Informix
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-informix-workflow.yml
     with:
@@ -426,7 +438,7 @@ jobs:
 
   build_jdbc:
     name: JDBC
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.db2-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-jdbc-workflow.yml
     with:
@@ -434,7 +446,7 @@ jobs:
 
   build_mariadb:
     name: MariaDB
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mariadb-workflow.yml
     with:
@@ -442,7 +454,7 @@ jobs:
 
   build_mongodb:
     name: MongoDB
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     uses: ./.github/workflows/connector-mongodb-workflow.yml
     with:
@@ -450,7 +462,7 @@ jobs:
 
   build_mysql:
     name: MySQL
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mysql-workflow.yml
     with:
@@ -458,7 +470,7 @@ jobs:
 
   build_oracle:
     name: Oracle
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-oracle-workflow.yml
     with:
@@ -466,7 +478,7 @@ jobs:
 
   build_postgresql:
     name: PostgreSQL
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     uses: ./.github/workflows/connector-postgresql-workflow.yml
     with:
@@ -474,7 +486,7 @@ jobs:
 
   build_sqlserver:
     name: SQL Server
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
@@ -486,7 +498,7 @@ jobs:
 
   build_spanner:
     name: Spanner
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -511,7 +523,7 @@ jobs:
 
   build_vitess:
     name: Vitess
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -536,7 +548,7 @@ jobs:
 
   build_cockroachdb:
     name: CockroachDB
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
