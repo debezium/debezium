@@ -1225,7 +1225,7 @@ public class EventRouterTest {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:alias");
-        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_ERROR_ON_MISSING.name(), "false");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING.name(), EventRouterConfigDefinition.AdditionalFieldMissingBehavior.IGNORE.getValue());
         router.configure(config);
 
         final SourceRecord eventRecord = createEventRecord();
@@ -1242,7 +1242,7 @@ public class EventRouterTest {
             final EventRouter<SourceRecord> router = new EventRouter<>();
             final Map<String, String> config = new HashMap<>();
             config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:alias");
-            // error.on.missing is true by default
+            // 'error' is the default for collection.field.additional.missing
             router.configure(config);
 
             final SourceRecord eventRecord = createEventRecord();
