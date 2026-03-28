@@ -1230,21 +1230,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final EngineSourceTask task;
         final RecordProcessor processor;
         final AtomicReference<State> engineState;
-        private final OffsetCommitPolicy offsetCommitPolicy;
-        private final OffsetStorageWriter offsetWriter;
-        private final io.debezium.util.Clock clock;
-        private final long commitTimeout;
-        private long timeOfLastCommitMillis = 0;
+        private final SourceRecordCommitter committer;
 
         PollRecords(final EngineSourceTask task, final RecordProcessor processor, final AtomicReference<State> engineState) {
             super(Configuration.from(task.context().config()).getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES));
             this.task = task;
             this.processor = processor;
             this.engineState = engineState;
-            this.offsetCommitPolicy = task.context().offsetCommitPolicy();
-            this.offsetWriter = task.context().offsetStorageWriter();
-            this.clock = task.context().clock();
-            this.commitTimeout = Configuration.from(task.context().config()).getLong(EmbeddedEngineConfig.OFFSET_COMMIT_TIMEOUT_MS);
+            this.committer = new SourceRecordCommitter(task);
         }
 
         @Override
@@ -1264,18 +1257,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 }
                 else {
                     LOGGER.trace("No records.");
-                    final Duration durationSinceLastCommit = Duration.ofMillis(clock.currentTimeInMillis() - timeOfLastCommitMillis);
-                    if (offsetCommitPolicy.performCommit(0, durationSinceLastCommit)) {
-                        LOGGER.debug("Flushing offsets during idle period.");
-                        try {
-                            if (commitOffsets(offsetWriter, clock, commitTimeout, task.connectTask())) {
-                                timeOfLastCommitMillis = clock.currentTimeInMillis();
-                            }
-                        }
-                        catch (TimeoutException e) {
-                            throw new DebeziumException("Timed out while waiting for committing task offset during idle period", e);
-                        }
-                    }
+                    LOGGER.debug("Flushing offsets during idle period.");
+                    committer.markBatchFinished();
                 }
             }
             return null;
