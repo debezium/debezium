@@ -43,6 +43,7 @@ import io.debezium.time.Timestamp;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldMissingBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldPlacement;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperationBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
@@ -77,7 +78,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private boolean routeTombstoneOnEmptyPayload;
 
     private List<AdditionalField> additionalFields;
-    private boolean additionalFieldsErrorOnMissing;
+    private AdditionalFieldMissingBehavior additionalFieldsMissingBehavior;
 
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
     private BoundedConcurrentHashMap<Schema, Schema> payloadSchemaCache;
@@ -189,7 +190,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         AtomicReference<Integer> partition = new AtomicReference<>();
 
         additionalFields.forEach((additionalField -> {
-            if (!additionalFieldsErrorOnMissing && eventStruct.schema().field(additionalField.getField()) == null) {
+            if (additionalFieldsMissingBehavior == AdditionalFieldMissingBehavior.IGNORE
+                    && eventStruct.schema().field(additionalField.getField()) == null) {
                 return;
             }
             switch (additionalField.getPlacement()) {
@@ -377,7 +379,11 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         afterExtractor = ConnectRecordUtil.extractAfterDelegate();
 
         additionalFields = parseAdditionalFieldsConfig(config);
-        additionalFieldsErrorOnMissing = config.getBoolean(EventRouterConfigDefinition.FIELDS_ADDITIONAL_ERROR_ON_MISSING);
+        additionalFieldsMissingBehavior = AdditionalFieldMissingBehavior.parse(
+                config.getString(EventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING));
+        if (additionalFieldsMissingBehavior == null) {
+            additionalFieldsMissingBehavior = AdditionalFieldMissingBehavior.ERROR;
+        }
 
         onlyHeadersInOutputMessage = additionalFields.stream().noneMatch(field -> field.getPlacement() == AdditionalFieldPlacement.ENVELOPE);
 
@@ -416,7 +422,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             if (additionalField.getPlacement() == AdditionalFieldPlacement.ENVELOPE) {
                 Field field = debeziumEventSchema.field(additionalField.getField());
                 if (field == null) {
-                    if (additionalFieldsErrorOnMissing) {
+                    if (additionalFieldsMissingBehavior == AdditionalFieldMissingBehavior.ERROR) {
                         throw new ConnectException("Unable to find field %s in event".formatted(additionalField.getField()));
                     }
                     return;

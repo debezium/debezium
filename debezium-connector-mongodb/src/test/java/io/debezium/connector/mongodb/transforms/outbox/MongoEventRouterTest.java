@@ -1103,4 +1103,36 @@ public class MongoEventRouterTest {
 
     }
 
+    @Test
+    public void canSetFieldIntoTheEnvelopeWithAliasWithMissingField() {
+        final Map<String, String> config = new HashMap<>();
+        config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:aggregateType");
+        config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING.name(), EventRouterConfigDefinition.AdditionalFieldMissingBehavior.IGNORE.getValue());
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord();
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        try {
+            ((Struct) eventRouted.value()).get("aggregateType");
+            Assertions.fail("A DataException should be thrown");
+        }
+        catch (org.apache.kafka.connect.errors.DataException e) {
+            // expected
+        }
+    }
+
+    @Test
+    public void shouldFailOnMissingField() {
+        assertThrows(org.apache.kafka.connect.errors.ConnectException.class, () -> {
+            final Map<String, String> config = new HashMap<>();
+            config.put(MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:aggregateType");
+            // 'error' is the default for collection.field.additional.missing
+            router.configure(config);
+
+            final SourceRecord eventRecord = createEventRecord();
+            router.apply(eventRecord);
+        });
+    }
+
 }

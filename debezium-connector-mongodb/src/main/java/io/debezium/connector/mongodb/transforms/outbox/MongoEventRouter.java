@@ -315,6 +315,10 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name());
 
         fieldNameConverter.put(
+                MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING.name(),
+                EventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING.name());
+
+        fieldNameConverter.put(
                 MongoEventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name(),
                 EventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name());
 
