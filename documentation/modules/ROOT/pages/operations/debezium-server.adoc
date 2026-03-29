@@ -15,7 +15,7 @@ Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Amazon SNS, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
@@ -708,6 +708,226 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 
 |===
+
+
+==== Amazon SNS
+
+https://aws.amazon.com/sns/[Amazon Simple Notification Service (SNS)] is a managed pub/sub messaging system with support for standard and FIFO topics, fan-out delivery to multiple subscribers, and message filtering.
+SNS exposes a set of REST APIs and provides a Java SDK that is used to implement the sink.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[sns-type]]<<sns-type, `debezium.sink.type`>>
+|
+|Must be set to `sns`.
+
+|[[sns-region]]<<sns-region, `debezium.sink.sns.region`>>
+|
+|The AWS region in which the SNS topics are provisioned (e.g. `us-east-1`, `eu-central-1`).
+
+|[[sns-endpoint]]<<sns-endpoint, `debezium.sink.sns.endpoint`>>
+|_endpoint determined by AWS SDK_
+|(Optional) A custom endpoint URL for the SNS service.
+Useful for local development with tools such as https://localstack.cloud/[LocalStack] (e.g. `\http://localhost:4566`).
+
+|[[sns-credentials-profile]]<<sns-credentials-profile, `debezium.sink.sns.credentials.profile`>>
+|
+|(Optional) A credentials profile name used to communicate with the AWS API through the https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-profiles.html[default credential profiles file].
+If not present, the https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html[default credentials provider chain] is used.
+The chain looks for credentials in the following order: environment variables, Java system properties, web identity token credentials, default credential profiles file, Amazon ECS container credentials, and instance profile credentials.
+
+|[[sns-topic-arn]]<<sns-topic-arn, `debezium.sink.sns.topic.arn`>>
+|
+|(Optional) The default SNS topic ARN to which all messages are published when the resolved destination is neither a full ARN nor combined with a prefix.
+If this property is set and no prefix is configured, all events are sent to this single topic.
+
+|[[sns-topic-arn-prefix]]<<sns-topic-arn-prefix, `debezium.sink.sns.topic.arn.prefix`>>
+|
+|(Optional) A prefix prepended to the mapped destination name to compose a full topic ARN.
+For example, if the prefix is `arn:aws:sns:us-east-1:123456789012:` and the destination is `my-topic`, the resulting ARN is `arn:aws:sns:us-east-1:123456789012:my-topic`.
+This is useful to route change events to different SNS topics based on the event's destination name.
+
+|[[sns-default-retries]]<<sns-default-retries, `debezium.sink.sns.default.retries`>>
+|`5`
+|The maximum number of retry attempts when publishing a batch of messages fails (either partially or completely).
+Failed entries within a batch are retried individually until all entries succeed or the retry limit is reached.
+
+|[[sns-fifo-message-group-id-header]]<<sns-fifo-message-group-id-header, `debezium.sink.sns.fifo.message.group.id.header`>>
+|`aggregateId`
+|(Optional) The name of the Kafka Connect record header from which the `MessageGroupId` is extracted for FIFO topics.
+If the header is not present in the record, the event key is used.
+If the event key is also `null`, the value of `debezium.sink.sns.fifo.default.group.id` is used.
+This property is only relevant for FIFO topics (topic ARN ending in `.fifo`).
+
+|[[sns-fifo-message-dedup-id-header]]<<sns-fifo-message-dedup-id-header, `debezium.sink.sns.fifo.message.dedup.id.header`>>
+|
+|(Optional) The name of the Kafka Connect record header from which the `MessageDeduplicationId` is extracted for FIFO topics.
+If not configured or the header is absent, no deduplication ID is set and SNS relies on content-based deduplication (if enabled on the topic).
+This property is only relevant for FIFO topics.
+
+|[[sns-fifo-default-group-id]]<<sns-fifo-default-group-id, `debezium.sink.sns.fifo.default.group.id`>>
+|`default`
+|(Optional) The fallback `MessageGroupId` used for FIFO topics when neither the configured header nor the event key provides a value.
+
+|===
+
+===== Topic ARN resolution
+
+The SNS sink resolves the target topic ARN for each event using the following strategy:
+
+First, the destination name is determined.
+By default it is derived from the source topic (e.g. `myapp-inventory-products`).
+When using the xref:transformations/outbox-event-router.adoc[Outbox Event Router], the destination name is the value of the `aggregatetype` column (e.g. `user`, `notification`).
+
+Then, the ARN is resolved from the destination name using the first matching rule:
+
+1. If the destination name starts with `arn:`, it is treated as a full ARN and used directly.
+2. If `debezium.sink.sns.topic.arn.prefix` is configured, the ARN is composed as `prefix + destination name`.
+3. If a `debezium.sink.sns.topic.arn` default is configured, that ARN is used.
+4. Otherwise, the destination name is used as-is.
+
+This allows flexible routing strategies, from publishing all events to a single topic, to dynamically routing to per-table topics using a prefix.
+If you need more advanced topic name mapping, you can provide a custom implementation via the injection points described below.
+
+===== FIFO topics
+
+SNS https://docs.aws.amazon.com/sns/latest/dg/sns-fifo-topics.html[FIFO topics] guarantee strict message ordering and exactly-once delivery.
+The SNS sink automatically detects FIFO topics when the resolved topic ARN ends with `.fifo` and populates the required `MessageGroupId` field.
+
+For ordering, the `MessageGroupId` is resolved with the following precedence:
+
+1. The value of the header specified by `debezium.sink.sns.fifo.message.group.id.header` (defaults to `aggregateId`).
+2. The event key.
+3. The value of `debezium.sink.sns.fifo.default.group.id` (defaults to `default`).
+
+For deduplication, if `debezium.sink.sns.fifo.message.dedup.id.header` is configured and the corresponding header is present, its value is used as the `MessageDeduplicationId`.
+Otherwise, SNS relies on https://docs.aws.amazon.com/sns/latest/dg/fifo-message-dedup.html[content-based deduplication] (which must be enabled on the topic).
+
+===== Batching
+
+The SNS sink groups events by destination topic ARN and publishes them using the https://docs.aws.amazon.com/sns/latest/api/API_PublishBatch.html[SNS PublishBatch API] in batches of up to 10 messages (the SNS API limit).
+Each individual message must not exceed 256 KB; the sink validates the payload size before publishing and raises an error if the limit is exceeded.
+
+===== Injection points
+
+The SNS sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[sns-ext-client]]<<sns-ext-client, `software.amazon.awssdk.services.sns.SnsClient`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `SnsClient` used to publish messages to target topics.
+
+|[[sns-ext-stream-name-mapper]]<<sns-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical SNS topic name or ARN.
+By default the same name is used.
+
+|===
+
+===== Configuration examples
+
+====== Standard topic with a fixed ARN
+
+All change events are published to a single standard SNS topic:
+
+[source,properties]
+----
+debezium.sink.type=sns
+debezium.sink.sns.region=us-east-1
+debezium.sink.sns.topic.arn=arn:aws:sns:us-east-1:123456789012:my-cdc-events
+----
+
+====== Per-table topics using a prefix
+
+Each source table receives its own SNS topic.
+The topic ARN is composed from the prefix and the destination name:
+
+[source,properties]
+----
+debezium.sink.type=sns
+debezium.sink.sns.region=eu-central-1
+debezium.sink.sns.topic.arn.prefix=arn:aws:sns:eu-central-1:123456789012:
+----
+
+NOTE: SNS topic names do not support dots (`.`).
+Use the xref:transformations/topic-routing.adoc[Topic Routing] transformation to replace dots with hyphens (or another valid character) before the destination name is resolved to an ARN.
+For example, with a transformation that replaces `.` with `-`, a change event from the table `inventory.products` (with topic prefix `myapp`) is published to `arn:aws:sns:eu-central-1:123456789012:myapp-inventory-products`.
+
+====== FIFO topic
+
+[source,properties]
+----
+debezium.sink.type=sns
+debezium.sink.sns.region=us-east-1
+debezium.sink.sns.topic.arn=arn:aws:sns:us-east-1:123456789012:my-topic.fifo
+debezium.sink.sns.fifo.message.group.id.header=aggregateId
+debezium.sink.sns.fifo.message.dedup.id.header=eventId
+debezium.sink.sns.fifo.default.group.id=default-group
+----
+
+====== Local development with LocalStack
+
+[source,properties]
+----
+debezium.sink.type=sns
+debezium.sink.sns.region=us-east-1
+debezium.sink.sns.endpoint=http://localhost:4566
+debezium.sink.sns.topic.arn=arn:aws:sns:us-east-1:000000000000:my-topic
+----
+
+====== Full example with MySQL source and Outbox Event Router
+
+This example configures {prodname} Server to capture changes from a MySQL outbox table and publish them to SNS.
+The Outbox Event Router transforms the outbox records and routes each event to the appropriate topic based on the `aggregatetype` column value.
+
+[source,properties]
+----
+# Sink
+debezium.sink.type=sns
+debezium.sink.sns.region=us-east-1
+debezium.sink.sns.topic.arn.prefix=arn:aws:sns:us-east-1:123456789012:
+debezium.sink.sns.default.retries=3
+
+# Source connector - MySQL
+debezium.source.connector.class=io.debezium.connector.mysql.MySqlConnector
+debezium.source.topic.prefix=myapp
+debezium.source.database.hostname=localhost
+debezium.source.database.port=3306
+debezium.source.database.user=debezium
+debezium.source.database.password=dbz
+debezium.source.database.server.id=12345
+debezium.source.database.include.list=mydb
+debezium.source.table.include.list=mydb.outbox
+debezium.source.tombstones.on.delete=false
+debezium.source.snapshot.mode=initial
+
+# Outbox Event Router
+debezium.transforms=outbox
+debezium.transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+debezium.transforms.outbox.route.topic.replacement=$${routedByValue}
+debezium.transforms.outbox.table.fields.additional.placement=type:header:eventType,id:header:eventId,aggregateid:header:aggregateId
+
+# Serialization
+key.converter.schemas.enable=false
+value.converter.schemas.enable=false
+headers.converter.schemas.enable=false
+
+# Offset & Schema History - File-based storage
+debezium.source.offset.storage=org.apache.kafka.connect.storage.FileOffsetBackingStore
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory
+debezium.source.schema.history.internal.file.filename=data/schema-history.dat
+----
 
 
 ==== Google Cloud Pub/Sub
