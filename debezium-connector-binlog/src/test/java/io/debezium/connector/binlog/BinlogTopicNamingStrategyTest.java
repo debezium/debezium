@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static io.debezium.config.CommonConnectorConfig.MULTI_PARTITION_MODE;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_NAME;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_TRANSACTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -110,6 +111,58 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
+    void testHeartbeatTopicWithExplicitName() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("shared-heartbeat");
+    }
+
+    @Test
+    void testHeartbeatTopicNameOverridesPrefixBehavior() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.prefix", "custom-hb-prefix");
+        props.put("topic.heartbeat.name", "my-shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("my-shared-heartbeat");
+    }
+
+    @Test
+    void testHeartbeatTopicFallsBackWhenNameIsEmpty() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-1";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    void testHeartbeatTopicFallsBackWhenNameNotSet() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-2");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-2";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    void testHeartbeatTopicNameReconfigure() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("shared-heartbeat");
+
+        props.remove("topic.heartbeat.name");
+        strategy.configure(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-1";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
     void testLogicTableTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180_01");
         final String logicalName = "mysql-server-1";
@@ -143,6 +196,10 @@ public class BinlogTopicNamingStrategyTest {
         config = Configuration.create().with(TOPIC_TRANSACTION, "*transaction*").build();
         errorList = config.validate(Field.setOf(TOPIC_TRANSACTION)).get(TOPIC_TRANSACTION.name()).errorMessages();
         assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_TRANSACTION, "*transaction*" + errorMessageSuffix));
+
+        config = Configuration.create().with(TOPIC_HEARTBEAT_NAME, "invalid@topic!name").build();
+        errorList = config.validate(Field.setOf(TOPIC_HEARTBEAT_NAME)).get(TOPIC_HEARTBEAT_NAME.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_HEARTBEAT_NAME, "invalid@topic!name" + errorMessageSuffix));
     }
 
     @Test

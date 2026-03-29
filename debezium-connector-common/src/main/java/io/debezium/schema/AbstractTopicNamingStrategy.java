@@ -18,6 +18,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.config.Field.ValidationOutput;
 import io.debezium.spi.common.ReplacementFunction;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -63,6 +64,16 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withDescription("Specify the heartbeat topic name. Defaults to " +
                     DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".${topic.prefix}");
 
+    public static final Field TOPIC_HEARTBEAT_NAME = Field.create("topic.heartbeat.name")
+            .withDisplayName("Full name of heartbeat topic")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(AbstractTopicNamingStrategy::validateHeartbeatTopicName)
+            .withDescription("Specify the full heartbeat topic name. When set, this overrides the default " +
+                    "heartbeat topic naming of ${topic.heartbeat.prefix}.${topic.prefix}, allowing multiple " +
+                    "connectors to share the same heartbeat topic.");
+
     public static final Field TOPIC_TRANSACTION = Field.create("topic.transaction")
             .withDisplayName("Transaction topic name")
             .withType(ConfigDef.Type.STRING)
@@ -80,6 +91,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
     protected String prefix;
     protected String transaction;
     protected String heartbeatPrefix;
+    protected String heartbeatTopicName;
     protected boolean multiPartitionMode;
     protected ReplacementFunction replacement;
 
@@ -95,7 +107,8 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
                 TOPIC_DELIMITER,
                 TOPIC_CACHE_SIZE,
                 TOPIC_TRANSACTION,
-                TOPIC_HEARTBEAT_PREFIX);
+                TOPIC_HEARTBEAT_PREFIX,
+                TOPIC_HEARTBEAT_NAME);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -107,6 +120,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
                 BoundedConcurrentHashMap.Eviction.LRU);
         delimiter = config.getString(TOPIC_DELIMITER);
         heartbeatPrefix = config.getString(TOPIC_HEARTBEAT_PREFIX);
+        heartbeatTopicName = config.getString(TOPIC_HEARTBEAT_NAME);
         transaction = config.getString(TOPIC_TRANSACTION);
         prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         assert prefix != null;
@@ -126,6 +140,9 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
 
     @Override
     public String heartbeatTopic() {
+        if (!Strings.isNullOrEmpty(heartbeatTopicName)) {
+            return heartbeatTopicName;
+        }
         return String.join(delimiter, heartbeatPrefix, prefix);
     }
 
@@ -173,6 +190,14 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
         else {
             return topicName;
         }
+    }
+
+    public static int validateHeartbeatTopicName(Configuration config, Field field, ValidationOutput problems) {
+        String name = config.getString(field);
+        if (Strings.isNullOrEmpty(name)) {
+            return 0;
+        }
+        return CommonConnectorConfig.validateTopicName(config, field, problems);
     }
 
     protected boolean isValidCharacter(char c) {

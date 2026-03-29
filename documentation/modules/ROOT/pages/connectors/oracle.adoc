@@ -4763,7 +4763,19 @@ Set this option to prevent rapid growth of the signaling data collection.
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`. +
+ +
+This property is ignored if `topic.heartbeat.name` is set.
+
+|[[oracle-property-topic-heartbeat-name]]<<oracle-property-topic-heartbeat-name, `+topic.heartbeat.name+`>>
+|_empty_
+|Specifies an explicit, full name for the topic to which the connector sends heartbeat messages, overriding the prefix-based naming derived from `topic.heartbeat.prefix` and `topic.prefix`. +
+ +
+When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`. This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. +
+ +
+For example, setting this to `debezium-heartbeat` routes all heartbeat messages to a topic named `debezium-heartbeat`. +
+ +
+If this property is empty or unset, the connector falls back to the default behavior: _topic.heartbeat.prefix_._topic.prefix_.
 
 |[[oracle-property-topic-transaction]]<<oracle-property-topic-transaction, `topic.transaction`>>
 |`transaction`
