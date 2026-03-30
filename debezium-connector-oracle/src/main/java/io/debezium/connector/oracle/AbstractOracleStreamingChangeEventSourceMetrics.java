@@ -126,4 +126,16 @@ public abstract class AbstractOracleStreamingChangeEventSourceMetrics
         committedTransactionCount.incrementAndGet();
     }
 
+    @Override
+    public String toString() {
+        return "AbstractOracleStreamingChangeEventSourceMetrics{" +
+                "schemaChangeParseErrorCount=" + schemaChangeParseErrorCount +
+                ", committedTransactionCount=" + committedTransactionCount +
+                ", lastCapturedDmlCount=" + lastCapturedDmlCount +
+                ", maxCapturedDmlCount=" + maxCapturedDmlCount +
+                ", totalCapturedDmlCount=" + totalCapturedDmlCount +
+                ", warningCount=" + warningCount +
+                ", errorCount=" + errorCount +
+                "}";
+    }
 }
