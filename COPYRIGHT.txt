@@ -63,12 +63,14 @@ Anton Kondratev
 Anton Martynov
 Anton Repin
 Aravind Pedapudi
+Aravind Gm
 Archie David
 Arik Cohen
 Aristofanis Lekkos
 Arkoprabho Chakraborti
 artiship
 Arthur Le Ray
+Artur Albov
 Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
@@ -99,6 +101,7 @@ Bhagyashree Goyal
 Bhumika Bayani
 Biel Garau Estarellas
 Bin Li
+Binayak Das
 Bingqin Zhou
 Björn Häuser
 Blake Peno
@@ -111,6 +114,7 @@ Brandon Brown
 Brandon Maguire
 Brennan Vincent
 Breno Moreira
+Brian Hughes
 Bue Von Hun
 Byron Ruth
 Camile Sing
@@ -362,6 +366,7 @@ Jure Kajzer
 Justin Hiza
 Kanha Gupta
 Kanthi Subramanian
+Kartik Angiras
 Katerina Galieva
 Katsumi Miyajima
 Kaushik Iyer
@@ -373,6 +378,7 @@ Keri Harris
 Kevin Pullin
 Kevin Rothenberger
 Kewei Shang
+Kodukulla Mohnish Mythreya
 Kosta Kostelnik
 Krizhan Mariampillai
 Krzysztof Grzechnik
@@ -562,6 +568,7 @@ Sagar Rao
 Sahan Dilshan
 Sahap Asci
 Sreedev R
+Sujal Shrestha
 Sumit Jha
 Sylvain Marty
 René Kerner
@@ -581,6 +588,7 @@ Sage Pierce
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
+Sarthak Sonagara
 Satyajit Vegesna
 Saulius Valatka
 Sayed Mohammad Hossein Torabi
@@ -617,6 +625,7 @@ Shushant Kumar
 Shyama Praveena S
 SiuFay
 Siddhant Agnihotry
+Siddhant Chaturvedi
 Stanislav Deviatov
 Stanley Shyiko
 Stathis Souris
@@ -653,6 +662,7 @@ Timo Wilhelm
 Tin Nguyen
 Tom Bentley
 Tom Billiet
+Tom Flenner
 Tom Sharp
 Tomasz Gawęda
 Tim Patterson
@@ -716,6 +726,7 @@ Yoann Rodière
 Yohei Yoshimuta
 Yossi Shirizli
 Yuan Zhang
+Yuang Li
 Yue Wang
 Yuiham Chan
 Yuriy Vikulov
@@ -783,3 +794,7 @@ Pierre-Yves Péton
 Jiang Zhu
 William Xiang
 Shiwanming
+Divyansh Agrawal
+Divyanshu Kumar
+Zahid Iqbal
+Rajender Passi

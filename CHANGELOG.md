@@ -2,6 +2,36 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.4.3.Final
+March 30th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+stable-iteration%3A3.4.3.Final)
+
+### New features since 3.4.2.Final
+
+* When restarting connector, minimize number of initial logs read [DBZ-7791] [debezium/dbz#1279](https://github.com/debezium/dbz/issues/1279)
+
+
+### Breaking changes since 3.4.2.Final
+
+None
+
+
+### Fixes since 3.4.2.Final
+
+* XMLType using non-Binary storage throws parser failure [DBZ-9228] [debezium/dbz#1373](https://github.com/debezium/dbz/issues/1373)
+* High number of log switches noticed after Debezium upgrade from 1.9 to 3.4.1 [debezium/dbz#1675](https://github.com/debezium/dbz/issues/1675)
+* Unable to parse DML for CDC after initial snapshot on a table with ROW ARCHIVAL enabled [debezium/dbz#1676](https://github.com/debezium/dbz/issues/1676)
+* PgOutputMessageDecoder corrupts multi-byte UTF-8 table/column names during CDC streaming [debezium/dbz#1682](https://github.com/debezium/dbz/issues/1682)
+* Exception ORA-00310 with RAC and archive log only mode [DBZ-6013] [debezium/dbz#745](https://github.com/debezium/dbz/issues/745)
+* Informix connector DELETE does not unwatch properly [debezium/dbz#1704](https://github.com/debezium/dbz/issues/1704)
+
+
+### Other changes since 3.4.2.Final
+
+* XStream user reports insufficient privileges during snapshot for table locks [debezium/dbz#1733](https://github.com/debezium/dbz/issues/1733)
+* Improve CI / Jenkins Pipeline for Oracle 23 & 26 [debezium/dbz#1665](https://github.com/debezium/dbz/issues/1665)
+
+
+
 ## 3.4.2.Final
 March 2nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.4.2.Final)
 
