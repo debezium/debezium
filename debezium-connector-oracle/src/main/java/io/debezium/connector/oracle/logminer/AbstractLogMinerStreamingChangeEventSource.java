@@ -520,7 +520,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @param event the event, should not be {@code null}
      */
     protected void handleMissingScnEvent(LogMinerEventRow event) {
-        Loggings.logWarningAndTraceRecord(LOGGER, event, "Event with `MISSING_SCN` operation found with SCN {}", event.getScn());
+        Loggings.logWarningAndTraceRecord(
+                LOGGER,
+                event,
+                "Event with `MISSING_SCN` operation found with SCN {} in transaction {}",
+                event.getScn(),
+                event.getTransactionId());
     }
 
     /**

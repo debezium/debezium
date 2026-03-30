@@ -843,7 +843,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
                 ", lastMiningSessionScnRange=" + miningSessionScnRange.get() +
                 ", lastMiningFetchScnRange=" + miningFetchScnRange.get() +
-                "} ";
+                "} " + super.toString();
     }
 
     private Instant getAdjustedChangeTime(Instant changeTime) {
