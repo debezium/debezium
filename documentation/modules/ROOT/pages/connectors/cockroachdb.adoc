@@ -750,12 +750,22 @@ Before deploying the {prodname} CockroachDB connector, verify the following prer
 * **CockroachDB**: The connector requires CockroachDB with support for sink-based changefeeds.
 All changefeed features are available in all CockroachDB editions without an enterprise license.
 
-* **Changefeed permissions**: The database user configured for the connector must have the `CHANGEFEED` privilege on the target tables (CockroachDB v22.2+), or be an `admin` user.
+* **Changefeed permissions**: The database user configured for the connector must have one of the following:
+** The `CHANGEFEED` privilege on the target tables (CockroachDB v22.2+)
+** The `ALL` privilege on the target tables
+** Membership in the `admin` role
++
+Additionally, grant `VIEWCLUSTERSETTING` so the connector can verify that `kv.rangefeed.enabled` is set to `true` (a prerequisite for changefeeds).
+CockroachDB validates changefeed privileges at `CREATE CHANGEFEED` time and returns accurate, version-specific error messages if the user lacks sufficient permissions.
 +
 [source,sql]
 ----
+-- Enable rangefeeds (required cluster-wide setting)
+SET CLUSTER SETTING kv.rangefeed.enabled = true;
+
 -- Grant changefeed privilege to a specific user
 GRANT CHANGEFEED ON TABLE orders TO myuser;
+GRANT VIEWCLUSTERSETTING TO myuser;
 
 -- Or grant on all tables in a database
 GRANT CHANGEFEED ON ALL TABLES IN DATABASE defaultdb TO myuser;
@@ -1025,11 +1035,6 @@ The actual delay is multiplied by the attempt number (linear backoff).
 |`5`
 |Timeout in seconds for validating that an existing JDBC connection is still usable.
 
-|[[cockroachdb-property-skip-permission-check]]<<cockroachdb-property-skip-permission-check, `+cockroachdb.skip.permission.check+`>>
-|`false`
-|Whether to skip the changefeed permission validation during connection.
-Set to `true` when the user is a superadmin or permissions are managed externally.
-
 |===
 
 [id="cockroachdb-changefeed-configuration-properties"]
@@ -1089,6 +1094,7 @@ Currently supported: `kafka`.
 |[[cockroachdb-property-sink-topic-prefix]]<<cockroachdb-property-sink-topic-prefix, `+cockroachdb.changefeed.sink.topic.prefix+`>>
 |_empty_
 |Prefix for changefeed topic names in the intermediate Kafka cluster.
+If empty, defaults to the value of `topic.prefix`.
 For multi-tenant deployments, consider using a unique prefix per tenant.
 
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
@@ -1097,8 +1103,8 @@ For multi-tenant deployments, consider using a unique prefix per tenant.
 
 |[[cockroachdb-property-kafka-consumer-group-prefix]]<<cockroachdb-property-kafka-consumer-group-prefix, `+cockroachdb.changefeed.kafka.consumer.group.prefix+`>>
 |`cockroachdb-connector`
-|Prefix for the Kafka consumer group ID used when consuming changefeed events from the intermediate Kafka cluster.
-The full group ID is `{prefix}-{table_name}`.
+|Kafka consumer group ID used when consuming changefeed events from the intermediate Kafka cluster.
+Should be unique per connector instance when multiple connectors share the same intermediate Kafka cluster.
 
 |[[cockroachdb-property-kafka-poll-timeout]]<<cockroachdb-property-kafka-poll-timeout, `+cockroachdb.changefeed.kafka.poll.timeout.ms+`>>
 |`100`
@@ -1209,7 +1215,7 @@ In the following situations, the connector fails when trying to start, reports a
 
 * The connector's configuration is invalid.
 * The connector cannot successfully connect to CockroachDB by using the specified connection parameters.
-* The connector cannot create a changefeed because the user lacks the required `CHANGEFEED` privilege.
+* The connector cannot create a changefeed because the user lacks sufficient privileges (`CHANGEFEED`, `ALL`, or `admin` role membership).
 
 In these cases, the error message has details about the problem and possibly a suggested workaround.
 After you correct the configuration or address the CockroachDB problem, restart the connector.
