@@ -30,6 +30,7 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.vector.FloatVector;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -47,7 +48,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
  *
  * @author vjuranek
  */
-public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldToEmbedding.class);
 
@@ -125,6 +126,11 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return ALL_FIELDS;
     }
 
     protected void validateConfiguration() {
