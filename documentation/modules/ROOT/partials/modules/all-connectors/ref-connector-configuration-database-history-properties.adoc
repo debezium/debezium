@@ -38,7 +38,7 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 
 |[[{context}-property-database-history-store-only-captured-tables-ddl]]<<{context}-property-database-history-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
 |`false`
-|A Boolean value that specifies whether the connector records schema structures from all tables in a schema or database, or only from tables that are designated for capture. +
+|A Boolean value that specifies whether the connector records schema structures from all tables in a schema or database, or only from tables that are designated for capture.
 Specify one of the following values:
 
 `false` (default):: During a database snapshot, the connector records the schema data for all non-system tables in the database, including tables that are not designated for capture.
@@ -47,12 +47,12 @@ If you later decide to capture changes from tables that you did not originally d
 {prodname} requires the schema history of a table so that it can identify the structure that was present at the time that a change event occurred.
 
 `true`:: During a database snapshot, the connector records the table schemas only for the tables from which {prodname} captures change events.
-If you change the default value, and you later configure the connector to capture data from other tables in the database, the connector lacks the schema information that it requires to capture change events from the tables. +
+If you change the default value, and you later configure the connector to capture data from other tables in the database, the connector lacks the schema information that it requires to capture change events from the tables.
 
 |[[{context}-property-database-history-store-only-captured-databases-ddl]]<<{context}-property-database-history-store-only-captured-databases-ddl, `+schema.history.internal.store.only.captured.databases.ddl+`>>
 |
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=schema-hist-prop-store-only-cap-db-ddl-boolean]
-|A Boolean value that specifies whether the connector records schema structures from all logical databases in the database instance. +
+|A Boolean value that specifies whether the connector records schema structures from all logical databases in the database instance.
 Specify one of the following values:
 
 `true`:: The connector records schema structures only for tables in the logical database and schema from which {prodname} captures change events.
