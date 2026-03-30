@@ -75,8 +75,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                   JdbcConnection connection)
-            throws SQLException {
+                                                   JdbcConnection connection) {
         if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
         }
