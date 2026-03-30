@@ -111,7 +111,8 @@ public class SqlUtils {
 
     public static String allRedoThreadArchiveLogs(int threadId, List<String> archiveDestinationNames) {
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, DS.DEST_NAME ");
+        sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, A.BLOCKS*BLOCK_SIZE, ");
+        sb.append("A.DICTIONARY_BEGIN, A.DICTIONARY_END, DS.DEST_NAME ");
         sb.append("FROM ");
         sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
         sb.append(DATABASE_VIEW).append(" D, ");
@@ -183,19 +184,19 @@ public class SqlUtils {
         if (!archiveLogOnlyMode) {
             sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
             sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD, ");
-            sb.append("NULL AS DEST_NAME ");
+            sb.append("L.BYTES AS BYTES, NULL AS DEST_NAME ");
             sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ");
             sb.append(DATABASE_VIEW).append(" D, ");
             sb.append(LOG_VIEW).append(" L ");
             sb.append("WHERE ");
             sb.append("L.STATUS = 'CURRENT' ");
             sb.append("AND F.GROUP# = L.GROUP# ");
-            sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# ");
+            sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#, L.BYTES ");
             sb.append("UNION ");
         }
         sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
         sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
-        sb.append("DS.DEST_NAME ");
+        sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME ");
         sb.append("FROM ");
         sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
         sb.append(DATABASE_VIEW).append(" D, ");
