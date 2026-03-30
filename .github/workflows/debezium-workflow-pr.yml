@@ -577,7 +577,7 @@ jobs:
 
   apicurio_checks:
     name: "Apicurio checks"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     uses: ./.github/workflows/apicurio-check-workflow.yml
     with:
@@ -585,7 +585,7 @@ jobs:
 
   build_ai:
     name: "Debezium AI module"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.ai-changed == 'true' }}
     steps:
@@ -597,7 +597,7 @@ jobs:
 
   build_openlineage:
     name: "Debezium OpenLineage module"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.openlineage-changed == 'true' }}
     steps:
@@ -609,7 +609,7 @@ jobs:
 
   build_server:
     name: "Debezium Server"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     steps:
@@ -634,7 +634,7 @@ jobs:
 
   build_schema_generator:
     name: "Schema Generator"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
@@ -646,7 +646,7 @@ jobs:
 
   build_storage:
     name: "Storage"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-changed == 'true' }}
     steps:
@@ -658,7 +658,7 @@ jobs:
 
   build_testing:
     name: "Testing Module"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
@@ -670,7 +670,7 @@ jobs:
 
   build_platform_conductor:
     name: "Debezium Platform - conductor"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_core ]  
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/platform-conductor-workflow.yml
     with:
