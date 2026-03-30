@@ -679,6 +679,19 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected boolean isDispatchAllowedForDataChangeEvent(LogMinerEventRow event) {
         if (event.isRollbackFlag()) {
+            // On Oracle RAC with LOB enabled, Oracle generates phantom ROLLBACK=1 DML records
+            // for internal LOB segment management within committed transactions. These phantom
+            // undos have non-zero dataObjectId (matching the table's data_object_id) while user
+            // DML on LOB tables has dataObjectId=0. If not filtered, these phantom undos can
+            // incorrectly roll back legitimate LOB events in the transaction buffer, causing
+            // silent data loss for LOB column updates.
+            if (getConfig().isLobEnabled()
+                    && event.getDataObjectId() != 0
+                    && !getSchema().getLobColumnsForTable(event.getTableId()).isEmpty()) {
+                LOGGER.debug("Skipping phantom LOB management undo on table '{}' with SCN '{}' and row-id '{}'",
+                        event.getTableId(), event.getScn(), event.getRowId());
+                return false;
+            }
             // There is a use case where a constraint violation will result in a DML event being
             // written to the redo log subsequently followed by another DML event that is marked
             // with a rollback flag to indicate that the prior event should be omitted. In this
