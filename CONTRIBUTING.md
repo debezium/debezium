@@ -143,8 +143,8 @@ Notice the `-s` flag. The Debezium project enforces a Developer Certificate of O
 **NOTE**: You can automate sign-off e.g. by using a local Git hook.
 In your local clone, copy `.git/hooks/commit-msg.sample` to `.git/hooks/commit-msg` and add the following sample into it:
 
-    SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-    grep -Fqs "$SOB" "$1" || printf '%s\n' "$SOB" >>"$1"
+    SIGNED_BY=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+    grep -Fqs "$SIGNED_BY" "$1" || printf '%s\n' "$SIGNED_BY" >>"$1"
 
 Executing the commit command will pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the GitHub issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
