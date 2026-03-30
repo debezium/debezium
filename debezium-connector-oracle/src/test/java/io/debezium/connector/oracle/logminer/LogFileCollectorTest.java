@@ -2330,21 +2330,23 @@ public class LogFileCollectorTest {
     }
 
     private static LogFile createRedoLog(String name, String startScn, String endScn, int sequence, boolean current, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), current, threadId, logSize);
     }
 
     private static LogFile createRedoLog(String name, long startScn, long endScn, int sequence, int threadId, boolean current) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn),
-                BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), current, threadId, logSize);
     }
 
     private static LogFile createRedoLogWithNullEndScn(String name, long startScn, int sequence, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), TestHelper.SCN_MAX, BigInteger.valueOf(sequence), LogFile.Type.REDO, true, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), TestHelper.SCN_MAX, BigInteger.valueOf(sequence), true, threadId, logSize);
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int sequence, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn),
-                BigInteger.valueOf(sequence), LogFile.Type.ARCHIVE, false, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), threadId, logSize, false, false);
     }
 
     private LogFile getLogFileWithName(List<LogFile> logs, String fileName) {
@@ -2400,8 +2402,11 @@ public class LogFileCollectorTest {
             return LogFile.Type.ARCHIVE.equals(file.getType()) ? "ARCHIVED" : "ONLINE";
         });
         Mockito.when(resultSet.getString(7)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getSequence().toString());
+        Mockito.when(resultSet.getString(8)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).hasDictionaryStart() ? "YES" : "NO");
+        Mockito.when(resultSet.getString(9)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).hasDictionaryEnd() ? "YES" : "NO");
         Mockito.when(resultSet.getInt(10)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getThread());
-        Mockito.when(resultSet.getString(11)).thenAnswer(it -> destinationNames.get(0));
+        Mockito.when(resultSet.getLong(11)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getBytes());
+        Mockito.when(resultSet.getString(12)).thenAnswer(it -> destinationNames.get(0));
 
         Mockito.doAnswer(a -> {
             JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);

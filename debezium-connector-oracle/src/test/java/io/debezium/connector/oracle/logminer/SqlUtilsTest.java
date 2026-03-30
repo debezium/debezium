@@ -23,16 +23,16 @@ public class SqlUtilsTest {
 
     private static final String ONLINE_LOG_PATTERN = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, " +
             "L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, " +
-            "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD, NULL AS DEST_NAME " +
+            "'NO' AS DICT_START, 'NO' AS DICT_END, L.THREAD# AS THREAD, L.BYTES AS BYTES, NULL AS DEST_NAME " +
             "FROM V$LOGFILE F, V$DATABASE D, V$LOG L " +
             "WHERE " +
             "L.STATUS = 'CURRENT' " +
             "AND F.GROUP# = L.GROUP# " +
-            "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#";
+            "GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#, L.BYTES";
 
     private static final String ARCHIVE_LOG_PATTERN = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
             "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
-            "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, DS.DEST_NAME " +
+            "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME " +
             "FROM V$ARCHIVED_LOG A, V$DATABASE D, V$ARCHIVE_DEST_STATUS DS " +
             "WHERE A.NAME IS NOT NULL " +
             "AND A.ARCHIVED = 'YES' " +
@@ -179,7 +179,8 @@ public class SqlUtilsTest {
     void testAllRedoThreadArchiveLogsQuery() throws Exception {
         String result = SqlUtils.allRedoThreadArchiveLogs(1, List.of("LOG_ARCHIVE_DEST_1"));
         assertThat(result).isEqualTo(
-                "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, DS.DEST_NAME " +
+                "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, A.BLOCKS*BLOCK_SIZE, " +
+                        "A.DICTIONARY_BEGIN, A.DICTIONARY_END, DS.DEST_NAME " +
                         "FROM V$ARCHIVED_LOG A, V$DATABASE D, V$ARCHIVE_DEST_STATUS DS " +
                         "WHERE A.DEST_ID = DS.DEST_ID " +
                         "AND DS.DEST_NAME = 'LOG_ARCHIVE_DEST_1' " +

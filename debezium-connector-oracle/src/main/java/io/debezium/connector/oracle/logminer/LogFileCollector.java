@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static io.debezium.function.Predicates.not;
 
 import java.math.BigInteger;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -45,7 +46,6 @@ public class LogFileCollector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogFileCollector.class);
     private static final String STATUS_CURRENT = "CURRENT";
-    private static final String ONLINE_LOG_TYPE = "ONLINE";
     private static final String ARCHIVE_LOG_TYPE = "ARCHIVED";
 
     private final Duration initialDelay;
@@ -129,41 +129,67 @@ public class LogFileCollector {
             final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
 
             while (rs.next()) {
-                final String fileName = rs.getString(1);
-                final Scn firstScn = getScnFromString(rs.getString(2));
-                final Scn nextScn = getScnFromString(rs.getString(3));
-                final String status = rs.getString(5);
-                final String type = rs.getString(6);
-                final BigInteger sequence = new BigInteger(rs.getString(7));
-                final int thread = rs.getInt(10);
-                final String destinationName = rs.getString(11);
-                if (ARCHIVE_LOG_TYPE.equals(type)) {
-                    final LogFile log = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
-                    if (log.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} in {} to be added.",
-                                fileName, firstScn, nextScn, sequence, destinationName);
-                        archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>()).add(log);
-                    }
+                final LogFile logFile = createLogFileFromResultSetRow(rs);
+
+                final String destinationName = rs.getString(12);
+                if (logFile.isArchive() && logFile.getNextScn().compareTo(offsetScn) >= 0) {
+                    LOGGER.debug(
+                            "Archive log {} Seq# {} Thread# {} SCN [{} - {} (delta {})] Size {} bytes Dictionary {}/{} in destination {} to be added.",
+                            logFile.getFileName(),
+                            logFile.getSequence(),
+                            logFile.getThread(),
+                            logFile.getFirstScn(),
+                            logFile.getNextScn(),
+                            logFile.getNextScn().subtract(logFile.getFirstScn()),
+                            String.format("%,d", logFile.getBytes()),
+                            logFile.hasDictionaryStart() ? "Y" : "N",
+                            logFile.hasDictionaryEnd() ? "Y" : "N",
+                            destinationName);
+
+                    archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>()).add(logFile);
                 }
-                else if (ONLINE_LOG_TYPE.equals(type)) {
-                    final LogFile log = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO,
-                            STATUS_CURRENT.equalsIgnoreCase(status), thread);
-                    if (log.isCurrent() || log.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.",
-                                fileName, firstScn, nextScn, status, sequence);
-                        onlineRedoLogs.add(log);
-                    }
-                    else {
-                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.",
-                                fileName, firstScn, nextScn, status, sequence);
+                else if (logFile.isRedo()) {
+                    final boolean logShouldBeAdded = logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0;
+
+                    LOGGER.debug("Online log {} Seq# {} Thread# {} SCN [{} - {}] Size {} bytes Status {} to be {}.",
+                            logFile.getFileName(),
+                            logFile.getSequence(),
+                            logFile.getThread(),
+                            logFile.getFirstScn(),
+                            logFile.getNextScn(),
+                            String.format("%,d", logFile.getBytes()),
+                            rs.getString(5),
+                            logShouldBeAdded ? "added" : "excluded");
+
+                    if (logShouldBeAdded) {
+                        onlineRedoLogs.add(logFile);
                     }
                 }
             }
 
-            final Set<LogFile> archiveLogs = new LinkedHashSet<>();
-            archiveLogs.addAll(mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames));
+            final Set<LogFile> archiveLogs = new LinkedHashSet<>(
+                    mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames));
             return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
         });
+    }
+
+    private LogFile createLogFileFromResultSetRow(ResultSet rs) throws SQLException {
+        final String fileName = rs.getString(1);
+        final Scn firstScn = getScnFromString(rs.getString(2));
+        final Scn nextScn = getScnFromString(rs.getString(3));
+        final boolean isCurrent = STATUS_CURRENT.equalsIgnoreCase(rs.getString(5));
+        final String type = rs.getString(6);
+        final BigInteger sequence = new BigInteger(rs.getString(7));
+        final boolean dictStart = isYes(rs.getString(8));
+        final boolean dictEnd = isYes(rs.getString(9));
+        final int thread = rs.getInt(10);
+        final long size = rs.getLong(11);
+
+        if (ARCHIVE_LOG_TYPE.equals(type)) {
+            return LogFile.forArchive(fileName, firstScn, nextScn, sequence, thread, size, dictStart, dictEnd);
+        }
+
+        return LogFile.forRedo(fileName, firstScn, nextScn, sequence, isCurrent, thread, size);
     }
 
     @VisibleForTesting
@@ -541,15 +567,17 @@ public class LogFileCollector {
                 rs -> {
                     final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
                     while (rs.next()) {
-                        String destinationName = rs.getString(5);
+                        String destinationName = rs.getString(8);
                         archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>())
-                                .add(new LogFile(
+                                .add(LogFile.forArchive(
                                         rs.getString(1),
                                         Scn.valueOf(rs.getString(3)),
                                         Scn.valueOf(rs.getString(4)),
                                         BigInteger.valueOf(rs.getLong(2)),
-                                        LogFile.Type.ARCHIVE,
-                                        threadId));
+                                        threadId,
+                                        rs.getLong(5),
+                                        isYes(rs.getString(6)),
+                                        isYes(rs.getString(7))));
                     }
                     return mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames);
                 });
@@ -616,25 +644,25 @@ public class LogFileCollector {
         return new SequenceRange(min, max);
     }
 
-    /**
-     * Get the minimum sequence from a list of redo thread logs.
-     *
-     * @param redoThreadLogs the redo logs collection, should not be {@code empty} or {@code null}.
-     * @return the minimum sequence
-     */
-    private BigInteger getMinRedoThreadLogSequence(List<LogFile> redoThreadLogs) {
-        if (redoThreadLogs == null || redoThreadLogs.isEmpty()) {
-            throw new DebeziumException("Cannot calculate minimum sequence on a null or empty list of logs");
-        }
-        return redoThreadLogs.stream().map(LogFile::getSequence).min(BigInteger::compareTo).get();
-    }
-
     private static void logException(String message) {
-        LOGGER.info("{}", message, new DebeziumException(message));
+        logExceptionInternal(new DebeziumException(message));
     }
 
     private static void logException(String message, Throwable cause) {
-        LOGGER.info("{}", message, new DebeziumException(message, cause));
+        logExceptionInternal(new DebeziumException(message, cause));
+    }
+
+    private static void logExceptionInternal(Throwable t) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("{}", t.getMessage(), t);
+        }
+        else {
+            LOGGER.debug("{}", t.getMessage());
+        }
+    }
+
+    private static boolean isYes(String value) {
+        return "YES".equalsIgnoreCase(value);
     }
 
     /**
