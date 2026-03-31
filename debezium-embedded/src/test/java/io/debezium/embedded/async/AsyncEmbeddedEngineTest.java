@@ -56,6 +56,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
+import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -1270,20 +1271,25 @@ public class AsyncEmbeddedEngineTest {
 
     @Test
     @FixFor("DBZ-4664")
-    void testOffsetsAreFlushedDuringIdlePeriod() throws Exception {
+    void testOffsetCommitPolicyCalledDuringIdlePeriod() throws Exception {
+        final AtomicBoolean idleCommitAttempted = new AtomicBoolean(false);
+        final OffsetCommitPolicy trackingPolicy = (numberOfMessages, timeSinceLastCommit) -> {
+            if (numberOfMessages == 0) {
+                idleCommitAttempted.set(true);
+            }
+            return true;
+        };
+
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.NoOpConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
-        props.put(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "100");
-
-        final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
-        interceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.DEBUG);
 
         DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
+                .using(trackingPolicy)
                 .using(new TestEngineConnectorCallback())
                 .notifying((records, committer) -> {
                 })
@@ -1296,10 +1302,10 @@ public class AsyncEmbeddedEngineTest {
         waitForTasksToStart(1);
 
         Awaitility.await()
-                .alias("Offset flush during idle period was not triggered")
+                .alias("Offset commit policy was not called during idle period")
                 .pollInterval(50, TimeUnit.MILLISECONDS)
                 .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
-                .until(() -> interceptor.containsMessage("Flushing offsets during idle period."));
+                .until(idleCommitAttempted::get);
 
         stopEngine();
     }

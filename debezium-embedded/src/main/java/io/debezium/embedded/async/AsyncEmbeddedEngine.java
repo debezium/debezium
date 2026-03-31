@@ -1257,7 +1257,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 }
                 else {
                     LOGGER.trace("No records.");
-                    LOGGER.debug("Flushing offsets during idle period.");
                     committer.markBatchFinished();
                 }
             }
