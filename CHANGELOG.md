@@ -3,6 +3,46 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.5.0.Final
+March 31st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Final)
+
+### New features since 3.5.0.CR1
+
+* Support for Informix JDBC driver v15 [debezium/dbz#1622](https://github.com/debezium/dbz/issues/1622)
+* Add connection validator for Infinispan [DBZ-9432] [debezium/dbz#1089](https://github.com/debezium/dbz/issues/1089)
+* Claim Debezium Docs ownership in Context7 [debezium/dbz#1727](https://github.com/debezium/dbz/issues/1727)
+
+
+### Breaking changes since 3.5.0.CR1
+
+None
+
+
+### Fixes since 3.5.0.CR1
+
+* A wrong connector class causes Debezium Server startup to loop infinitely [DBZ-8703] [debezium/dbz#1335](https://github.com/debezium/dbz/issues/1335)
+* MicroTimestamp.java throws NullPointerException on JDK 25 when converting timestamp columns — same root cause as DBZ-9558 [debezium/dbz#1732](https://github.com/debezium/dbz/issues/1732)
+* `quarkus-junit5-internal` is relocated to `quarkus-junit-internal` [debezium/dbz#1742](https://github.com/debezium/dbz/issues/1742)
+* LogStreamingService passes null to consumer in doStream() [debezium/dbz#1747](https://github.com/debezium/dbz/issues/1747)
+* GlobalExceptionMapper returns wrong misleading message for exceptions [debezium/dbz#1752](https://github.com/debezium/dbz/issues/1752)
+* CockroachDB connector: Remove broken permission check, fix hardcoded values and changefeed detection [debezium/dbz#1765](https://github.com/debezium/dbz/issues/1765)
+
+
+### Other changes since 3.5.0.CR1
+
+* Ensure spaces are used for indentation in XML files (e.g. POMs) [DBZ-275] [debezium/dbz#102](https://github.com/debezium/dbz/issues/102)
+* AI contribution guidelines [debezium/dbz#1684](https://github.com/debezium/dbz/issues/1684)
+* Add JMH microbenchmarks for CockroachDB connector [debezium/dbz#1711](https://github.com/debezium/dbz/issues/1711)
+* Clarify local kind setup and namespace-scoped example commands for debezium-platform [debezium/dbz#1730](https://github.com/debezium/dbz/issues/1730)
+* Remove Scn.MAX constant from Scn class [debezium/dbz#1743](https://github.com/debezium/dbz/issues/1743)
+* Add contributor name and alias [debezium/dbz#1744](https://github.com/debezium/dbz/issues/1744)
+* Update KineticCafe/actions-dco to v2 [debezium/dbz#1746](https://github.com/debezium/dbz/issues/1746)
+* Add connection validator for Qdrant Sink [DBZ-9441] [debezium/dbz#1098](https://github.com/debezium/dbz/issues/1098)
+* Improve logging of LogMiner metrics & MISSING_SCN events [debezium/dbz#1762](https://github.com/debezium/dbz/issues/1762)
+* SQS integration tests fail on CI due to LocalStack authentication requirements [debezium/dbz#1764](https://github.com/debezium/dbz/issues/1764)
+
+
+
 ## 3.5.0.CR1
 March 24th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.CR1)
 
