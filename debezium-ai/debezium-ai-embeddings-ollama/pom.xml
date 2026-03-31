@@ -85,6 +85,9 @@
             <plugin>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
+                <configuration>
+                    <filenameSuffix>Ollama</filenameSuffix>
+                </configuration>
             </plugin>
         </plugins>
     </build>
