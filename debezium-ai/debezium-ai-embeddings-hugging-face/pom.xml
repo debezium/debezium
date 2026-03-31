@@ -97,6 +97,9 @@
             <plugin>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
+                <configuration>
+                    <filenameSuffix>HuggingFace</filenameSuffix>
+                </configuration>
             </plugin>
         </plugins>
     </build>
