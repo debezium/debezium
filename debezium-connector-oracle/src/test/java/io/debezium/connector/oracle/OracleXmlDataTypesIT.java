@@ -801,7 +801,7 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
             Struct after = after(records.get(0));
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA);
+            assertXmlFieldIsEqual(after, "DATA", XML_LONG_DATA);
 
             connection.prepareUpdate("INSERT INTO dbz1373 values (2,?,?)", ps -> {
                 ps.setObject(1, toXmlType(XML_LONG_DATA2));
@@ -814,7 +814,7 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
             after = after(records.get(0));
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA2);
+            assertXmlFieldIsEqual(after, "DATA", XML_LONG_DATA2);
 
             connection.prepareUpdate("UPDATE dbz1373 SET DATA = ? WHERE ID = 2", ps -> ps.setObject(1, toXmlType(XML_LONG_DATA)));
             connection.commit();
@@ -824,7 +824,7 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
             after = after(records.get(0));
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isEqualTo(XML_LONG_DATA);
+            assertXmlFieldIsEqual(after, "DATA", XML_LONG_DATA);
             assertFieldIsUnavailablePlaceholder(after, "DATA2", config);
 
             connection.execute("DELETE FROM dbz1373 WHERE ID = 2");
