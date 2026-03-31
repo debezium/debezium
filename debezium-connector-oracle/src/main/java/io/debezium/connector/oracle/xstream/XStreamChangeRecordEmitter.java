@@ -56,6 +56,10 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         Object[] values = new Object[table.columns().size()];
         if (columnValues != null) {
             for (ColumnValue columnValue : columnValues) {
+                // Skip Oracle ROW_ARCHIVAL column
+                if ("ORA_ARCHIVE_STATE".equals(columnValue.getColumnName())) {
+                    continue;
+                }
                 int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
                 values[index] = columnValue.getColumnData();
             }
