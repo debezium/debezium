@@ -76,7 +76,7 @@ public class KafkaConnectComponentSource implements ComponentSource {
         Map<ComponentType, List<Class<?>>> components = discoveryService.discoverKafkaConnectComponents();
 
         List<ComponentMetadata> allMetadata = components.entrySet().stream()
-                .peek(entry -> LOGGER.log(Level.INFO,
+                .peek(entry -> LOGGER.log(Level.DEBUG,
                         "Processing " + entry.getValue().size() + " " + entry.getKey().getDisplayName() + "(s)"))
                 .flatMap(entry -> entry.getValue().stream()
                         .flatMap(componentClass -> {
