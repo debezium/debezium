@@ -33,6 +33,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -1410,6 +1411,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.publishViaPartitionRoot = config.getBoolean(PUBLISH_VIA_PARTITION_ROOT);
         this.lsnFlushTimeoutAction = LsnFlushTimeoutAction.parse(config.getString(LSN_FLUSH_TIMEOUT_ACTION));
         this.offsetSlotMismatchStrategy = resolveOffsetSlotMismatchStrategy(config);
+
+        applyLsnFlushModeHeartbeatFallback(config);
     }
 
     protected String hostname() {
@@ -1734,6 +1737,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         logOffsetSlotMismatchStrategyInfo(mode);
         return mode;
+    }
+
+    private void applyLsnFlushModeHeartbeatFallback(Configuration config) {
+
+        if (this.lsnFlushMode == LsnFlushMode.CONNECTOR_AND_DRIVER
+                && super.getHeartbeatInterval().isZero()
+                && !super.shouldProvideTransactionMetadata()) {
+            LOGGER.warn("{} was internally set to 600000 ms since {}={} requires periodic opportunities to propagate LSNs to Kafka. " +
+                    "If this behavior is not desired, explicitly set {} to more than 0 or enable {}.",
+                    Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, LSN_FLUSH_MODE, LsnFlushMode.CONNECTOR_AND_DRIVER,
+                    Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, PROVIDE_TRANSACTION_METADATA);
+            super.setHeartbeatInterval(600000);
+        }
     }
 
     private static void logOffsetSlotMismatchStrategyInfo(OffsetSlotMismatchStrategy strategy) {
