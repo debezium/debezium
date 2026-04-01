@@ -661,6 +661,11 @@
                 <version>${version.jsonpath}</version>
             </dependency>
             <dependency>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex</artifactId>
+                <version>${version.jandex}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.skyscreamer</groupId>
                 <artifactId>jsonassert</artifactId>
                 <version>${version.jsonassert}</version>
