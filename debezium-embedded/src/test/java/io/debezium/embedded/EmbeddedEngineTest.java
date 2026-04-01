@@ -6,6 +6,7 @@
 package io.debezium.embedded;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
@@ -25,14 +26,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
@@ -55,6 +60,7 @@ import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.JsonByteArray;
+import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.engine.format.SimpleString;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.LoggingContext;
@@ -904,6 +910,31 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
                 false);
     }
 
+    @Test
+    @FixFor("DBZ-8072")
+    void shouldSkipNullValueReturnedByHeaderConverter() {
+        final Properties props = new Properties();
+        props.setProperty("converter.schemas.enable", "false");
+
+        ConverterBuilder<ChangeEvent<byte[], byte[]>> converterBuilder = new ConverterBuilder<ChangeEvent<byte[], byte[]>>()
+                .using(KeyValueHeaderChangeEventFormat.of(JsonByteArray.class, JsonByteArray.class, JsonByteArray.class))
+                .using(props);
+
+        ConnectHeaders connectHeaders = new ConnectHeaders();
+        connectHeaders.addString("headerKey", "headerValue");
+
+        SourceRecord record = new SourceRecord(
+                null, null, "topic", 0,
+                null, null,
+                null, null,
+                System.currentTimeMillis(), connectHeaders);
+
+        Function<SourceRecord, ChangeEvent<byte[], byte[]>> toFormat = converterBuilder.toFormat(new NullReturningHeaderConverter());
+
+        ChangeEvent<byte[], byte[]> event = assertDoesNotThrow(() -> toFormat.apply(record));
+        assertThat(event.headers()).isEmpty();
+    }
+
     public static class AddHeaderTransform implements Transformation<SourceRecord> {
 
         @Override
@@ -919,6 +950,32 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
                     record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(), record.timestamp(), headers);
 
             return record;
+        }
+
+        @Override
+        public ConfigDef config() {
+            return new ConfigDef();
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    public static class NullReturningHeaderConverter implements HeaderConverter {
+
+        @Override
+        public byte[] fromConnectHeader(String topic, String headerKey, Schema schema, Object value) {
+            return null;
+        }
+
+        @Override
+        public SchemaAndValue toConnectHeader(String topic, String headerKey, byte[] value) {
+            return null;
+        }
+
+        @Override
+        public void configure(Map<String, ?> configs) {
         }
 
         @Override
