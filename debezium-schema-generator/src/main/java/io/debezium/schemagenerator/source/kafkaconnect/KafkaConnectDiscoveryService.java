@@ -80,7 +80,7 @@ public class KafkaConnectDiscoveryService {
             return Map.of();
         }
 
-        LOGGER.log(Level.INFO, "Indexed " + jarIndices.size() + " Kafka Connect JAR(s): " +
+        LOGGER.log(Level.DEBUG, "Indexed " + jarIndices.size() + " Kafka Connect JAR(s): " +
                 String.join(", ", jarIndices.keySet()));
 
         return COMPONENT_INTERFACES.entrySet().stream()
