@@ -65,6 +65,11 @@
       <groupId>org.reflections</groupId>
       <artifactId>reflections</artifactId>
     </dependency>
+    <!-- Jandex for Kafka Connect component discovery -->
+    <dependency>
+      <groupId>io.smallrye</groupId>
+      <artifactId>jandex</artifactId>
+    </dependency>
 
     <!-- Test dependencies -->
     <dependency>

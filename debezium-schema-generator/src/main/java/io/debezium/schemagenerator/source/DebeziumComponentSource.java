@@ -46,6 +46,7 @@ public class DebeziumComponentSource implements ComponentSource {
 
     @Override
     public List<ComponentMetadata> discoverComponents() {
+
         ServiceLoader<ComponentMetadataProvider> metadataProviders = ServiceLoader.load(ComponentMetadataProvider.class);
 
         return metadataProviders.stream()

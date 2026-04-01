@@ -6,11 +6,9 @@
 package io.debezium.schemagenerator;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.reflect.Modifier;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -30,10 +28,15 @@ import io.debezium.schemagenerator.schema.Schema;
 import io.debezium.schemagenerator.schema.SchemaName;
 import io.debezium.schemagenerator.source.ComponentSource;
 import io.debezium.schemagenerator.source.DebeziumComponentSource;
+import io.debezium.schemagenerator.source.kafkaconnect.ConfigDefAdapter;
+import io.debezium.schemagenerator.source.kafkaconnect.ConfigDefExtractor;
+import io.debezium.schemagenerator.source.kafkaconnect.KafkaConnectComponentSource;
+import io.debezium.schemagenerator.source.kafkaconnect.KafkaConnectDiscoveryService;
 
 public class SchemaGenerator {
 
     private static final Logger LOGGER = System.getLogger(SchemaGenerator.class.getName());
+    private static SchemaWriter schemaWriter;
 
     public static void main(String[] args) {
         if (args.length != 5 && args.length != 6) {
@@ -52,73 +55,79 @@ public class SchemaGenerator {
         String filenameSuffix = args[4];
         Path projectArtifactPath = args.length == 6 ? new File(args[5]).toPath() : null;
 
-        new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerComponent, filenamePrefix, filenameSuffix, projectArtifactPath);
+        Schema schema = getSchemaFormat(formatName);
+        LOGGER.log(Logger.Level.INFO, "Using schema format: " + schema.getDescriptor().getName());
+
+        SchemaGeneratorConfig config = new SchemaGeneratorConfig(
+                schema,
+                outputDirectory,
+                groupDirectoryPerComponent,
+                filenamePrefix,
+                filenameSuffix,
+                projectArtifactPath);
+
+        schemaWriter = new SchemaWriter(config);
+
+        new SchemaGenerator().run(config);
     }
 
-    private void run(String formatName, Path outputDirectory, boolean groupDirectoryPerComponent, String filenamePrefix, String filenameSuffix,
-                     Path projectArtifactPath) {
-
-        processDebeziumComponents(formatName, outputDirectory, groupDirectoryPerComponent, filenamePrefix, filenameSuffix, projectArtifactPath);
+    private void run(SchemaGeneratorConfig config) {
+        processDebeziumComponents(config);
+        processKafkaConnectComponents(config);
     }
 
-    private void processDebeziumComponents(String formatName, Path outputDirectory, boolean groupDirectoryPerComponent, String filenamePrefix, String filenameSuffix,
-                                           Path projectArtifactPath) {
-        // Use ComponentSource strategy to discover Debezium components
-        ComponentSource componentSource = new DebeziumComponentSource(projectArtifactPath);
+    private void processDebeziumComponents(SchemaGeneratorConfig config) {
+
+        ComponentSource componentSource = new DebeziumComponentSource(config.projectArtifactPath());
 
         LOGGER.log(Logger.Level.INFO, "Discovering components from: " + componentSource.getName());
         List<ComponentMetadata> allMetadata = componentSource.discoverComponents();
         LOGGER.log(Logger.Level.INFO, "  Found " + allMetadata.size() + " component(s)");
 
-        Schema format = getSchemaFormat(formatName);
-        LOGGER.log(Logger.Level.INFO, "Using schema format: " + format.getDescriptor().getName());
-
         if (allMetadata.isEmpty()) {
             throw new RuntimeException("No connectors found in classpath. Exiting!");
         }
 
-        validateDescriptorRegistration(allMetadata, projectArtifactPath);
+        validateDescriptorRegistration(allMetadata, config.projectArtifactPath());
 
-        for (ComponentMetadata componentMetadata : allMetadata) {
-            LOGGER.log(Logger.Level.INFO, "Creating \"" + format.getDescriptor().getName()
-                    + "\" schema for connector: "
-                    + componentMetadata.getComponentDescriptor().getDisplayName() + "...");
-
-            String spec = format.getSpec(componentMetadata);
-
-            try {
-                Path schemaFilePath = getSchemaFilePath(outputDirectory, groupDirectoryPerComponent, filenamePrefix, filenameSuffix, componentMetadata);
-                Files.writeString(schemaFilePath, spec);
-            }
-            catch (IOException e) {
-                throw new RuntimeException("Couldn't write file", e);
-            }
-        }
+        generateSchemas(allMetadata, config);
     }
 
-    private static Path getSchemaFilePath(Path outputDirectory, boolean groupDirectoryPerComponent, String filenamePrefix, String filenameSuffix,
-                                          ComponentMetadata componentMetadata) {
-        String schemaFilename = "";
-        if (groupDirectoryPerComponent) {
-            schemaFilename += componentMetadata.getComponentDescriptor().getType() + File.separator;
+    private void processKafkaConnectComponents(SchemaGeneratorConfig config) {
+
+        ComponentSource componentSource = new KafkaConnectComponentSource(
+                new KafkaConnectDiscoveryService(),
+                new ConfigDefExtractor(),
+                new ConfigDefAdapter());
+
+        LOGGER.log(Logger.Level.INFO, "Discovering components from: " + componentSource.getName());
+        List<ComponentMetadata> allMetadata = componentSource.discoverComponents();
+        LOGGER.log(Logger.Level.INFO, "  Found " + allMetadata.size() + " component(s)");
+
+        if (allMetadata.isEmpty()) {
+            LOGGER.log(Logger.Level.INFO, "No Kafka Connect components found, skipping");
+            return;
         }
-        if (null != filenamePrefix && !filenamePrefix.isEmpty()) {
-            schemaFilename += filenamePrefix;
+
+        generateSchemas(allMetadata, config);
+    }
+
+    private void generateSchemas(List<ComponentMetadata> allMetadata, SchemaGeneratorConfig config) {
+
+        for (ComponentMetadata componentMetadata : allMetadata) {
+            LOGGER.log(Logger.Level.INFO, "Creating \"" + config.schema().getDescriptor().getName()
+                    + "\" schema for component: "
+                    + componentMetadata.getComponentDescriptor().getDisplayName() + "...");
+
+            String spec = config.schema().getSpec(componentMetadata);
+            schemaWriter.writeSchema(componentMetadata, spec);
         }
-        schemaFilename += componentMetadata.getComponentDescriptor().getId();
-        if (null != filenameSuffix && !filenameSuffix.isEmpty()) {
-            schemaFilename += filenameSuffix;
-        }
-        schemaFilename += ".json";
-        Path schemaFilePath = outputDirectory.resolve(schemaFilename);
-        schemaFilePath.getParent().toFile().mkdirs();
-        return schemaFilePath;
     }
 
     /**
      * Returns the {@link Schema} with the given name, specified via the {@link SchemaName} annotation.
      */
-    private Schema getSchemaFormat(String formatName) {
+    private static Schema getSchemaFormat(String formatName) {
         ServiceLoader<Schema> schemaFormats = ServiceLoader.load(Schema.class);
 
         if (schemaFormats.stream().findAny().isEmpty()) {
