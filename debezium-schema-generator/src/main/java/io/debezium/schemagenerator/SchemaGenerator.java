@@ -114,14 +114,18 @@ public class SchemaGenerator {
 
     private void generateSchemas(List<ComponentMetadata> allMetadata, SchemaGeneratorConfig config) {
 
+        LOGGER.log(Logger.Level.INFO, "Generating " + allMetadata.size() + " schema(s)...");
+
         for (ComponentMetadata componentMetadata : allMetadata) {
-            LOGGER.log(Logger.Level.INFO, "Creating \"" + config.schema().getDescriptor().getName()
+            LOGGER.log(Logger.Level.DEBUG, "Creating \"" + config.schema().getDescriptor().getName()
                     + "\" schema for component: "
                     + componentMetadata.getComponentDescriptor().getDisplayName() + "...");
 
             String spec = config.schema().getSpec(componentMetadata);
             schemaWriter.writeSchema(componentMetadata, spec);
         }
+
+        LOGGER.log(Logger.Level.INFO, "Successfully generated " + allMetadata.size() + " schema(s)");
     }
 
     /**
@@ -134,7 +138,7 @@ public class SchemaGenerator {
             throw new RuntimeException("No schema formats found!");
         }
 
-        LOGGER.log(Logger.Level.INFO, "Registered schemas: " +
+        LOGGER.log(Logger.Level.DEBUG, "Registered schemas: " +
                 schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
 
         Optional<Provider<Schema>> format = schemaFormats
