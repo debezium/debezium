@@ -2977,6 +2977,16 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1605")
+    void shouldApplyLsnFlushModeHeartbeatFallbackWhenNoOpportunityForFlush() {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
+                .build());
+
+        assertThat(config.getHeartbeatInterval()).isGreaterThan(java.time.Duration.ZERO);
+    }
+
+    @Test
     @FixFor("DBZ-1292")
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
     public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
