@@ -23,9 +23,7 @@ class DebeziumComponentSourceTest {
 
         DebeziumComponentSource source = new DebeziumComponentSource(null);
 
-
         List<ComponentMetadata> components = source.discoverComponents();
-
 
         assertThat(components).isNotNull();
     }
@@ -35,9 +33,7 @@ class DebeziumComponentSourceTest {
 
         DebeziumComponentSource source = new DebeziumComponentSource(null);
 
-
         String name = source.getName();
-
 
         assertThat(name).isEqualTo("Debezium Components");
     }
@@ -46,7 +42,6 @@ class DebeziumComponentSourceTest {
     void shouldImplementComponentSourceInterface() {
 
         DebeziumComponentSource source = new DebeziumComponentSource(null);
-
 
         assertThat(source).isInstanceOf(ComponentSource.class);
     }
