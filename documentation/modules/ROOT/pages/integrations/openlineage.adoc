@@ -185,6 +185,34 @@ Before you can use {prodname} with OpenLineage in Kafka Connect, you must obtain
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}-libs.tar.gz[OpenLineage core archive].
 . Extract the contents of the archive into the {prodname} plug-in directories in your Kafka Connect environment.
 
+ifdef::product[]
+
+// Type: procedure
+[id="debezium-openlineage-deploy-the-integration-on-streams"]
+=== Deploy the {prodname} OpenLineage integration on {StreamsName}
+
+In a {StreamsName} environment, you can deploy the integration by adding the Maven URL for the OpenLineage artifact to the Kafka Connect custom resource YAML file.
+
+.Procedure
+
+* Add the OpenLineage artifact by inserting te following lines in the `spec.build` section of the YAML that defines your Kafka Connect CR.
+[source,yaml,subs="+attributes"]
+----
+...
+      image: debezium-streams-connect:latest
+    plugins:
+      - name: debezium-connector
+        artifacts:
+          - type: zip
+            url: {red-hat-maven-repository}debezium/debezium-openlineage-core/{debezium-version}.Final/debezium-openlineage-core-{debezium-version}.Final-libs.zip
+----
+
+.Additional resources
+* xref:debezium-openlineage-configuring-the-integration[]
+* xrefdebezium-openlineage-configuring-the-openlineage-client[]
+endif::product[]
+
+
 // Type: procedure
 // Title: Deploy the {prodname} OpenLineage integration on {prodname} Server
 // ModuleID: debezium-openlineage-deploy-the-integration-on-debezium-server
@@ -259,8 +287,15 @@ debezium.source.openlineage.integration.job.owners=Alice Smith=maintainer,Bob Jo
 
 Create an `openlineage.yml` file to configure the OpenLineage client.
 The `openlineage.yml` configuration file is used in both Kafka Connect and {prodname} Server deployments.
-Use the following example as a guide:
 
+For Kafka Connect deployments, place the `openlineage.yml` file where the Kafka Connect worker nodes can read it.
+Similarly, for {prodname} Server deployments, place the `openlineage.yml` file where the {prodname} Server process can read it.
+
+Common locations for storing the file on Kafka Connect include `/kafka/openlineage.yml` and `/etc/debezium/openlineage.yml`.
+For {prodname} Server, it is typical to store the file in a subdirectory of the {prodname} Server installation directory, for example, `config/openlineage.yml`.
+.Procedure
+. Create an `openlineage.yml` file in the appropriate location and configure it according to your needs using the following example as a guide:
++
 [source,yaml]
 ----
 transport:
@@ -275,8 +310,18 @@ transport:
 # transport:
 #   type: console
 ----
+. Edit the `config` section of the deployment configuration YAML file for your platform to specify the `openlineage.yml` file path.
 
-For details OpenLineage client configuration options, refer to the https://openlineage.io/docs/client/java[OpenLineage client documentation].
+. Restart the {prodname} Server or Kafka Connect worker to apply the changes.
+ifdef::community[]
+For details about OpenLineage client configuration options, refer to the https://openlineage.io/docs/client/java[OpenLineage client documentation].
+endif::community[]
+ifdef::product[]
+.Additional resources
+* https://openlineage.io/docs/client/java[OpenLineage client documentation]
+* xref:debezium-configuration-for-enabling-openlineage-in-a-kafka-connect-environment[]
+* xref:debezium-configuration-for-enabling-openlineage-in-a-debezium-server-environment[] 
+endif::product[]
 
 // Type: reference
 [id="debezium-openlineage-configuration-properties"]
@@ -284,7 +329,7 @@ For details OpenLineage client configuration options, refer to the https://openl
 
 The following table lists the OpenLineage configuration properties for both deployment types.
 
-NOTE: For {prodname} Server, add the `debezium.source.` prefix to all property names (for example, `debezium.source.openlineage.integration.enabled`).
+NOTE: For {prodname} Server, prefix all property names with `debezium.source.` (for example, `debezium.source.openlineage.integration.enabled`).
 
 [cols="3,4,1,2"]
 |===
