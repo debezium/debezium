@@ -5,8 +5,11 @@
  */
 package io.debezium.schemagenerator.source.kafkaconnect;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import static java.lang.invoke.MethodHandles.privateLookupIn;
+import static java.lang.invoke.MethodType.methodType;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -86,21 +89,22 @@ public class ConfigDefExtractor {
      * @return ConfigDef from field, or null if not found
      */
     private ConfigDef tryStaticField(Class<?> clazz) {
-        try {
-            Field field = clazz.getDeclaredField(CONFIG_DEF_FIELD_NAME);
-            field.setAccessible(true);
-            Object value = field.get(null); // null because it's static
 
-            if (value instanceof ConfigDef) {
+        try {
+            MethodHandle getter = privateLookupIn(clazz, MethodHandles.lookup())
+                    .findStaticGetter(clazz, CONFIG_DEF_FIELD_NAME, ConfigDef.class);
+            ConfigDef value = (ConfigDef) getter.invoke();
+
+            if (value != null) {
                 LOGGER.debug("Found ConfigDef via {} field in {}", CONFIG_DEF_FIELD_NAME, clazz.getName());
-                return (ConfigDef) value;
+                return value;
             }
         }
         catch (NoSuchFieldException e) {
             // Expected for classes without CONFIG_DEF field
             LOGGER.debug("No {} field in {}", CONFIG_DEF_FIELD_NAME, clazz.getName());
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             LOGGER.debug("Could not access {} in {}", CONFIG_DEF_FIELD_NAME, clazz.getName(), e);
         }
 
@@ -117,13 +121,12 @@ public class ConfigDefExtractor {
      * @return ConfigDef from config() method, or null if not available
      */
     private ConfigDef tryConfigMethod(Class<?> clazz) {
+
         try {
-            // Instantiate using no-arg constructor
             Object instance = clazz.getDeclaredConstructor().newInstance();
 
-            // Call config() method
-            Method method = clazz.getMethod(CONFIG_METHOD_NAME);
-            Object result = method.invoke(instance);
+            MethodHandle handle = MethodHandles.lookup().findVirtual(clazz, CONFIG_METHOD_NAME, methodType(ConfigDef.class));
+            Object result = handle.invoke(instance);
 
             if (result instanceof ConfigDef) {
                 LOGGER.debug("Got ConfigDef from {}() method in {}", CONFIG_METHOD_NAME, clazz.getName());
@@ -134,7 +137,7 @@ public class ConfigDefExtractor {
             // Expected for classes without config() method
             LOGGER.debug("No {}() method in {}", CONFIG_METHOD_NAME, clazz.getName());
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             LOGGER.debug("Could not invoke {}() on {}", CONFIG_METHOD_NAME, clazz.getName(), e);
         }
 
