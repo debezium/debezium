@@ -20,6 +20,7 @@ import io.debezium.transforms.HeaderToValue;
 import io.debezium.transforms.SchemaChangeEventFilter;
 import io.debezium.transforms.SwapGeometryCoordinates;
 import io.debezium.transforms.TimezoneConverter;
+import io.debezium.transforms.ToLogicalTopicRouter;
 import io.debezium.transforms.VectorToJsonConverter;
 import io.debezium.transforms.openlineage.OpenLineage;
 import io.debezium.transforms.outbox.EventRouter;
@@ -39,6 +40,7 @@ public class TransformsMetadataProvider implements ComponentMetadataProvider {
                 componentMetadataFactory.createComponentMetadata(new ActivateTracingSpan<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ByLogicalTableRouter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new EnforceRecordSize<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new ToLogicalTopicRouter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new EventRouter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractChangedRecordState<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewRecordState<>(), io.debezium.Module.version()),
