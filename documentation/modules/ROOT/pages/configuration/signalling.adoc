@@ -195,14 +195,6 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 * {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-pass-through-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
 * {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-pass-through-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
 
-[NOTE]
-====
-To use Kafka signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
-The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
-Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
-For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
-====
-
 === Message format
 
 The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
@@ -471,6 +463,14 @@ You can use signaling to initiate the following actions:
 * xref:debezium-signaling-resume-incremental-snapshots[Resume incremental snapshots].
 * xref:debezium-signaling-ad-hoc-blocking-snapshots[Trigger ad hoc blocking snapshot].
 * xref:debezium-signaling-custom-action[Custom action].
+
+[NOTE]
+====
+To use signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
+The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
+Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
+For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
+====
 
 Some signals are not compatible with all connectors.
 
