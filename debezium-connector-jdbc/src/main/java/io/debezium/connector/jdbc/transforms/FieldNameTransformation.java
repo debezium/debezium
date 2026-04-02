@@ -71,8 +71,7 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
 
     private static final io.debezium.config.Field NAMING_STYLE = io.debezium.config.Field.create(COLUMN_STYLE_PARAM)
             .withDisplayName("Column Naming Style")
-            .withType(ConfigDef.Type.STRING)
-            .withDefault("default")
+            .withEnum(NamingStyle.class, NamingStyle.DEFAULT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The style of column naming: UPPERCASE, lowercase, snake_case, camelCase, kebab-case.");
 
