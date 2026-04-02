@@ -1,4 +1,5 @@
 io.debezium.transforms.ByLogicalTableRouter
+io.debezium.transforms.ToLogicalTopicRouter
 io.debezium.transforms.ExtractChangedRecordState
 io.debezium.transforms.ExtractNewRecordState
 io.debezium.transforms.ExtractSchemaToNewRecord
