@@ -58,8 +58,7 @@ public class CollectionNameTransformation<R extends ConnectRecord<R>> implements
 
     private static final Field NAMING_STYLE = Field.create("collection.naming.style")
             .withDisplayName("Collection Naming Style")
-            .withType(ConfigDef.Type.STRING)
-            .withDefault("default")
+            .withEnum(NamingStyle.class, NamingStyle.DEFAULT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The style of collection naming: UPPER_CASE, lower_case, snake_case, camelCase, kebab-case.");
 
