@@ -6,7 +6,6 @@
 package io.debezium.schemagenerator;
 
 import java.io.File;
-import java.lang.System.Logger;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.nio.file.Path;
@@ -21,6 +20,8 @@ import java.util.stream.Collectors;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ConfigurationBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ConfigDescriptor;
@@ -35,14 +36,14 @@ import io.debezium.schemagenerator.source.kafkaconnect.KafkaConnectDiscoveryServ
 
 public class SchemaGenerator {
 
-    private static final Logger LOGGER = System.getLogger(SchemaGenerator.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SchemaGenerator.class);
     private static SchemaWriter schemaWriter;
 
     public static void main(String[] args) {
         if (args.length != 5 && args.length != 6) {
-            LOGGER.log(Logger.Level.INFO, "There were " + args.length + " arguments:");
+            LOGGER.info("There were {} arguments:", args.length);
             for (int i = 0; i < args.length; ++i) {
-                LOGGER.log(Logger.Level.INFO, "  Argument #[" + i + "]: " + args[i]);
+                LOGGER.info("  Argument #[{}]: {}", i, args[i]);
             }
             throw new IllegalArgumentException(
                     "Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerComponent> <filenamePrefix> <filenameSuffix> [projectArtifactPath]");
@@ -56,7 +57,7 @@ public class SchemaGenerator {
         Path projectArtifactPath = args.length == 6 ? new File(args[5]).toPath() : null;
 
         Schema schema = getSchemaFormat(formatName);
-        LOGGER.log(Logger.Level.INFO, "Using schema format: " + schema.getDescriptor().getName());
+        LOGGER.info("Using schema format: {}", schema.getDescriptor().getName());
 
         SchemaGeneratorConfig config = new SchemaGeneratorConfig(
                 schema,
@@ -80,9 +81,9 @@ public class SchemaGenerator {
 
         ComponentSource componentSource = new DebeziumComponentSource(config.projectArtifactPath());
 
-        LOGGER.log(Logger.Level.INFO, "Discovering components from: " + componentSource.getName());
+        LOGGER.info("Discovering components from: {}", componentSource.getName());
         List<ComponentMetadata> allMetadata = componentSource.discoverComponents();
-        LOGGER.log(Logger.Level.INFO, "  Found " + allMetadata.size() + " component(s)");
+        LOGGER.info("  Found {} component(s)", allMetadata.size());
 
         if (allMetadata.isEmpty()) {
             throw new RuntimeException("No connectors found in classpath. Exiting!");
@@ -100,12 +101,12 @@ public class SchemaGenerator {
                 new ConfigDefExtractor(),
                 new ConfigDefAdapter());
 
-        LOGGER.log(Logger.Level.INFO, "Discovering components from: " + componentSource.getName());
+        LOGGER.info("Discovering components from: {}", componentSource.getName());
         List<ComponentMetadata> allMetadata = componentSource.discoverComponents();
-        LOGGER.log(Logger.Level.INFO, "  Found " + allMetadata.size() + " component(s)");
+        LOGGER.info("  Found {} component(s)", allMetadata.size());
 
         if (allMetadata.isEmpty()) {
-            LOGGER.log(Logger.Level.INFO, "No Kafka Connect components found, skipping");
+            LOGGER.info("No Kafka Connect components found, skipping");
             return;
         }
 
@@ -114,18 +115,18 @@ public class SchemaGenerator {
 
     private void generateSchemas(List<ComponentMetadata> allMetadata, SchemaGeneratorConfig config) {
 
-        LOGGER.log(Logger.Level.INFO, "Generating " + allMetadata.size() + " schema(s)...");
+        LOGGER.info("Generating {} schema(s)...", allMetadata.size());
 
         for (ComponentMetadata componentMetadata : allMetadata) {
-            LOGGER.log(Logger.Level.DEBUG, "Creating \"" + config.schema().getDescriptor().getName()
-                    + "\" schema for component: "
-                    + componentMetadata.getComponentDescriptor().getDisplayName() + "...");
+            LOGGER.debug("Creating \"{}\" schema for component: {}...",
+                    config.schema().getDescriptor().getName(),
+                    componentMetadata.getComponentDescriptor().getDisplayName());
 
             String spec = config.schema().getSpec(componentMetadata);
             schemaWriter.writeSchema(componentMetadata, spec);
         }
 
-        LOGGER.log(Logger.Level.INFO, "Successfully generated " + allMetadata.size() + " schema(s)");
+        LOGGER.info("Successfully generated {} schema(s)", allMetadata.size());
     }
 
     /**
@@ -138,7 +139,7 @@ public class SchemaGenerator {
             throw new RuntimeException("No schema formats found!");
         }
 
-        LOGGER.log(Logger.Level.DEBUG, "Registered schemas: " +
+        LOGGER.debug("Registered schemas: {}",
                 schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
 
         Optional<Provider<Schema>> format = schemaFormats
@@ -160,7 +161,7 @@ public class SchemaGenerator {
     private void validateDescriptorRegistration(List<ComponentMetadata> allMetadata, Path projectArtifactPath) {
 
         if (projectArtifactPath == null) {
-            LOGGER.log(Logger.Level.DEBUG, "Skipping ConfigDescriptor registration validation (no project artifact path)");
+            LOGGER.debug("Skipping ConfigDescriptor registration validation (no project artifact path)");
             return;
         }
 
@@ -168,7 +169,7 @@ public class SchemaGenerator {
             Set<String> allDescriptors = findConfigDescriptorImplementations(projectArtifactPath);
 
             if (allDescriptors.isEmpty()) {
-                LOGGER.log(Logger.Level.DEBUG, "No ConfigDescriptor implementations found in this module");
+                LOGGER.debug("No ConfigDescriptor implementations found in this module");
                 return;
             }
 
@@ -180,31 +181,31 @@ public class SchemaGenerator {
             unregistered.removeAll(registeredDescriptors);
 
             if (!unregistered.isEmpty()) {
-                LOGGER.log(Logger.Level.ERROR, "");
-                LOGGER.log(Logger.Level.ERROR, "========================================");
-                LOGGER.log(Logger.Level.ERROR, "ConfigDescriptor Registration Validation FAILED!");
-                LOGGER.log(Logger.Level.ERROR, "========================================");
-                LOGGER.log(Logger.Level.ERROR, "The following ConfigDescriptor implementations are not registered:");
-                unregistered.stream().sorted().forEach(className -> LOGGER.log(Logger.Level.ERROR, "  - " + className));
-                LOGGER.log(Logger.Level.ERROR, "");
-                LOGGER.log(Logger.Level.ERROR, "Please add them to the appropriate ComponentMetadataProvider:");
-                LOGGER.log(Logger.Level.ERROR, "  - For transforms: TransformsMetadataProvider");
-                LOGGER.log(Logger.Level.ERROR, "  - For converters: ConverterMetadataProvider");
-                LOGGER.log(Logger.Level.ERROR, "  - For connectors: Create a connector-specific MetadataProvider");
-                LOGGER.log(Logger.Level.ERROR, "========================================");
-                LOGGER.log(Logger.Level.ERROR, "");
+                LOGGER.error("");
+                LOGGER.error("========================================");
+                LOGGER.error("ConfigDescriptor Registration Validation FAILED!");
+                LOGGER.error("========================================");
+                LOGGER.error("The following ConfigDescriptor implementations are not registered:");
+                unregistered.stream().sorted().forEach(className -> LOGGER.error("  - {}", className));
+                LOGGER.error("");
+                LOGGER.error("Please add them to the appropriate ComponentMetadataProvider:");
+                LOGGER.error("  - For transforms: TransformsMetadataProvider");
+                LOGGER.error("  - For converters: ConverterMetadataProvider");
+                LOGGER.error("  - For connectors: Create a connector-specific MetadataProvider");
+                LOGGER.error("========================================");
+                LOGGER.error("");
                 throw new RuntimeException("ConfigDescriptor registration validation failed. "
                         + unregistered.size() + " unregistered implementation(s) found.");
             }
 
-            LOGGER.log(Logger.Level.INFO, "ConfigDescriptor registration validation passed: All "
-                    + allDescriptors.size() + " implementation(s) are properly registered.");
+            LOGGER.info("ConfigDescriptor registration validation passed: All {} implementation(s) are properly registered.",
+                    allDescriptors.size());
         }
         catch (RuntimeException e) {
             throw e;
         }
         catch (Exception e) {
-            LOGGER.log(Logger.Level.WARNING, "Could not validate ConfigDescriptor registration: " + e.getMessage(), e);
+            LOGGER.warn("Could not validate ConfigDescriptor registration: {}", e.getMessage(), e);
         }
     }
 

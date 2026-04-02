@@ -1,0 +1,23 @@
+<configuration>
+
+    <appender name="CONSOLE"
+        class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} %-5p  %m   [%c]%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="warn">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <!-- Set up the default logging to be INFO level for schema generator -->
+    <logger name="io.debezium.schemagenerator" level="info" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!-- Kafka logging -->
+    <logger name="org.apache.kafka" level="error" />
+    <logger name="kafka" level="error" />
+
+</configuration>

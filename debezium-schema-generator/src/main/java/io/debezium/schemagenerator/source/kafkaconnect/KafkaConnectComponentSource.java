@@ -5,14 +5,14 @@
  */
 package io.debezium.schemagenerator.source.kafkaconnect;
 
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
@@ -46,7 +46,7 @@ import io.debezium.schemagenerator.source.ComponentSource;
  */
 public class KafkaConnectComponentSource implements ComponentSource {
 
-    private static final Logger LOGGER = System.getLogger(KafkaConnectComponentSource.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConnectComponentSource.class);
 
     private final KafkaConnectDiscoveryService discoveryService;
     private final ConfigDefExtractor configDefExtractor;
@@ -71,28 +71,26 @@ public class KafkaConnectComponentSource implements ComponentSource {
     @Override
     public List<ComponentMetadata> discoverComponents() {
 
-        LOGGER.log(Level.INFO, "Discovering Kafka Connect components...");
+        LOGGER.info("Discovering Kafka Connect components...");
 
         Map<ComponentType, List<Class<?>>> components = discoveryService.discoverKafkaConnectComponents();
 
         List<ComponentMetadata> allMetadata = components.entrySet().stream()
-                .peek(entry -> LOGGER.log(Level.DEBUG,
-                        "Processing " + entry.getValue().size() + " " + entry.getKey().getDisplayName() + "(s)"))
+                .peek(entry -> LOGGER.debug("Processing {} {}(s)",
+                        entry.getValue().size(), entry.getKey().getDisplayName()))
                 .flatMap(entry -> entry.getValue().stream()
                         .flatMap(componentClass -> {
                             try {
                                 return createComponentMetadata(componentClass).stream();
                             }
                             catch (Exception e) {
-                                LOGGER.log(Level.WARNING,
-                                        "Failed to create metadata for " + componentClass.getName(), e);
+                                LOGGER.warn("Failed to create metadata for {}", componentClass.getName(), e);
                                 return Optional.<ComponentMetadata> empty().stream();
                             }
                         }))
                 .collect(Collectors.toList());
 
-        LOGGER.log(Level.INFO,
-                "Discovered " + allMetadata.size() + " Kafka Connect component(s)");
+        LOGGER.info("Discovered {} Kafka Connect component(s)", allMetadata.size());
 
         return allMetadata;
     }
@@ -113,16 +111,14 @@ public class KafkaConnectComponentSource implements ComponentSource {
         Optional<ConfigDef> configDefOpt = configDefExtractor.extractConfigDef(componentClass);
 
         if (configDefOpt.isEmpty()) {
-            LOGGER.log(Level.DEBUG,
-                    "No ConfigDef found for " + componentClass.getName() + ", skipping");
+            LOGGER.debug("No ConfigDef found for {}, skipping", componentClass.getName());
             return Optional.empty();
         }
 
         Field.Set fields = configDefAdapter.adapt(configDefOpt.get());
 
-        LOGGER.log(Level.DEBUG,
-                "Created metadata for " + componentClass.getName() +
-                        " with " + fields.asArray().length + " field(s)");
+        LOGGER.debug("Created metadata for {} with {} field(s)",
+                componentClass.getName(), fields.asArray().length);
 
         return Optional.of(new KafkaConnectComponentMetadata(componentClass, fields));
     }

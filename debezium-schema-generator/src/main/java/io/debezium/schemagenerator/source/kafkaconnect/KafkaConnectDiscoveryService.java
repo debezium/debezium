@@ -7,8 +7,6 @@ package io.debezium.schemagenerator.source.kafkaconnect;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.nio.file.Path;
@@ -27,6 +25,8 @@ import org.jboss.jandex.DotName;
 import org.jboss.jandex.Index;
 import org.jboss.jandex.IndexReader;
 import org.jboss.jandex.Indexer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Discovers Kafka Connect component classes using Jandex bytecode indexing.
@@ -50,7 +50,7 @@ import org.jboss.jandex.Indexer;
  */
 public class KafkaConnectDiscoveryService {
 
-    private static final Logger LOGGER = System.getLogger(KafkaConnectDiscoveryService.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConnectDiscoveryService.class);
 
     /**
      * Mapping of component types to their fully qualified interface names.
@@ -75,21 +75,20 @@ public class KafkaConnectDiscoveryService {
         Map<String, Index> jarIndices = indexKafkaConnectJars();
 
         if (jarIndices.isEmpty()) {
-            LOGGER.log(Level.WARNING,
-                    "No Kafka Connect JARs found. Ensure connect-* JARs are on classpath.");
+            LOGGER.warn("No Kafka Connect JARs found. Ensure connect-* JARs are on classpath.");
             return Map.of();
         }
 
-        LOGGER.log(Level.DEBUG, "Indexed " + jarIndices.size() + " Kafka Connect JAR(s): " +
-                String.join(", ", jarIndices.keySet()));
+        LOGGER.debug("Indexed {} Kafka Connect JAR(s): {}",
+                jarIndices.size(), String.join(", ", jarIndices.keySet()));
 
         return COMPONENT_INTERFACES.entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> {
                             List<Class<?>> components = discoverComponentType(jarIndices, entry.getValue());
-                            LOGGER.log(Level.DEBUG, "Discovered " + components.size() + " " +
-                                    entry.getKey().getDisplayName() + " component(s)");
+                            LOGGER.debug("Discovered {} {} component(s)",
+                                    components.size(), entry.getKey().getDisplayName());
                             return components;
                         },
                         (a, b) -> a,
@@ -122,13 +121,13 @@ public class KafkaConnectDiscoveryService {
                             String jarName = Paths.get(jarPath).getFileName().toString();
 
                             if (!indices.containsKey(jarName)) {
-                                LOGGER.log(Level.DEBUG, "Indexing: " + jarName);
+                                LOGGER.debug("Indexing: {}", jarName);
                                 indexJarFile(jarPath).ifPresent(index -> indices.put(jarName, index));
                             }
                         });
             }
             catch (IOException e) {
-                LOGGER.log(Level.WARNING, "Error scanning for " + interfaceName, e);
+                LOGGER.warn("Error scanning for {}", interfaceName, e);
             }
         });
 
@@ -157,7 +156,7 @@ public class KafkaConnectDiscoveryService {
                                 return Optional.of(Class.forName(classInfo.name().toString()));
                             }
                             catch (ClassNotFoundException e) {
-                                LOGGER.log(Level.WARNING, "Could not load class: " + classInfo.name(), e);
+                                LOGGER.warn("Could not load class: {}", classInfo.name(), e);
                             }
                             return Optional.<Class<?>> empty();
                         }))
@@ -179,7 +178,7 @@ public class KafkaConnectDiscoveryService {
 
         Optional<Index> prebuiltIndex = tryLoadPrebuiltIndex(jarPath);
         if (prebuiltIndex.isPresent()) {
-            LOGGER.log(Level.DEBUG, "Using pre-built index for " + jarPath);
+            LOGGER.debug("Using pre-built index for {}", jarPath);
             return prebuiltIndex;
         }
 
@@ -187,7 +186,7 @@ public class KafkaConnectDiscoveryService {
             return Optional.of(createIndexFromJarClasses(jarPath));
         }
         catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Could not index JAR: " + jarPath, e);
+            LOGGER.warn("Could not index JAR: {}", jarPath, e);
             return Optional.empty();
         }
     }
@@ -235,13 +234,13 @@ public class KafkaConnectDiscoveryService {
                             return 1;
                         }
                         catch (Exception e) {
-                            LOGGER.log(Level.DEBUG, "Could not index class " + entry.getName(), e);
+                            LOGGER.debug("Could not index class {}", entry.getName(), e);
                             return 0;
                         }
                     })
                     .sum();
 
-            LOGGER.log(Level.DEBUG, "Indexed " + classCount + " classes from " + path.getFileName());
+            LOGGER.debug("Indexed {} classes from {}", classCount, path.getFileName());
         }
 
         return indexer.complete();
