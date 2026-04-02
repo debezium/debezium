@@ -532,7 +532,7 @@ The following example shows a complete configuration for enabling the JDBC sink 
 ----
 
 // Type: assembly
-// ModuleId: debezium-openlineage-dataset-namespace-formatting
+// ModuleID: debezium-openlineage-dataset-namespace-formatting
 [id="dataset-namespace-formatting"]
 == Dataset namespace formatting
 
