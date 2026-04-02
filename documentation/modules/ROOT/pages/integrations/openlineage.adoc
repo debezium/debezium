@@ -101,7 +101,7 @@ Job metadata:: Description, tags, and owners.
 The following dataset mappings are possible:
 
 Input Datasets::
-Represents the database tables that {prodname} is configured to capture changes from.
+Represent the database tables that {prodname} is configured to capture changes from.
 The OpenLineage integration automatically creates input datasets based on the connector configuration.
 The integration applies the following principles when it creates dataset mappings:
 
@@ -110,7 +110,7 @@ The integration applies the following principles when it creates dataset mapping
 * DDL changes in the source table are reflected dynamically in the dataset schema.
 
 Output datasets::
-Represents the Kafka topics where CDC events are written.
+Represent the Kafka topics where CDC events are written.
 For Kafka Connect deployments, output datasets are created when you apply the OpenLineage single message transformation (SMT).
 For {prodname} Server deployments, output datasets are automatically captured.
 +
@@ -136,7 +136,7 @@ The following principles apply when defining input datasets:
 * The namespace format follows `kafka://bootstrap-server:port`, where the bootstrap server is specified via the `openlineage.integration.dataset.kafka.bootstrap.servers` property.
 
 Output datasets::
-Represents the target databases or collections where the sink connector writes data.
+Represent the target databases or collections where the sink connector writes data.
 +
 The following principles apply when defining output dataset mappings:
 +
