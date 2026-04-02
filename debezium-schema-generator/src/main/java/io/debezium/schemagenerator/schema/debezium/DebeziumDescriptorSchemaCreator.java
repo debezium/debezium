@@ -100,6 +100,7 @@ public class DebeziumDescriptorSchemaCreator {
                 field.name(),
                 mapType(field.type()),
                 field.isRequired() ? true : null,
+                field.defaultValueAsString(),
                 display,
                 validations,
                 valueDependants);
