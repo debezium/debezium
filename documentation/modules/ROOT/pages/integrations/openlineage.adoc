@@ -320,7 +320,7 @@ ifdef::product[]
 .Additional resources
 * https://openlineage.io/docs/client/java[OpenLineage client documentation]
 * xref:debezium-configuration-for-enabling-openlineage-in-a-kafka-connect-environment[]
-* xref:debezium-configuration-for-enabling-openlineage-in-a-debezium-server-environment[] 
+* xref:debezium-configuration-for-enabling-openlineage-in-a-debezium-server-environment[]
 endif::product[]
 
 // Type: reference
