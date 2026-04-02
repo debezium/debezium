@@ -4162,6 +4162,9 @@ Use this mode to prevent WAL growth on low-activity databases where monitored ta
 NOTE: When using `connector_and_driver` mode, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN, which may advance the replication slot beyond the stored offset when non-monitored WAL activity occurs.
 If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
 +
+NOTE: Because `connector_and_driver` mode requires periodic opportunities to propagate LSNs to Kafka, when xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] = 0 and
+xref:postgresql-property-provide-transaction-metadata[`provide.transaction.metadata`] = false, the connector internally sets xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to 600000 (10 minutes).
++
 [IMPORTANT]
 ====
 The `connector_and_driver` mode is a Technology Preview feature.
