@@ -132,7 +132,7 @@ Your changes should include changes to existing tests or additional unit and/or 
 
     $ ./mvnw clean install
 
-Feel free to commit your changes locally as often as you'd like, though we generally prefer that each commit represent a complete and atomic change to the code. Often, this means that most issues will be addressed with a single commit in a single pull-request, but other more complex issues might be better served with a few commits that each make separate but atomic changes. (Some developers prefer to commit frequently and to ammend their first commit with additional changes. Other developers like to make multiple commits and to then squash them. How you do this is up to you. However, *never* change, squash, or ammend a commit that appears in the history of the upstream repository.) When in doubt, use a few separate atomic commits; if the Debezium reviewers think they should be squashed, they'll let you know when they review your pull request.
+Feel free to commit your changes locally as often as you'd like, though we generally prefer that each commit represent a complete and atomic change to the code. Often, this means that most issues will be addressed with a single commit in a single pull-request, but other more complex issues might be better served with a few commits that each make separate but atomic changes. (Some developers prefer to commit frequently and to amend their first commit with additional changes. Other developers like to make multiple commits and to then squash them. How you do this is up to you. However, *never* change, squash, or amend a commit that appears in the history of the upstream repository.) When in doubt, use a few separate atomic commits; if the Debezium reviewers think they should be squashed, they'll let you know when they review your pull request.
 
 Committing is as simple as:
 
@@ -226,7 +226,7 @@ If the reviewers ask you to make additional changes, simply switch to your topic
 
     $ git checkout dbz#1234
 
-and then make the changes on that branch and either add a new commit or ammend your previous commits. When you've addressed the reviewers' concerns, push your changes to your `origin` repository:
+and then make the changes on that branch and either add a new commit or amend your previous commits. When you've addressed the reviewers' concerns, push your changes to your `origin` repository:
 
     $ git push origin dbz#1234
 
