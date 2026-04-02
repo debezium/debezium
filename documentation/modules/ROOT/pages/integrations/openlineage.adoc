@@ -1,6 +1,6 @@
 // Category: debezium-using
 // Type: assembly
-// Title: Integrating OpenLineage with {prodname}
+// Title: Integrating OpenLineage with {prodname} (Technology Preview)
 // ModuleID: integrating-openlineage-with-debezium
 [id="open-lineage-integration"]
 = OpenLineage Integration
