@@ -146,7 +146,7 @@ The following principles apply when defining output dataset mappings:
 For more information, see xref:dataset-namespace-formatting[Dataset namespace formatting].
 
 // Type: concept
-[id="debezium-openlineage-sink-connector-availability by platform"]
+[id="debezium-openlineage-sink-connector-availability-by-platform"]
 === Sink connector availability in Kafka Connect vs. {prodname} Server
 
 Different sink connectors are available for OpenLineage integration depending on your deployment platform.
