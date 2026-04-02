@@ -493,7 +493,7 @@ public class TypeRegistry {
                 // For types with base or element type mappings, they need to be delayed.
                 // Otherwise their base/element types has not yet be registered,
                 // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
-                delayResolvedBuilders.add(builderWithSchema.builder());
+                delayResolvedBuilders.add(builderWithSchema);
             }
 
             // Resolve delayed builders
