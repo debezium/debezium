@@ -16,6 +16,7 @@ public class ComponentDescriptor {
     private static final Logger LOGGER = LoggerFactory.getLogger(ComponentDescriptor.class);
 
     private static final String SINK_CONNECTOR_TYPE = "sink-connector";
+    private static final String SERVER_SINK_TYPE = "server-sink";
     private static final String SOURCE_CONNECTOR_TYPE = "source-connector";
     private static final String TRANSFORMATION_TYPE = "transformation";
     private static final String PREDICATE_TYPE = "predicate";
@@ -34,6 +35,7 @@ public class ComponentDescriptor {
             "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE,
             "org.apache.kafka.connect.storage.Converter", CONVERTER_TYPE,
             "org.apache.kafka.connect.storage.HeaderConverter", CONVERTER_TYPE,
+            "io.debezium.engine.DebeziumEngine$ChangeConsumer", SERVER_SINK_TYPE,
             "io.debezium.spi.converter.CustomConverter", CUSTOM_CONVERTER_TYPE);
 
     private final String id;
