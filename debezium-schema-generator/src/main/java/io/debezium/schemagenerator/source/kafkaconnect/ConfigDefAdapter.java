@@ -5,12 +5,12 @@
  */
 package io.debezium.schemagenerator.source.kafkaconnect;
 
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 
@@ -40,7 +40,7 @@ import io.debezium.config.Field;
  */
 public class ConfigDefAdapter {
 
-    private static final Logger LOGGER = System.getLogger(ConfigDefAdapter.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDefAdapter.class);
 
     /**
      * Adapts a Kafka Connect ConfigDef to a Debezium Field.Set.
@@ -61,13 +61,11 @@ public class ConfigDefAdapter {
                 fields.add(field);
             }
             catch (Exception e) {
-                LOGGER.log(Level.WARNING,
-                        "Could not convert ConfigKey " + configKey.name + " to Field", e);
+                LOGGER.warn("Could not convert ConfigKey " + configKey.name + " to Field", e);
             }
         }
 
-        LOGGER.log(Level.DEBUG,
-                "Converted " + fields.size() + " ConfigKeys to Fields");
+        LOGGER.debug("Converted {} ConfigKeys to Fields", fields.size());
 
         return Field.setOf(fields);
     }
@@ -141,9 +139,8 @@ public class ConfigDefAdapter {
             }
             case SHORT, DOUBLE, STRING, PASSWORD, CLASS, LIST -> field.withDefault(defaultValue.toString());
             default -> {
-                LOGGER.log(Level.DEBUG,
-                        "Unknown type " + configKey.type + " for field " + configKey.name +
-                                ", using string default");
+                LOGGER.debug("Unknown type {} for field {}, using string default",
+                        configKey.type, configKey.name);
                 yield field.withDefault(defaultValue.toString());
             }
         };

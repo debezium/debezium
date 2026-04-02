@@ -6,12 +6,13 @@
 package io.debezium.schemagenerator.source;
 
 import java.io.File;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataProvider;
@@ -30,7 +31,7 @@ import io.debezium.metadata.ComponentMetadataProvider;
  */
 public class DebeziumComponentSource implements ComponentSource {
 
-    private static final Logger LOGGER = System.getLogger(DebeziumComponentSource.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumComponentSource.class);
 
     private final Path projectArtifactPath;
 
@@ -84,15 +85,15 @@ public class DebeziumComponentSource implements ComponentSource {
             boolean isFromProject = classLocationPath.equals(normalizedProjectPath);
 
             if (!isFromProject) {
-                LOGGER.log(Level.DEBUG, "Skipping metadata provider " + providerClass.getName() +
-                        " (from " + classLocationPath + ", not from project " + normalizedProjectPath + ")");
+                LOGGER.debug("Skipping metadata provider {} (from {}, not from project {})",
+                        providerClass.getName(), classLocationPath, normalizedProjectPath);
             }
 
             return isFromProject;
         }
         catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Could not determine location of provider " + provider.type().getName() +
-                    ", including it by default", e);
+            LOGGER.warn("Could not determine location of provider {}, including it by default",
+                    provider.type().getName(), e);
             return true;
         }
     }

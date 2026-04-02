@@ -5,13 +5,13 @@
  */
 package io.debezium.schemagenerator.source.kafkaconnect;
 
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Extracts Kafka Connect {@link ConfigDef} from component classes.
@@ -42,7 +42,7 @@ import org.apache.kafka.common.config.ConfigDef;
  */
 public class ConfigDefExtractor {
 
-    private static final Logger LOGGER = System.getLogger(ConfigDefExtractor.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigDefExtractor.class);
 
     private static final String CONFIG_DEF_FIELD_NAME = "CONFIG_DEF";
     private static final String CONFIG_METHOD_NAME = "config";
@@ -71,9 +71,8 @@ public class ConfigDefExtractor {
             return Optional.of(configDef);
         }
 
-        LOGGER.log(Level.WARNING,
-                "Could not extract ConfigDef from " + componentClass.getName() +
-                        ". Component may have no configuration or use non-standard pattern.");
+        LOGGER.warn("Could not extract ConfigDef from {}. Component may have no configuration or use non-standard pattern.",
+                componentClass.getName());
 
         return Optional.empty();
     }
@@ -93,19 +92,16 @@ public class ConfigDefExtractor {
             Object value = field.get(null); // null because it's static
 
             if (value instanceof ConfigDef) {
-                LOGGER.log(Level.DEBUG,
-                        "Found ConfigDef via " + CONFIG_DEF_FIELD_NAME + " field in " + clazz.getName());
+                LOGGER.debug("Found ConfigDef via {} field in {}", CONFIG_DEF_FIELD_NAME, clazz.getName());
                 return (ConfigDef) value;
             }
         }
         catch (NoSuchFieldException e) {
             // Expected for classes without CONFIG_DEF field
-            LOGGER.log(Level.DEBUG,
-                    "No " + CONFIG_DEF_FIELD_NAME + " field in " + clazz.getName());
+            LOGGER.debug("No {} field in {}", CONFIG_DEF_FIELD_NAME, clazz.getName());
         }
         catch (Exception e) {
-            LOGGER.log(Level.DEBUG,
-                    "Could not access " + CONFIG_DEF_FIELD_NAME + " in " + clazz.getName(), e);
+            LOGGER.debug("Could not access {} in {}", CONFIG_DEF_FIELD_NAME, clazz.getName(), e);
         }
 
         return null;
@@ -130,19 +126,16 @@ public class ConfigDefExtractor {
             Object result = method.invoke(instance);
 
             if (result instanceof ConfigDef) {
-                LOGGER.log(Level.DEBUG,
-                        "Got ConfigDef from " + CONFIG_METHOD_NAME + "() method in " + clazz.getName());
+                LOGGER.debug("Got ConfigDef from {}() method in {}", CONFIG_METHOD_NAME, clazz.getName());
                 return (ConfigDef) result;
             }
         }
         catch (NoSuchMethodException e) {
             // Expected for classes without config() method
-            LOGGER.log(Level.DEBUG,
-                    "No " + CONFIG_METHOD_NAME + "() method in " + clazz.getName());
+            LOGGER.debug("No {}() method in {}", CONFIG_METHOD_NAME, clazz.getName());
         }
         catch (Exception e) {
-            LOGGER.log(Level.DEBUG,
-                    "Could not invoke " + CONFIG_METHOD_NAME + "() on " + clazz.getName(), e);
+            LOGGER.debug("Could not invoke {}() on {}", CONFIG_METHOD_NAME, clazz.getName(), e);
         }
 
         return null;

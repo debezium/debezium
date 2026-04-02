@@ -7,10 +7,11 @@ package io.debezium.schemagenerator;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.metadata.ComponentMetadata;
@@ -27,7 +28,7 @@ import io.debezium.metadata.ComponentMetadata;
  */
 public class SchemaWriter {
 
-    private static final Logger LOGGER = System.getLogger(SchemaWriter.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SchemaWriter.class);
     public static final String JSON_FILE_EXTENSION = ".json";
 
     private final SchemaGeneratorConfig config;
@@ -52,7 +53,7 @@ public class SchemaWriter {
         try {
             Path schemaFilePath = buildFilePath(componentMetadata);
             Files.writeString(schemaFilePath, schemaSpec);
-            LOGGER.log(Level.DEBUG, "Wrote schema to: " + schemaFilePath);
+            LOGGER.debug("Wrote schema to: {}", schemaFilePath);
         }
         catch (IOException e) {
             throw new SchemaWriteException("Failed to write schema for " +
