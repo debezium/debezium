@@ -149,7 +149,7 @@ For more information, see xref:dataset-namespace-formatting[Dataset namespace fo
 [id="debezium-openlineage-sink-connector-availability-by-platform"]
 === Sink connector availability in Kafka Connect vs. {prodname} Server
 
-Different sink connectors are available for OpenLineage integration depending on your deployment platform.
+The sink connectors that are available for OpenLineage integration vary with your deployment platform.
 
 In a Kafka Connect environment, you can configure the following {prodname} sink connectors to use the OpenLineage integration:
 
