@@ -112,9 +112,13 @@ public class DebeziumDescriptorSchemaCreator {
             return desc;
         }
 
+        if (desc == null) {
+            return " Default: " + defaultValue;
+        }
+
         desc = desc.replaceAll(DEFAULT_VALUE_REGEX, "").trim();
 
-        return desc + " Default: " + defaultValue.toString();
+        return desc + " Default: " + defaultValue;
     }
 
     private static List<ValueDependant> buildValueDependants(Field field) {

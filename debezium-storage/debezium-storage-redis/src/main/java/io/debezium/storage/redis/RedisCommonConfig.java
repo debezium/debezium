@@ -159,6 +159,10 @@ public class RedisCommonConfig {
 
     private boolean clusterEnabled;
 
+    public RedisCommonConfig() {
+        // Intentionally blank
+    }
+
     public RedisCommonConfig(Configuration config, String prefix) {
         config = config.subset(prefix, true);
 
