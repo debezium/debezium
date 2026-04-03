@@ -19,7 +19,6 @@ public class EnumTest {
 
     @Test
     public void shouldCreateSchemaBuilderFromValues() {
-        org.junit.jupiter.api.Assertions.fail("INTENTIONAL FAILURE to test CI guardrail on GitHub");
         assertBuilder(Enum.builder(Arrays.asList("a", "b", "c")), "a,b,c");
         assertBuilder(Enum.builder(Arrays.asList("a")), "a");
         assertBuilder(Enum.builder(Collections.EMPTY_LIST), "");
