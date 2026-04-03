@@ -1575,7 +1575,7 @@ Contains the string representation of a date range. It always has an exclusive u
 |`STRING`
 |`io.debezium.data.Enum` +
  +
-Contains the string representation of the PostgreSQL `ENUM` value. The set of allowed values is maintained in the `allowed` schema parameter.
+Contains the string representation of the PostgreSQL `ENUM` value. The `allowed` schema parameter contains the comma-separated list of allowed values. The values are sorted using the logical sort order defined in PostgreSQL (`enumsortorder`), rather than the alphabetical order. This ensures that the schema remains deterministic even if new values are inserted into the enum later.
 
 |===
 

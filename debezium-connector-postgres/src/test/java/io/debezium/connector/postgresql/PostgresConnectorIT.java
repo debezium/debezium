@@ -3437,6 +3437,31 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1331")
+    public void shouldCreateEnumSchemaWithLogicalOrder() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+        assertConnectorIsRunning();
+
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        TestHelper.execute("CREATE TYPE enum8684 as enum ('c','a','b')");
+        TestHelper.execute("CREATE TABLE s1.enum_table (pk SERIAL, data enum8684, primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.enum_table (pk,data) values (1, 'a'::enum8684)");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.enum_table"));
+
+        assertThat(recordsForTopic).hasSize(1);
+        assertInsert(recordsForTopic.get(0), PK_FIELD, 1);
+
+        String allowedEnumValues = recordsForTopic.get(0).valueSchema().field("after").schema().field("data").schema().parameters().get("allowed");
+        assertThat(allowedEnumValues).isEqualTo("c,a,b");
+    }
+
+    @Test
     @FixFor("DBZ-5204")
     public void testShouldNotCloseConnectionFetchingMetadataWithNewDataTypes() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);
