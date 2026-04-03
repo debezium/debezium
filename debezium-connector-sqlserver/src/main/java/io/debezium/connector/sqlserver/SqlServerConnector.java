@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -25,14 +24,12 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
 
 /**
@@ -185,33 +182,6 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
         return new SqlServerConnection(sqlServerConfig, null, Collections.emptySet(),
                 sqlServerConfig.useSingleDatabase());
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final List<String> databaseNames = connectorConfig.getDatabaseNames();
-
-        try (SqlServerConnection connection = connect(connectorConfig)) {
-            List<TableId> tables = new ArrayList<>();
-            databaseNames.forEach(databaseName -> {
-                try {
-                    tables.addAll(
-                            connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
-                                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                                    .collect(Collectors.toList()));
-                }
-                catch (SQLException e) {
-                    throw new DebeziumException(e);
-                }
-            });
-
-            return tables;
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve real database name", e);
-        }
     }
 
     @Override

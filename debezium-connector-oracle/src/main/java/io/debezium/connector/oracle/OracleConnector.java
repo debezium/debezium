@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -21,14 +20,11 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 public class OracleConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
@@ -114,27 +110,6 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(OracleConnectorConfig.ALL_FIELDS);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        final String databaseName = connectorConfig.getCatalogName();
-
-        try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
-            if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-                connection.setSessionToPdb(connectorConfig.getPdbName());
-            }
-            // @TODO: we need to expose a better method from the connector, particularly getAllTableIds
-            // the following's performance is acceptable when using PDBs but not as ideal with non-PDB
-            return connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .collect(Collectors.toList());
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
     }
 
     @Override
