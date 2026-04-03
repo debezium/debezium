@@ -1,6 +1,9 @@
 :page-aliases: configuration/geometry-format-transformer.adoc
+// Type: assembly
+// ModuleID: debezium-converting-geometry-formats-with-debezium
+// Title: Converting between geometry formats with {prodname}
 [id="convert-between-geometry-formats"]
-= Convert between Geometry formats
+= Convert between geometry formats
 
 :toc:
 :toc-placement: macro
@@ -9,33 +12,81 @@
 :source-highlighter: highlight.js
 
 toc::[]
+The GeometryFormatTransformer single message transform (SMT) converts geometry values in change events between `WKB` and `EWKB` format to ensure that target systems receive spatial data in the most compatible format. 
+By optimizing the data format, you can prevent data processing failures and help to ensure efficient data flows across the heterogeneous systems in your data pipeline.
 
-The 'GeometryFormatTransformer' is a transformation that converts between the WKB (Well-Known Binary) and EWKB (Extended Well-Known Binary) formats.This transformation identifies geometry fields using the 'io.debezium.data.Geometry' logical type.
-It can be applied to either a {prodname} source connector to modify the format before events are emitted, or to a {prodname} sink connector to process events from a {prodname} source connector topic.
+// Type: concept
+[id="debezium-converting-geometry-formats-about-spatial-data-formats"]
+== About spatial data formats
 
-You can configure the SMT to modify the format in the message.
-For more information about configuring the SMT, see the following xref:example-geometry-format-transformer[example].
+WKB (Well-Known Binary) and EWKB (Extended Well-Known Binary) are two common formats for representing spatial data. 
+WKB is the standard Open Geospatial Consortium (OGC) format for representing geometry data in binary form. EWKB is a PostGIS extension that adds SRID (Spatial Reference System Identifier) information to the WKB structure. 
+The SRID identifies the coordinate system used by the geometry, which is essential for accurate spatial operations like distance calculations and coordinate transformations.
+The GeometryFormatTransformer SMT uses the 'io.debezium.data.Geometry' logical type to identify geometry fields.
 
+
+// Type: concept
+[id="debezium-converting-geometry-formats-smt-when-to-use"]
+== When to use the GeometryFormatTransformer SMT
+
+The GeometryFormatTransformer SMT helps to ensure data compatibility for consumers that require different spatial data formats.
+When you know that a downstream system will reject the source data format or fail to parse it correctly, apply the GeometryFormatTransformer to ensure that the data is in the correct format before it reaches the consumer.
+
+You can apply the transformation to a {prodname} source connector to modify the format before events are emitted, or to a {prodname} sink connector to process events retrieved from a {prodname} source connector topic.
+
+Apply the GeometryFormatTransformer in the following situations:
+
+Streaming to PostGIS or spatial databases::
+When you have source data in WKB format but a target system uses PostGIS or another spatial database that requires SRID (Spatial Reference System Identifier) information, use the SMT to convert to EWKB format. 
+Without SRID data, PostGIS cannot accurately perform spatial operations like distance calculations, coordinate transformations, or spatial indexing.
+
+Integrating with legacy GIS applications::
+When you have source data in EWKB format and downstream systems run older GIS tools or applications that cannot parse SRID extensions, use the SMT to convert data to the simpler WKB format. 
+
+Building multi-target data pipelines::
+When you route spatial data to multiple downstream systems, run the SMT to customize data to ensure that each system receives data in its required format.
+
+Preventing data processing failures::
+When you encounter geometry parsing errors, null values, or data type mismatches in your downstream systems, the cause is often format incompatibility.
+Converting data to a more consumable format can help to resolve errors and optimize data flow.
+
+
+
+// Type: procedure
+// ModuleID: debezium-geometry-format-transformer-apply-SMT-to-convert-between-WKB-and-EWKB-formats
+// Title: Apply the geometry format SMT to convert between WKB and EWKB formats
 [[example-geometry-format-transformer]]
-== Example
+== Apply the SMT to convert between WKB and EWKB formats
 
-For example, to configure the connector to convert the Geometry formats between WKB and EWKB, add the following lines to the connector configuration:
+To convert the format of WKB or EWKB data in a data source, add the convertGeometryFormat SMT to the connector configuration, and specify the target format.
+Based on the configuration, the transformer intelligently detects the source format and converts it accordingly, ensuring that the output format matches the target system's requirements.
 
+You can add the SMT without explicitly specifying the target format, to configure it to convert data from `EWKB` format to `WKB` format.
+You can modify the default target to convert `WKB` data to `EWKB` format.
+To preserve SRID information (convert to EWKB), you must explicitly set the `format` to `EWKB`.
+
+.Procedure
+
+. To configure the default behavior of the transformation (convert from `EWKB` format to WKB format), add the SMT to the connector configuration without specifying the `format` option, as in the following example:
++
 [source]
 ----
 transforms=convertGeometryFormat
 transforms.convertGeometryFormat.type=io.debezium.transforms.GeometryFormatTransformer
 ----
 
-To apply the transformation to Geometry Format `WKB`, add the following lines to your connector configuration:
+. To configure the transformation to convert from `WKB` format to `EWKB` format, specify `EWKB` as the target format in your connector configuration, as shown in the following example:
 
 [source]
 ----
 transforms=convertGeometryFormat
 transforms.convertGeometryFormat.type=io.debezium.transforms.GeometryFormatTransformer
-transforms.convertGeometryFormat.format=WKB
+transforms.convertGeometryFormat.format=EWKB
 ----
 
+// Type: reference
+// ModuleID: debezium-geometry-format-transformer-configuration-options
+// Title: Descriptions of {prodname} geometry format transformer SMT configuration properties
 [[geometry-format-transformer-configuration-options]]
 == Configuration options
 
@@ -52,7 +103,7 @@ The following table lists the configuration options that you can use with the `G
 |Importance
 
 |[[geometry-format-transformer-format]]<<geometry-format-transformer-format, `format`>>
-|The geometry format that is applied to all Debezium Geometry logical types.
+|The geometry format that is applied to all {prodname} Geometry logical types.
 The transformation converts the geometry format between WKB and EWKB.
 |enum
 |WKB
