@@ -87,14 +87,14 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         assertThat(metrics.getLastCapturedDmlCount()).isEqualTo(300);
         assertThat(metrics.getLastBatchProcessingTimeInMilliseconds()).isEqualTo(1000);
         assertThat(metrics.getAverageBatchProcessingThroughput()).isGreaterThanOrEqualTo(300);
-        assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(300);
+        assertThat(metrics.getMaxCapturedDmlCountInBatch()).isEqualTo(300);
         assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(300);
 
         metrics.setLastCapturedDmlCount(500);
         metrics.setLastBatchJdbcRows(500);
         metrics.setLastBatchProcessingDuration(Duration.ofMillis(1000));
         assertThat(metrics.getAverageBatchProcessingThroughput()).isEqualTo(400);
-        assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(500);
+        assertThat(metrics.getMaxCapturedDmlCountInBatch()).isEqualTo(500);
         assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(500);
         assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(500);
 

@@ -5047,7 +5047,7 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The number of DML operations observed in the last LogMiner session query.
 
-|[[oracle-streaming-metrics-maxcaptureddmlinbatch]]<<oracle-streaming-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
+|[[oracle-streaming-metrics-maxcaptureddmlcountinbatch]]<<oracle-streaming-metrics-maxcaptureddmlcountinbatch, `+MaxCapturedDmlCountInBatch+`>>
 |`long`
 |The maximum number of DML operations observed while processing a single LogMiner session query.
 
@@ -5219,7 +5219,7 @@ See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transacti
 A high value can indicate that a long-running transactions is ongoing and is preventing the connector from flushing the most recently processed system change number to the connector's offsets.
 When conditions are optimal, the value should be close to or equal to `0`.
 
-|[[oracle-streaming-metrics-unparsable-ddl-count]]<<oracle-streaming-metrics-unparsable-ddl-count, `+UnparsableDdlCount+`>>
+|[[oracle-streaming-metrics-total-schema-change-parse-error-count]]<<oracle-streaming-metrics-total-schema-change-parse-error-count, `+TotalSchemaChangeParseErrorCount+`>>
 |`int`
 |The number of DDL records that have been detected but could not be parsed by the DDL parser.
 This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
