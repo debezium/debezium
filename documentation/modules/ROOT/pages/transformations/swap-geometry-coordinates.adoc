@@ -25,10 +25,10 @@ The serialization format is irrelevant in a {prodname} source connector, because
 However, a sink connector must not only be able to interpret the coordinate system of the source database, but also provide data to the target system in a format that it can consume.
 
 // Type: procedure
-// ModuleID: debezium-swap-geometry-coordinates-enable-SMT-to-convert-coordinate-system
-// Title: Enable the swap geometry coordinates SMT to convert the coordinate system of captured data
+// ModuleID: debezium-swap-geometry-coordinates-apply-SMT-to-convert-coordinate-system
+// Title: Apply the swap geometry coordinates SMT to convert the coordinate system of captured data
 [[example-swap-geometry-coordinates]]
-== Example
+== Applying the SwapGeometryCoordinates SMT to convert coordinates in captured data
 
 To convert the coordinate system of the data that a {prodname} connector captures from a source database to a different coordinate system, add the `SwapGeometryCoordinates` SMT to the connector configuration.
 You can configure the transformation so that it converts the default set of spatial reference identifiers (SRIDs), or you can customize the configuration so that the transform applies only to specific identifiers.
