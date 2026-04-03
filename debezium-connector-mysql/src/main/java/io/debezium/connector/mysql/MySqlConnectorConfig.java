@@ -240,7 +240,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field JDBC_DRIVER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "jdbc.driver")
             .withDisplayName("JDBC Driver Class Name")
             .withType(Type.CLASS)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.MEDIUM)
             .withDefault(com.mysql.cj.jdbc.Driver.class.getName())
             .withImportance(Importance.LOW)
@@ -250,7 +250,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field JDBC_PROTOCOL = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "protocol")
             .withDisplayName("JDBC Protocol")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 42))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.MEDIUM)
             .withDefault("jdbc:mysql")
             .withImportance(Importance.LOW)
@@ -279,7 +279,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create(SNAPSHOT_LOCKING_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'minimal', "
@@ -297,7 +297,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .withEnum(MySqlSecureConnectionMode.class, MySqlSecureConnectionMode.PREFERRED)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withDescription("Whether to use an encrypted connection to the database. Options include: "
                     + "'disabled' to use an unencrypted connection; "
                     + "'preferred' (the default) to establish a secure (encrypted) connection if the server supports "

@@ -8,8 +8,10 @@ package io.debezium.schemagenerator.schema.debezium;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -21,6 +23,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.schemagenerator.model.debezium.ComponentDescriptor;
@@ -56,10 +59,13 @@ public class DebeziumDescriptorSchemaCreator {
                 componentMetadata.getComponentDescriptor().getDisplayName(),
                 null);
 
+        ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
+        Map<String, Integer> fieldGroupOrderMap = buildFieldGroupOrderMap(configDefinition);
+
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
-        StreamSupport.stream(componentMetadata.getConfigDefinition().all().spliterator(), false)
-                .map(this::buildProperty)
+        StreamSupport.stream(configDefinition.all().spliterator(), false)
+                .map(field -> buildProperty(field, fieldGroupOrderMap))
                 .filter(Objects::nonNull)
                 .forEach(property -> {
                     usedGroups.add(property.display().group().toLowerCase());
@@ -75,14 +81,33 @@ public class DebeziumDescriptorSchemaCreator {
                 buildGroups(usedGroups));
     }
 
-    private Property buildProperty(Field field) {
+    /**
+     * Builds a map of field name to its implicit order within its {@link Field.Group},
+     * based on the order fields appear in the {@link ConfigDefinition}.
+     * This avoids the need for explicit position numbers on each field declaration.
+     */
+    private Map<String, Integer> buildFieldGroupOrderMap(ConfigDefinition configDefinition) {
+        Map<Field.Group, Integer> groupCounters = new HashMap<>();
+        Map<String, Integer> fieldOrders = new HashMap<>();
+        StreamSupport.stream(configDefinition.all().spliterator(), false)
+                .forEach(field -> {
+                    if (field.group() != null) {
+                        Field.Group group = field.group().getGroup();
+                        int order = groupCounters.merge(group, 1, Integer::sum);
+                        fieldOrders.put(field.name(), order);
+                    }
+                });
+        return fieldOrders;
+    }
+
+    private Property buildProperty(Field field, Map<String, Integer> fieldGroupOrderMap) {
 
         if (!fieldFilter.include(field)) {
             return null;
         }
 
         String groupName = field.group() != null ? formatGroupName(field.group().getGroup()) : null;
-        Integer groupOrder = field.group() != null ? field.group().getPositionInGroup() : null;
+        Integer groupOrder = fieldGroupOrderMap.get(field.name());
 
         Display display = new Display(
                 field.displayName(),
