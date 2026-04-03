@@ -150,11 +150,21 @@ public class TypeRegistry {
             nameToType.put(qualifiedName, type);
         }
         else {
+            if ("information_schema".equals(schemaName)) {
+                LOGGER.info("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+                return;
+            }
             PostgresType currentType = nameToType.get(qualifiedName);
             if (!currentType.equals(type)) {
-                // Only print the warning when the types are different
                 LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
             }
+        }
+
+        // Also add unqualified name for backward compatibility (first one wins).
+        // Callers often use get("int4") while prime() registers pg_catalog.int4; without this alias,
+        // every lookup misses the cache and hits resolveUnknownType (SQL_NAME_LOOKUP) repeatedly.
+        if (!nameToType.containsKey(type.getName())) {
+            nameToType.put(type.getName(), type);
         }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
@@ -235,27 +245,13 @@ public class TypeRegistry {
             default -> typeName;
         };
 
-        // Try schema-qualified lookup first
         String qualifiedName = schemaName + "." + typeName;
         PostgresType r = nameToType.get(qualifiedName);
         if (r != null) {
             return r;
         }
-
-        if (typeName != null && typeName.contains(".")) {
-            return get(typeName);
-        }
-
-        String cleanName = stripQuotes(typeName);
-        r = resolveUnknownType(cleanName);
-        if (r == null) {
-            LOGGER.warn("Unknown type named {} in schema {} requested", cleanName, schemaName);
-            r = PostgresType.UNKNOWN;
-        }
-        if (r == PostgresType.UNKNOWN) {
-            return get(typeName);
-        }
-        return r;
+        // Fallback uses unqualified aliases populated in addType(); avoids redundant resolveUnknownType.
+        return get(typeName);
     }
 
     /**
