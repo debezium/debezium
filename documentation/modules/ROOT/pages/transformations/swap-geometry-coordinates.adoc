@@ -1,3 +1,6 @@
+// Type: assembly
+// ModuleID: debezium-swap-geometry-coordinates
+// Title: Converting coordinate systems in geometry data with {prodname}
 [id="swap-geometry-coordinates"]
 = SwapGeometryCoordinates
 
@@ -9,7 +12,7 @@
 
 toc::[]
 
-In environments where you must send data from a source database that uses one coordinate system to a target that uses a different system, you can use the `SwapGeometryCoordinates` SMT  to reformat the data.
+In environments where you must send data from a source database that uses one coordinate system to a target that uses a different system, you can use the `SwapGeometryCoordinates` single message transformation (SMT) to reformat the data.
 When serializing geometry information into a well-known binary (WKB) or extended well-known binary (EWKB) byte array, the source database uses one of the following coordinate systems:
 
 Legacy CRS:84::
@@ -21,22 +24,28 @@ A modern convention that serializes coordinates by using `(y, x)` or `(latitude,
 The serialization format is irrelevant in a {prodname} source connector, because the connector always uses the coordinate system of the source database when it writes data to a change event.
 However, a sink connector must not only be able to interpret the coordinate system of the source database, but also provide data to the target system in a format that it can consume.
 
+// Type: procedure
+// ModuleID: debezium-swap-geometry-coordinates-enable-SMT-to-convert-coordinate-system
+// Title: Enable the swap geometry coordinates SMT to convert the coordinate system of captured data
 [[example-swap-geometry-coordinates]]
 == Example
 
 To convert the coordinate system of the data that a {prodname} connector captures from a source database to a different coordinate system, add the `SwapGeometryCoordinates` SMT to the connector configuration.
-You can configure the transformation so that it converts the default set of spatial reference identifiers, or you can customize the configuration so that the transform applies only to specific identifiers.
+You can configure the transformation so that it converts the default set of spatial reference identifiers (SRIDs), or you can customize the configuration so that the transform applies only to specific identifiers.
 Other fields are left unchanged.
-For example, to configure the connector to convert the default set of spatial reference identifiers, add the following lines to the connector configuration:
 
+.Procedure
+
+. To configure the default behavior of the transformation, add it to the connector configuration without specifying any options, as in the following example:
++
 [source]
 ----
 transforms=swap
 transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
 ----
 
-To apply the transformation only to spatial reference identifier `4326`, add the following lines to your connector configuration:
-
+. To selectively apply the transformation only to geometries that have embedded SRIDs that match a specific value, such as 4326, add the property `transform.swap.srids` to the configuration, as in the following example:
++
 [source]
 ----
 transforms=swap
@@ -44,6 +53,9 @@ transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
 transforms.swap.srids=4326
 ----
 
+// Type: reference
+// ModuleID: debezium-swap-geometry-coordinates-configuration-options
+// Title: Descriptions of {prodname} swap geometry coordinates SMT configuration properties
 [[swap-geometry-coordinates-configuration-options]]
 == Configuration options
 
