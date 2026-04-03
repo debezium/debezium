@@ -622,6 +622,10 @@ jobs:
           path: db2
       - uses: actions/checkout@v6
         with:
+          repository: debezium/debezium-connector-informix
+          path: informix
+      - uses: actions/checkout@v6
+        with:
           repository: debezium/debezium-quarkus
           path: quarkus
       - name: Setup OpenJDK
@@ -649,6 +653,17 @@ jobs:
       - name: Build (Db2)
         run: >
           ./db2/mvnw clean install -f db2/pom.xml
+          -Passembly ${{ matrix.feature.args }}
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+          ${{ matrix.feature.extra }}
+      - name: Build (Informix)
+        run: >
+          ./informix/mvnw clean install -f informix/pom.xml
           -Passembly ${{ matrix.feature.args }}
           -Dformat.skip=true
           -Dcheckstyle.skip=true
