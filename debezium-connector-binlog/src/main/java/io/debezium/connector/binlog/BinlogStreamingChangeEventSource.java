@@ -232,7 +232,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         metrics.setIsGtidModeEnabled(isGtidModeEnabled);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
-        if (isGtidModeEnabled) {
+        if (isGtidModeEnabled && shouldRecoverUsingGtid()) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(getGtidEventType(),
                     (event) -> handleGtidEvent(partition, effectiveOffsetContext, event, gtidDmlSourceFilter));
@@ -280,6 +280,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // The server is not using GTIDs, so start reading the binlog based upon where we last left off ...
             client.setBinlogFilename(effectiveOffsetContext.getSource().binlogFilename());
             client.setBinlogPosition(effectiveOffsetContext.getSource().binlogPosition());
+            if (isGtidModeEnabled) {
+                initializeGtidSet("");
+                prepareOffsetContextForBinlogRecovery(effectiveOffsetContext);
+            }
         }
 
         // We may be restarting in the middle of a transaction, so see how far into the transaction we have already processed...
@@ -378,6 +382,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     protected boolean isGtidModeEnabled() {
         return isGtidModeEnabled;
+    }
+
+    protected boolean shouldRecoverUsingGtid() {
+        return !connectorConfig.shouldIgnoreGtidOnRecovery();
+    }
+
+    protected void prepareOffsetContextForBinlogRecovery(O offsetContext) {
+        offsetContext.resetGtidSet();
     }
 
     /**

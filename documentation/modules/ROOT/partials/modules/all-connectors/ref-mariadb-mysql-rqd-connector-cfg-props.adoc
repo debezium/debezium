@@ -389,6 +389,18 @@ That is, the specified expression is matched against the GTID's domain identifie
 If you set this property, do not also set the `gtid.source.excludes` property.
 
 
+[id="{context}-property-gtid-ignore-on-recovery"]
+xref:{context}-property-gtid-ignore-on-recovery[`gtid.ignore.on.recovery`]::
+
+Default value::: `false`
+
+Description:::
+Boolean value that specifies whether the connector ignores the GTID set in stored offsets during recovery.
+When set to `true`, the connector starts from the stored binlog file and position instead of attempting GTID-based positioning.
++
+After streaming resumes, the connector captures GTIDs normally and stores refreshed GTID state in subsequent offsets.
+
+
 [id="{context}-property-include-query"]
 xref:{context}-property-include-query[`include.query`]::
 

@@ -70,6 +70,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
         super.assertInvalidConfiguration(result);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.IGNORE_GTID_ON_RECOVERY);
     }
 
     @Override
@@ -77,6 +78,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
         super.assertValidConfiguration(result);
         validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
         validateConfigField(result, MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.MySqlSecureConnectionMode.PREFERRED);
+        validateConfigField(result, MySqlConnectorConfig.IGNORE_GTID_ON_RECOVERY, false);
     }
 
     @Override
