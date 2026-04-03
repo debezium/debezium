@@ -7,27 +7,22 @@ package io.debezium.connector.binlog;
 
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.RelationalTableFilters;
-import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
 
 /**
@@ -90,30 +85,6 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
         }
         catch (Exception e) {
             hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
-        }
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<TableId> getMatchingCollections(Configuration config) {
-        final T connectorConfig = createConnectorConfig(config);
-        try (BinlogConnectorConnection connection = createConnection(config, connectorConfig)) {
-            final List<TableId> tables = new ArrayList<>();
-            final List<String> databaseNames = connection.availableDatabases();
-            final RelationalTableFilters tableFilter = connectorConfig.getTableFilters();
-            for (String databaseName : databaseNames) {
-                if (!tableFilter.databaseFilter().test(databaseName)) {
-                    continue;
-                }
-                tables.addAll(
-                        connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
-                                .filter(tableId -> tableFilter.dataCollectionFilter().isIncluded(tableId))
-                                .collect(Collectors.toList()));
-            }
-            return tables;
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
         }
     }
 
