@@ -34,7 +34,7 @@ These checks ensure that the metadata and legal standing of the commits meet pro
 
 ### Functional Integration Layer
 Debezium utilizes a **Matrix Strategy** to validate connector stability across multiple environments.
-Each connector build spins up real database instances using **Testcontainers**.
+Each connector build spins up real database instances using a combination of **Testcontainers** or the Maven build system to start container images.
 
 * **Matrix Variants:** Tests cover multiple RDBMS versions (e.g., MySQL 8.0, 8.4, 9.1) and execution profiles (e.g., GTID-enabled, SSL-encrypted).
 * **Parallelization:** Jobs are executed concurrently to minimize the time-to-feedback for complex connector suites.
@@ -45,17 +45,17 @@ The following matrix illustrates the typical test coverage for core connectors a
 *(Note: This is a simplified representation of the connector matrix. Actual configurations may vary across workflows.)*
 
 ```
-+----------------------+--------------------+--------------------+--------------------+
-| Connector            | RDBMS Versions     | Java Versions      | Profiles           |
-+----------------------+--------------------+--------------------+--------------------+
-| MySQL                | 8.0, 8.4, 9.1      | 11, 17, 21         | GTID, SSL          |
-+----------------------+--------------------+--------------------+--------------------+
-| PostgreSQL           | 12, 13, 14, 15, 16 | 11, 17, 21         | WAL2JSON, PGOUTPUT |
-+----------------------+--------------------+--------------------+--------------------+
-| SQL Server           | 2017, 2019, 2022   | 11, 17, 21         | Standard, CDC      |
-+----------------------+--------------------+--------------------+--------------------+
-| Oracle               | 19c, 21c           | 11, 17, 21         | LogMiner           |
-+----------------------+--------------------+--------------------+--------------------+
++----------------------+--------------------+--------------------+
+| Connector            | RDBMS Versions     | Profiles           |
++----------------------+--------------------+--------------------+
+| MySQL                | 8.0, 8.4, 9.1      | GTID, SSL          |
++----------------------+--------------------+--------------------+
+| PostgreSQL           | 12, 13, 14, 15, 16 | WAL2JSON, PGOUTPUT |
++----------------------+--------------------+--------------------+
+| SQL Server           | 2017, 2019, 2022   | Standard, CDC      |
++----------------------+--------------------+--------------------+
+| Oracle               | 19c, 21c           | LogMiner           |
++----------------------+--------------------+--------------------+
 ```
 
 ## The "Fan-Out" Execution Logic
@@ -64,7 +64,7 @@ To optimize throughput, the pipeline calculates a "Dependency Graph" for every P
 
 1. Analysis: The `file_changes` job analyzes the diff between the PR branch and the target branch.
 2. Flagging:
-  * If `debezium-core` is modified, **all** connector workflows are marked for execution as they depend on core.
+  * If core modules (`debezium-util`, `debezium-connect-plugins`, or `debezium-connector-common`) are modified, **all** connector workflows are marked for execution as they depend on these base modules.
   * If a connector module is modified (e.g., `debezium-connector-postgres`), only its specific workflow is triggered.
 3. Skipping: If only `documentation/` files are modified, the CI bypasses all Maven builds and triggers documentation-specific notifications.
 
