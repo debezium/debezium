@@ -28,9 +28,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceConnector;
-import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
-import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.util.Threads;
 
@@ -187,17 +185,6 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(MongoDbConnectorConfig.ALL_FIELDS);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<CollectionId> getMatchingCollections(Configuration config) {
-        try (MongoDbConnection connection = MongoDbConnections.create(config)) {
-            return connection.collections();
-        }
-        catch (InterruptedException e) {
-            throw new DebeziumException(e);
-        }
     }
 
     @Override

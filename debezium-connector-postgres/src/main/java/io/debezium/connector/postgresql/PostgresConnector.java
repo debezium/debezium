@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -30,7 +29,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
 
 /**
@@ -187,17 +185,4 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
         return config.validate(PostgresConnectorConfig.ALL_FIELDS);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
-            return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .collect(Collectors.toList());
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
-    }
 }

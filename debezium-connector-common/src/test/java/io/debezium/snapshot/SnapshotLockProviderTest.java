@@ -35,7 +35,6 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.spi.SnapshotLock;
-import io.debezium.spi.schema.DataCollectionId;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -129,11 +128,6 @@ public class SnapshotLockProviderTest {
         }
 
         @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
-            return null;
-        }
-
-        @Override
         public void start(Map<String, String> map) {
 
         }
@@ -168,11 +162,6 @@ public class SnapshotLockProviderTest {
 
         @Override
         protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-            return null;
-        }
-
-        @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
             return null;
         }
 
