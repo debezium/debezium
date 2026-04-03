@@ -13,6 +13,8 @@ activemq-data/
 .checkstyle
 .gradle/
 .vscode/
+# AI assistant configuration (local only, not for version control)
+.bob/
 build/
 debezium-ddl-parser/gen
 deploy/
