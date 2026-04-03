@@ -228,19 +228,12 @@ public class TypeRegistry {
      * @return type associated with the given type name
      */
     public PostgresType get(String schemaName, String typeName) {
-        switch (typeName) {
-            case "serial":
-                typeName = "int4";
-                break;
-            case "smallserial":
-                typeName = "int2";
-                break;
-            case "bigserial":
-                typeName = "int8";
-                break;
-            default:
-                break;
-        }
+        typeName = switch (typeName) {
+            case "serial" -> "int4";
+            case "smallserial" -> "int2";
+            case "bigserial" -> "int8";
+            default -> typeName;
+        };
 
         // Try schema-qualified lookup first
         String qualifiedName = schemaName + "." + typeName;
@@ -271,17 +264,12 @@ public class TypeRegistry {
      * @return type associated with the given type name
      */
     public PostgresType get(String name) {
-        switch (name) {
-            case "serial":
-                name = "int4";
-                break;
-            case "smallserial":
-                name = "int2";
-                break;
-            case "bigserial":
-                name = "int8";
-                break;
-        }
+        name = switch (name) {
+            case "serial" -> "int4";
+            case "smallserial" -> "int2";
+            case "bigserial" -> "int8";
+            default -> name;
+        };
 
         // First, try the name as-is
         PostgresType r = nameToType.get(name);
