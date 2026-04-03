@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -98,9 +99,14 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
 
     protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                    tableName, connection.quoteIdentifier(pkFieldName()), i + 1, i));
+        final String sql = "INSERT INTO %s (%s, aa) VALUES (?, ?)".formatted(tableName, connection.quoteIdentifier(pkFieldName()));
+        try (PreparedStatement ps = connection.connection().prepareStatement(sql)) {
+            for (int i = 0; i < ROW_COUNT; i++) {
+                ps.setObject(1, i + 1);
+                ps.setObject(2, i);
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
         connection.commit();
     }
@@ -136,10 +142,14 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     private void populateTableWithSpecificValue(JdbcConnection connection, String tableName, int startRow, int count, int value)
             throws SQLException {
         connection.setAutoCommit(false);
-        for (int i = startRow + 1; i <= startRow + count; i++) {
-            connection.executeWithoutCommitting(
-                    String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                            tableName, connection.quoteIdentifier(pkFieldName()), count + i, value));
+        final String sql = "INSERT INTO %s (%s, aa) VALUES (?, ?)".formatted(tableName, connection.quoteIdentifier(pkFieldName()));
+        try (PreparedStatement ps = connection.connection().prepareStatement(sql)) {
+            for (int i = startRow + 1; i <= startRow + count; i++) {
+                ps.setObject(1, count + i);
+                ps.setObject(2, value);
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
         connection.commit();
     }
@@ -152,19 +162,22 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
 
     protected void populate4PkTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
-            final int id = i + 1;
-            final int pk1 = id / 1000;
-            final int pk2 = (id / 100) % 10;
-            final int pk3 = (id / 10) % 10;
-            final int pk4 = id % 10;
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
-                    tableName,
-                    pk1,
-                    pk2,
-                    pk3,
-                    pk4,
-                    i));
+        final String sql = "INSERT INTO %s (pk1,pk2,pk3,pk4,aa) VALUES (?,?,?,?,?)".formatted(tableName);
+        try (PreparedStatement ps = connection.connection().prepareStatement(sql)) {
+            for (int i = 0; i < ROW_COUNT; i++) {
+                final int id = i + 1;
+                final int pk1 = id / 1000;
+                final int pk2 = (id / 100) % 10;
+                final int pk3 = (id / 10) % 10;
+                final int pk4 = id % 10;
+                ps.setObject(1, pk1);
+                ps.setObject(2, pk2);
+                ps.setObject(3, pk3);
+                ps.setObject(4, pk4);
+                ps.setObject(5, i);
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
         connection.commit();
     }
