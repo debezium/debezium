@@ -69,7 +69,7 @@ Now, when you check the status using Git, it will compare your local repository 
 
 ### Get the latest upstream code
 
-You will frequently need to get all the of the changes that are made to the upstream repository, and you can do this with these commands:
+You will frequently need to get all of the changes that are made to the upstream repository, and you can do this with these commands:
 
     $ git fetch upstream
     $ git pull upstream main
