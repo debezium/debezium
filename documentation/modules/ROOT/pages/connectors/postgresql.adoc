@@ -2080,6 +2080,31 @@ Each map value includes the following elements:
 
 |===
 
+[id="postgresql-tsvector-types"]
+=== TSVECTOR types
+
+The PostgreSQL connector supports the native `TSVECTOR` data type without requiring any extensions.
+
+.Mappings of PostgreSQL `TSVECTOR` data type
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|PostgreSQL data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`TSVECTOR`
+|`STRING`
+|`io.debezium.data.Tsvector`
+
+Contains the string representation of a TSVECTOR value in normalized lexeme format.
+
+Example: `'direct':6 'insert':8 'test':4`
+
+The TSVECTOR type is a native PostgreSQL data type (OID 3614) that is used for full-text search operations.
+The connector converts TSVECTOR values to their string representation, preserving the lexemes and their positions.
+
+|===
+
 [id="postgresql-toasted-values"]
 === Toasted values
 PostgreSQL has a hard limit on the page size.
