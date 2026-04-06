@@ -2173,8 +2173,22 @@ Contains a structure with two fields:
 end::spatial-data-types[]
 
 
+tag::vector-data-types[]
+=== Vector types
 
+Currently, the {prodname} {connector-name} connector supports the following vector data types.
 
+.Description of vector type mappings
+[cols="35%a,15%a,50%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`VECTOR`
+|`ARRAY (FLOAT32)`
+|`io.debezium.data.FloatVector`
+
+|===
+end::vector-data-types[]
 
 
 == Custom converters
