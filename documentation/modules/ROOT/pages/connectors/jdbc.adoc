@@ -593,6 +593,16 @@ If the database does not support time or timestamps with time zones, the mapping
 `varchar2(n)`^1^
 |`varchar`
 
+|io.debezium.data.Tsvector
+|`clob`
+`varchar(n)`^1^
+|`longtext`
+`varchar`^1^
+|`tsvector`
+|`clob`
+`varchar2(n)`^1^
+|`varchar`
+
 |io.debezium.data.Xml
 |`clob`
 |`longtext`
@@ -652,7 +662,7 @@ Sink databases must meet the following requirements to support direct mapping of
 
 Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not support special vector types.
 
-.Mappings between Debezium Vector Types and Column Data Types
+.Mappings between {prodname} Vector Types and Column Data Types
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
 
