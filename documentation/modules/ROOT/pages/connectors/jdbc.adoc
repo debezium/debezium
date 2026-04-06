@@ -593,6 +593,16 @@ If the database does not support time or timestamps with time zones, the mapping
 `varchar2(n)`^1^
 |`varchar`
 
+|io.debezium.data.Tsvector
+|`clob`
+`varchar(n)`^1^
+|`longtext`
+`varchar`^1^
+|`tsvector`
+|`clob`
+`varchar2(n)`^1^
+|`varchar`
+
 |io.debezium.data.Xml
 |`clob`
 |`longtext`
@@ -652,7 +662,7 @@ Sink databases must meet the following requirements to support direct mapping of
 
 Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not support special vector types.
 
-.Mappings between Debezium Vector Types and Column Data Types
+.Mappings between {prodname} Vector Types and Column Data Types
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
 
@@ -1656,7 +1666,7 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 When enabled, uses PostgreSQL `UNNEST()` for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
 This optimization is compatible with `INSERT` and `UPSERT` modes.
 
-For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog. 
+For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
