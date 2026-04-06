@@ -53,8 +53,6 @@ import io.debezium.util.Strings;
  * make the identifier `db_shard1` and `db_shard2` respectively.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
- * @author David Leibovic
- * @author Mario Mueller
  */
 public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
@@ -75,6 +73,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .required()
             .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
                     ". This will be used to create the new topic name.");
+
     private static final Field KEY_ENFORCE_UNIQUENESS = Field.create("key.enforce.uniqueness")
             .withDisplayName("Add source topic name into key")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -85,6 +84,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                     "distinguishes records coming from different physical tables which may otherwise have " +
                     "primary/unique key conflicts. If the source tables are guaranteed to have globally " +
                     "unique keys then this may be set to false to disable key rewriting.");
+
     private static final Field KEY_FIELD_REGEX = Field.create("key.field.regex")
             .withDisplayName("Key field regex")
             .withType(ConfigDef.Type.STRING)
@@ -96,6 +96,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                     "to include fields other than just those for the record's primary/unique key, since these are not " +
                     "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
                     "the different physical tables.");
+
     private static final Field KEY_FIELD_NAME = Field.create("key.field.name")
             .withDisplayName("Key field name")
             .withType(ConfigDef.Type.STRING)
@@ -107,6 +108,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                     "field is to distinguish the different physical tables that can now share a single topic. Make " +
                     "sure not to configure a field name that is at risk of conflict with existing key schema field " +
                     "names.");
+
     private static final Field KEY_FIELD_REPLACEMENT = Field.create("key.field.replacement")
             .withDisplayName("Key field replacement")
             .withType(ConfigDef.Type.STRING)
@@ -115,6 +117,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .withValidation(ToLogicalTopicRouter::validateKeyFieldReplacement)
             .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
                     ". This will be used to create the physical table identifier in the record's key.");
+
     private static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
             .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.NONE)
@@ -124,6 +127,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                     "Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including:"
                             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
                             + "'none' does not apply any adjustment");
+
     private static final Field LOGICAL_TABLE_CACHE_SIZE = Field.create("logical.table.cache.size")
             .withDisplayName("Logical table cache size")
             .withType(ConfigDef.Type.INT)
