@@ -2096,12 +2096,12 @@ The PostgreSQL connector supports the native `TSVECTOR` data type without requir
 |`STRING`
 |`io.debezium.data.Tsvector`
 
-Contains the string representation of a TSVECTOR value in normalized lexeme format.
+Contains the string representation of a `TSVECTOR` value in normalized lexeme format.
 
 Example: `'direct':6 'insert':8 'test':4`
 
-The TSVECTOR type is a native PostgreSQL data type (OID 3614) that is used for full-text search operations.
-The connector converts TSVECTOR values to their string representation, preserving the lexemes and their positions.
+The `TSVECTOR` type is a native PostgreSQL data type (OID 3614) that is used for full-text search operations.
+The connector converts `TSVECTOR` values to their string representation, preserving the lexemes and their positions.
 
 |===
 
