@@ -2155,13 +2155,19 @@ Currently, the {prodname} {connector-name} connector supports the following spat
 |===
 |{connector-name} type |Literal type |Semantic type
 
-|`GEOMETRY, +
-LINESTRING, +
-POLYGON, +
-MULTIPOINT, +
-MULTILINESTRING, +
-MULTIPOLYGON, +
-GEOMETRYCOLLECTION`
+|`GEOMETRY`
+
+`LINESTRING`
+
+`POLYGON`
+
+`MULTIPOINT`
+
+`MULTILINESTRING`
+
+`MULTIPOLYGON`
+
+`GEOMETRYCOLLECTION`
 |`STRUCT`
 a|`io.debezium.data.geometry.Geometry` +
 Contains a structure with two fields:
