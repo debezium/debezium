@@ -1750,6 +1750,7 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
+|No default value
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter.
 Set the value to be a long representation of the BSON timestamp.
 
@@ -1831,7 +1832,7 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java.
 
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
