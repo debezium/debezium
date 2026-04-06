@@ -286,6 +286,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
 
+=== Vector types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=vector-data-types]
+
 // Type: concept
 // Title: Custom converters for mapping {connector-name} data to alternative data types
 [id="debezium-mariadb-connector-converters"]
@@ -397,7 +401,7 @@ When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB ser
 If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
 
 The {prodname} {connector-name} connector currently does not support link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/compressing-events-to-reduce-size-of-the-binary-log[binary
-log compression]. 
+log compression].
 To enable the connector to consume all events, you must set the MariaDB server configuration option `log_bin_compress` to `0`.
 ====
 
