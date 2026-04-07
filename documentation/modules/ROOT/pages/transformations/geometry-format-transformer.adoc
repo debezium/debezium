@@ -1,4 +1,5 @@
 :page-aliases: configuration/geometry-format-transformer.adoc
+// Category: debezium-using
 // Type: assembly
 // ModuleID: debezium-converting-geometry-formats-with-debezium
 // Title: Converting between geometry formats with {prodname}
