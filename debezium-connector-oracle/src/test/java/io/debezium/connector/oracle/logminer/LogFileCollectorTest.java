@@ -1570,7 +1570,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes and mining from SCN 1, we should get the same log files
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Bump redo thread state
         // No redo thread state changes, no checkpoints or log switches
@@ -1579,7 +1579,7 @@ public class LogFileCollectorTest {
         setConnectionRedoThreadState(connection, redoThreadState);
 
         // Should get the same logs even after state advancement
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1600,7 +1600,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Transition redo thread 1 to CLOSED (offline)
         redoThreadState = transitionRedoThreadToOffline(redoThreadState, 1, 1);
@@ -1615,7 +1615,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo02.log", 50, 2, 2));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1637,7 +1637,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Transition node 1 to OPEN (online)
         redoThreadState = transitionRedoThreadToOnline(redoThreadState, 1);
@@ -1652,7 +1652,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo02.log", 50, 2, 2));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1673,7 +1673,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Add new redo thread 3 in CLOSED state
         RedoThreadState.Builder builder = duplicateState(redoThreadState);
@@ -1712,7 +1712,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo03.log", 1000, 4, 3));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1733,7 +1733,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Add new redo thread 3 in CLOSED state
         RedoThreadState.Builder builder = duplicateState(redoThreadState);
@@ -1772,7 +1772,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo03.log", 1100, 4, 3));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -2378,7 +2378,8 @@ public class LogFileCollectorTest {
     }
 
     private static Configuration.Builder getDefaultConfig() {
-        return TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 0);
+        return TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 0);
     }
 
     private OracleConnection getOracleConnectionMock(RedoThreadState state) throws SQLException {
