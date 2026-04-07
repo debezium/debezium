@@ -550,7 +550,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         startConnector();
 
         // create a new table AFTER connector is running
-        //   (so Debezium has never seen any events for it)
+        // (so Debezium has never seen any events for it)
         TestHelper.execute(
                 "CREATE TABLE s1.new_table (pk SERIAL, val integer, PRIMARY KEY(pk));" +
                         "INSERT INTO s1.new_table (val) VALUES (1), (2), (3);");
