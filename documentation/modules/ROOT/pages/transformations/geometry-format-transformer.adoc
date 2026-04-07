@@ -68,7 +68,7 @@ Converting data to a more consumable format can help to resolve errors and optim
 [[example-geometry-format-transformer]]
 == Apply the SMT to convert between WKB and EWKB formats
 
-To convert the format of WKB or EWKB data in a data source, add the convertGeometryFormat SMT to the connector configuration, and specify the target format.
+To convert the format of WKB or EWKB data in a data source, add the GeometryFormatTransformer SMT to the connector configuration, and specify the target format.
 Based on the configuration, the transformer intelligently detects the source format and converts it accordingly, ensuring that the output format matches the target system's requirements.
 
 You can add the SMT without explicitly specifying the target format, to configure it to convert data from `EWKB` format to `WKB` format.
