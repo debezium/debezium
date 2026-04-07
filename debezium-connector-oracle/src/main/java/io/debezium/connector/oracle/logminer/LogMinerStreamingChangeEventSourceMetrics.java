@@ -46,7 +46,6 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSourceMetrics.class);
 
-    private static final long MILLIS_PER_SECOND = 1000L;
     private static final int TRANSACTION_ID_SET_SIZE = 10;
 
     private final OracleConnectorConfig connectorConfig;
@@ -66,12 +65,10 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicReference<String[]> redoLogStatuses = new AtomicReference<>(new String[0]);
     private final AtomicReference<ZoneOffset> databaseZoneOffset = new AtomicReference<>(ZoneOffset.UTC);
 
-    private final AtomicInteger batchSize = new AtomicInteger();
     private final AtomicInteger logSwitchCount = new AtomicInteger();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
     private final AtomicInteger jdbcRows = new AtomicInteger();
 
-    private final AtomicLong sleepTime = new AtomicLong();
     private final AtomicLong minimumLogsMined = new AtomicLong();
     private final AtomicLong maximumLogsMined = new AtomicLong();
     private final AtomicLong maxBatchProcessingThroughput = new AtomicLong();
@@ -116,8 +113,6 @@ public class LogMinerStreamingChangeEventSourceMetrics
                                                      CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier);
         this.connectorConfig = connectorConfig;
-        this.batchSize.set(connectorConfig.getLogMiningBatchSizeDefault());
-        this.sleepTime.set(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
         this.clock = clock;
         this.startTime = clock.instant();
         this.batchMetrics = new BatchMetrics(this);
@@ -161,11 +156,6 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     @Override
-    public long getSleepTimeInMilliseconds() {
-        return sleepTime.get();
-    }
-
-    @Override
     public BigInteger getCurrentScn() {
         return currentScn.get().asBigInteger();
     }
@@ -201,11 +191,6 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public String[] getMinedLogFileNames() {
         return minedLogFileNames.get();
-    }
-
-    @Override
-    public int getBatchSize() {
-        return batchSize.get();
     }
 
     @Override
@@ -447,24 +432,6 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public ZoneOffset getDatabaseOffset() {
         return databaseZoneOffset.get();
-    }
-
-    /**
-     * Set the currently used batch size for querying LogMiner.
-     *
-     * @param batchSize batch size used for querying LogMiner
-     */
-    public void setBatchSize(int batchSize) {
-        this.batchSize.set(batchSize);
-    }
-
-    /**
-     * Set the connector's currently used sleep/pause time between LogMiner queries.
-     *
-     * @param sleepTime sleep time between LogMiner queries
-     */
-    public void setSleepTime(long sleepTime) {
-        this.sleepTime.set(sleepTime);
     }
 
     /**
@@ -816,10 +783,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", currentLogFileNames=" + Arrays.asList(currentLogFileNames.get()) +
                 ", redoLogStatuses=" + Arrays.asList(redoLogStatuses.get()) +
                 ", databaseZoneOffset=" + databaseZoneOffset +
-                ", batchSize=" + batchSize +
                 ", logSwitchCount=" + logSwitchCount +
                 ", logMinerQueryCount=" + logMinerQueryCount +
-                ", sleepTime=" + sleepTime +
                 ", minimumLogsMined=" + minimumLogsMined +
                 ", maximumLogsMined=" + maximumLogsMined +
                 ", maxBatchProcessingThroughput=" + maxBatchProcessingThroughput +

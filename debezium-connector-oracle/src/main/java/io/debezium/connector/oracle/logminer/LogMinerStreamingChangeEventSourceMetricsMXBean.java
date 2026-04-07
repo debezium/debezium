@@ -28,11 +28,6 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getMillisecondsToKeepTransactionsInBuffer();
 
     /**
-     * @return number of milliseconds that the connector sleeps between LogMiner queries
-     */
-    long getSleepTimeInMilliseconds();
-
-    /**
      * @return the current system change number of the database
      */
     BigInteger getCurrentScn();
@@ -75,14 +70,6 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      * @return array of all archive and redo logs that are read by the mining session
      */
     String[] getMinedLogFileNames();
-
-    /**
-     * Specifies the maximum gap between the start and end system change number range used for
-     * querying changes from LogMiner.
-     *
-     * @return the LogMiner query batch size
-     */
-    int getBatchSize();
 
     /**
      * @return the minimum number of logs used by a mining session

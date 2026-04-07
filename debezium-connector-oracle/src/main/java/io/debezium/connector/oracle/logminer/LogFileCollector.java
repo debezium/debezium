@@ -70,11 +70,11 @@ public class LogFileCollector {
      * Get a list of all log files that should be mined given the specified system change number.
      *
      * @param offsetScn minimum system change number to start reading changes from, should not be {@code null}
-     * @return list of log file instances that should be added to the mining session, never {@code null}
+     * @return a {@link LogFilesResult} that provides the logs and redo thread state used, never {@code null}
      * @throws SQLException if there is a database failure during the collection
      * @throws LogFileNotFoundException if we were unable to collect logs due to a non-SQL related failure
      */
-    public List<LogFile> getLogs(Scn offsetScn) throws SQLException, LogFileNotFoundException {
+    public LogFilesResult getLogs(Scn offsetScn) throws SQLException, LogFileNotFoundException {
         LOGGER.debug("Collecting logs based on the read SCN position {}.", offsetScn);
         final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay, maxRetryDelay);
         for (int attempt = 0; attempt <= maxAttempts; ++attempt) {
@@ -92,7 +92,7 @@ public class LogFileCollector {
                 continue;
             }
 
-            return files;
+            return new LogFilesResult(files, currentRedoThreadState);
         }
         throw new LogFileNotFoundException(offsetScn);
     }
@@ -107,7 +107,7 @@ public class LogFileCollector {
      */
     public boolean isScnInArchiveLogs(Scn scn) throws SQLException {
         try {
-            final List<LogFile> allLogs = getLogs(scn);
+            final List<LogFile> allLogs = getLogs(scn).logFiles();
             final Map<Integer, List<LogFile>> threadLogs = allLogs.stream()
                     .collect(Collectors.groupingBy(LogFile::getThread));
 
@@ -686,4 +686,12 @@ public class LogFileCollector {
         }
     }
 
+    /**
+     * A result object when collecting Oracle logs.
+     *
+     * @param logFiles the logs that were fetched, never {@code null}
+     * @param redoThreadState the redo thread state used when fetching logs, never {@code null}
+     */
+    public record LogFilesResult(List<LogFile> logFiles, RedoThreadState redoThreadState) {
+    }
 }

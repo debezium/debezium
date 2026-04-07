@@ -5484,9 +5484,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6660")
                     .with(OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS, deviationMs.toString())
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX, "100")
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT, "100")
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, "100")
                     .build();
 
             final LogInterceptor sourceLogging = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
@@ -5557,9 +5554,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6660")
                     .with(OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS, deviationMs.toString())
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX, "100")
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT, "100")
-                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, "100")
                     .build();
 
             final LogInterceptor sourceLogging = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
