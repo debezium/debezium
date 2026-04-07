@@ -167,20 +167,7 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
             builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
-        else if (isUnbufferedLogMiner()) {
-            // Speeds up tests
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
-        }
-        else {
-            // Speeds up tests
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
-
+        else if (isBufferedLogMiner()) {
             final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
             if (readOnly) {
                 builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);

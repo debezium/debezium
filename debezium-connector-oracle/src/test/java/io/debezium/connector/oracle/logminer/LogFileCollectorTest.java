@@ -1469,7 +1469,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401)).logFiles();
         assertThat(result).hasSize(2);
         assertThat(getLogFileWithName(result, "logfile1").getNextScn()).isEqualTo(Scn.valueOf(103700));
         assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(104000));
@@ -1489,7 +1489,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401)).logFiles();
         assertThat(result).hasSize(2);
         assertThat(getLogFileWithName(result, "logfile1")).isNull();
     }
@@ -1508,7 +1508,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
         assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
@@ -1527,7 +1527,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
         assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
@@ -1548,7 +1548,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
         assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(largeScnValue));
     }

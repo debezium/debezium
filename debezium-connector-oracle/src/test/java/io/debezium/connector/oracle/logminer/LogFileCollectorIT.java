@@ -74,23 +74,23 @@ public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
 
         // case 1 : oldest scn = current scn
         Scn currentScn = connection.getCurrentScn();
-        List<LogFile> redoFiles = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(currentScn);
+        List<LogFile> redoFiles = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(currentScn).logFiles();
         assertThat(redoFiles).hasSize(instances); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(connection);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn);
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn).logFiles();
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
 
-        files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn.subtract(Scn.ONE));
+        files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn.subtract(Scn.ONE)).logFiles();
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
     }
 
     @Test
     @FixFor("DBZ-3561")
     public void shouldOnlyReturnArchiveLogs() throws Exception {
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), true, null).getLogs(Scn.valueOf(0));
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), true, null).getLogs(Scn.valueOf(0)).logFiles();
         files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
     }
 
@@ -105,7 +105,7 @@ public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         // Test environment always has 1 destination at LOG_ARCHIVE_DEST_1
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(1L), true, "LOG_ARCHIVE_DEST_1").getLogs(Scn.valueOf(0));
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(1L), true, "LOG_ARCHIVE_DEST_1").getLogs(Scn.valueOf(0)).logFiles();
         assertThat(files.isEmpty()).isFalse();
         files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
     }
