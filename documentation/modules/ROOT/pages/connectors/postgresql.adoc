@@ -3151,7 +3151,7 @@ Set this parameter on the primary server to specify the physical replication slo
 |[[postgresql-property-offset-mismatch-strategy]]<<postgresql-property-offset-mismatch-strategy, `+offset.mismatch.strategy+`>>
 |`no_validation`
 |Specifies how the connector handles mismatches between the stored offset LSN and the replication slot's confirmed flush LSN when the connector starts.
-+
+
 [IMPORTANT]
 ====
 The `offset.mismatch.strategy` property is a Technology Preview feature.
