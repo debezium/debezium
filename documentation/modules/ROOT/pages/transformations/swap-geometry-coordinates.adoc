@@ -1,3 +1,4 @@
+// Category: debezium-using
 // Type: assembly
 // ModuleID: debezium-swap-geometry-coordinates
 // Title: Converting coordinate systems in geometry data with {prodname}
