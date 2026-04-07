@@ -438,7 +438,7 @@ The connector retains the global read lock while it reads the binlog position, a
 
 |4
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
- +
+
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
@@ -456,8 +456,8 @@ The schema history provides information about the structure that is in effect wh
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
-If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data. +
- +
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
 
