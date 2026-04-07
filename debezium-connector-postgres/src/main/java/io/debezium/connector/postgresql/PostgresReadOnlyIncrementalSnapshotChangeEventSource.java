@@ -168,6 +168,13 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         return schema.tableFor(table.id());
     }
 
+    @Override
+    protected Table readSchemaForTable(TableId tableId) throws SQLException {
+        LOGGER.debug("Reading schema for table '{}' during incremental snapshot.", tableId);
+        schema.refreshFromIncrementalSnapshot(jdbcConnection, tableId);
+        return schema.tableFor(tableId);
+    }
+
     private void readUntilNewTransactionChange(P partition, OffsetContext offsetContext) throws InterruptedException {
 
         Long eventTxId = offsetContext.getSourceInfo().getInt64(SourceInfo.TXID_KEY);
