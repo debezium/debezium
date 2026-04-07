@@ -12,21 +12,21 @@
 :source-highlighter: highlight.js
 
 toc::[]
-The GeometryFormatTransformer single message transform (SMT) converts geometry values in change events between `WKB` and `EWKB` format to ensure that target systems receive spatial data in the most compatible format. 
-The transformation supports all geometry types (`Point`, `LineString`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, and `GeometryCollection`), and is particularly useful when integrating with systems that require a specific format. 
+The GeometryFormatTransformer single message transform (SMT) converts geometry values in change events between `WKB` and `EWKB` format to ensure that target systems receive spatial data in the most compatible format.
+The transformation supports all geometry types (`Point`, `LineString`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, and `GeometryCollection`), and is particularly useful when integrating with systems that require a specific format.
 By optimizing the data format, you can prevent data processing failures and help to ensure efficient data flows across the heterogeneous systems in your data pipeline.
 
 // Type: concept
 [id="debezium-converting-geometry-formats-about-spatial-data-formats"]
 == About spatial data formats
 
-WKB (Well-Known Binary) and EWKB (Extended Well-Known Binary) are two common formats for representing spatial data. 
-WKB is the standard Open Geospatial Consortium (OGC) format for representing geometry data in binary form. EWKB is a PostGIS extension that adds SRID (Spatial Reference System Identifier) information to the WKB structure. 
-An SRID is a unique identifier that specifies the coordinate reference system used for spatial/geometric data. 
-It defines how coordinates should be interpreted on Earth's surface.
-The SRID identifies the coordinate system used by the geometry, which is essential for accurate spatial operations like distance calculations and coordinate transformations.
+WKB (Well-Known Binary) and EWKB (Extended Well-Known Binary) are two common formats for representing spatial data.
+WKB is the standard Open Geospatial Consortium (OGC) format for representing geometry data in binary form.
+EWKB is a PostGIS extension that adds SRID (Spatial Reference System Identifier) information to the WKB structure.
+An SRID is a unique identifier that specifies the coordinate reference system that the geometry uses.
+It defines how coordinates are interpreted on Earth's surface, which is essential for accurate spatial operations like distance calculations and coordinate transformations.
 
-WKB format stores SRIDs separately, whereas EWKB, as used in the PostgreSQL  PostGIS spatial extension, encodes the SRID directly within the binary geometry data itself.
+WKB format stores SRIDs separately, whereas EWKB, as used in the PostgreSQL PostGIS spatial extension, encodes the SRID directly within the binary geometry data itself.
 The SMT ensures format compatibility between different database systems (for example, PostgreSQL/PostGIS uses EWKB, while MySQL, SQL Server, and Oracle use WKB)
 Apply the SMT to source connectors to transform events before Kafka Connect writes them to Kafka, or to sink connectors to transform data before the sink connector writes it to the target system.
 
@@ -45,13 +45,13 @@ You can apply the transformation to a {prodname} source connector to modify the 
 Apply the GeometryFormatTransformer in the following situations:
 
 Streaming to PostGIS or spatial databases::
-When you have source data in WKB format but a target system uses PostGIS or another spatial database that requires SRID (Spatial Reference System Identifier) information, use the SMT to convert to EWKB format. 
+When you have source data in WKB format but a target system uses PostGIS or another spatial database that requires SRID (Spatial Reference System Identifier) information, use the SMT to convert to EWKB format.
 Without SRID data, PostGIS cannot accurately perform spatial operations like distance calculations, coordinate transformations, or spatial indexing.
 The SMT enables {prodname} to move spatial data between databases that use different storage conventions while preserving spatial coordinate references.
 
 
 Integrating with legacy GIS applications::
-When you have source data in EWKB format and downstream systems run older GIS tools or applications that cannot parse SRID extensions, use the SMT to convert data to the simpler WKB format. 
+When you have source data in EWKB format and downstream systems run older GIS tools or applications that cannot parse SRID extensions, use the SMT to convert data to the simpler WKB format.
 
 Building multi-target data pipelines::
 When you route spatial data to multiple downstream systems, run the SMT to customize data to ensure that each system receives data in its required format.
