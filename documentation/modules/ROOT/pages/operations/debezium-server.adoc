@@ -903,7 +903,9 @@ When the alternative implementations are not available then the default ones are
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
 {prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].  The HTTP Client sink supports
-optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication].
+optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication],
+https://oauth.net/2/client-credentials/[OAuth2 client credentials] authentication, and batch mode for sending multiple
+events in a single HTTP request.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -939,12 +941,21 @@ optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authe
 |true
 |Header values will be base64 encoded (defaults to true).
 
+|[[httpclient-batch-enabled]]<<httpclient-batch-enabled, `debezium.sink.http.batch.enabled` >>
+|false
+|When set to `true`, aggregates all change events in a batch into a JSON array and sends them in a single HTTP POST request instead of sending each event individually.
+
+|[[httpclient-batch-max-size]]<<httpclient-batch-max-size, `debezium.sink.http.batch.max-size` >>
+|200
+|The maximum number of events per HTTP request when batch mode is enabled. If the engine delivers more events than this limit, they are chunked into multiple requests.
+
 |[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
 |
 |Specifies the type of authentication the HTTP client sink uses when connecting to an HTTP server.
 Supports one of the following options:
 
 `jwt`:: JSON Web Token (JWT) authentication.
+`oauth2`:: OAuth2 client credentials grant (https://datatracker.ietf.org/doc/html/rfc6749#section-4.4[RFC 6749 Section 4.4]).
 `standard-webhooks`:: link:https://www.standardwebhooks.com/[Standard Webhooks].
 
 If you omit this property, the HTTP client sink does not use authentication headers for the connection
@@ -975,6 +986,38 @@ If you omit this property, the HTTP client sink does not use authentication head
 The secret must be Base64-encoded, with a size from 24 bytes to 64 bytes (192–512 bits).
 Optionally, you can add the prefix `whsec_` to the secret to help distinguish it from other types of keys or tokens.
 For more information about implementing or validating webhook signatures, see the link:https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md[Standard Webhooks specification].
+
+|[[httpclient-authentication-oauth2-client-id]]<<httpclient-authentication-oauth2-client-id, `debezium.sink.http.authentication.oauth2.client_id` >>
+|
+|Specifies the OAuth2 client ID for the client credentials grant.
+
+|[[httpclient-authentication-oauth2-client-secret]]<<httpclient-authentication-oauth2-client-secret, `debezium.sink.http.authentication.oauth2.client_secret` >>
+|
+|Specifies the OAuth2 client secret for the client credentials grant.
+
+|[[httpclient-authentication-oauth2-token-url]]<<httpclient-authentication-oauth2-token-url, `debezium.sink.http.authentication.oauth2.token_url` >>
+|
+|The URL of the OAuth2 token endpoint (e.g., `\https://auth.example.com/oauth/token`).
+
+|[[httpclient-authentication-oauth2-scope]]<<httpclient-authentication-oauth2-scope, `debezium.sink.http.authentication.oauth2.scope` >>
+|
+|Optional space-separated list of OAuth2 scopes to request (e.g., `data:read data:write`).
+
+|[[httpclient-authentication-oauth2-client-auth-method]]<<httpclient-authentication-oauth2-client-auth-method, `debezium.sink.http.authentication.oauth2.client_auth_method` >>
+|client_secret_basic
+|Specifies how client credentials are sent to the token endpoint.
+Supports one of the following options:
+
+`client_secret_basic`:: Sends credentials as an HTTP Basic Authorization header (https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1[RFC 6749 Section 2.3.1]).
+`client_secret_post`:: Sends `client_id` and `client_secret` as form fields in the POST request body.
+
+|[[httpclient-authentication-oauth2-http-method]]<<httpclient-authentication-oauth2-http-method, `debezium.sink.http.authentication.oauth2.token_url.http_method` >>
+|POST
+|The HTTP method to use for token requests. The OAuth2 specification requires `POST`, but some providers accept `GET` with query parameters. Set to `GET` only for providers that do not support the standard `POST` method.
+
+|[[httpclient-authentication-oauth2-params]]<<httpclient-authentication-oauth2-params, `debezium.sink.http.authentication.oauth2.params.*` >>
+|
+|Optional additional parameters to include in the token request. For example, some providers require an `audience` or `resource` parameter. Set these using the `params.` prefix, e.g. `debezium.sink.http.authentication.oauth2.params.audience=\https://my-api.example.com`.
 
 
 |===
