@@ -66,11 +66,12 @@ public class JedisClusterClient implements RedisClient {
 
                 // Optionally ping to ensure the cluster is reachable before pipelining
                 jedisCluster.ping();
-                ClusterPipeline pipeline = jedisCluster.pipelined();
-                List<Response<StreamEntryID>> responses = new ArrayList<>(hashes.size());
-                hashes.forEach(hash -> responses.add(pipeline.xadd(hash.getKey(), StreamEntryID.NEW_ENTRY, hash.getValue())));
-                pipeline.sync();
-                return responses.stream().map(r -> r.get().toString()).toList();
+                try (ClusterPipeline pipeline = jedisCluster.pipelined();) {
+                    List<Response<StreamEntryID>> responses = new ArrayList<>(hashes.size());
+                    hashes.forEach(hash -> responses.add(pipeline.xadd(hash.getKey(), StreamEntryID.NEW_ENTRY, hash.getValue())));
+                    pipeline.sync();
+                    return responses.stream().map(r -> r.get().toString()).toList();
+                }
             }
             catch (JedisDataException jde) {
                 // When the Redis Cluster is starting, a JedisDataException will be thrown with this message.
