@@ -437,7 +437,7 @@ The snapshot itself does not prevent other clients from applying DDL that might 
 The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
 
 |4
-include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshots-default-workflow-repeatable-read-semantics]
 
 [NOTE]
 ====
@@ -530,7 +530,7 @@ To have the connector capture a subset of tables or table elements, you can set 
 |Obtain table-level locks.
 
 |4
-include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshots-default-workflow-repeatable-read-semantics]
 
 |5
 a|Read the current binlog position.
