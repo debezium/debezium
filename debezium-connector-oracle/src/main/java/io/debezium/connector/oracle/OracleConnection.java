@@ -928,4 +928,10 @@ public class OracleConnection extends JdbcConnection {
     public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
         return new OraclePhysicalRowIdentifierChunkQueryBuilder<>(connectorConfig, this);
     }
+
+    public long getMaximumRedoLogFileSize() throws SQLException {
+        return queryAndMap(
+                "SELECT MAX(BYTES) FROM V$LOG",
+                singleResultMapper(rs -> rs.getLong(1), "Failed to get maximum redo log file size"));
+    }
 }
