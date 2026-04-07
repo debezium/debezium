@@ -28,7 +28,7 @@ The SRID identifies the coordinate system used by the geometry, which is essenti
 
 WKB format stores SRIDs separately, whereas EWKB, as used in the PostgreSQL  PostGIS spatial extension, encodes the SRID directly within the binary geometry data itself.
 The SMT ensures format compatibility between different database systems (for example, PostgreSQL/PostGIS uses EWKB, while MySQL, SQL Server, and Oracle use WKB)
-Apply the SMT to source connectors to transform events before Kafka Connect writes them to Kafka, or to sink connectors to transform data before Kafka Connect writes it to the target system.
+Apply the SMT to source connectors to transform events before Kafka Connect writes them to Kafka, or to sink connectors to transform data before the sink connector writes it to the target system.
 
 The GeometryFormatTransformer SMT uses the 'io.debezium.data.Geometry' logical type to identify geometry fields.
 
