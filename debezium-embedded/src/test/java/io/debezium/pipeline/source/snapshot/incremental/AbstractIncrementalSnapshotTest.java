@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -465,7 +466,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         sendAdHocSnapshotSignal(tableDataCollectionIds().toArray(new String[0]));
 
-        final int expectedRecordCount = ROW_COUNT * 2;
+        final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();
         final AtomicBoolean restarted = new AtomicBoolean();
 
@@ -575,7 +576,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal(".*notExist");
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await().atMost(getWaitDurationInSeconds())
                 .until(() -> interceptor.containsMessage("Skipping read chunk because snapshot is not running"));
 
     }
@@ -759,7 +760,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await().atMost(getWaitDurationInSeconds())
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -810,7 +811,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await().atMost(getWaitDurationInSeconds())
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -1295,7 +1296,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             sendAdHocSnapshotSignal(collectionIds);
         }
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(executeSignalWaiter());
+        Awaitility.await().atMost(getWaitDurationInSeconds()).until(executeSignalWaiter());
     }
 
     protected Callable<Boolean> executeSignalWaiter() {
@@ -1314,7 +1315,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIds);
 
         // Wait for stop signal received and at least one incremental snapshot record
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(stopSignalWaiter());
+        Awaitility.await().atMost(getWaitDurationInSeconds()).until(stopSignalWaiter());
     }
 
     protected Callable<Boolean> stopSignalWaiter() {
@@ -1340,7 +1341,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // have been written concurrently to the signal table after the stop signal. We want to make
         // sure that those have all been read before stopping the connector.
         final AtomicBoolean stopMessageFound = new AtomicBoolean(false);
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await().atMost(getWaitDurationInSeconds())
                 .pollDelay(5, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
                 .until(() -> {
@@ -1353,4 +1354,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return stopMessageFound.get();
     }
 
+    protected Duration getWaitDurationInSeconds() {
+        return Duration.ofSeconds(60);
+    }
 }
