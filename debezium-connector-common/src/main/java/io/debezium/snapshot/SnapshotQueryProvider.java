@@ -24,6 +24,7 @@ import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
+import io.debezium.discriminator.ConnectorDiscriminator;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.spi.SnapshotQuery;
@@ -33,7 +34,7 @@ import io.debezium.snapshot.spi.SnapshotQuery;
  *
  * @author Mario Fiore Vitale
  */
-public class SnapshotQueryProvider extends AbstractSnapshotProvider implements ServiceProvider<SnapshotQuery> {
+public class SnapshotQueryProvider implements ServiceProvider<SnapshotQuery> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotQueryProvider.class);
 
@@ -69,7 +70,8 @@ public class SnapshotQueryProvider extends AbstractSnapshotProvider implements S
         else {
             snapshotQueryMode = configuredSnapshotQueryMode.getValue();
             byNameFilter = snapshotQueryImplementation -> snapshotQueryImplementation.name().equals(snapshotQueryMode);
-            byNameAndConnectorFilter = byNameFilter.and(snapshotQueryImplementation -> isForCurrentConnector(configuration, snapshotQueryImplementation.getClass()));
+            byNameAndConnectorFilter = byNameFilter.and(snapshotQueryImplementation -> ConnectorDiscriminator.isForCurrentConnector(configuration,
+                    snapshotQueryImplementation.getClass()));
         }
 
         Optional<SnapshotQuery> snapshotQuery = snapshotQueryImplementations.stream()

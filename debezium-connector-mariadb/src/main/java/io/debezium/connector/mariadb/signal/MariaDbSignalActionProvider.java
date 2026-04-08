@@ -8,7 +8,9 @@ package io.debezium.connector.mariadb.signal;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.actions.SignalAction;
@@ -21,6 +23,7 @@ import io.debezium.spi.schema.DataCollectionId;
  *
  * @author Debezium Authors
  */
+@ConnectorSpecific(connector = MariaDbConnector.class)
 public class MariaDbSignalActionProvider implements SignalActionProvider {
 
     @Override

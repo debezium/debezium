@@ -21,6 +21,7 @@ import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.discriminator.ConnectorDiscriminator;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.lock.NoLockingSupport;
@@ -31,7 +32,7 @@ import io.debezium.snapshot.spi.SnapshotLock;
  *
  * @author Mario Fiore Vitale
  */
-public class SnapshotLockProvider extends AbstractSnapshotProvider implements ServiceProvider<SnapshotLock> {
+public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLockProvider.class);
 
@@ -68,7 +69,8 @@ public class SnapshotLockProvider extends AbstractSnapshotProvider implements Se
         else {
             snapshotLockMode = configuredSnapshotLockingMode;
             byNameFilter = snapshotLockImplementation -> snapshotLockImplementation.name().equals(snapshotLockMode);
-            byNameAndConnectorFilter = byNameFilter.and(snapshotLockImplementation -> isForCurrentConnector(configuration, snapshotLockImplementation.getClass()));
+            byNameAndConnectorFilter = byNameFilter.and(snapshotLockImplementation -> ConnectorDiscriminator.isForCurrentConnector(configuration,
+                    snapshotLockImplementation.getClass()));
         }
 
         Optional<? extends SnapshotLock> snapshotLock = snapshotLockImplementations.stream()
