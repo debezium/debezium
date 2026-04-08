@@ -798,7 +798,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             final TableId tableId = event.getTableId();
             final Table table = getSchema().tableFor(tableId);
             if (table != null) {
-                final XmlWriteParser.XmlWrite parsedEvent = XmlWriteParser.parse(event);
+                final XmlWriteParser.XmlWrite parsedEvent = XmlWriteParser.parse(event, jdbcConnection.getDatabaseCharacterSet());
                 enqueueEvent(event, new XmlWriteEvent(event, parsedEvent.data(), parsedEvent.length()));
             }
         }
