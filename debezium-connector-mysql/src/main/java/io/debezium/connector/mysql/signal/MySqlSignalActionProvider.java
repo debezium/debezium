@@ -8,7 +8,9 @@ package io.debezium.connector.mysql.signal;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
@@ -22,6 +24,7 @@ import io.debezium.spi.schema.DataCollectionId;
  *
  * @author Debezium Authors
  */
+@ConnectorSpecific(connector = MySqlConnector.class)
 public class MySqlSignalActionProvider implements SignalActionProvider {
 
     @Override
