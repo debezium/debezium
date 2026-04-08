@@ -745,6 +745,34 @@ public class OracleConnection extends JdbcConnection {
     }
 
     /**
+     * Get the database character set used for {@code VARCHAR2}, {@code CHAR}, and {@code CLOB} data types.
+     *
+     * This method queries the {@code NLS_CHARACTERSET} database parameter and returns the corresponding
+     * {@link CharacterSet}. Like the nationalized character set, the database character set is set at
+     * database creation and does not change, so the result can be cached.
+     *
+     * @return the database character set
+     */
+    public CharacterSet getDatabaseCharacterSet() {
+        final String query = "SELECT NLS_CHARSET_ID(VALUE) FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET'";
+        try {
+            final Integer charsetId = queryAndMap(query, rs -> {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return null;
+            });
+            if (charsetId != null) {
+                return CharacterSet.make(charsetId);
+            }
+            throw new SQLException("Failed to resolve Oracle's NLS_CHARACTERSET property");
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to resolve Oracle's NLS_CHARACTERSET property", e);
+        }
+    }
+
+    /**
      * Get the nationalized character set used for {@code NVARCHAR} and {@code NCHAR} data types.
      *
      * This method will lazily fetch the nationalized character set once per runtime. This is because

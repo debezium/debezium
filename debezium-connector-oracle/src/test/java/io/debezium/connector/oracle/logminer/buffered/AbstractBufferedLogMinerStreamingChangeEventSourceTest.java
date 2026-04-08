@@ -676,6 +676,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
         Mockito.when(connection.connection()).thenReturn(conn);
         Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
+        Mockito.when(connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
         if (!singleOptionalValueThrowException) {
             Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
         }
