@@ -71,6 +71,8 @@ public class OracleConnection extends JdbcConnection {
      */
     private static final Pattern SYS_NC_PATTERN = Pattern.compile("^SYS_NC(?:_OID|_ROWINFO|[0-9][0-9][0-9][0-9][0-9])\\$$");
 
+    private CharacterSet databaseCharacterSet;
+
     /**
      * Pattern to identify abstract data type indices and column names.
      */
@@ -754,6 +756,9 @@ public class OracleConnection extends JdbcConnection {
      * @return the database character set
      */
     public CharacterSet getDatabaseCharacterSet() {
+        if (databaseCharacterSet != null) {
+            return databaseCharacterSet;
+        }
         final String query = "SELECT NLS_CHARSET_ID(VALUE) FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET'";
         try {
             final Integer charsetId = queryAndMap(query, rs -> {
@@ -763,7 +768,8 @@ public class OracleConnection extends JdbcConnection {
                 return null;
             });
             if (charsetId != null) {
-                return CharacterSet.make(charsetId);
+                databaseCharacterSet = CharacterSet.make(charsetId);
+                return databaseCharacterSet;
             }
             throw new SQLException("Failed to resolve Oracle's NLS_CHARACTERSET property");
         }

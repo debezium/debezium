@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
-import java.nio.charset.StandardCharsets;
-
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Strings;
 
+import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
 import oracle.sql.RAW;
 
 /**
@@ -38,9 +38,10 @@ public class XmlWriteParser {
      * Parses a LogMiner {@code XML DOC WRITE} event.
      *
      * @param event the event, should not be {@code null}
+     * @param databaseCharacterSet the database character set for decoding HEXTORAW values, should not be {@code null}
      * @return the parsed write event data, never {@code null}
      */
-    public static XmlWrite parse(LogMinerEventRow event) {
+    public static XmlWrite parse(LogMinerEventRow event, CharacterSet databaseCharacterSet) {
         final String redoSql = event.getRedoSql();
         if (XML_WRITE_PREAMBLE_NULL.equals(redoSql) || Strings.isNullOrBlank(redoSql)) {
             // The XML field is being explicitly set to NULL
@@ -48,13 +49,13 @@ public class XmlWriteParser {
         }
 
         if (XmlParserUtils.isXmlSerializedAsBinary(event)) {
-            return parseBinary(redoSql);
+            return parseBinary(redoSql, databaseCharacterSet);
         }
 
         return new XmlWrite(redoSql.length(), redoSql);
     }
 
-    private static XmlWrite parseBinary(String redoSql) {
+    private static XmlWrite parseBinary(String redoSql, CharacterSet databaseCharacterSet) {
         if (!redoSql.startsWith(XML_WRITE_PREAMBLE)) {
             throw new ParsingException(null, "XML write operation does not start with XML_REDO preamble");
         }
@@ -100,7 +101,7 @@ public class XmlWriteParser {
                     }
                 }
 
-                xml = new String(RAW.hexString2Bytes(xmlHex), StandardCharsets.UTF_8);
+                xml = new CHAR(RAW.hexString2Bytes(xmlHex), databaseCharacterSet).toString();
             }
 
             int lastColonIndex = redoSql.lastIndexOf(':');
