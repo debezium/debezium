@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -231,5 +232,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         TestHelper.dropTable(connection, "a");
         TestHelper.dropTable(connection, "b");
         TestHelper.dropTable(connection, "a42");
+    }
+
+    @Override
+    protected Duration getWaitDurationInSeconds() {
+        if (TestHelper.isXStream()) {
+            // XStream waits are more temperamental, give it more time
+            return Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout());
+        }
+        return super.getWaitDurationInSeconds();
     }
 }

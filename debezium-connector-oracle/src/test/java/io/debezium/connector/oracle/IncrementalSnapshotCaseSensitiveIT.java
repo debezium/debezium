@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -213,5 +214,14 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected String server() {
         return TestHelper.SERVER_NAME;
+    }
+
+    @Override
+    protected Duration getWaitDurationInSeconds() {
+        if (TestHelper.isXStream()) {
+            // XStream waits are more temperamental, give it more time
+            return Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout());
+        }
+        return super.getWaitDurationInSeconds();
     }
 }
