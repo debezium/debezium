@@ -41,7 +41,11 @@ The GeometryFormatTransformer SMT uses the 'io.debezium.data.Geometry' logical t
 The GeometryFormatTransformer SMT helps to ensure data compatibility for consumers that require different spatial data formats.
 When you know that a downstream system will reject the source data format or fail to parse it correctly, apply the GeometryFormatTransformer to ensure that the consumer receives data in a format that it can process.
 
-You can apply the transformation to a {prodname} source connector to modify the format before events are emitted, or to a {prodname} sink connector to process events retrieved from a {prodname} source connector topic.
+You can apply the transformation to either a {prodname} source connector or a sink connector.
+When configured on a {prodname} source connector, the SMT standardizes the format of spatial data in change event records before the connector writes them to Kafka.
+
+When configured on a sink connector, the SMT converts the format of spatial data in change event records after they are consumed from a Kafka topic and before the connector writes them to the downstream system.
+To function correctly, the records must conform to the {prodname} change event structure, as produced by {prodname} source connectors.
 
 Apply the GeometryFormatTransformer in the following situations:
 
