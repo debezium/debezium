@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -29,6 +30,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.discriminator.ConnectorDiscriminator;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
@@ -171,9 +173,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         // Maybe this can be moved on task
         List<SignalActionProvider> actionProviders = StreamSupport.stream(ServiceLoader.load(SignalActionProvider.class).spliterator(), false)
-                .collect(Collectors.toList());
+                .toList();
 
         actionProviders.stream()
+                .filter(getUniversalProviderOrConnectorSpecific(connectorConfig))
                 .map(provider -> provider.createActions(dispatcher, changeEventSourceCoordinator, connectorConfig))
                 .flatMap(e -> e.entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
@@ -181,6 +184,12 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         signalProcessor.start(); // this will run on a separate thread
 
+    }
+
+    private static Predicate<SignalActionProvider> getUniversalProviderOrConnectorSpecific(CommonConnectorConfig connectorConfig) {
+
+        return signalActionProvider -> ConnectorDiscriminator.isForCurrentConnector(connectorConfig.getConfig(), signalActionProvider.getClass())
+                || signalActionProvider.getClass().getAnnotation(io.debezium.annotation.ConnectorSpecific.class) == null;
     }
 
     public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) {
