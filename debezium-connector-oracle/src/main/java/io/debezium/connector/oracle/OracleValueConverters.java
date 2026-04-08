@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -99,6 +98,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final byte[] unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
     private final CharacterSet nationalCharacterSet;
+    private final CharacterSet databaseCharacterSet;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, config.binaryHandlingMode());
@@ -108,6 +108,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
         this.nationalCharacterSet = connection.getNationalCharacterSet();
+        this.databaseCharacterSet = connection.getDatabaseCharacterSet();
     }
 
     public byte[] getUnavailableValuePlaceholderBinary() {
@@ -896,7 +897,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 case OracleTypes.NCHAR:
                     return new CHAR(convertHexToRawFunctionToByteArray(function), nationalCharacterSet).toString();
                 default:
-                    return new String(RAW.hexString2Bytes(getHexToRawHexString(function)), StandardCharsets.UTF_8);
+                    return new CHAR(convertHexToRawFunctionToByteArray(function), databaseCharacterSet).toString();
             }
         }
         catch (Exception e) {

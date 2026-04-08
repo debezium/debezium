@@ -41,6 +41,7 @@ public class OracleDatabaseSchemaTest {
     void before() throws Exception {
         this.connection = Mockito.mock(OracleConnection.class);
         Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
+        Mockito.when(this.connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
         this.schema = createOracleDatabaseSchema();
     }
 
