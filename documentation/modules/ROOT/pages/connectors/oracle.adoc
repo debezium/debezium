@@ -2596,10 +2596,25 @@ The following example shows how to add the `RawToStringConverter` to the connect
 converters=raw-to-string
 raw-to-string.type=io.debezium.connector.oracle.converters.RawToStringConverter
 raw-to-string.selector=.*.MY_TABLE.DATA
+raw-to-string.charset=UTF-8
 ----
 
-In the preceding example, the `selector` property enables you to define a regular expression that specifies the tables or columns that the converter processes.
+.RawToStringConverter configuration properties
+[cols="1,2,7",options="header"]
+|===
+| Property |Default |Description
+
+|`selector`
+|_n/a_
+|A regular expression that specifies the tables or columns that the converter processes.
 If you omit the `selector` property, the converter maps all `RAW` column types to logical `STRING` field types.
+
+|`charset`
+|`UTF-8`
+|Specifies the character encoding to use when decoding the Oracle raw bytes to a Java string type.
+For example, if the database encoding is `WE8ISO8859P1`, this field would need to be set as `ISO-8859-1`, the Java equivalent for the Oracle encoding.
+
+|===
 
 // Type: assembly
 // ModuleID: setting-up-oracle-to-work-with-debezium
