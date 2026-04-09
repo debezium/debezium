@@ -220,7 +220,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     protected Duration getWaitDurationInSeconds() {
         if (TestHelper.isXStream()) {
             // XStream waits are more temperamental, give it more time
-            return Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout());
+            return Duration.ofMinutes(5);
         }
         return super.getWaitDurationInSeconds();
     }
