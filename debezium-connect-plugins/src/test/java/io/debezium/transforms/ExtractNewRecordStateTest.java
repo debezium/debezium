@@ -1006,4 +1006,28 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(unwrappedTombstoneRecord).isNull();
         }
     }
+
+    // Added tests to verify that the connector proactively rejects invalid ENUM values
+    // (like 'jbsdfkjsd' for delete handling mode) during the configure phase, preventing runtime failures.
+    @Test
+    public void shouldRejectInvalidEnumValueForDeleteHandlingMode() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_TOMBSTONE_DELETES, "jbsdfkjsd");
+
+            org.apache.kafka.connect.errors.ConnectException e = org.junit.jupiter.api.Assertions.assertThrows(
+                    org.apache.kafka.connect.errors.ConnectException.class,
+                    () -> transform.configure(props));
+            assertThat(e.getMessage()).contains("Unable to validate config");
+        }
+    }
+
+    @Test
+    public void shouldAcceptValidEnumValueForDeleteHandlingMode() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_TOMBSTONE_DELETES, "drop");
+            transform.configure(props);
+        }
+    }
 }

@@ -467,7 +467,8 @@ public final class Field {
                     fields[i].name(),
                     fields[i].type(),
                     fields[i].defaultValue(),
-                    null,
+                    // Instead of passing a null validator to the Kafka ConfigDef, we now pass our converted Kafka validator to enable validation.
+                    convertToKafkaValidator(fields[i]),
                     fields[i].importance(),
                     fields[i].description(),
                     groupName, // Can be null
@@ -482,7 +483,8 @@ public final class Field {
                         alias,
                         fields[i].type(),
                         fields[i].defaultValue(),
-                        null,
+                        // Instead of passing a null validator to the Kafka ConfigDef, we now pass our converted Kafka validator to enable validation.
+                        convertToKafkaValidator(fields[i]),
                         fields[i].importance(),
                         fields[i].description(),
                         groupName, // Can be null
@@ -505,6 +507,19 @@ public final class Field {
                         Map.Entry::getKey,
                         Map.Entry::getValue,
                         Field::mergeRecommenders));
+    }
+
+    // Helper method added to convert Debezium's internal Validator into Kafka's ConfigDef.Validator,
+    // ensuring that our custom validation logic (like Enum validations) is properly hooked into the Kafka Connect framework.
+    private static ConfigDef.Validator convertToKafkaValidator(Field field) {
+        if (field.validator() == null) {
+            return null;
+        }
+        if (field.validator() instanceof ConfigDef.Validator) {
+            ConfigDef.Validator kafkaValidator = (ConfigDef.Validator) field.validator();
+            return (name, value) -> kafkaValidator.ensureValid(name, value);
+        }
+        return null;
     }
 
     private static Stream<Map.Entry<String, ConfigDef.Recommender>> createRecommendersForDependents(
@@ -1303,7 +1318,7 @@ public final class Field {
                 .collect(Collectors.toSet());
     }
 
-    public static class EnumRecommender<T extends Enum<T> & EnumeratedValue> implements Recommender, Validator {
+    public static class EnumRecommender<T extends Enum<T> & EnumeratedValue> implements Recommender, Validator, ConfigDef.Validator {
 
         private final List<Object> validValues;
         private final java.util.Set<String> literals;
@@ -1343,6 +1358,23 @@ public final class Field {
                 return 1;
             }
             return 0;
+        }
+
+        // Implemented ensureValid to satisfy the ConfigDef.Validator interface. This method performs the actual
+        // validation of the enum value and throws a ConfigException if it's invalid, which Kafka Connect
+        // catches during connector configuration.
+        @Override
+        public void ensureValid(String name, Object value) {
+            if (value == null) {
+                if (defaultOption != null) {
+                    throw new ConfigException(name, value, "Value must be one of " + literalsStr);
+                }
+                return;
+            }
+            String trimmed = value.toString().trim().toLowerCase();
+            if (!literals.contains(trimmed)) {
+                throw new ConfigException(name, value, "Value must be one of " + literalsStr);
+            }
         }
     }
 
