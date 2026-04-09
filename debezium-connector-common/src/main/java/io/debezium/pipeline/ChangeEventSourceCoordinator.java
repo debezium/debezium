@@ -469,9 +469,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 while (paused) {
                     LOGGER.trace("Waiting for snapshot to be completed.");
                     snapshotFinished.await();
-                    streaming = true;
-                    streamingRunning.signalAll();
                 }
+                streaming = true;
+                streamingRunning.signalAll();
             }
             finally {
                 lock.unlock();
