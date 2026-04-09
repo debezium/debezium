@@ -260,7 +260,12 @@ public class LogFileCollector {
     @VisibleForTesting
     public static List<LogFile> mergeLogsByPrecedence(Map<String, List<LogFile>> logs, List<String> destinationNames) {
         final List<LogFile> result = new ArrayList<>();
-        final Set<BigInteger> sequencesSeen = new HashSet<>();
+        // Use (thread, sequence) as the dedup key. On Oracle RAC, different redo threads
+        // share the same sequence numbers; keying by sequence alone drops all archive logs
+        // for threads after the first, causing LogFileNotFoundException.
+        record ThreadSequence(int thread, BigInteger sequence) {
+        }
+        final Set<ThreadSequence> seen = new HashSet<>();
 
         for (String destinationName : destinationNames) {
             final List<LogFile> destinationLogs = logs.get(destinationName);
@@ -269,9 +274,10 @@ public class LogFileCollector {
             }
 
             for (LogFile logFile : destinationLogs) {
-                if (!sequencesSeen.contains(logFile.getSequence())) {
+                final ThreadSequence key = new ThreadSequence(logFile.getThread(), logFile.getSequence());
+                if (!seen.contains(key)) {
                     result.add(logFile);
-                    sequencesSeen.add(logFile.getSequence());
+                    seen.add(key);
                 }
             }
         }
