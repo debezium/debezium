@@ -244,7 +244,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         }
     }
 
-    // Custom method (not override) to create snapshot connection
+    @Override
     protected JdbcConnection createSnapshotConnection() throws SQLException {
         // Create a new PostgreSQL connection in NORMAL mode (not replication mode)
         // This connection is used exclusively for parallel snapshot reads

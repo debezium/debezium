@@ -876,4 +876,24 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         // for a schemaChangeEvent to implement this, such as Oracle
         return null;
     }
+
+    /**
+     * Creates a new JDBC connection for parallel snapshot processing.
+     *
+     * <p>This method is called by {@link SnapshotConnectionPool} to create connections
+     * for parallel snapshot workers. Each worker needs its own isolated connection in NORMAL mode
+     * (not replication mode) to execute SELECT queries independently.
+     *
+     * <p><b>Default implementation:</b> Throws {@link UnsupportedOperationException}. Connectors
+     * that support parallel incremental snapshots must override this method.
+     *
+     * @return a new JDBC connection in NORMAL mode
+     * @throws SQLException if connection creation fails
+     * @throws UnsupportedOperationException if this connector does not support parallel snapshots
+     */
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        throw new UnsupportedOperationException(
+                "Parallel snapshot connections not supported by this connector implementation. " +
+                "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
+    }
 }
