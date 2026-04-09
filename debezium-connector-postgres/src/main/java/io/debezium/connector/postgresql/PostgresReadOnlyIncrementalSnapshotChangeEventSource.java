@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.function.Consumer;
 
@@ -241,6 +242,35 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
+    }
+
+    @Override
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        // Create a new PostgreSQL connection in NORMAL mode (not replication mode)
+        // This connection is used exclusively for parallel snapshot reads
+        LOGGER.debug("[{}] Creating new snapshot connection in NORMAL mode (not replication)",
+                Thread.currentThread().getName());
+
+        // Use super.jdbcConnection from parent class (not this.jdbcConnection which is null during parent constructor)
+        PostgresConnection parentJdbcConnection = (PostgresConnection) super.jdbcConnection;
+
+        // Get configuration and database charset
+        PostgresConnectorConfig postgresConfig = (PostgresConnectorConfig) connectorConfig;
+        Charset databaseCharset = parentJdbcConnection.getDatabaseCharset();
+
+        // Create value converter builder that will initialize TypeRegistry for this connection
+        // Each snapshot connection needs its own TypeRegistry instance
+        PostgresConnection.PostgresValueConverterBuilder valueConverterBuilder =
+                (typeRegistry) -> PostgresValueConverter.of(postgresConfig, databaseCharset, typeRegistry);
+
+        PostgresConnection snapshotConnection = new PostgresConnection(
+                postgresConfig.getJdbcConfig(),
+                valueConverterBuilder,
+                "Debezium Parallel Snapshot Worker"
+        );
+
+        LOGGER.debug("[{}] Snapshot connection created successfully with TypeRegistry", Thread.currentThread().getName());
+        return snapshotConnection;
     }
 
 }
