@@ -4928,7 +4928,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 [[oracle-monitoring-streaming]]
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
+==== Common streaming metrics
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+==== LogMiner streaming metrics
 
 The {prodname} Oracle connector also provides the following additional streaming metrics:
 
