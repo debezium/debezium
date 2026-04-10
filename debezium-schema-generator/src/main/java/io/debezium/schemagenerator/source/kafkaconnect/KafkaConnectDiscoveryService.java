@@ -8,6 +8,7 @@ package io.debezium.schemagenerator.source.kafkaconnect;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,7 +62,8 @@ public class KafkaConnectDiscoveryService {
             ComponentType.HEADER_CONVERTER, "org.apache.kafka.connect.storage.HeaderConverter",
             ComponentType.PREDICATE, "org.apache.kafka.connect.transforms.predicates.Predicate");
     public static final String META_INF_SERVICES_FORLDER = "META-INF/services/";
-    public static final String JAR_FILE = "jar:file:";
+    public static final String JAR = "jar:";
+    public static final String JAR_FILE = JAR + "file:";
     public static final String ORG_APACHE_KAFKA = "org.apache.kafka.";
     public static final String CLASS_EXTENSION = ".class";
 
@@ -253,8 +255,7 @@ public class KafkaConnectDiscoveryService {
      * @return file system path to the JAR
      */
     private String extractJarPath(String urlString) {
-        return urlString.substring(
-                JAR_FILE.length(),
-                urlString.indexOf("!"));
+        final String fileUrl = urlString.substring(JAR.length(), urlString.indexOf("!"));
+        return Paths.get(URI.create(fileUrl)).toString();
     }
 }
