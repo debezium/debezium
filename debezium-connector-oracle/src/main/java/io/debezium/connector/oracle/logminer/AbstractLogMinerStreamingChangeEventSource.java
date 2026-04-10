@@ -119,6 +119,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
     private final List<String> archiveDestinationNames;
+    private final LogMinerColumnIndexes columnIndexes;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -158,6 +159,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(jdbcConnection);
+        this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -408,7 +410,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                 getBatchMetrics().rowObserved();
 
-                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, schema, getConfig());
+                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, schema, columnIndexes);
                 processEvent(event);
             }
 
