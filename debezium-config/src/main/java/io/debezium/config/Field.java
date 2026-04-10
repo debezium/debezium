@@ -518,8 +518,7 @@ public final class Field {
         if (field.validator() == null) {
             return null;
         }
-        if (field.validator() instanceof ConfigDef.Validator) {
-            ConfigDef.Validator kafkaValidator = (ConfigDef.Validator) field.validator();
+        if (field.validator() instanceof ConfigDef.Validator kafkaValidator) {
             return (name, value) -> kafkaValidator.ensureValid(name, value);
         }
         return null;
