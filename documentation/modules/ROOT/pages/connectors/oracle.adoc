@@ -4953,6 +4953,10 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The maximum number of logs specified for any LogMiner session.
 
+|[[oracle-streaming-metrics-current-mined-log-count]]<<oracle-streaming-metrics-current-mined-log-count, `+CurrentMinedLogCount+`>>
+|`long`
+|The current number of logs specified for the LogMiner session.
+
 |[[oracle-streaming-metrics-redologstatuses]]<<oracle-streaming-metrics-redologstatuses, `+RedoLogStatuses+`>>
 |`string[]`
 |Array of the current state for each online redo log in the database with the format `_filename_\|_status_`.

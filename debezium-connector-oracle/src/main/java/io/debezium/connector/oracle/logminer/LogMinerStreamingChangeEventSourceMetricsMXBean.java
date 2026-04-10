@@ -82,6 +82,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getMaximumMinedLogCount();
 
     /**
+     * @return the current number of logs used by a mining session
+     */
+    long getCurrentMinedLogCount();
+
+    /**
      * @return the minimum SCN used for reading the current mined logs.
      */
     BigInteger getMiningSessionLowerBounds();
