@@ -50,9 +50,9 @@ import io.debezium.transforms.SmtManager;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Divyansh Agrawal
  */
-public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
+public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalMapper.class);
 
     // Prefix for per-collection schema mapping properties.
     // Usage: schema.mapping.<topic>=fieldName:type,fieldName:type,...
@@ -108,7 +108,7 @@ public class MongoToRelationalConverter<R extends ConnectRecord<R>> implements T
         // Using ARRAY encoding to handle nested BSON arrays consistently
         converter = new MongoDataConverter(ExtractNewDocumentState.ArrayEncoding.ARRAY);
 
-        LOGGER.info("MongoToRelationalConverter initialized. Missing fields injection is set to: {}", addMissingFields);
+        LOGGER.info("MongoToRelationalMapper initialized. Missing fields injection is set to: {}", addMissingFields);
     }
 
     /**
