@@ -21,17 +21,17 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 
 /**
- * Unit test for {@link MongoToRelationalConverter}.
+ * Unit test for {@link MongoToRelationalMapper}.
  *
  * @author Divyansh Agrawal
  */
-public class MongoToRelationalConverterTest {
+public class MongoToRelationalMapperTest {
 
-    private MongoToRelationalConverter<SourceRecord> transformation;
+    private MongoToRelationalMapper<SourceRecord> transformation;
 
     @BeforeEach
     void setup() {
-        transformation = new MongoToRelationalConverter<>();
+        transformation = new MongoToRelationalMapper<>();
         transformation.configure(new java.util.HashMap<>());
     }
 
