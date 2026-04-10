@@ -69,8 +69,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
     private final AtomicInteger jdbcRows = new AtomicInteger();
 
-    private final AtomicLong minimumLogsMined = new AtomicLong();
-    private final AtomicLong maximumLogsMined = new AtomicLong();
+    private final LongHistogramMetric minedLogsCount = new LongHistogramMetric();
     private final AtomicLong maxBatchProcessingThroughput = new AtomicLong();
     private final AtomicLong timeDifference = new AtomicLong();
     private final AtomicLong processedRowsCount = new AtomicLong();
@@ -91,8 +90,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final DurationHistogramMetric parseTimeDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric resultSetNextDuration = new DurationHistogramMetric();
 
-    private final MaxLongValueMetric userGlobalAreaMemory = new MaxLongValueMetric();
-    private final MaxLongValueMetric processGlobalAreaMemory = new MaxLongValueMetric();
+    private final LongHistogramMetric userGlobalAreaMemory = new LongHistogramMetric();
+    private final LongHistogramMetric processGlobalAreaMemory = new LongHistogramMetric();
 
     private final LRUSet<String> abandonedTransactionIds = new LRUSet<>(TRANSACTION_ID_SET_SIZE);
     private final LRUSet<String> rolledBackTransactionIds = new LRUSet<>(TRANSACTION_ID_SET_SIZE);
@@ -146,6 +145,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
         abandonedTransactionIds.reset();
         rolledBackTransactionIds.reset();
+        minedLogsCount.reset();
 
         oldestScnTime.set(null);
     }
@@ -195,12 +195,17 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
     @Override
     public long getMinimumMinedLogCount() {
-        return minimumLogsMined.get();
+        return minedLogsCount.getMin();
     }
 
     @Override
     public long getMaximumMinedLogCount() {
-        return maximumLogsMined.get();
+        return minedLogsCount.getMax();
+    }
+
+    @Override
+    public long getCurrentMinedLogCount() {
+        return minedLogsCount.getValue();
     }
 
     @Override
@@ -489,15 +494,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setMinedLogFileNames(Set<String> minedLogFileNames) {
         this.minedLogFileNames.set(minedLogFileNames.toArray(String[]::new));
-        if (minedLogFileNames.size() < minimumLogsMined.get()) {
-            minimumLogsMined.set(minedLogFileNames.size());
-        }
-        else if (minimumLogsMined.get() == 0) {
-            minimumLogsMined.set(minedLogFileNames.size());
-        }
-        if (minedLogFileNames.size() > maximumLogsMined.get()) {
-            maximumLogsMined.set(minedLogFileNames.size());
-        }
+        this.minedLogsCount.setValueAndCalculate(minedLogFileNames.size());
     }
 
     /**
@@ -785,8 +782,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", databaseZoneOffset=" + databaseZoneOffset +
                 ", logSwitchCount=" + logSwitchCount +
                 ", logMinerQueryCount=" + logMinerQueryCount +
-                ", minimumLogsMined=" + minimumLogsMined +
-                ", maximumLogsMined=" + maximumLogsMined +
+                ", minedLogsCount=" + minedLogsCount +
                 ", maxBatchProcessingThroughput=" + maxBatchProcessingThroughput +
                 ", timeDifference=" + timeDifference +
                 ", processedRowsCount=" + processedRowsCount +
@@ -883,28 +879,36 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     /**
-     * Utility class for tracking the current and maximum long value.
+     * Utility class for tracking the current, minimum, and maximum long value.
      */
     @ThreadSafe
-    static class MaxLongValueMetric {
+    static class LongHistogramMetric {
 
         private final AtomicLong value = new AtomicLong();
         private final AtomicLong max = new AtomicLong();
+        private final AtomicLong min = new AtomicLong();
 
         public void reset() {
             value.set(0L);
             max.set(0L);
+            min.set(0L);
         }
 
-        public void setValueAndCalculateMax(long value) {
+        public void setValueAndCalculate(long value) {
             this.value.set(value);
-            if (max.get() < value) {
-                max.set(value);
-            }
+
+            setMin(value);
+            setMax(value);
         }
 
         public void setValue(long value) {
             this.value.set(value);
+        }
+
+        public void setMin(long min) {
+            if (this.min.get() > min) {
+                this.min.set(min);
+            }
         }
 
         public void setMax(long max) {
@@ -921,9 +925,13 @@ public class LogMinerStreamingChangeEventSourceMetrics
             return max.get();
         }
 
+        public long getMin() {
+            return min.get();
+        }
+
         @Override
         public String toString() {
-            return String.format("{value=%d,max=%d}", value.get(), max.get());
+            return "{value=%d,min=%d,max=%d}".formatted(value.get(), min.get(), max.get());
         }
     }
 
