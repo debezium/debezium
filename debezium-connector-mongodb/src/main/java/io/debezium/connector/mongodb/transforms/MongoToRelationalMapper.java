@@ -94,6 +94,10 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         for (Map.Entry<String, ?> entry : configs.entrySet()) {
             if (entry.getKey().startsWith(SCHEMA_MAPPING_PREFIX)) {
                 String collectionName = entry.getKey().substring(SCHEMA_MAPPING_PREFIX.length());
+                if (collectionName.trim().isEmpty()) {
+                    LOGGER.warn("Invalid schema mapping configuration: '{}'. A collection name must be specified after the '{}' prefix.", entry.getKey(), SCHEMA_MAPPING_PREFIX);
+                    continue;
+                }
                 String fieldDefinitions = entry.getValue().toString();
                 Schema schema = parseFieldDefinitions(collectionName, fieldDefinitions);
                 customSchemaMap.put(collectionName, schema);
