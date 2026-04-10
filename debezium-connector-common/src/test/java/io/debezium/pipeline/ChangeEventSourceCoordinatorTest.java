@@ -220,11 +220,6 @@ public class ChangeEventSourceCoordinatorTest {
         }
 
         @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
-            return null;
-        }
-
-        @Override
         public void start(Map<String, String> map) {
         }
 
@@ -256,11 +251,6 @@ public class ChangeEventSourceCoordinatorTest {
     private static class TestConnectorB extends BaseSourceConnector {
         @Override
         protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-            return null;
-        }
-
-        @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
             return null;
         }
 
@@ -300,11 +290,6 @@ public class ChangeEventSourceCoordinatorTest {
         }
 
         @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
-            return null;
-        }
-
-        @Override
         public void start(Map<String, String> map) {
         }
 
@@ -336,11 +321,6 @@ public class ChangeEventSourceCoordinatorTest {
     private static class TestConnectorD extends BaseSourceConnector {
         @Override
         protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-            return null;
-        }
-
-        @Override
-        public <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config) {
             return null;
         }
 
