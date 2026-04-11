@@ -1783,7 +1783,7 @@ Details are in the following sections:
 * xref:{context}-vector-types[]
 endif::product[]
 
-
+end::data-type-mappings[]
 
 === Basic types
 
@@ -2329,8 +2329,11 @@ IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that doe
 {context}> FLUSH PRIVILEGES;
 ----
 
-+
-[id="permissions-explained-{context}-connector"]
+end::creating-a-db-user[]
+
+
+
+tag::permissions-explained[]
 .Descriptions of user permissions
 [cols="3,7",options="header",subs="+attributes"]
 |===
@@ -2367,10 +2370,7 @@ The connector always requires this.
 |Specifies the user's {connector-name} password.
 
 |===
-
-end::creating-a-db-user[]
-
-
+end::permissions-explained[]
 
 
 
@@ -2409,8 +2409,10 @@ include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=se
 . If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
 If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
 
-+
-[id="binlog-configuration-properties-{context}-connector"]
+end::enabling-binlog[]
+
+
+tag::binlog-config-props[]
 .Descriptions of {connector-name} binlog configuration properties
 [cols="1,4",options="header",subs="+attributes"]
 |===
@@ -2434,10 +2436,14 @@ This is the number of seconds for automatic binlog file removal.
 The default value is `2592000`, which equals 30 days.
 Set the value to match the needs of your environment.
 For more information, see xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files].
-
+ifdef::MARIADB[]
+|`log_bin_compress`
+|Whether or not the binary log can be compressed. The {prodname}
+{connector-name} connector does not support compressed binary log entries, so
+`log_bin_compress` must be set to `0` (the default), which means no compression.
+endif::MARIADB[]
 |===
-
-end::enabling-binlog[]
+end::binlog-config-props[]
 
 
 
@@ -2468,7 +2474,6 @@ You can prevent this behavior by configuring `interactive_timeout` and `wait_tim
 ----
 {context}> wait_timeout=<duration-in-seconds>
 ----
-
 +
 .Descriptions of {connector-name} session timeout options
 [cols="3,7",options="header",subs="+attributes"]
