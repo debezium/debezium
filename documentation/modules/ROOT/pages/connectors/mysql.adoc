@@ -448,6 +448,11 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=creating-a-db-user]
 
+[id="permissions-explained-mysql-connector"]
+==== Descriptions of user permissions
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=permissions-explained]
+
 // Type: procedure
 // ModuleID: enabling-the-mysql-binlog-for-debezium
 // Title: Enabling the MySQL binlog for {prodname}
@@ -456,6 +461,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
 
+[id="binlog-configuration-properties-mysql-connector"]
+==== Descriptions of MySQL binlog configuration properties
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=binlog-config-props]
 
 // Type: procedure
 // ModuleID: enabling-mysql-gtids-for-debezium
