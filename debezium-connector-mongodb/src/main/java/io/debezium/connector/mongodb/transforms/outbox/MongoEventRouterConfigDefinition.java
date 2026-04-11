@@ -67,6 +67,15 @@ public class MongoEventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
+    static final Field FIELDS_ADDITIONAL_ERROR_ON_MISSING = Field.create("collection.fields.additional.error.on.missing")
+            .withDisplayName("Should the transform error if an additional field is missing in the change data")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(true)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("When transforming the 'collection.fields.additional.placement' fields, should the transform throw" +
+                    " an exception if one of the fields is missing in the change data");
+
     static final Field FIELD_SCHEMA_VERSION = Field.create("collection.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
             .withType(ConfigDef.Type.STRING)
@@ -116,7 +125,7 @@ public class MongoEventRouterConfigDefinition {
                 config,
                 "Collection",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
+                FIELDS_ADDITIONAL_ERROR_ON_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Router",

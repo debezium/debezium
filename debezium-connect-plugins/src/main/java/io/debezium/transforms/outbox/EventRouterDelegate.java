@@ -414,9 +414,16 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         // Add additional fields while keeping the schema inherited from Debezium based on the table column type
         additionalFields.forEach((additionalField -> {
             if (additionalField.getPlacement() == AdditionalFieldPlacement.ENVELOPE) {
+                Field field = debeziumEventSchema.field(additionalField.getField());
+                if (field == null) {
+                    if (additionalFieldsErrorOnMissing) {
+                        throw new ConnectException("Unable to find field %s in event".formatted(additionalField.getField()));
+                    }
+                    return;
+                }
                 schemaBuilder.field(
                         additionalField.getAlias(),
-                        debeziumEventSchema.field(additionalField.getField()).schema());
+                        field.schema());
             }
         }));
 
