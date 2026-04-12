@@ -252,7 +252,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     private ElapsedTimeStrategy getPollDispatchTimer() {
         if (pollDispatchTimer == null) {
-            pollDispatchTimer = (pollDispatchInterval != null && pollDispatchInterval.toMillis() > 0) ? ElapsedTimeStrategy.constant(Clock.system(), pollDispatchInterval)
+            pollDispatchTimer = (pollDispatchInterval != null && pollDispatchInterval.toMillis() > 0)
+                    ? ElapsedTimeStrategy.constant(Clock.system(), pollDispatchInterval)
                     : () -> true;
         }
         return pollDispatchTimer;
@@ -315,7 +316,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 boolean pollDispatchTimerElapsed = getPollDispatchTimer().hasElapsed();
                 if (!pollDispatchTimerElapsed && !isQueueFull) {
                     // should leave records to accumulate in the queue for now
-                    // wait for poll.interval.ms or util the queue is full and needs to be drained.
+                    // wait for poll.interval.ms or until the queue is full and needs to be drained.
                     this.isFull.await(timeout.remaining().toMillis(), TimeUnit.MILLISECONDS);
                 }
                 else {
