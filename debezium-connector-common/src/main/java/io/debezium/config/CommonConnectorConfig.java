@@ -713,8 +713,10 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 17))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to "
-                    + DEFAULT_POLL_INTERVAL_MILLIS + " ms. Values will be capped at " + MAX_ALLOWED_POLL_INTERVAL_MILLIS + ".")
+            .withDescription(
+                    "Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to %d ms. Values will be capped at %d ms."
+                            .formatted(
+                                    DEFAULT_POLL_INTERVAL_MILLIS, MAX_ALLOWED_POLL_INTERVAL_MILLIS))
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(CommonConnectorConfig::validatePollIntervalMs);
 
