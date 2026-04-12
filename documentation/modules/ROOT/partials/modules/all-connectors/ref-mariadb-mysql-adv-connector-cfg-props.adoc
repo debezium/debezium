@@ -456,7 +456,17 @@ xref:{context}-property-poll-interval-ms[`poll.interval.ms`]::
 Default value::: `500` (0.5 seconds)
 
 Description:::
-Positive integer value that specifies the number of milliseconds the connector waits for new change events to appear before it starts processing a batch of events.
+Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear.
+If a value greater than 5000 milliseconds (5 seconds) is provided, the effective wait time will be capped at 5000 milliseconds.
+
+
+[id="{context}-property-poll-dispatch-interval-ms"]
+xref:{context}-property-poll-dispatch-interval-ms[`poll.dispatch.interval.ms`]::
+
+Default value::: `0`
+
+Description:::
+An integer value that specifies the number of milliseconds the connector should accumulate events in the queue before each queue consumption.
 
 
 
