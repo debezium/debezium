@@ -23,6 +23,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
 
+// Warning: These tests require average processing speed to pass.
+// Therefore, if the processing speed is below the buffer included in the tests, they may fail.
 public class ChangeEventQueueTest {
 
     private static final DataChangeEvent EVENT = getDataChangeEvent();
