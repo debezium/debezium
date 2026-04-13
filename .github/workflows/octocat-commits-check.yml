@@ -93,7 +93,7 @@ jobs:
 
       - name: Check failure
         if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         continue-on-error: false
         with:
           script: |
