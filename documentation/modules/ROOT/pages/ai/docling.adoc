@@ -23,7 +23,7 @@ Converting these documents into clean and unified, structured text representatio
 Docling can parse various document formats and convert them to structured output formats such as HTML, Markdown, or plain text, making the content more accessible for LLMs and other AI applications.
 
 {prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to perform Docling transformations.
-The transformation connects to a Docling serve API that processes the documents and returns the structured output.
+The transformation connects to a Docling Serve API that processes the documents and returns the structured output.
 
 [IMPORTANT]
 ====
@@ -33,7 +33,7 @@ Docling transformation requires Java 21 or higher.
 == Behavior
 
 The Docling transformation takes as input a specific field in the original event record that contains either document content or a URL to a document.
-The SMT sends this input to the configured Docling serve API for transformation.
+The SMT sends this input to the configured Docling Serve API for transformation.
 The resulting structured document is then appended to the record or can replace the entire record.
 The original source field is preserved when using the append mode.
 
@@ -60,7 +60,7 @@ transforms=docling
 transforms.docling.type=io.debezium.ai.docling.FieldToDocling
 ----
 
-You must specify the source field, Docling serve URL, input source type, and input format:
+You must specify the source field, Docling Serve URL, input source type, and input format:
 
 [source]
 ----
@@ -126,7 +126,7 @@ Supports nested fields (e.g., `after.document_parsed`), but the nested structure
 
 |[[docling-serve-url]]xref:docling-serve-url[`serve.url`]
 |No default value
-|URL of the Docling serve API server, including protocol and port (e.g., `http://localhost:5001` or `https://docling.example.com`).
+|URL of the Docling Serve API server, including protocol and port (e.g., `http://localhost:5001` or `https://docling.example.com`).
 Only HTTP and HTTPS protocols are allowed for security reasons.
 
 |[[docling-input-source]]xref:docling-input-source[`input.source`]
@@ -167,10 +167,10 @@ This can improve performance in stable schema environments.
 
 == Docling Serve API
 
-The Docling transformation requires a running Docling serve API instance.
-Docling serve is a service that provides Docling's document understanding capabilities through a REST API.
+The Docling transformation requires a running Docling Serve API instance.
+Docling Serve is a service that provides Docling's document understanding capabilities through a REST API.
 
-To set up a Docling serve instance, refer to the link:https://docling-project.github.io/docling/[Docling project documentation].
+To set up a Docling Serve instance, refer to the link:https://docling-project.github.io/docling/[Docling project documentation].
 
 [NOTE]
 ====
@@ -191,7 +191,7 @@ This mode is suitable when:
 - You want to transform small documents or text snippets
 - The document is generated dynamically
 
-In text mode, the content is base64-encoded internally before being sent to the Docling serve API.
+In text mode, the content is base64-encoded internally before being sent to the Docling Serve API.
 
 Example configuration:
 [source]
