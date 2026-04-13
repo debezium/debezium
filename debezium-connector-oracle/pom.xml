@@ -261,9 +261,6 @@
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <connector.assembly.ref>connector-distribution</connector.assembly.ref>
-        <!-- Apicurion container properties -->
-        <apicurio.port>8080</apicurio.port>
-        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
 
     <build>
@@ -843,7 +840,7 @@
                             <images>
                                 <!-- A container for the data server replica set -->
                                 <image>
-                                    <name>quay.io/apicurio/apicurio-registry:${version.apicurio}</name>
+                                    <name>${apicurio.image}:${version.apicurio}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>
@@ -855,7 +852,7 @@
                                             <color>blue</color>
                                         </log>
                                         <wait>
-                                            <log>.*Using the following RegistryStorage.*</log>
+                                            <log>${apicurio.image.log}</log>
                                             <time>${apicurio.init.timeout}</time>
                                         </wait>
                                     </run>
