@@ -467,7 +467,8 @@ public final class Field {
                     fields[i].name(),
                     fields[i].type(),
                     fields[i].defaultValue(),
-                    null,
+                    // Instead of passing a null validator to the Kafka ConfigDef, we now pass our converted Kafka validator to enable validation.
+                    convertToKafkaValidator(fields[i]),
                     fields[i].importance(),
                     fields[i].description(),
                     groupName, // Can be null
@@ -482,7 +483,8 @@ public final class Field {
                         alias,
                         fields[i].type(),
                         fields[i].defaultValue(),
-                        null,
+                        // Instead of passing a null validator to the Kafka ConfigDef, we now pass our converted Kafka validator to enable validation.
+                        convertToKafkaValidator(fields[i]),
                         fields[i].importance(),
                         fields[i].description(),
                         groupName, // Can be null
@@ -505,6 +507,21 @@ public final class Field {
                         Map.Entry::getKey,
                         Map.Entry::getValue,
                         Field::mergeRecommenders));
+    }
+
+    // Only converts the validator for fields that have explicitly opted in via withConfigDefValidation().
+    // This ensures existing connector fields are unaffected and only selected fields get REST API validation.
+    private static ConfigDef.Validator convertToKafkaValidator(Field field) {
+        if (!field.isKafkaValidationEnabled()) {
+            return null;
+        }
+        if (field.validator() == null) {
+            return null;
+        }
+        if (field.validator() instanceof ConfigDef.Validator kafkaValidator) {
+            return (name, value) -> kafkaValidator.ensureValid(name, value);
+        }
+        return null;
     }
 
     private static Stream<Map.Entry<String, ConfigDef.Recommender>> createRecommendersForDependents(
@@ -571,6 +588,7 @@ public final class Field {
     private final GroupEntry group;
     private final boolean isRequired;
     private final java.util.Set<String> deprecatedAliases;
+    private boolean enableKafkaValidation;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     Supplier<Object> defaultValueGenerator, Validator validator) {
@@ -622,6 +640,7 @@ public final class Field {
         this.group = group;
         this.allowedValues = allowedValues;
         this.deprecatedAliases = deprecatedAliases;
+        this.enableKafkaValidation = false;
         assert this.name != null;
     }
 
@@ -1131,6 +1150,31 @@ public final class Field {
     }
 
     /**
+     * Opt-in to having this field's validator passed to Kafka Connect's ConfigDef during
+     * Field.group(). This enables Kafka Connect's REST API to reject invalid values at
+     * connector creation time, rather than failing later during task startup.
+     *
+     * Must be called as the LAST method in the builder chain since other builder methods
+     * create copies that do not preserve this flag.
+     *
+     * @return the new field with Kafka validation enabled; never null
+     */
+    public Field withConfigDefValidation() {
+        Field copy = new Field(name(), displayName(), type(), width(), description(), importance(),
+                dependents, valueDependants, valueDependantMatchers,
+                defaultValueGenerator, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
+        copy.enableKafkaValidation = true;
+        return copy;
+    }
+
+    /**
+     * Returns whether this field has opted in to Kafka Connect ConfigDef validation.
+     */
+    public boolean isKafkaValidationEnabled() {
+        return enableKafkaValidation;
+    }
+
+    /**
      * Package-private helper method to resolve pattern-based dependent field matchers into concrete field names.
      * This is called by ConfigDefinitionEditor.create() to resolve all matchers before creating the ConfigDefinition.
      *
@@ -1303,7 +1347,7 @@ public final class Field {
                 .collect(Collectors.toSet());
     }
 
-    public static class EnumRecommender<T extends Enum<T> & EnumeratedValue> implements Recommender, Validator {
+    public static class EnumRecommender<T extends Enum<T> & EnumeratedValue> implements Recommender, Validator, ConfigDef.Validator {
 
         private final List<Object> validValues;
         private final java.util.Set<String> literals;
@@ -1343,6 +1387,23 @@ public final class Field {
                 return 1;
             }
             return 0;
+        }
+
+        // Implemented ensureValid to satisfy the ConfigDef.Validator interface. This method performs the actual
+        // validation of the enum value and throws a ConfigException if it's invalid, which Kafka Connect
+        // catches during connector configuration.
+        @Override
+        public void ensureValid(String name, Object value) {
+            if (value == null) {
+                if (defaultOption != null) {
+                    throw new ConfigException(name, value, "Value must be one of " + literalsStr);
+                }
+                return;
+            }
+            String trimmed = value.toString().trim().toLowerCase();
+            if (!literals.contains(trimmed)) {
+                throw new ConfigException(name, value, "Value must be one of " + literalsStr);
+            }
         }
     }
 
