@@ -842,6 +842,9 @@
                                 <image>
                                     <name>${apicurio.image}:${version.apicurio}</name>
                                     <run>
+                                        <env>
+                                            <QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>${apicurio.image.audit.level}</QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>
+                                        </env>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>
                                             <port>${apicurio.port}:8080</port>
