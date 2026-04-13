@@ -35,6 +35,7 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "chunked_snapshot_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
+    protected boolean autoCommitChanged = false;
     protected BinlogTestConnection connection;
 
     @BeforeEach
@@ -46,6 +47,7 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
         connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
         if (connection.connection().getAutoCommit()) {
             connection.setAutoCommit(false);
+            autoCommitChanged = true;
         }
 
         super.beforeEach();
@@ -54,6 +56,10 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
     @AfterEach
     public void afterEach() throws Exception {
         if (connection != null) {
+            if (autoCommitChanged) {
+                connection.setAutoCommit(true);
+                autoCommitChanged = false;
+            }
             connection.close();
         }
 
