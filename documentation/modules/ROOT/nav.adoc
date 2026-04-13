@@ -65,6 +65,7 @@
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Debezium AI
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
+** xref:ai/docling.adoc[Docling Transformation]
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/debezium-operator.adoc[Debezium Operator]
