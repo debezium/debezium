@@ -96,7 +96,9 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .required()
             .withEnum(InputSource.class, InputSource.TEXT)
             .withDescription("Specifies how Docling should treat the source field - it can contain either directly the document to be "
-                    + "transformed ('text' option) or a link to the document to be transformed ('link' option).");
+                    + "transformed ('text' option) or a link to the document to be transformed ('link' option).")
+            // Has to be the last in the builder chain.
+            .withConfigDefValidation();
 
     private static final Field INPUT_FORMAT = Field.create("input.format")
             .withDisplayName("Docling input format.")
@@ -120,7 +122,9 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .withEnum(SupportedOutputFormat.class, SupportedOutputFormat.TEXT)
-            .withDescription("Format of the document provided by the Docling. Can be one of 'html', 'markdown' or 'text'.");
+            .withDescription("Format of the document provided by the Docling. Can be one of 'html', 'markdown' or 'text'.")
+            // Has to be the last in the builder chain.
+            .withConfigDefValidation();
 
     private static final Field SIMPLE_SCHEMA_LOOKUP = Field.create("simple.schema.lookup")
             .withDisplayName("Use simple schema lookup.")
