@@ -72,6 +72,7 @@
         <apicurio.image.log>.*Using the following RegistryStorage.*</apicurio.image.log>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <apicurio.image.audit.level>OFF</apicurio.image.audit.level> <!-- Controls audit logging level -->
 
     </properties>
 
