@@ -141,21 +141,21 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             Scn currentScn = getCurrentScn();
             getMetrics().setCurrentScn(currentScn);
 
-            final boolean forceNewSession = collectLogs(minLogScn, getCurrentScn());
-            if (!isUsingCatalogInRedoStrategy() && !needsNewSession && forceNewSession) {
+            upperBoundsScn = calculateUpperBounds(minLogScn, currentScn);
+            if (upperBoundsScn.isNull()) {
+                LOGGER.debug("Delaying mining transaction logs by one iteration");
+                pauseBetweenMiningSessions();
+                continue;
+            }
+
+            upperBoundsScn = collectLogsAndFinalUpperBoundary(minLogScn, upperBoundsScn);
+            if (!needsNewSession && hasSessionLogFilesChanged()) {
                 endMiningSession();
                 needsNewSession = true;
             }
 
             minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
             getMetrics().setOffsetScn(minLogScn);
-
-            upperBoundsScn = calculateUpperBounds(minLogScn, upperBoundsScn, currentScn);
-            if (upperBoundsScn.isNull()) {
-                LOGGER.debug("Delaying mining transaction logs by one iteration");
-                pauseBetweenMiningSessions();
-                continue;
-            }
 
             if (needsNewSession) {
                 if (needsConnectionRestart) {

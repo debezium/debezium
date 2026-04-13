@@ -232,7 +232,7 @@ public abstract class AbstractLogMinerStreamingAdapter
 
     protected List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
         final LogFileCollector collector = new LogFileCollector(config, connection);
-        return collector.getLogs(sinceScn)
+        return collector.getLogs(sinceScn).logFiles()
                 .stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.toList());

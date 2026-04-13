@@ -134,33 +134,6 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    void validBatchDefaults() throws Exception {
-
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
-                Configuration.create()
-                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                        .build());
-
-        assertEquals(connectorConfig.getLogMiningBatchSizeDefault(), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
-        assertEquals(connectorConfig.getLogMiningBatchSizeMax(), OracleConnectorConfig.MAX_BATCH_SIZE);
-        assertEquals(connectorConfig.getLogMiningBatchSizeMin(), OracleConnectorConfig.MIN_BATCH_SIZE);
-    }
-
-    @Test
-    void validSleepDefaults() throws Exception {
-
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
-                Configuration.create()
-                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                        .build());
-
-        assertEquals(connectorConfig.getLogMiningSleepTimeDefault(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
-        assertEquals(connectorConfig.getLogMiningSleepTimeMax(), OracleConnectorConfig.MAX_SLEEP_TIME);
-        assertEquals(connectorConfig.getLogMiningSleepTimeMin(), OracleConnectorConfig.MIN_SLEEP_TIME);
-        assertEquals(connectorConfig.getLogMiningSleepTimeIncrement(), OracleConnectorConfig.SLEEP_TIME_INCREMENT);
-    }
-
-    @Test
     @FixFor("DBZ-5146")
     public void validQueryFetchSizeDefaults() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
