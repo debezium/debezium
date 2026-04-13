@@ -37,11 +37,6 @@
         <!-- We're tracking the API changes of the SPI. -->
         <revapi.skip>false</revapi.skip>
 
-        <!-- Apicurion container properties -->
-        <apicurio.port>8080</apicurio.port>
-        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
-        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
-
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
@@ -304,6 +299,9 @@
                         <image>
                             <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
+                                <env>
+                                    <QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>${apicurio.image.audit.level}</QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>
+                                </env>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
                                     <port>${apicurio.port}:8080</port>
@@ -314,7 +312,7 @@
                                     <color>blue</color>
                                 </log>
                                 <wait>
-                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <log>${apicurio.image.log}</log>
                                     <time>${apicurio.init.timeout}</time>
                                 </wait>
                             </run>
