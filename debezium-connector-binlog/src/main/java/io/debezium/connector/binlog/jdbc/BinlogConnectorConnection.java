@@ -518,9 +518,16 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
-        final String gtidSet = ((BinlogOffsetContext) offset).gtidSet();
-        final String binlogFilename = ((BinlogOffsetContext) offset).getSource().binlogFilename();
-        return isBinlogPositionAvailable((BinlogConnectorConfig) config, gtidSet, binlogFilename);
+        final BinlogConnectorConfig binlogConfig = (BinlogConnectorConfig) config;
+        final BinlogOffsetContext offsetContext = (BinlogOffsetContext) offset;
+        // When the user has opted to ignore GTID during recovery, treat the stored GTID as if it
+        // were absent so that isBinlogPositionAvailable falls through to binlog file/position
+        // validation — consistent with the bypass already applied in shouldRecoverUsingGtid().
+        final String gtidSet = binlogConfig.shouldIgnoreGtidOnRecovery()
+                ? null
+                : offsetContext.gtidSet();
+        final String binlogFilename = offsetContext.getSource().binlogFilename();
+        return isBinlogPositionAvailable(binlogConfig, gtidSet, binlogFilename);
     }
 
     public String binaryLogStatusStatement() {

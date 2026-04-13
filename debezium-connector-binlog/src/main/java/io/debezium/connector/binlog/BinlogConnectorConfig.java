@@ -617,6 +617,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "server with matching GTIDs defined by the `gtid.source.includes` or `gtid.source.excludes`, "
                     + "if they were specified.");
 
+    public static final Field IGNORE_GTID_ON_RECOVERY = Field.create("gtid.ignore.on.recovery")
+            .withDisplayName("Ignore GTID on recovery")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 8))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Whether the connector should ignore GTID during recovery and restart from the binlog file and position instead. "
+                    + "GTID mode on the server remains enabled, and GTID tracking resumes normally after recovery.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -663,7 +673,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES,
-                    GTID_SOURCE_FILTER_DML_EVENTS)
+                    GTID_SOURCE_FILTER_DML_EVENTS,
+                    IGNORE_GTID_ON_RECOVERY)
             .create();
 
     private final Configuration config;
@@ -673,6 +684,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
+    private final boolean ignoreGtidOnRecovery;
 
     /**
      * Create a binlog-based connector configuration.
@@ -698,6 +710,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.connectionTimeout = Duration.ofMillis(config.getLong(CONNECTION_TIMEOUT_MS));
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
+        this.ignoreGtidOnRecovery = config.getBoolean(IGNORE_GTID_ON_RECOVERY);
     }
 
     @Override
@@ -831,6 +844,19 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * @return the global transaction identifier set ({@link GtidSet} factory.
      */
     public abstract GtidSetFactory getGtidSetFactory();
+
+    /**
+     * Returns whether the connector should ignore GTID during recovery and fall back to binlog
+     * file/position instead. GTID mode on the server remains enabled; GTID tracking resumes normally
+     * after recovery.
+     *
+    * <p>The default implementation returns the value of {@code gtid.ignore.on.recovery}.
+     *
+     * @return {@code true} if GTID should be ignored on recovery; {@code false} otherwise
+     */
+    public boolean shouldIgnoreGtidOnRecovery() {
+        return ignoreGtidOnRecovery;
+    }
 
     /**
      * @return the SSL connection mode to use

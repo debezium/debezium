@@ -634,6 +634,16 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
+    void shouldResetGtidSet() {
+        offsetContext.setCompletedGtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2");
+        assertThat(offsetContext.gtidSet()).isNotNull();
+
+        offsetContext.resetGtidSet();
+        assertThat(offsetContext.gtidSet()).isNull();
+        assertThat(offsetContext.getOffset()).doesNotContainKey(BinlogOffsetContext.GTID_SET_KEY);
+    }
+
+    @Test
     void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setSourceTime(Instant.ofEpochSecond(1_024, 0));

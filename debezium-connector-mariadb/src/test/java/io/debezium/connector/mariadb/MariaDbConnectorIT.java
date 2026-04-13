@@ -32,6 +32,7 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
         super.assertInvalidConfiguration(result);
         assertNoConfigurationErrors(result, MariaDbConnectorConfig.SNAPSHOT_LOCKING_MODE);
         assertNoConfigurationErrors(result, MariaDbConnectorConfig.SSL_MODE);
+        assertNoConfigurationErrors(result, MariaDbConnectorConfig.IGNORE_GTID_ON_RECOVERY);
     }
 
     @Override
@@ -39,6 +40,7 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
         super.assertValidConfiguration(result);
         validateConfigField(result, MariaDbConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
         validateConfigField(result, MariaDbConnectorConfig.SSL_MODE, MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLE);
+        validateConfigField(result, MariaDbConnectorConfig.IGNORE_GTID_ON_RECOVERY, false);
     }
 
     @Override
