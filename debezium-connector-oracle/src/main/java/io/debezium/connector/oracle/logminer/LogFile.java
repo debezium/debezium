@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigInteger;
-import java.util.Objects;
 
 import io.debezium.connector.oracle.Scn;
 
@@ -16,6 +15,12 @@ import io.debezium.connector.oracle.Scn;
  * @author Chris Cranford
  */
 public class LogFile {
+
+    /**
+     * Uniquely identifies a log file by its redo thread and sequence number.
+     */
+    public record ThreadSequence(int thread, BigInteger sequence) {
+    }
 
     public enum Type {
         ARCHIVE,
@@ -29,6 +34,7 @@ public class LogFile {
     private final boolean current;
     private final Type type;
     private final int thread;
+    private final ThreadSequence threadSequence;
 
     /**
      * Create a log file that represents an archived log record.
@@ -61,6 +67,7 @@ public class LogFile {
         this.current = current;
         this.type = type;
         this.thread = thread;
+        this.threadSequence = new ThreadSequence(thread, sequence);
     }
 
     public String getFileName() {
@@ -81,6 +88,10 @@ public class LogFile {
 
     public int getThread() {
         return thread;
+    }
+
+    public ThreadSequence getThreadSequence() {
+        return threadSequence;
     }
 
     /**
@@ -108,7 +119,7 @@ public class LogFile {
 
     @Override
     public int hashCode() {
-        return Objects.hash(thread, sequence);
+        return threadSequence.hashCode();
     }
 
     @Override
@@ -119,8 +130,7 @@ public class LogFile {
         if (!(obj instanceof LogFile)) {
             return false;
         }
-        final LogFile other = (LogFile) obj;
-        return thread == other.thread && Objects.equals(sequence, other.sequence);
+        return threadSequence.equals(((LogFile) obj).threadSequence);
     }
 
     @Override
