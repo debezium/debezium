@@ -286,7 +286,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public static List<LogFile> mergeLogsByPrecedence(Map<String, List<LogFile>> logs, List<String> destinationNames) {
         final List<LogFile> result = new ArrayList<>();
-        final Set<BigInteger> sequencesSeen = new HashSet<>();
+        final Set<LogFile.ThreadSequence> seen = new HashSet<>();
 
         for (String destinationName : destinationNames) {
             final List<LogFile> destinationLogs = logs.get(destinationName);
@@ -295,9 +295,8 @@ public class LogFileCollector {
             }
 
             for (LogFile logFile : destinationLogs) {
-                if (!sequencesSeen.contains(logFile.getSequence())) {
+                if (seen.add(logFile.getThreadSequence())) {
                     result.add(logFile);
-                    sequencesSeen.add(logFile.getSequence());
                 }
             }
         }

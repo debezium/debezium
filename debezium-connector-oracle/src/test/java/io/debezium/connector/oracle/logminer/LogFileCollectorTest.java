@@ -2192,6 +2192,30 @@ public class LogFileCollectorTest {
     }
 
     @Test
+    public void testMergeLogsByPrecedenceWithRacOverlappingSequences() throws Exception {
+        // On Oracle RAC, different redo threads share the same sequence numbers.
+        // mergeLogsByPrecedence must use (thread, sequence) as the dedup key,
+        // not just sequence alone. Without this, thread 2's archive logs are dropped.
+        final String destinationName = "LOG_ARCHIVE_DEST_1";
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>());
+
+        // Thread 1 and thread 2 both have seq 29, 30, 31
+        final LogFile t1s29 = createArchiveLog("1_29_1234.arc", 2654481L, 2670191L, 29, 1);
+        final LogFile t2s29 = createArchiveLog("2_29_1234.arc", 2654582L, 2670182L, 29, 2);
+        final LogFile t1s30 = createArchiveLog("1_30_1234.arc", 2670191L, 2702755L, 30, 1);
+        final LogFile t2s30 = createArchiveLog("2_30_1234.arc", 2670182L, 2702770L, 30, 2);
+        final LogFile t1s31 = createArchiveLog("1_31_1234.arc", 2702755L, 2702819L, 31, 1);
+        final LogFile t2s31 = createArchiveLog("2_31_1234.arc", 2702770L, 2702819L, 31, 2);
+
+        files.addAll(List.of(t1s29, t2s29, t1s30, t2s30, t1s31, t2s31));
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, List.of(destinationName));
+        assertThat(results).hasSize(6);
+        assertThat(results).containsAll(files);
+    }
+
+    @Test
     @FixFor("dbz#745")
     public void testScnIsNotInArchiveStandalone() throws Exception {
         RedoThreadState redoThreadState = RedoThreadState.builder()
