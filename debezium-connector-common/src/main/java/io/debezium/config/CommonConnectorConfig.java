@@ -766,6 +766,49 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
+    public static final Field INCREMENTAL_SNAPSHOT_THREADS = Field.create("incremental.snapshot.threads")
+            .withDisplayName("Incremental snapshot threads")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Number of threads to use for parallel incremental snapshot processing. "
+                    + "Set to 1 for single-threaded mode (default). Values > 1 enable parallel table-level snapshot reads.")
+            .withDefault(1)
+            .withValidation(Field::isNonNegativeInteger);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = Field.create("incremental.snapshot.retry.max.attempts")
+            .withDisplayName("Incremental snapshot retry max attempts")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Maximum number of retry attempts for incremental snapshot operations. Use -1 for unlimited retries.")
+            .withDefault(5)
+            .withValidation(Field::isInteger);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = Field.create("incremental.snapshot.retry.initial.delay.ms")
+            .withDisplayName("Incremental snapshot retry initial delay (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Initial delay in milliseconds before the first retry attempt for incremental snapshot operations.")
+            .withDefault(1000L);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = Field.create("incremental.snapshot.retry.max.delay.ms")
+            .withDisplayName("Incremental snapshot retry max delay (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Maximum delay in milliseconds between retry attempts for incremental snapshot operations.")
+            .withDefault(60000L);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = Field.create("incremental.snapshot.retry.backoff.multiplier")
+            .withDisplayName("Incremental snapshot retry backoff multiplier")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Multiplier for exponential backoff between retry attempts for incremental snapshot operations.")
+            .withDefault("2.0");
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -1532,6 +1575,11 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
+    private final int incrementalSnapshotThreads;
+    private final int incrementalSnapshotRetryMaxAttempts;
+    private final long incrementalSnapshotRetryInitialDelayMs;
+    private final long incrementalSnapshotRetryMaxDelayMs;
+    private final double incrementalSnapshotRetryBackoffMultiplier;
     private final int snapshotMaxThreads;
     private final int snapshotMaxThreadsMultiplier;
     private final boolean legacySnapshotMaxThreads;
@@ -1588,6 +1636,11 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
+        this.incrementalSnapshotThreads = config.getInteger(INCREMENTAL_SNAPSHOT_THREADS);
+        this.incrementalSnapshotRetryMaxAttempts = config.getInteger(INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS);
+        this.incrementalSnapshotRetryInitialDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS);
+        this.incrementalSnapshotRetryMaxDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS);
+        this.incrementalSnapshotRetryBackoffMultiplier = Double.parseDouble(config.getString(INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER));
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
@@ -1777,6 +1830,26 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnapshotChunkSize() {
         return incrementalSnapshotChunkSize;
+    }
+
+    public int getIncrementalSnapshotThreads() {
+        return incrementalSnapshotThreads;
+    }
+
+    public int getIncrementalSnapshotRetryMaxAttempts() {
+        return incrementalSnapshotRetryMaxAttempts;
+    }
+
+    public long getIncrementalSnapshotRetryInitialDelayMs() {
+        return incrementalSnapshotRetryInitialDelayMs;
+    }
+
+    public long getIncrementalSnapshotRetryMaxDelayMs() {
+        return incrementalSnapshotRetryMaxDelayMs;
+    }
+
+    public double getIncrementalSnapshotRetryBackoffMultiplier() {
+        return incrementalSnapshotRetryBackoffMultiplier;
     }
 
     public String getNotificationTopic() {
