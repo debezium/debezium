@@ -83,6 +83,7 @@ siufay325,SiuFay
 JeremyVigny,Jeremy Vigny
 JLDLaughlin,Jessica Laughlin
 RaghavaPonnam,Raghava Ponnam
+Ra9huvansh,Raghuvansh Rastogi
 kyleyj,Kyley Jex
 raphaelauv,Raphael Auv
 chriscollingwood,Chris Collingwood
@@ -177,6 +178,7 @@ Skezzowski,Balázs Sipos
 subodh,Subodh Kant Chaturvedi
 sahapasci,Sahap Asci
 mfvitale,Mario Fiore Vitale
+mhmcdonald,Mark McDonald
 Raul Estrada,Raúl Estrada
 xiaowu,Wu Zhenhua
 yoheimuta,Yohei Yoshimuta
