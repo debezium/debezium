@@ -98,7 +98,7 @@ jobs:
 
       - name: Check failure
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         continue-on-error: false
         with:
           script: |
