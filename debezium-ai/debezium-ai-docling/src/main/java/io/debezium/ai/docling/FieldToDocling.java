@@ -81,12 +81,12 @@ public class FieldToDocling<R extends ConnectRecord<R>> implements Transformatio
                     "Name of the field which will be appended to the record and which would contain Docling document created from `field.source` field. Supports also nested fields, but the nested structure has to exists. If the field is not specified, records will be replaced by record containing only Docling document.");
 
     private static final Field SERVE_URL = Field.create("serve.url")
-            .withDisplayName("URL of Docling serve API.")
+            .withDisplayName("URL of Docling Serve API.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
-            .withDescription("URL of Docling serve API, a server this provides Docling as a service.");
+            .withDescription("URL of Docling Serve API, a server this provides Docling as a service.");
 
     private static final Field INPUT_SOURCE = Field.create("input.source")
             .withDisplayName("Docling input source, either 'text' or 'link' value.")
