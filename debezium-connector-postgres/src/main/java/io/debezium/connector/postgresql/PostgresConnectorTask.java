@@ -148,7 +148,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Manual Bean Registration
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        // We intentionally avoid using connectionFactory, as it would trigger unnecessary
+        // TypeRegistry initialization again for this connection.
+        beanRegistryJdbcConnection = new PostgresConnection(connectorConfig, typeRegistry, PostgresConnection.CONNECTION_GENERAL);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
