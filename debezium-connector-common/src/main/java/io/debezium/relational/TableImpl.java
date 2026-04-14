@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.debezium.annotation.PackagePrivate;
+import io.debezium.util.Interner;
 import io.debezium.util.Strings;
 
 final class TableImpl implements Table {
@@ -32,16 +33,16 @@ final class TableImpl implements Table {
     @PackagePrivate
     TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment, List<Attribute> attributes) {
         this.id = id;
-        this.columnDefs = Collections.unmodifiableList(sortedColumns);
-        this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
+        this.columnDefs = Interner.intern(Collections.unmodifiableList(sortedColumns));
+        this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Interner.intern(Collections.unmodifiableList(pkColumnNames));
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
         for (Column def : this.columnDefs) {
-            defsByLowercaseName.put(def.name().toLowerCase(), def);
+            defsByLowercaseName.put(Interner.intern(def.name().toLowerCase()), def);
         }
-        this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
-        this.defaultCharsetName = defaultCharsetName;
-        this.comment = comment;
-        this.attributes = attributes;
+        this.columnsByLowercaseName = Interner.intern(Collections.unmodifiableMap(defsByLowercaseName));
+        this.defaultCharsetName = Interner.intern(defaultCharsetName);
+        this.comment = Interner.intern(comment);
+        this.attributes = attributes == null ? null : Interner.intern(Collections.unmodifiableList(attributes));
     }
 
     @Override

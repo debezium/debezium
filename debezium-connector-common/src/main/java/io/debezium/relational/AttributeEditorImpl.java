@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import io.debezium.DebeziumException;
+import io.debezium.util.Interner;
 
 /**
  * Implementation of the {@link AttributeEditor} contract.
@@ -116,7 +117,9 @@ final class AttributeEditorImpl implements AttributeEditor {
 
     @Override
     public Attribute create() {
-        return new AttributeImpl(name, value);
+        return Interner.intern(new AttributeImpl(
+                Interner.intern(name),
+                Interner.intern(value)));
     }
 
     @Override
