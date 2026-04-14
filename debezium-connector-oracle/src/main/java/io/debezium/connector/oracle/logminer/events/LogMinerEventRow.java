@@ -40,8 +40,8 @@ public class LogMinerEventRow {
     /* Allows for up to 100KB worth of SQL */
     private static final Integer MAX_SQL_CONTINUATIONS = 25;
 
-    // Column ordinals 1–9 are fixed and exposed as constants on LogMinerColumnIndexes.
-    // Column ordinals 10+ are pre-computed at startup by LogMinerColumnIndexes.fromConfig()
+    // Column ordinals 1–21 are fixed and exposed as constants on LogMinerColumnIndexes.
+    // Column ordinals 22+ are pre-computed at startup by LogMinerColumnIndexes.fromConfig()
     // because optional columns can be omitted from the SELECT, shifting all subsequent positions.
 
     private Scn scn;
@@ -186,71 +186,27 @@ public class LogMinerEventRow {
     /**
      * Builds the array of {@link ResultSetValueResolver} lambdas used by
      * {@link LogMinerColumnIndexes#applyResolvers} on every result-set row.
+     * <p>
      * Each lambda closes over a pre-computed JDBC ordinal; optional columns are excluded when
      * their index is {@code null}.
      *
      * @param indexes the pre-computed column ordinals, must not be {@code null}
      * @return an ordered array of resolvers
      */
-    public static ResultSetValueResolver[] buildResolvers(LogMinerColumnIndexes indexes) {
+    public static ResultSetValueResolver[] buildOptionalResolvers(LogMinerColumnIndexes indexes) {
         final List<ResultSetValueResolver> resolvers = new ArrayList<>();
+
         if (indexes.getUsernameIndex() != null) {
             final int pos = indexes.getUsernameIndex();
             resolvers.add((row, rs) -> row.userName = rs.getString(pos));
-        }
-        {
-            final int pos = indexes.getRowIdIndex();
-            resolvers.add((row, rs) -> row.rowId = rs.getString(pos));
-        }
-        {
-            final int pos = indexes.getRollbackFlagIndex();
-            resolvers.add((row, rs) -> row.rollbackFlag = rs.getInt(pos) == 1);
         }
         if (indexes.getRsIdIndex() != null) {
             final int pos = indexes.getRsIdIndex();
             resolvers.add((row, rs) -> row.rsId = trim(rs.getString(pos)));
         }
-        // getSqlRedo reads from fixed positions 2, 3, 6 and may call rs.next() for continuation rows.
-        resolvers.add((row, rs) -> row.redoSql = row.getSqlRedo(rs));
-        {
-            final int pos = indexes.getStatusIndex();
-            resolvers.add((row, rs) -> row.status = rs.getInt(pos));
-        }
-        {
-            final int pos = indexes.getInfoIndex();
-            resolvers.add((row, rs) -> row.info = rs.getString(pos));
-        }
-        {
-            final int pos = indexes.getSsnIndex();
-            resolvers.add((row, rs) -> row.ssn = rs.getLong(pos));
-        }
-        {
-            final int pos = indexes.getThreadIndex();
-            resolvers.add((row, rs) -> row.thread = rs.getInt(pos));
-        }
-        {
-            final int pos = indexes.getObjectIdIndex();
-            resolvers.add((row, rs) -> row.objectId = rs.getLong(pos));
-        }
-        {
-            final int pos = indexes.getObjectVersionIndex();
-            resolvers.add((row, rs) -> row.objectVersion = rs.getLong(pos));
-        }
-        {
-            final int pos = indexes.getDataObjectIdIndex();
-            resolvers.add((row, rs) -> row.dataObjectId = rs.getLong(pos));
-        }
         if (indexes.getClientIdIndex() != null) {
             final int pos = indexes.getClientIdIndex();
             resolvers.add((row, rs) -> row.clientId = rs.getString(pos));
-        }
-        {
-            final int pos = indexes.getStartScnIndex();
-            resolvers.add((row, rs) -> row.startScn = getScn(rs, pos));
-        }
-        {
-            final int pos = indexes.getCommitScnIndex();
-            resolvers.add((row, rs) -> row.commitScn = getScn(rs, pos));
         }
         if (indexes.getStartTimestampIndex() != null) {
             final int pos = indexes.getStartTimestampIndex();
@@ -260,10 +216,7 @@ public class LogMinerEventRow {
             final int pos = indexes.getCommitTimestampIndex();
             resolvers.add((row, rs) -> row.commitTime = getTime(rs, pos));
         }
-        {
-            final int pos = indexes.getSequenceIndex();
-            resolvers.add((row, rs) -> row.transactionSequence = rs.getLong(pos));
-        }
+
         return resolvers.toArray(new ResultSetValueResolver[0]);
     }
 
@@ -298,7 +251,7 @@ public class LogMinerEventRow {
     private void initializeFromResultSet(ResultSet resultSet, OracleDatabaseSchema schema,
                                          LogMinerColumnIndexes indexes)
             throws SQLException {
-        // Fixed positions 1–9: always present, never shift
+        // Fixed positions 1–21: always present, never shift
         this.scn = getScn(resultSet, LogMinerColumnIndexes.SCN);
         this.tableName = resultSet.getString(LogMinerColumnIndexes.TABLE_NAME);
         this.tablespaceName = resultSet.getString(LogMinerColumnIndexes.SEG_OWNER);
@@ -306,8 +259,26 @@ public class LogMinerEventRow {
         this.changeTime = getTime(resultSet, LogMinerColumnIndexes.TIMESTAMP);
         this.transactionId = getTransactionId(resultSet);
         this.operation = resultSet.getString(LogMinerColumnIndexes.OPERATION);
+        this.rowId = resultSet.getString(LogMinerColumnIndexes.ROW_ID);
+        this.rollbackFlag = resultSet.getInt(LogMinerColumnIndexes.ROLLBACK) == 1;
+        this.status = resultSet.getInt(LogMinerColumnIndexes.STATUS);
+        this.info = resultSet.getString(LogMinerColumnIndexes.INFO);
+        this.ssn = resultSet.getLong(LogMinerColumnIndexes.SSN);
+        this.thread = resultSet.getInt(LogMinerColumnIndexes.THREAD);
+        this.objectId = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJ);
+        this.objectVersion = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJV);
+        this.dataObjectId = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJD);
+        this.startScn = getScn(resultSet, LogMinerColumnIndexes.START_SCN);
+        this.commitScn = getScn(resultSet, LogMinerColumnIndexes.COMMIT_SCN);
+        this.transactionSequence = resultSet.getLong(LogMinerColumnIndexes.SEQUENCE);
+
         // Variable positions and SQL redo: iterate over pre-built resolvers.
         indexes.applyResolvers(this, resultSet);
+
+        // Explicitly read sqlRedo at the end of all other columns
+        // getSqlRedo reads from fixed positions 2, 3, 6 and may call rs.next() for continuation rows.
+        this.redoSql = getSqlRedo(resultSet);
+
         if (this.tableName != null) {
             if (schema != null) {
                 this.tableId = schema.resolveTableId(indexes.getCatalogName(), tablespaceName, tableName);

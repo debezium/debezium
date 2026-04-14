@@ -20,14 +20,12 @@ import io.debezium.connector.oracle.util.TestHelper;
  * {@link LogMinerColumnIndexes#fromConfig(OracleConnectorConfig)} align exactly with the column
  * ordering defined in {@link AbstractLogMinerQueryBuilder#buildColumnList()}.
  *
- * <p>Fixed positions 1–9 are constants and never shift; they are tested here for completeness
+ * <p>Fixed positions 1–21 are constants and never shift; they are tested here for completeness
  * but would never regress unless changed deliberately. Positions 10+ can shift when optional
  * columns are omitted via configuration flags, so every combination of omission is exercised.
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerColumnIndexesTest {
-
-    // Fixed column constant values
 
     @Test
     void fixedColumnConstantsShouldMatchExpectedOrdinals() {
@@ -40,147 +38,81 @@ public class LogMinerColumnIndexesTest {
         assertThat(LogMinerColumnIndexes.TABLE_NAME).isEqualTo(7);
         assertThat(LogMinerColumnIndexes.SEG_OWNER).isEqualTo(8);
         assertThat(LogMinerColumnIndexes.OPERATION).isEqualTo(9);
+        assertThat(LogMinerColumnIndexes.ROW_ID).isEqualTo(10);
+        assertThat(LogMinerColumnIndexes.ROLLBACK).isEqualTo(11);
+        assertThat(LogMinerColumnIndexes.STATUS).isEqualTo(12);
+        assertThat(LogMinerColumnIndexes.INFO).isEqualTo(13);
+        assertThat(LogMinerColumnIndexes.SSN).isEqualTo(14);
+        assertThat(LogMinerColumnIndexes.THREAD).isEqualTo(15);
+        assertThat(LogMinerColumnIndexes.DATA_OBJ).isEqualTo(16);
+        assertThat(LogMinerColumnIndexes.DATA_OBJV).isEqualTo(17);
+        assertThat(LogMinerColumnIndexes.DATA_OBJD).isEqualTo(18);
+        assertThat(LogMinerColumnIndexes.START_SCN).isEqualTo(19);
+        assertThat(LogMinerColumnIndexes.COMMIT_SCN).isEqualTo(20);
+        assertThat(LogMinerColumnIndexes.SEQUENCE).isEqualTo(21);
     }
-
-    // All optional columns enabled (baseline)
 
     @Test
     void allTrackingEnabledShouldProduceBaselineOrdinals() {
         LogMinerColumnIndexes idx = fromDefaultConfig();
 
         // Optional columns present
-        assertThat(idx.getUsernameIndex()).isEqualTo(10);
-        assertThat(idx.getRsIdIndex()).isEqualTo(13);
-        assertThat(idx.getClientIdIndex()).isEqualTo(21);
-        assertThat(idx.getStartTimestampIndex()).isEqualTo(24);
-        assertThat(idx.getCommitTimestampIndex()).isEqualTo(25);
-
-        // Mandatory columns at their full-set positions
-        assertThat(idx.getRowIdIndex()).isEqualTo(11);
-        assertThat(idx.getRollbackFlagIndex()).isEqualTo(12);
-        assertThat(idx.getStatusIndex()).isEqualTo(14);
-        assertThat(idx.getInfoIndex()).isEqualTo(15);
-        assertThat(idx.getSsnIndex()).isEqualTo(16);
-        assertThat(idx.getThreadIndex()).isEqualTo(17);
-        assertThat(idx.getObjectIdIndex()).isEqualTo(18);
-        assertThat(idx.getObjectVersionIndex()).isEqualTo(19);
-        assertThat(idx.getDataObjectIdIndex()).isEqualTo(20);
-        assertThat(idx.getStartScnIndex()).isEqualTo(22);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(23);
-        assertThat(idx.getSequenceIndex()).isEqualTo(26);
+        assertThat(idx.getStartTimestampIndex()).isEqualTo(22);
+        assertThat(idx.getCommitTimestampIndex()).isEqualTo(23);
+        assertThat(idx.getRsIdIndex()).isEqualTo(24);
+        assertThat(idx.getUsernameIndex()).isEqualTo(25);
+        assertThat(idx.getClientIdIndex()).isEqualTo(26);
     }
-
-    // USERNAME disabled
 
     @Test
     void usernameDisabledShouldShiftSubsequentColumns() {
         LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false);
 
-        assertThat(idx.getUsernameIndex()).isNull();
-
         // Columns after USERNAME each shift down by 1
-        assertThat(idx.getRowIdIndex()).isEqualTo(10);
-        assertThat(idx.getRollbackFlagIndex()).isEqualTo(11);
-        assertThat(idx.getRsIdIndex()).isEqualTo(12);
-        assertThat(idx.getStatusIndex()).isEqualTo(13);
-        assertThat(idx.getInfoIndex()).isEqualTo(14);
-        assertThat(idx.getSsnIndex()).isEqualTo(15);
-        assertThat(idx.getThreadIndex()).isEqualTo(16);
-        assertThat(idx.getObjectIdIndex()).isEqualTo(17);
-        assertThat(idx.getObjectVersionIndex()).isEqualTo(18);
-        assertThat(idx.getDataObjectIdIndex()).isEqualTo(19);
-        assertThat(idx.getClientIdIndex()).isEqualTo(20);
-        assertThat(idx.getStartScnIndex()).isEqualTo(21);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(22);
-        assertThat(idx.getStartTimestampIndex()).isEqualTo(23);
-        assertThat(idx.getCommitTimestampIndex()).isEqualTo(24);
-        assertThat(idx.getSequenceIndex()).isEqualTo(25);
+        assertThat(idx.getUsernameIndex()).isNull();
+        assertThat(idx.getClientIdIndex()).isEqualTo(25);
     }
-
-    // RS_ID disabled
 
     @Test
     void rsIdDisabledShouldShiftColumnsAfterRollback() {
         LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_RS_ID, false);
 
         // Columns before RS_ID are unaffected
-        assertThat(idx.getUsernameIndex()).isEqualTo(10);
-        assertThat(idx.getRowIdIndex()).isEqualTo(11);
-        assertThat(idx.getRollbackFlagIndex()).isEqualTo(12);
         assertThat(idx.getRsIdIndex()).isNull();
-
-        // Everything from STATUS onwards shifts by 1
-        assertThat(idx.getStatusIndex()).isEqualTo(13);
-        assertThat(idx.getInfoIndex()).isEqualTo(14);
-        assertThat(idx.getSsnIndex()).isEqualTo(15);
-        assertThat(idx.getThreadIndex()).isEqualTo(16);
-        assertThat(idx.getObjectIdIndex()).isEqualTo(17);
-        assertThat(idx.getObjectVersionIndex()).isEqualTo(18);
-        assertThat(idx.getDataObjectIdIndex()).isEqualTo(19);
-        assertThat(idx.getClientIdIndex()).isEqualTo(20);
-        assertThat(idx.getStartScnIndex()).isEqualTo(21);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(22);
-        assertThat(idx.getStartTimestampIndex()).isEqualTo(23);
-        assertThat(idx.getCommitTimestampIndex()).isEqualTo(24);
-        assertThat(idx.getSequenceIndex()).isEqualTo(25);
+        assertThat(idx.getUsernameIndex()).isEqualTo(24);
+        assertThat(idx.getClientIdIndex()).isEqualTo(25);
     }
-
-    // CLIENT_ID disabled
 
     @Test
     void clientIdDisabledShouldShiftColumnsAfterDataObjectId() {
         LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, false);
 
         // Columns before CLIENT_ID are unaffected
-        assertThat(idx.getUsernameIndex()).isEqualTo(10);
-        assertThat(idx.getRowIdIndex()).isEqualTo(11);
-        assertThat(idx.getRollbackFlagIndex()).isEqualTo(12);
-        assertThat(idx.getRsIdIndex()).isEqualTo(13);
-        assertThat(idx.getStatusIndex()).isEqualTo(14);
-        assertThat(idx.getInfoIndex()).isEqualTo(15);
-        assertThat(idx.getSsnIndex()).isEqualTo(16);
-        assertThat(idx.getThreadIndex()).isEqualTo(17);
-        assertThat(idx.getObjectIdIndex()).isEqualTo(18);
-        assertThat(idx.getObjectVersionIndex()).isEqualTo(19);
-        assertThat(idx.getDataObjectIdIndex()).isEqualTo(20);
         assertThat(idx.getClientIdIndex()).isNull();
-
-        // Everything from START_SCN onwards shifts by 1
-        assertThat(idx.getStartScnIndex()).isEqualTo(21);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(22);
-        assertThat(idx.getStartTimestampIndex()).isEqualTo(23);
-        assertThat(idx.getCommitTimestampIndex()).isEqualTo(24);
-        assertThat(idx.getSequenceIndex()).isEqualTo(25);
     }
-
-    // START_TIMESTAMP disabled
 
     @Test
     void startTimestampDisabledShouldShiftCommitTimestampAndSequence() {
         LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false);
 
-        // All positions up to COMMIT_SCN are unaffected
-        assertThat(idx.getStartScnIndex()).isEqualTo(22);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(23);
+        // All positions up to START_TIMESTAMP are unaffected
         assertThat(idx.getStartTimestampIndex()).isNull();
-
-        // COMMIT_TIMESTAMP and SEQUENCE each shift by 1
-        assertThat(idx.getCommitTimestampIndex()).isEqualTo(24);
-        assertThat(idx.getSequenceIndex()).isEqualTo(25);
+        assertThat(idx.getCommitTimestampIndex()).isEqualTo(22);
+        assertThat(idx.getRsIdIndex()).isEqualTo(23);
+        assertThat(idx.getUsernameIndex()).isEqualTo(24);
+        assertThat(idx.getClientIdIndex()).isEqualTo(25);
     }
-
-    // COMMIT_TIMESTAMP disabled
 
     @Test
     void commitTimestampDisabledShouldShiftSequence() {
         LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false);
 
-        assertThat(idx.getStartTimestampIndex()).isEqualTo(24);
+        // All positions up to COMMIT_TIMESTAMP are unaffected
         assertThat(idx.getCommitTimestampIndex()).isNull();
-        assertThat(idx.getSequenceIndex()).isEqualTo(25);
+        assertThat(idx.getRsIdIndex()).isEqualTo(23);
+        assertThat(idx.getUsernameIndex()).isEqualTo(24);
+        assertThat(idx.getClientIdIndex()).isEqualTo(25);
     }
-
-    // All optional columns disabled
 
     @Test
     void allOptionalColumnsDisabledShouldProduceMinimumPositions() {
@@ -194,37 +126,19 @@ public class LogMinerColumnIndexesTest {
                         .build());
         LogMinerColumnIndexes idx = LogMinerColumnIndexes.fromConfig(config);
 
-        // All optional indexes null
+        // All optional indexes null, all fixed columns are unaffected
         assertThat(idx.getUsernameIndex()).isNull();
         assertThat(idx.getRsIdIndex()).isNull();
         assertThat(idx.getClientIdIndex()).isNull();
         assertThat(idx.getStartTimestampIndex()).isNull();
         assertThat(idx.getCommitTimestampIndex()).isNull();
-
-        // Mandatory columns compressed to minimum positions (26 - 5 = 21 columns total)
-        assertThat(idx.getRowIdIndex()).isEqualTo(10);
-        assertThat(idx.getRollbackFlagIndex()).isEqualTo(11);
-        assertThat(idx.getStatusIndex()).isEqualTo(12);
-        assertThat(idx.getInfoIndex()).isEqualTo(13);
-        assertThat(idx.getSsnIndex()).isEqualTo(14);
-        assertThat(idx.getThreadIndex()).isEqualTo(15);
-        assertThat(idx.getObjectIdIndex()).isEqualTo(16);
-        assertThat(idx.getObjectVersionIndex()).isEqualTo(17);
-        assertThat(idx.getDataObjectIdIndex()).isEqualTo(18);
-        assertThat(idx.getStartScnIndex()).isEqualTo(19);
-        assertThat(idx.getCommitScnIndex()).isEqualTo(20);
-        assertThat(idx.getSequenceIndex()).isEqualTo(21);
     }
 
     // Resolver counts — verifies buildResolvers mirrors the column list
 
-    // 12 mandatory cols (rowId, rollback, status, info, ssn, thread, objectId, objectVersion,
-    // dataObjectId, startScn, commitScn, sequence) + 5 optional + 1 getSqlRedo = 18 total.
-    private static final int RESOLVER_COUNT_ALL_ENABLED = 18;
-    // With all 5 optional disabled: 18 - 5 = 13.
-    private static final int RESOLVER_COUNT_ALL_DISABLED = 13;
-    // With exactly one optional disabled: 18 - 1 = 17.
-    private static final int RESOLVER_COUNT_ONE_DISABLED = 17;
+    private static final int RESOLVER_COUNT_ALL_ENABLED = 5;
+    private static final int RESOLVER_COUNT_ALL_DISABLED = 0;
+    private static final int RESOLVER_COUNT_ONE_DISABLED = RESOLVER_COUNT_ALL_ENABLED - 1;
 
     @Test
     void allTrackingEnabledShouldProduceFullResolverArray() {
