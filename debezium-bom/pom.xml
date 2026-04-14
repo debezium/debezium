@@ -957,6 +957,12 @@
             <!-- Debezium test artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-util</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-common</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
