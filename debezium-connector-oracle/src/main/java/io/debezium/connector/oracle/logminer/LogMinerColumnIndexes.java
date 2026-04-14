@@ -18,8 +18,8 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
  * shifting every subsequent column's ordinal. This class resolves those shifts <em>once</em> at
  * startup (via {@link #fromConfig}) rather than on every row.
  *
- * <p>Positions 1–9 are always present and exposed as {@code public static final} constants.
- * Positions 10 onwards vary by configuration and are stored as instance fields, with {@code null}
+ * <p>Positions 1–21 are always present and exposed as {@code public static final} constants.
+ * Positions 22 onwards vary by configuration and are stored as instance fields, with {@code null}
  * indicating the column is disabled.
  *
  * <p>The column ordering must exactly mirror {@link AbstractLogMinerQueryBuilder#buildColumnList()}.
@@ -46,6 +46,30 @@ public final class LogMinerColumnIndexes {
     public static final int SEG_OWNER = 8;
     /** ResultSet ordinal for {@code OPERATION}. */
     public static final int OPERATION = 9;
+    /** ResultSet ordinal for {@code ROW_ID} */
+    public static final int ROW_ID = 10;
+    /** ResultSet ordinal for {@code ROLLBACK} */
+    public static final int ROLLBACK = 11;
+    /** ResultSet ordinal for {@code STATUS} */
+    public static final int STATUS = 12;
+    /** ResultSet ordinal for {@code INFO} */
+    public static final int INFO = 13;
+    /** ResultSet ordinal for {@code SSN} */
+    public static final int SSN = 14;
+    /** ResultSet ordinal for {@code THREAD#} */
+    public static final int THREAD = 15;
+    /** ResultSet ordinal for {@code DATA_OBJ#} */
+    public static final int DATA_OBJ = 16;
+    /** ResultSet ordinal for {@code DATA_OBJV#} */
+    public static final int DATA_OBJV = 17;
+    /** ResultSet ordinal for {@code DATA_OBJD#} */
+    public static final int DATA_OBJD = 18;
+    /** ResultSet ordinal for {@code START_SCN} */
+    public static final int START_SCN = 19;
+    /** ResultSet ordinal for {@code COMMIT_SCN} */
+    public static final int COMMIT_SCN = 20;
+    /** ResultSet ordinal for {@code SEQUENCE#} */
+    public static final int SEQUENCE = 21;
 
     private final ResultSetValueResolver[] resolvers;
 
@@ -62,19 +86,6 @@ public final class LogMinerColumnIndexes {
     /** Ordinal for {@code COMMIT_TIMESTAMP}, or {@code null} when commit-timestamp tracking is disabled. */
     private final Integer commitTimestampIndex;
 
-    private final int rowIdIndex;
-    private final int rollbackFlagIndex;
-    private final int statusIndex;
-    private final int infoIndex;
-    private final int ssnIndex;
-    private final int threadIndex;
-    private final int objectIdIndex;
-    private final int objectVersionIndex;
-    private final int dataObjectIdIndex;
-    private final int startScnIndex;
-    private final int commitScnIndex;
-    private final int sequenceIndex;
-
     /**
      * Computes all column ordinals from the given configuration flags.
      *
@@ -90,69 +101,15 @@ public final class LogMinerColumnIndexes {
                                   boolean trackCommitTimestamp) {
         this.catalogName = catalogName;
 
-        int pos = OPERATION;
+        int pos = SEQUENCE;
 
-        // Optional: USERNAME
-        if (trackUsername) {
-            usernameIndex = ++pos;
-        }
-        else {
-            usernameIndex = null;
-        }
+        startTimestampIndex = trackStartTimestamp ? ++pos : null;
+        commitTimestampIndex = trackCommitTimestamp ? ++pos : null;
+        rsIdIndex = trackRsId ? ++pos : null;
+        usernameIndex = trackUsername ? ++pos : null;
+        clientIdIndex = trackClientId ? ++pos : null;
 
-        // Mandatory: ROW_ID, ROLLBACK
-        rowIdIndex = ++pos;
-        rollbackFlagIndex = ++pos;
-
-        // Optional: RS_ID
-        if (trackRsId) {
-            rsIdIndex = ++pos;
-        }
-        else {
-            rsIdIndex = null;
-        }
-
-        // Mandatory block: STATUS … DATA_OBJD#
-        statusIndex = ++pos;
-        infoIndex = ++pos;
-        ssnIndex = ++pos;
-        threadIndex = ++pos;
-        objectIdIndex = ++pos;
-        objectVersionIndex = ++pos;
-        dataObjectIdIndex = ++pos;
-
-        // Optional: CLIENT_ID
-        if (trackClientId) {
-            clientIdIndex = ++pos;
-        }
-        else {
-            clientIdIndex = null;
-        }
-
-        // Mandatory: START_SCN, COMMIT_SCN
-        startScnIndex = ++pos;
-        commitScnIndex = ++pos;
-
-        // Optional: START_TIMESTAMP
-        if (trackStartTimestamp) {
-            startTimestampIndex = ++pos;
-        }
-        else {
-            startTimestampIndex = null;
-        }
-
-        // Optional: COMMIT_TIMESTAMP
-        if (trackCommitTimestamp) {
-            commitTimestampIndex = ++pos;
-        }
-        else {
-            commitTimestampIndex = null;
-        }
-
-        // Mandatory: SEQUENCE#
-        sequenceIndex = ++pos;
-
-        this.resolvers = LogMinerEventRow.buildResolvers(this);
+        this.resolvers = LogMinerEventRow.buildOptionalResolvers(this);
     }
 
     /**
@@ -203,16 +160,6 @@ public final class LogMinerColumnIndexes {
         return usernameIndex;
     }
 
-    /** Returns the 1-based ordinal for {@code ROW_ID}. */
-    public int getRowIdIndex() {
-        return rowIdIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code ROLLBACK}. */
-    public int getRollbackFlagIndex() {
-        return rollbackFlagIndex;
-    }
-
     /**
      * Returns the 1-based ordinal for {@code RS_ID}, or {@code null} if RS-ID tracking is disabled
      * and the column is absent from the query.
@@ -221,57 +168,12 @@ public final class LogMinerColumnIndexes {
         return rsIdIndex;
     }
 
-    /** Returns the 1-based ordinal for {@code STATUS}. */
-    public int getStatusIndex() {
-        return statusIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code INFO}. */
-    public int getInfoIndex() {
-        return infoIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code SSN}. */
-    public int getSsnIndex() {
-        return ssnIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code THREAD#}. */
-    public int getThreadIndex() {
-        return threadIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code DATA_OBJ#}. */
-    public int getObjectIdIndex() {
-        return objectIdIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code DATA_OBJV#}. */
-    public int getObjectVersionIndex() {
-        return objectVersionIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code DATA_OBJD#}. */
-    public int getDataObjectIdIndex() {
-        return dataObjectIdIndex;
-    }
-
     /**
      * Returns the 1-based ordinal for {@code CLIENT_ID}, or {@code null} if client-ID tracking is
      * disabled and the column is absent from the query.
      */
     public Integer getClientIdIndex() {
         return clientIdIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code START_SCN}. */
-    public int getStartScnIndex() {
-        return startScnIndex;
-    }
-
-    /** Returns the 1-based ordinal for {@code COMMIT_SCN}. */
-    public int getCommitScnIndex() {
-        return commitScnIndex;
     }
 
     /**
@@ -290,8 +192,4 @@ public final class LogMinerColumnIndexes {
         return commitTimestampIndex;
     }
 
-    /** Returns the 1-based ordinal for {@code SEQUENCE#}. */
-    public int getSequenceIndex() {
-        return sequenceIndex;
-    }
 }

@@ -206,33 +206,33 @@ public class LogMinerEventRowTest {
     @Test
     @FixFor("DBZ-3401")
     public void testObjectIdAndVersionDetails() throws Exception {
-        when(resultSet.getLong(18)).thenReturn(1234567890L);
-        when(resultSet.getLong(19)).thenReturn(20L);
-        when(resultSet.getLong(20)).thenReturn(2345678901L);
+        when(resultSet.getLong(16)).thenReturn(1234567890L);
+        when(resultSet.getLong(17)).thenReturn(20L);
+        when(resultSet.getLong(18)).thenReturn(2345678901L);
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getObjectId()).isEqualTo(1234567890L);
         assertThat(row.getObjectVersion()).isEqualTo(20L);
         assertThat(row.getDataObjectId()).isEqualTo(2345678901L);
+        verify(resultSet).getLong(16);
+        verify(resultSet).getLong(17);
         verify(resultSet).getLong(18);
-        verify(resultSet).getLong(19);
-        verify(resultSet).getLong(20);
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldTrackUsernameWhenEnabled() throws Exception {
-        when(resultSet.getString(10)).thenReturn("testuser");
+        when(resultSet.getString(25)).thenReturn("testuser");
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getUserName()).isEqualTo("testuser");
-        verify(resultSet).getString(10);
+        verify(resultSet).getString(25);
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldNotTrackUsernameWhenDisabled() throws Exception {
-        when(resultSet.getString(10)).thenReturn("testuser");
+        when(resultSet.getString(25)).thenReturn("testuser");
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false).build());
@@ -243,11 +243,11 @@ public class LogMinerEventRowTest {
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldTrackClientIdWhenEnabled() throws Exception {
-        when(resultSet.getString(21)).thenReturn("testclient");
+        when(resultSet.getString(26)).thenReturn("testclient");
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getClientId()).isEqualTo("testclient");
-        verify(resultSet).getString(21);
+        verify(resultSet).getString(26);
     }
 
     @Test
@@ -262,17 +262,17 @@ public class LogMinerEventRowTest {
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldTrackCommitTimestampWhenEnabled() throws Exception {
-        when(resultSet.getTimestamp(eq(25), any(Calendar.class))).thenReturn(new Timestamp(2000L));
+        when(resultSet.getTimestamp(eq(23), any(Calendar.class))).thenReturn(new Timestamp(2000L));
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getCommitTime()).isEqualTo(Instant.ofEpochMilli(2000L));
-        verify(resultSet).getTimestamp(eq(25), any(Calendar.class));
+        verify(resultSet).getTimestamp(eq(23), any(Calendar.class));
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldNotTrackCommitTimestampWhenDisabled() throws Exception {
-        when(resultSet.getTimestamp(eq(25), any(Calendar.class))).thenReturn(new Timestamp(2000L));
+        when(resultSet.getTimestamp(eq(23), any(Calendar.class))).thenReturn(new Timestamp(2000L));
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false).build());
@@ -283,17 +283,17 @@ public class LogMinerEventRowTest {
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldTrackStartTimestampWhenEnabled() throws Exception {
-        when(resultSet.getTimestamp(eq(24), any(Calendar.class))).thenReturn(new Timestamp(3000L));
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(3000L));
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getStartTime()).isEqualTo(Instant.ofEpochMilli(3000L));
-        verify(resultSet).getTimestamp(eq(24), any(Calendar.class));
+        verify(resultSet).getTimestamp(eq(22), any(Calendar.class));
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldNotTrackStartTimestampWhenDisabled() throws Exception {
-        when(resultSet.getTimestamp(eq(24), any(Calendar.class))).thenReturn(new Timestamp(3000L));
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(3000L));
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false).build());
@@ -303,62 +303,50 @@ public class LogMinerEventRowTest {
 
     @Test
     @FixFor("debezium/dbz#1663")
-    void shouldShiftRowIdOrdinalWhenUsernameNotTracked() throws Exception {
-        // When USERNAME is excluded from the SELECT, ROW_ID shifts from position 11 to 10
-        when(resultSet.getString(10)).thenReturn("shifted-row-id");
+    void shouldShiftClientIdOrdinalWhenUsernameNotTracked() throws Exception {
+        // When USERNAME is excluded from the SELECT, CLIENT_ID shifts from position 26 to 25
+        when(resultSet.getString(25)).thenReturn("shifted-client-id");
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false).build());
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
-        assertThat(row.getRowId()).isEqualTo("shifted-row-id");
+        assertThat(row.getClientId()).isEqualTo("shifted-client-id");
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
-    void shouldShiftStatusOrdinalWhenRsIdNotTracked() throws Exception {
-        // When RS_ID is excluded from the SELECT, STATUS shifts from position 14 to 13
-        when(resultSet.getInt(13)).thenReturn(2);
+    void shouldShiftUserNameOrdinalWhenRsIdNotTracked() throws Exception {
+        // When RS_ID is excluded from the SELECT, USERNAME shifts from position 25 to 24
+        when(resultSet.getString(24)).thenReturn("shifted-username");
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_RS_ID, false).build());
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
-        assertThat(row.hasErrorStatus()).isTrue();
+        assertThat(row.getUserName()).isEqualTo("shifted-username");
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
-    void shouldShiftStartScnOrdinalWhenClientIdNotTracked() throws Exception {
-        // When CLIENT_ID is excluded from the SELECT, START_SCN shifts from position 22 to 21
-        when(resultSet.getString(21)).thenReturn("54321");
+    void shouldShiftRsIdOrdinalWhenCommitTimestampNotTracked() throws Exception {
+        // When COMMIT_TIMESTAMP is excluded from the SELECT, RS_ID shifts from position 24 to 23
+        when(resultSet.getString(23)).thenReturn("rs-id");
 
         OracleConnectorConfig config = new OracleConnectorConfig(
-                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, false).build());
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false).build());
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
-        assertThat(row.getStartScn()).isEqualTo(Scn.valueOf(54321L));
+        assertThat(row.getRsId()).isEqualTo("rs-id");
     }
 
     @Test
     @FixFor("debezium/dbz#1663")
     void shouldShiftCommitTimestampOrdinalWhenStartTimestampNotTracked() throws Exception {
-        // When START_TIMESTAMP is excluded from the SELECT, COMMIT_TIMESTAMP shifts from position 25 to 24
-        when(resultSet.getTimestamp(eq(24), any(Calendar.class))).thenReturn(new Timestamp(9999L));
+        // When START_TIMESTAMP is excluded from the SELECT, COMMIT_TIMESTAMP shifts from position 23 to 22
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(9999L));
 
         OracleConnectorConfig config = new OracleConnectorConfig(
                 TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false).build());
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
         assertThat(row.getCommitTime()).isEqualTo(Instant.ofEpochMilli(9999L));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1663")
-    void shouldShiftSequenceOrdinalWhenCommitTimestampNotTracked() throws Exception {
-        // When COMMIT_TIMESTAMP is excluded from the SELECT, SEQUENCE# shifts from position 26 to 25
-        when(resultSet.getLong(25)).thenReturn(42L);
-
-        OracleConnectorConfig config = new OracleConnectorConfig(
-                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false).build());
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
-        assertThat(row.getTransactionSequence()).isEqualTo(42L);
     }
 
     private static OracleConnectorConfig defaultConfig() {

@@ -92,7 +92,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      */
     private String buildColumnList() {
         final List<String> columns = new ArrayList<>();
-        // Mandatory columns (positions 1-9, always present)
+
+        // NOTE: Mandatory columns (positions 1-21, always present), and should be placed before optional columns
         columns.add("SCN");
         columns.add("SQL_REDO");
         columns.add("OPERATION_CODE");
@@ -102,18 +103,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         columns.add("TABLE_NAME");
         columns.add("SEG_OWNER");
         columns.add("OPERATION");
-        // Optional column: USERNAME
-        if (connectorConfig.isLogMiningBufferTrackUsername()) {
-            columns.add("USERNAME");
-        }
-        // Mandatory columns
         columns.add("ROW_ID");
         columns.add("ROLLBACK");
-        // Optional column: RS_ID
-        if (connectorConfig.isLogMiningBufferTrackRsId()) {
-            columns.add("RS_ID");
-        }
-        // Mandatory columns
         columns.add("STATUS");
         columns.add("INFO");
         columns.add("SSN");
@@ -121,23 +112,27 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         columns.add("DATA_OBJ#");
         columns.add("DATA_OBJV#");
         columns.add("DATA_OBJD#");
-        // Optional column: CLIENT_ID
-        if (connectorConfig.isLogMiningBufferTrackClientId()) {
-            columns.add("CLIENT_ID");
-        }
-        // Mandatory columns
         columns.add("START_SCN");
         columns.add("COMMIT_SCN");
-        // Optional column: START_TIMESTAMP
+        columns.add("SEQUENCE#");
+
+        // NOTE: Optional columns should be added here
         if (connectorConfig.isLogMiningBufferTrackStartTimestamp()) {
             columns.add("START_TIMESTAMP");
         }
-        // Optional column: COMMIT_TIMESTAMP
         if (connectorConfig.isLogMiningBufferTrackCommitTimestamp()) {
             columns.add("COMMIT_TIMESTAMP");
         }
-        // Mandatory column
-        columns.add("SEQUENCE#");
+        if (connectorConfig.isLogMiningBufferTrackRsId()) {
+            columns.add("RS_ID");
+        }
+        if (connectorConfig.isLogMiningBufferTrackUsername()) {
+            columns.add("USERNAME");
+        }
+        if (connectorConfig.isLogMiningBufferTrackClientId()) {
+            columns.add("CLIENT_ID");
+        }
+
         return String.join(", ", columns) + " ";
     }
 

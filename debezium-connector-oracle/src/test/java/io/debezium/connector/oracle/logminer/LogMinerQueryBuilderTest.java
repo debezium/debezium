@@ -214,6 +214,7 @@ public class LogMinerQueryBuilderTest {
 
     private String buildSelectColumns(OracleConnectorConfig config) {
         final List<String> columns = new ArrayList<>();
+        // Mandatory first
         columns.add("SCN");
         columns.add("SQL_REDO");
         columns.add("OPERATION_CODE");
@@ -223,14 +224,8 @@ public class LogMinerQueryBuilderTest {
         columns.add("TABLE_NAME");
         columns.add("SEG_OWNER");
         columns.add("OPERATION");
-        if (config.isLogMiningBufferTrackUsername()) {
-            columns.add("USERNAME");
-        }
         columns.add("ROW_ID");
         columns.add("ROLLBACK");
-        if (config.isLogMiningBufferTrackRsId()) {
-            columns.add("RS_ID");
-        }
         columns.add("STATUS");
         columns.add("INFO");
         columns.add("SSN");
@@ -238,18 +233,27 @@ public class LogMinerQueryBuilderTest {
         columns.add("DATA_OBJ#");
         columns.add("DATA_OBJV#");
         columns.add("DATA_OBJD#");
-        if (config.isLogMiningBufferTrackClientId()) {
-            columns.add("CLIENT_ID");
-        }
         columns.add("START_SCN");
         columns.add("COMMIT_SCN");
+        columns.add("SEQUENCE#");
+
+        // Optional added at the end
         if (config.isLogMiningBufferTrackStartTimestamp()) {
             columns.add("START_TIMESTAMP");
         }
         if (config.isLogMiningBufferTrackCommitTimestamp()) {
             columns.add("COMMIT_TIMESTAMP");
         }
-        columns.add("SEQUENCE#");
+        if (config.isLogMiningBufferTrackRsId()) {
+            columns.add("RS_ID");
+        }
+        if (config.isLogMiningBufferTrackUsername()) {
+            columns.add("USERNAME");
+        }
+        if (config.isLogMiningBufferTrackClientId()) {
+            columns.add("CLIENT_ID");
+        }
+
         return String.join(", ", columns) + " ";
     }
 
