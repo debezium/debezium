@@ -361,6 +361,11 @@
             <plugin>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
+                <configuration>
+                    <jvmArgs>
+                        <arg>-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</arg>
+                    </jvmArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

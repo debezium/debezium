@@ -63,6 +63,12 @@ public class SchemaGeneratorMojo extends AbstractMojo {
     private String filenameSuffix = "";
 
     /**
+     * Optional JVM arguments to pass to the schema generator process.
+     */
+    @Parameter
+    private List<String> jvmArgs;
+
+    /**
      * Gives access to the Maven project information.
      */
     @Parameter(defaultValue = "${project}", required = true, readonly = true)
@@ -84,7 +90,8 @@ public class SchemaGeneratorMojo extends AbstractMojo {
         String classPath = getClassPath();
 
         try {
-            int result = exec(SchemaGenerator.class.getName(), classPath, Collections.emptyList(),
+            List<String> effectiveJvmArgs = jvmArgs != null ? jvmArgs : Collections.emptyList();
+            int result = exec(SchemaGenerator.class.getName(), classPath, effectiveJvmArgs,
                     Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerComponent),
                             quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix),
                             project.getArtifact().getFile().getAbsolutePath()));
