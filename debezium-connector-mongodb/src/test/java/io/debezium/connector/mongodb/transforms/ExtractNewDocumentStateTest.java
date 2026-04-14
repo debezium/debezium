@@ -236,4 +236,58 @@ public class ExtractNewDocumentStateTest {
         // when
         assertThrows(IllegalArgumentException.class, () -> transformation.apply(eventRecord));
     }
+
+    /**
+     * Verifies that when {@code field.name.adjustment.mode} is set to {@code avro},
+     * schema names containing dot-separated segments that start with a digit
+     * (e.g. collection names like "10019_AutoState") are properly sanitized.
+     *
+     * Without this fix, the Avro converter would reject the schema name because
+     * it validates each segment independently and digits are not valid first characters.
+     */
+    @Test
+    @FixFor("DBZ-305")
+    public void shouldAdjustSchemaNameWhenConfiguredForAvro() {
+        ExtractNewDocumentState<SourceRecord> avroTransformation = new ExtractNewDocumentState<>();
+        avroTransformation.configure(Collect.hashMapOf(
+                "array.encoding", "array",
+                "field.name.adjustment.mode", "avro"));
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("mongo.DASMongoDB.10019_AutoState.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+        Struct keyStruct = new Struct(keySchema).put("id", "{\"_id\": 1}");
+
+        Schema updateDescriptionSchema = SchemaBuilder.struct()
+                .name("mongo.DASMongoDB.10019_AutoState.updateDescription")
+                .field("updatedFields", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("removedFields", SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                .field("truncatedArrays", SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                .optional()
+                .build();
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("mongo.DASMongoDB.10019_AutoState.Envelope")
+                .field("after", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("updateDescription", updateDescriptionSchema)
+                .field("op", Schema.STRING_SCHEMA)
+                .build();
+        Struct valueStruct = new Struct(valueSchema)
+                .put("after", "{\"_id\": 1, \"foo\": \"bar\"}")
+                .put("op", "c");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "mongo.DASMongoDB.10019_AutoState",
+                keySchema,
+                keyStruct,
+                valueSchema,
+                valueStruct);
+
+        SourceRecord transformed = avroTransformation.apply(eventRecord);
+
+        assertThat(transformed.valueSchema().name()).isEqualTo("mongo.DASMongoDB._10019_AutoState");
+    }
 }
