@@ -9,10 +9,12 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFI
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -146,6 +148,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     private boolean flattenStruct;
     private String delimiter;
     private boolean rewriteTombstoneDeletesWithId;
+    private SchemaNameAdjuster schemaNameAdjuster;
     private final Field.Set configFields = CONFIG_FIELDS.with(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
 
     @Override
@@ -155,6 +158,22 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(
                 config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
         SchemaNameAdjuster fieldNameAdjuster = fieldNameAdjustmentMode.createAdjuster();
+
+        // We intentionally use SchemaNameAdjuster.AVRO here instead of the field-level
+        // AVRO_FIELD_NAMER adjuster. The field-level adjuster treats dots as invalid characters
+        // and would replace them with underscores, destroying the dotted schema namespace.
+        // The schema-level adjuster correctly preserves dots while sanitizing other characters.
+        switch (fieldNameAdjustmentMode) {
+            case AVRO:
+                schemaNameAdjuster = SchemaNameAdjuster.AVRO;
+                break;
+            case AVRO_UNICODE:
+                schemaNameAdjuster = SchemaNameAdjuster.AVRO_UNICODE;
+                break;
+            default:
+                schemaNameAdjuster = SchemaNameAdjuster.NO_OP;
+        }
+
         converter = new MongoDataConverter(
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
                 FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjuster),
@@ -274,6 +293,16 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             newValueSchemaName = record.valueSchema().name();
             if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
+            }
+
+            // Avro validates each dot-separated segment of a schema name independently,
+            // so we must adjust each segment on its own. Applying the adjuster to the full
+            // dotted name would only check the very first character of the entire string,
+            // letting invalid segments like "10019_AutoState" slip through.
+            if (schemaNameAdjuster != SchemaNameAdjuster.NO_OP) {
+                newValueSchemaName = Arrays.stream(newValueSchemaName.split("\\."))
+                        .map(schemaNameAdjuster::adjust)
+                        .collect(Collectors.joining("."));
             }
 
             Map<String, Map<Object, BsonType>> valueMap = converter.parseBsonDocument(valueDocument);
