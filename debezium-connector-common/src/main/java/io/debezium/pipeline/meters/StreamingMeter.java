@@ -80,7 +80,7 @@ public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisti
     }
 
     @Override
-    public Long getMilliSecondsBehindSourceAverageValue() {
+    public Double getMilliSecondsBehindSourceAverageValue() {
         return lagBehindSourceMeasurement.getAverageValue();
     }
 

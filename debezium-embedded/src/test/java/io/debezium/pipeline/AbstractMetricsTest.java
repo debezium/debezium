@@ -328,7 +328,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
                 "MilliSecondsBehindSourceMinValue");
         final Long milliSecondsBehindSourceMaxValue = (Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
                 "MilliSecondsBehindSourceMaxValue");
-        final Long milliSecondsBehindSourceAverageValue = (Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
+        final Double milliSecondsBehindSourceAverageValue = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
                 "MilliSecondsBehindSourceAverageValue");
         final Double milliSecondsBehindSourceP50 = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP50");
         final Double milliSecondsBehindSourceP95 = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP95");
@@ -353,8 +353,8 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Equality is needed for very small amount of events
         // Quantile values can have sometimes bigger values than max value. Very likely the issue is small statistics (2 numbers in many tests).
         assertThat(milliSecondsBehindSourceMaxValue).isGreaterThanOrEqualTo(milliSecondsBehindSourceMinValue);
-        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThanOrEqualTo(milliSecondsBehindSourceAverageValue);
-        assertThat(milliSecondsBehindSourceMinValue).isLessThanOrEqualTo(milliSecondsBehindSourceAverageValue);
+        assertThat(milliSecondsBehindSourceMaxValue).isGreaterThanOrEqualTo(milliSecondsBehindSourceAverageValue.longValue());
+        assertThat(milliSecondsBehindSourceMinValue).isLessThanOrEqualTo(milliSecondsBehindSourceAverageValue.longValue());
         assertThat(milliSecondsBehindSourceMinValue).isLessThanOrEqualTo(milliSecondsBehindSourceP95.longValue());
         assertThat(milliSecondsBehindSourceP50.longValue()).isLessThanOrEqualTo(milliSecondsBehindSourceMaxValue);
         assertThat(milliSecondsBehindSourceP50).isLessThanOrEqualTo(milliSecondsBehindSourceP95);

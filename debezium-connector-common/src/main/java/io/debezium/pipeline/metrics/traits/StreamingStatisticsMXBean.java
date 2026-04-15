@@ -15,7 +15,7 @@ public interface StreamingStatisticsMXBean {
 
     Long getMilliSecondsBehindSourceMaxValue();
 
-    Long getMilliSecondsBehindSourceAverageValue();
+    Double getMilliSecondsBehindSourceAverageValue();
 
     Double getMilliSecondsBehindSourceP50();
 
