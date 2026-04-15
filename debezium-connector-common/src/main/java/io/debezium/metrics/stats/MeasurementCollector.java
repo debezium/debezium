@@ -31,12 +31,10 @@ public class MeasurementCollector<T extends MeasurementEvent> implements Consume
 
     private final Map<Class<T>, Measurement<T>> measurements = new ConcurrentHashMap<>();
     private final BlockingQueue<T> queue = new LinkedBlockingQueue<>(QUEUE_SIZE);
-    private final Thread publisherThread = new Thread(new MeasurementPublisher());
+    private Thread publisherThread;
 
     public MeasurementCollector() {
-        publisherThread.setUncaughtExceptionHandler((t, ex) -> LOGGER.warn("Publisher thread failed with exception: ", ex));
-        publisherThread.setDaemon(true);
-        publisherThread.start();
+        start();
     }
 
     @Override
@@ -62,7 +60,12 @@ public class MeasurementCollector<T extends MeasurementEvent> implements Consume
     }
 
     public void start() {
-        publisherThread.start();
+        if (publisherThread == null || !publisherThread.isAlive()) {
+            publisherThread = new Thread(new MeasurementPublisher());
+            publisherThread.setUncaughtExceptionHandler((t, ex) -> LOGGER.warn("Publisher thread failed with exception: ", ex));
+            publisherThread.setDaemon(true);
+            publisherThread.start();
+        }
     }
 
     public void stop() {
