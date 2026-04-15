@@ -21,7 +21,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.schemagenerator.model.debezium.ComponentDescriptor;
@@ -57,12 +56,10 @@ public class DebeziumDescriptorSchemaCreator {
                 componentMetadata.getComponentDescriptor().getDisplayName(),
                 null);
 
-        ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
-
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
-        StreamSupport.stream(configDefinition.all().spliterator(), false)
-                .map(field -> buildProperty(field))
+        StreamSupport.stream(componentMetadata.getConfigDefinition().all().spliterator(), false)
+                .map(this::buildProperty)
                 .filter(Objects::nonNull)
                 .forEach(property -> {
                     usedGroups.add(property.display().group().toLowerCase());
