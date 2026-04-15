@@ -925,14 +925,18 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        SourceRecords actualRecords = consumeRecordsByTopic(6);
+        // JdbcConnection#connection() is called multiple times during connector start-up,
+        // so the given statements will be executed multiple times, resulting in multiple
+        // records. Note that the required number of records can vary if the number of
+        // connection() invocations changes due to future implementation updates.
+        SourceRecords actualRecords = consumeRecordsByTopic(7);
         assertKey(actualRecords.allRecordsInOrder().get(0), "pk", 1);
         assertKey(actualRecords.allRecordsInOrder().get(1), "pk", 2);
 
-        // JdbcConnection#connection() is called multiple times during connector start-up,
-        // so the given statements will be executed multiple times, resulting in multiple
-        // records; here we're interested just in the first insert for s2.a
-        assertValueField(actualRecords.allRecordsInOrder().get(5), "after/bb", "hello; world");
+        // Here we're interested just in the first insert for s2.a.
+        // Note that the index passed to get() may also need to be updated if the number
+        // of generated records changes in the future.
+        assertValueField(actualRecords.allRecordsInOrder().get(6), "after/bb", "hello; world");
     }
 
     @Test
