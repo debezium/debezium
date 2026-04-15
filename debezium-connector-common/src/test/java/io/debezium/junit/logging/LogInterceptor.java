@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
@@ -44,14 +45,13 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
+     * Prefer using either {@link #forPackage(String)} or {@link #forName(String)}
      *
      * @param loggerName logger that emits the log message
      */
     public LogInterceptor(String loggerName) {
         try {
-            final Logger logger = (Logger) LoggerFactory.getLogger(loggerName);
-            this.start();
-            logger.addAppender(this);
+            appendInterceptorAsAppender(loggerName);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to obtain logback logger for log interceptor.", e);
@@ -60,6 +60,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
+     * Prefer using {@link #forClass(Class)}
      *
      * @param clazz class that emits the log message
      */
@@ -173,5 +174,67 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
             }
         }
         return false;
+    }
+
+    /**
+     * Creates a log interceptor for a package to include all classes within that package and any child
+     * packages that exist in the class hierarchy.
+     *
+     * @param packageName the package name
+     * @return a new interceptor instance
+     */
+    public static LogInterceptor forPackage(String packageName) {
+        return new LogInterceptor("%s.*".formatted(packageName));
+    }
+
+    /**
+     * Creates a log interceptor for a specific class.
+     *
+     * @param clazz the class type
+     * @return a new interceptor instance
+     */
+    public static LogInterceptor forClass(Class<?> clazz) {
+        return new LogInterceptor(clazz);
+    }
+
+    /**
+     * Creates a log interceptor for a specific logger name.
+     * <p>
+     * Loggers are hierarchical, but do not propagate logged events from child to parent loggers. So when
+     * using this specific method, an interceptor will only capture logged events that are explicitly
+     * caught by the specified name. If a logback configuration defines a logger that is for a class or
+     * package that is a child of the given name, those events will not be propagated and caught by the
+     * interceptor. For this use case, use {@link #forPackage}.
+     *
+     * @param explicitLoggerName the explicit logger name
+     * @return a new interceptor instance
+     */
+    public static LogInterceptor forName(String explicitLoggerName) {
+        return new LogInterceptor(explicitLoggerName);
+    }
+
+    private void appendInterceptorAsAppender(String name) {
+        if (name == null) {
+            return;
+        }
+
+        this.start();
+
+        String loggerName = name.trim();
+        if (loggerName.endsWith(".*")) {
+            loggerName = loggerName.substring(0, loggerName.length() - 2);
+            // Apply package and child logger appending
+            LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+            for (Logger logger : context.getLoggerList()) {
+                if (logger.getName().equals(loggerName) || logger.getName().startsWith(loggerName + ".")) {
+                    logger.addAppender(this);
+                }
+            }
+        }
+        else {
+            // Apply to explicit logger only.
+            final Logger logger = (Logger) LoggerFactory.getLogger(loggerName);
+            logger.addAppender(this);
+        }
     }
 }
