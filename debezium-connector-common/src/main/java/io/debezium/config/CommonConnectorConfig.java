@@ -1461,7 +1461,7 @@ public abstract class CommonConnectorConfig {
                     "'warn' (the default) logs a warning message and continues processing; " +
                     "'fail' stops the connector with an error.");
 
-    public static final Field STATISTIC_METRICS_ENABLED = Field.create("statistics.metrics.enabled")
+    public static final Field STATISTICS_METRICS_ENABLED = Field.create("statistics.metrics.enabled")
             .withDisplayName("Enable collecting statistics metrics like latencies")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 35))
             .withType(Type.BOOLEAN)
@@ -1512,7 +1512,7 @@ public abstract class CommonConnectorConfig {
                     GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION,
                     CUSTOM_SANITIZE_PATTERN,
-                    STATISTIC_METRICS_ENABLED)
+                    STATISTICS_METRICS_ENABLED)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1632,7 +1632,7 @@ public abstract class CommonConnectorConfig {
         this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
         this.guardrailCollectionsMax = config.getInteger(GUARDRAIL_COLLECTIONS_MAX);
         this.guardrailCollectionsLimitAction = GuardrailCollectionsLimitAction.parse(config.getString(GUARDRAIL_COLLECTIONS_LIMIT_ACTION));
-        this.isStatisticsMetricsEnabled = config.getBoolean(STATISTIC_METRICS_ENABLED);
+        this.isStatisticsMetricsEnabled = config.getBoolean(STATISTICS_METRICS_ENABLED);
 
         this.signalingDataCollectionIds = this.signalingDataCollections.stream()
                 .map(TableId::parse)
