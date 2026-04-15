@@ -5691,7 +5691,7 @@ endif::community[]
 
 // Type: assembly
 // ModuleID: using-oracle-xstream-databases-with-debezium
-// Title: Using Oracle XStream databases with {prodname} (Developer Preview)
+// Title: Using Oracle XStream databases with {prodname} 
 [[oracle-xstreams-support]]
 == XStream support
 
