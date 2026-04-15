@@ -2041,16 +2041,17 @@ GO
 
 EXEC sys.sp_cdc_enable_table
 @source_schema = N'dbo',
-@source_name   = N'MyTable', //<.>
-@role_name     = N'MyRole',  //<.>
-@filegroup_name = N'MyDB_CT',//<.>
+@source_name   = N'MyTable',
+@role_name     = N'MyRole',
+@filegroup_name = N'MyDB_CT',
 @supports_net_changes = 0
 GO
 ----
-<.> Specifies the name of the table that you want to capture.
-<.> Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table.
+
+`@source_name`:: Specifies the name of the table that you want to capture.
+`@role_name`:: Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table.
 Users in the `sysadmin` or `db_owner` role also have access to the specified change tables. If the the value of `@role_name` is explicitly set to `NULL`, no role is used to restrict access to captured information.
-<.> Specifies the `filegroup` where SQL Server places the change table for the captured table.
+`@filegroup_name`:: Specifies the `filegroup` where SQL Server places the change table for the captured table.
 The named `filegroup` must already exist.
 It is best not to locate change tables in the same `filegroup` that you use for source tables.
 
