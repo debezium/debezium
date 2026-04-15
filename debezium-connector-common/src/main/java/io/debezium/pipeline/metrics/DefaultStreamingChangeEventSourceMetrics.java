@@ -60,6 +60,18 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     }
 
     @Override
+    public synchronized void register() {
+        super.register();
+        streamingMeter.start();
+    }
+
+    @Override
+    public synchronized void unregister() {
+        super.unregister();
+        streamingMeter.stop();
+    }
+
+    @Override
     public boolean isConnected() {
         return connectionMeter.isConnected();
     }

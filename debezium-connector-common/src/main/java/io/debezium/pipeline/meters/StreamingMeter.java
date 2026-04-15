@@ -155,6 +155,14 @@ public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisti
         }
     }
 
+    public void start() {
+        measurementCollector.start();
+    }
+
+    public void stop() {
+        measurementCollector.stop();
+    }
+
     public void reset() {
         lagBehindSourceMeasurement.reset();
         numberOfCommittedTransactions.set(0);

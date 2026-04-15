@@ -34,6 +34,18 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
     }
 
     @Override
+    public synchronized void register() {
+        super.register();
+        streamingMeter.start();
+    }
+
+    @Override
+    public synchronized void unregister() {
+        super.unregister();
+        streamingMeter.stop();
+    }
+
+    @Override
     void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
         super.onEvent(source, offset, key, value, operation);
         streamingMeter.onEvent(source, offset, key, value);
