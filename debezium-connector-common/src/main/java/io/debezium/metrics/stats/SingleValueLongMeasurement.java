@@ -20,7 +20,7 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
     private long maxValue = Long.MIN_VALUE;
     private long lastValue = 0L;
     private long count = 0L;
-    private long averageValue = 0L;
+    private double averageValue = 0.0;
 
     @Override
     public synchronized void accept(T event) {
@@ -64,7 +64,7 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
     }
 
     @Override
-    public synchronized Long getAverageValue() {
+    public synchronized Double getAverageValue() {
         return count == 0L ? null : averageValue;
     }
 }

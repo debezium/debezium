@@ -23,5 +23,5 @@ public interface SingleValueMeasurement<T extends SingleValueEvent<V>, V> extend
 
     V getMaxValue();
 
-    V getAverageValue();
+    Double getAverageValue();
 }

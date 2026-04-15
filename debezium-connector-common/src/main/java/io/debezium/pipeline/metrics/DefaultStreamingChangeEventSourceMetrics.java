@@ -94,7 +94,7 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     }
 
     @Override
-    public Long getMilliSecondsBehindSourceAverageValue() {
+    public Double getMilliSecondsBehindSourceAverageValue() {
         return streamingMeter.getMilliSecondsBehindSourceAverageValue();
     }
 
