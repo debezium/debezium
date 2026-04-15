@@ -199,18 +199,14 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     @Test
     @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.SQL_SERVER)
-    protected void testDisabledStreamingStatistics() throws Exception {
+    public void testDisabledStreamingStatistics() throws Exception {
         // start connector
         start(x -> noSnapshot(x)
-                .with(CommonConnectorConfig.STATISTIC_METRICS_ENABLED, Boolean.FALSE));
+                .with(CommonConnectorConfig.STATISTICS_METRICS_ENABLED, Boolean.FALSE));
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
         assertSnapshotNotExecutedMetrics();
         assertStreamingMetrics(false, expectedEvents());
-
-        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         // Insert new records and wait for them to become available
         executeInsertStatements();
@@ -219,6 +215,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         Thread.sleep(Duration.ofSeconds(2).toMillis());
 
         // Check streaming statistics disabled
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceMinValue")).isNotNull();
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceMaxValue")).isNotNull();
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceAverageValue")).isNotNull();

@@ -131,7 +131,7 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     @Override
     protected void assertStreamingStatistics(long expectedEvents) throws Exception {
-        // no-op, AbstractSqlServerPartitionMetrics doesn't support all the metrics DefaultSnapshotChangeEventSourceMetrics does, including lagBehind Source,
+        // no-op, SQL Server's streaming metrics implementation doesn't currently expose all streaming statistics,
         // so skip this test in SQL server connector now
     }
 
