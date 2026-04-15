@@ -461,6 +461,7 @@ public class TypeRegistry {
      * Prime the {@link TypeRegistry} with all existing database types
      */
     private void prime() throws SQLException {
+        LOGGER.trace("Priming type registry with database types");
         try (Statement statement = connection.connection().createStatement();
                 ResultSet rs = statement.executeQuery(SQL_TYPES)) {
             final List<TypeBuilderWithSchema> delayResolvedBuilders = new ArrayList<>();

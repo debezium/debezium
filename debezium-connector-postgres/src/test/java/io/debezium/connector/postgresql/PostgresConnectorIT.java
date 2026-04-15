@@ -102,6 +102,8 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 
+import ch.qos.logback.classic.Level;
+
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.engine.DebeziumEngine}
  *
@@ -4351,5 +4353,27 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         stopConnector();
         TestHelper.execute("DROP SCHEMA IF EXISTS dbz1258 CASCADE;");
+    }
+
+    @Test
+    @FixFor("DBZ-1800")
+    void shouldInitializeTypeRegistryOnlyOnceOnConnectorStart() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(TypeRegistry.class);
+        interceptor.setLoggerLevel(TypeRegistry.class, Level.TRACE);
+
+        // Verify that TypeRegistry is created only once even if multiple
+        // snapshot connections are established.
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForSnapshotToBeCompleted();
+        assertConnectorIsRunning();
+
+        List<String> matched = interceptor.getLogEntriesThatContainsMessage("Priming type registry with database types");
+        assertThat(matched.size()).isEqualTo(1);
+
+        stopConnector();
     }
 }
