@@ -162,9 +162,11 @@ public final class TestHelper {
      */
     public static PostgresConnection createWithTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        final TypeRegistry typeregistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
 
         return new PostgresConnection(
                 config.getJdbcConfig(),
+                typeregistry,
                 getPostgresValueConverterBuilder(config),
                 CONNECTION_TEST);
     }
@@ -274,21 +276,20 @@ public final class TestHelper {
 
     public static TypeRegistry getTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
-            return connection.getTypeRegistry();
-        }
+        return PostgresConnection.createTypeRegistry(config.getJdbcConfig());
     }
 
     public static PostgresDefaultValueConverter getDefaultValueConverter() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
+        final TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), typeRegistry, getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getDefaultValueConverter();
         }
     }
 
     public static Charset getDatabaseCharset() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), CONNECTION_TEST)) {
             return connection.getDatabaseCharset();
         }
     }

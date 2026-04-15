@@ -100,26 +100,35 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Creates a Postgres connection using the supplied configuration.
-     * If necessary this connection is able to resolve data type mappings.
-     * Such a connection requires a {@link PostgresValueConverter}, and will provide its own {@link TypeRegistry}.
-     * Usually only one such connection per connector is needed.
+     * If the connection needs to resolve data types, it needs to create both {@link TypeRegistry} and {@link PostgresValueConverter}
+     * in advance, and pass them to this constructor.
      *
      * @param config {@link Configuration} instance, may not be null.
+     * @param typeRegistry an already-primed {@link TypeRegistry} instance
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
-    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
+    public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
-        if (Objects.isNull(valueConverterBuilder)) {
+        if (Objects.isNull(typeRegistry) || Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
         }
         else {
-            this.typeRegistry = new TypeRegistry(this);
+            this.typeRegistry = typeRegistry;
 
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+        }
+    }
+
+    public static TypeRegistry createTypeRegistry(JdbcConfiguration config) {
+        try (PostgresConnection connection = new PostgresConnection(config, PostgresConnection.CONNECTION_GENERAL)) {
+            return new TypeRegistry(connection);
+        }
+        catch (DebeziumException e) {
+            throw new DebeziumException("Failed to create TypeRegistry", e);
         }
     }
 
@@ -154,7 +163,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, String connectionUsage) {
-        this(config, null, connectionUsage);
+        this(config, null, null, connectionUsage);
     }
 
     static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration, String connectionUsage) {

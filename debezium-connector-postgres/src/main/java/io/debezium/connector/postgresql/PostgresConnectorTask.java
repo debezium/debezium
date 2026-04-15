@@ -113,13 +113,15 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             throw new RetriableException("Couldn't obtain encoding for database", e);
         }
 
+        final TypeRegistry sharedTypeRegistry = PostgresConnection.createTypeRegistry(connectorConfig.getJdbcConfig());
+
         final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
                 connectorConfig,
                 databaseCharset,
                 typeRegistry);
 
         MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
+                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), sharedTypeRegistry, valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
         jdbcConnection = connectionFactory.mainConnection();
