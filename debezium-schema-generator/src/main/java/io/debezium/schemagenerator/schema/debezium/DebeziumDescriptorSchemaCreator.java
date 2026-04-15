@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -59,12 +58,11 @@ public class DebeziumDescriptorSchemaCreator {
                 null);
 
         ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
-        Map<String, Integer> fieldGroupOrderMap = configDefinition.fieldGroupOrderMap();
 
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
         StreamSupport.stream(configDefinition.all().spliterator(), false)
-                .map(field -> buildProperty(field, fieldGroupOrderMap))
+                .map(field -> buildProperty(field))
                 .filter(Objects::nonNull)
                 .forEach(property -> {
                     usedGroups.add(property.display().group().toLowerCase());
@@ -80,14 +78,14 @@ public class DebeziumDescriptorSchemaCreator {
                 buildGroups(usedGroups));
     }
 
-    private Property buildProperty(Field field, Map<String, Integer> fieldGroupOrderMap) {
+    private Property buildProperty(Field field) {
 
         if (!fieldFilter.include(field)) {
             return null;
         }
 
         String groupName = field.group() != null ? formatGroupName(field.group().getGroup()) : null;
-        Integer groupOrder = fieldGroupOrderMap.get(field.name());
+        Integer groupOrder = field.group() != null ? field.group().getPositionInGroup() : null;
 
         Display display = new Display(
                 field.displayName(),

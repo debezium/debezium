@@ -91,7 +91,7 @@ class DebeziumDescriptorSchemaCreatorTest {
         assertThat(prop.display().label()).isEqualTo("Test Property");
         assertThat(prop.display().description()).isEqualTo("A test property");
         assertThat(prop.display().group()).isEqualTo("Connection");
-        assertThat(prop.display().groupOrder()).isEqualTo(1);
+        assertThat(prop.display().groupOrder()).isEqualTo(0);
         assertThat(prop.display().width()).isEqualTo("medium");
         assertThat(prop.display().importance()).isEqualTo("high");
     }

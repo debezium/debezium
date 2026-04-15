@@ -8,6 +8,7 @@ package io.debezium.config;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Editor for creating {@link ConfigDefinition}s.
@@ -39,22 +40,30 @@ public class ConfigDefinitionEditor {
     }
 
     public ConfigDefinitionEditor type(Field... fields) {
-        type.addAll(Arrays.asList(fields));
+        type.addAll(IntStream.range(0, fields.length)
+                .mapToObj(i -> fields[i].withGroup(Field.createGroupEntry(fields[i].group().getGroup(), i)))
+                .toList());
         return this;
     }
 
     public ConfigDefinitionEditor connector(Field... fields) {
-        connector.addAll(Arrays.asList(fields));
+        connector.addAll(IntStream.range(0, fields.length)
+                .mapToObj(i -> fields[i].withGroup(Field.createGroupEntry(fields[i].group().getGroup(), i)))
+                .toList());
         return this;
     }
 
     public ConfigDefinitionEditor history(Field... fields) {
-        history.addAll(Arrays.asList(fields));
+        history.addAll(IntStream.range(0, fields.length)
+                .mapToObj(i -> fields[i].withGroup(Field.createGroupEntry(fields[i].group().getGroup(), i)))
+                .toList());
         return this;
     }
 
     public ConfigDefinitionEditor events(Field... fields) {
-        events.addAll(Arrays.asList(fields));
+        events.addAll(IntStream.range(0, fields.length)
+                .mapToObj(i -> fields[i].withGroup(Field.createGroupEntry(fields[i].group().getGroup(), i)))
+                .toList());
         return this;
     }
 
