@@ -523,6 +523,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             streamingMetrics.connected(status);
             LOGGER.info("Connected metrics set to '{}'", status);
         }
+        this.streaming = status;
     }
 
     protected class CatchUpStreamingResult {
