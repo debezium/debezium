@@ -35,6 +35,7 @@ public class MeasurementCollector<T extends MeasurementEvent> implements Consume
 
     public MeasurementCollector() {
         publisherThread.setUncaughtExceptionHandler((t, ex) -> LOGGER.warn("Publisher thread failed with exception: ", ex));
+        publisherThread.setDaemon(true);
         publisherThread.start();
     }
 
