@@ -5,6 +5,7 @@
  */
 package io.debezium.metrics.stats;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
@@ -12,6 +13,7 @@ import io.debezium.metrics.event.SingleValueEvent;
  *
  * @author vjuranek
  */
+@ThreadSafe
 public abstract class SingleValueLongMeasurementWithStats<T extends SingleValueEvent<Long>> extends SingleValueLongMeasurement<T>
         implements MeasurementStatistics<T, Long> {
 
@@ -22,13 +24,19 @@ public abstract class SingleValueLongMeasurementWithStats<T extends SingleValueE
     }
 
     @Override
-    public Double getValueAtQuantile(double quantile) {
+    public synchronized Double getValueAtQuantile(double quantile) {
         return statistics.getValueAtQuantile(quantile);
     }
 
     @Override
-    public void accept(T event) {
+    public synchronized void accept(T event) {
         super.accept(event);
         statistics.accept(event);
+    }
+
+    @Override
+    public synchronized void reset() {
+        super.reset();
+        statistics.reset();
     }
 }

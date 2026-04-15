@@ -5,7 +5,7 @@
  */
 package io.debezium.metrics.stats;
 
-import io.debezium.annotation.NotThreadSafe;
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.metrics.event.SingleValueEvent;
 
 /**
@@ -13,17 +13,17 @@ import io.debezium.metrics.event.SingleValueEvent;
  *
  * @author vjuranek
  */
-@NotThreadSafe
+@ThreadSafe
 public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long>> implements SingleValueMeasurement<T, Long> {
 
     private long minValue = Long.MAX_VALUE;
-    private long maxValue = 0L;
-    private long averageValue = 0L;
+    private long maxValue = Long.MIN_VALUE;
     private long lastValue = 0L;
     private long count = 0L;
+    private long averageValue = 0L;
 
     @Override
-    public void accept(T event) {
+    public synchronized void accept(T event) {
         final long value = event.getValue();
         lastValue = value;
         count++;
@@ -49,22 +49,22 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
     }
 
     @Override
-    public Long getLastValue() {
+    public synchronized Long getLastValue() {
         return count == 0L ? null : lastValue;
     }
 
     @Override
-    public Long getMinValue() {
+    public synchronized Long getMinValue() {
         return count == 0L ? null : minValue;
     }
 
     @Override
-    public Long getMaxValue() {
+    public synchronized Long getMaxValue() {
         return count == 0L ? null : maxValue;
     }
 
     @Override
-    public Long getAverageValue() {
+    public synchronized Long getAverageValue() {
         return count == 0L ? null : averageValue;
     }
 }
