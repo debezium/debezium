@@ -65,8 +65,8 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     // Buffer for snapshot data (used if handlers are registered)
     private final List<Object[]> tableBuffer = new ArrayList<>();
 
-    // Flush buffer every 100K rows to avoid memory accumulation
-    private static final int BATCH_FLUSH_SIZE = 100_000;
+    // Flush buffer every N rows to avoid memory accumulation (configurable)
+    private final int batchFlushSize;
 
     /**
      * Callback for watermark operations (connector-specific)
@@ -100,6 +100,10 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         this.partition = partition;
         this.watermarkCallback = watermarkCallback;
         this.offsetContext = offsetContext;
+
+        // Read configurable batch flush size (default 20K, was hardcoded 100K)
+        this.batchFlushSize = connectorConfig.getIncrementalSnapshotBatchFlushSize();
+        LOGGER.info("[{}] Batch flush size: {} rows", Thread.currentThread().getName(), batchFlushSize);
 
         // Load SPI handlers for table completion notifications
         this.completionHandlers = new ArrayList<>();
@@ -172,6 +176,28 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                         tableId,
                         tableBuffer.size());
                 flushPartialBuffer();
+            }
+
+            // Signal to handlers that this table is fully done (no more chunks)
+            if (!completionHandlers.isEmpty()) {
+                final String tableIdStr = tableId.toString();
+                for (SnapshotTableCompletionHandler handler : completionHandlers) {
+                    if (handler.shouldHandle(tableIdStr)) {
+                        try {
+                            handler.onTableSnapshotFinished(tableIdStr);
+                        }
+                        catch (Exception ex) {
+                            LOGGER.error("[{}] Handler {} failed onTableSnapshotFinished for '{}': {}",
+                                    Thread.currentThread().getName(),
+                                    handler.getClass().getSimpleName(),
+                                    tableId,
+                                    ex.getMessage(),
+                                    ex);
+                        }
+                    }
+                }
+                LOGGER.info("[{}] Notified {} handlers of table '{}' completion",
+                        Thread.currentThread().getName(), completionHandlers.size(), tableId);
             }
         }
         catch (Exception e) {
@@ -310,7 +336,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                         tableBuffer.add(row);
 
                         // Flush buffer progressively to avoid memory accumulation
-                        if (tableBuffer.size() >= BATCH_FLUSH_SIZE) {
+                        if (tableBuffer.size() >= batchFlushSize) {
                             flushPartialBuffer();
                         }
                     }

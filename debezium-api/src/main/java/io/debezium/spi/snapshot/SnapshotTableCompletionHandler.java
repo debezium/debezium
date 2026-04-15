@@ -38,4 +38,18 @@ public interface SnapshotTableCompletionHandler {
     default boolean shouldHandle(String tableName) {
         return true;
     }
+
+    /**
+     * Called when the snapshot worker has finished processing ALL chunks of a table.
+     * This signals that no more rows will arrive for this table and the sink
+     * should finalize any open writers and commit.
+     *
+     * <p>Note: {@link #onTableSnapshotCompleted} is called for each partial chunk
+     * during processing. This method is called exactly once after all chunks.
+     *
+     * @param tableName The fully qualified table name
+     */
+    default void onTableSnapshotFinished(String tableName) {
+        // Default no-op for backward compatibility
+    }
 }

@@ -776,6 +776,17 @@ public abstract class CommonConnectorConfig {
             .withDefault(1)
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
+            .withDisplayName("Incremental snapshot batch flush size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Number of rows accumulated in memory before flushing to the sink during incremental snapshot. "
+                    + "Lower values reduce memory usage but increase flush overhead. "
+                    + "Default 20000 keeps memory under 300MB per worker thread.")
+            .withDefault(20_000)
+            .withValidation(Field::isNonNegativeInteger);
+
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = Field.create("incremental.snapshot.retry.max.attempts")
             .withDisplayName("Incremental snapshot retry max attempts")
             .withType(Type.INT)
@@ -1576,6 +1587,7 @@ public abstract class CommonConnectorConfig {
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
     private final int incrementalSnapshotThreads;
+    private final int incrementalSnapshotBatchFlushSize;
     private final int incrementalSnapshotRetryMaxAttempts;
     private final long incrementalSnapshotRetryInitialDelayMs;
     private final long incrementalSnapshotRetryMaxDelayMs;
@@ -1637,6 +1649,7 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.incrementalSnapshotThreads = config.getInteger(INCREMENTAL_SNAPSHOT_THREADS);
+        this.incrementalSnapshotBatchFlushSize = config.getInteger(INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE);
         this.incrementalSnapshotRetryMaxAttempts = config.getInteger(INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS);
         this.incrementalSnapshotRetryInitialDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS);
         this.incrementalSnapshotRetryMaxDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS);
@@ -1834,6 +1847,10 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnapshotThreads() {
         return incrementalSnapshotThreads;
+    }
+
+    public int getIncrementalSnapshotBatchFlushSize() {
+        return incrementalSnapshotBatchFlushSize;
     }
 
     public int getIncrementalSnapshotRetryMaxAttempts() {
