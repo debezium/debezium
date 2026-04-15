@@ -290,11 +290,6 @@
                 <artifactId>jdbc</artifactId>
                 <version>${version.informix.driver}</version>
             </dependency>
-            <dependency>
-                <groupId>com.ibm.informix</groupId>
-                <artifactId>ifx-changestream-client</artifactId>
-                <version>${version.informix.changestream.client}</version>
-            </dependency>
 
             <!-- Logging -->
             <dependency>
