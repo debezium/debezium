@@ -116,6 +116,7 @@ public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisti
 
     @Override
     public void resetLagBehindSource() {
+        measurementCollector.reset();
         lagBehindSourceMeasurement.reset();
     }
 
@@ -164,6 +165,7 @@ public class StreamingMeter implements StreamingMetricsMXBean, StreamingStatisti
     }
 
     public void reset() {
+        measurementCollector.reset();
         lagBehindSourceMeasurement.reset();
         numberOfCommittedTransactions.set(0);
         sourceEventPosition.set(Collections.emptyMap());

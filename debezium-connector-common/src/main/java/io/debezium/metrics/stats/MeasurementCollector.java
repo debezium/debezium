@@ -73,6 +73,10 @@ public class MeasurementCollector<T extends MeasurementEvent> implements Consume
         publisherThread.interrupt();
     }
 
+    public void reset() {
+        queue.clear();
+    }
+
     // In general processing statistics may be time-consuming or may require synchronized access and thus adding new measurement may be blocked later in the call stack
     // and result in delays in processing records. To avoid it, measurements are added into the queue from this the events are consumed by dedicated thread and
     // statistics is updated from a separate thread.
