@@ -121,7 +121,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 10);
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
 
-        LogInterceptor interceptor = new LogInterceptor("io.debezium");
+        LogInterceptor interceptor = LogInterceptor.forPackage("io.debezium");
 
         // Send 3 blocking snapshot signals back-to-back
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
@@ -129,7 +129,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
         Awaitility.await()
                 .alias("Streaming did not resume after all blocking snapshots")
-                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
                 .atMost(waitTimeForRecords() * 60L, TimeUnit.SECONDS)
                 .until(() -> interceptor.countOccurrences("Streaming resumed") >= 3);
 
