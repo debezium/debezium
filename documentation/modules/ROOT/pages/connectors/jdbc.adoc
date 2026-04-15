@@ -1563,7 +1563,7 @@ Use with caution where strong data consistency is required.
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`
 |Specifies whether the connector processes `DELETE` or _tombstone_ events and removes the corresponding row from the database.
-Use of this option requires that you set the xref:jdbc-property-primary-key-mode[`primary.key.mode`] to `record.key`.
+Use of this option requires that you set the xref:jdbc-property-primary-key-mode[`primary.key.mode`] to `record.key`, `record.value` or `record.header`.
 
 |[[jdbc-property-truncate-enabled]]<<jdbc-property-truncate-enabled, `+truncate.enabled+`>>
 |`false`
