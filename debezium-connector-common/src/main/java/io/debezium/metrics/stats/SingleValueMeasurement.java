@@ -9,7 +9,7 @@ import io.debezium.metrics.event.SingleValueEvent;
 
 /**
  * A measurement which measures only a single variable.
- * Supports basic statistics over some time period, like minimal, maximal and average values.
+ * Supports basic statistics over some time period, like minimal, maximal and average values or sum of the values.
  *
  * @author vjuranek
  */
@@ -22,6 +22,8 @@ public interface SingleValueMeasurement<T extends SingleValueEvent<V>, V> extend
     V getMinValue();
 
     V getMaxValue();
+
+    V getSum();
 
     Double getAverageValue();
 }
