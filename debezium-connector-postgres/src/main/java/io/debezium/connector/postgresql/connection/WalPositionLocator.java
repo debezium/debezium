@@ -106,9 +106,22 @@ public class WalPositionLocator {
             return Optional.of(startStreamingLsn);
         }
 
+        // For non-transactional MESSAGE operations, lastCommitStoredLsn equals lastEventStoredLsn
+        // (both set to the MESSAGE's LSN). Since the MESSAGE was fully processed and committed,
+        // we can safely resume from the first LSN received after restart.
+        if (lastProcessedMessageType == Operation.MESSAGE && lastCommitStoredLsn.equals(lastEventStoredLsn)) {
+            LOGGER.info("Last processed event was MESSAGE operation at LSN '{}', will restart from first LSN '{}'",
+                    lastEventStoredLsn, firstLsnReceived);
+            startStreamingLsn = firstLsnReceived;
+            return Optional.of(startStreamingLsn);
+        }
+
         switch (message.getOperation()) {
             case BEGIN:
                 txStartLsn = currentLsn;
+                break;
+            case MESSAGE:
+                LOGGER.trace("Processing MESSAGE operation at LSN '{}' during WAL position search", currentLsn);
                 break;
             case COMMIT:
                 if (currentLsn.compareTo(lastCommitStoredLsn) > 0) {

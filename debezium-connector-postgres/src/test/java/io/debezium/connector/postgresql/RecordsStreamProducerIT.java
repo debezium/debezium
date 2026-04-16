@@ -4706,6 +4706,135 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-1379")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldResumeStreamingAfterRestartWhenLastEventWasNonTransactionalMessage() throws Exception {
+        // Setup
+        TestHelper.execute("DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true);
+        consumer = testConsumer(1);
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', now()::varchar);");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord heartbeat1 = consumer.remove();
+        assertThat(heartbeat1.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessagePrefix(heartbeat1)).isEqualTo("heartbeat");
+
+        stopConnector();
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), false);
+        consumer = testConsumer(1);
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', now()::varchar);");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord heartbeat2 = consumer.remove();
+
+        assertThat(heartbeat2.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessagePrefix(heartbeat2)).isEqualTo("heartbeat");
+    }
+
+    @Test
+    @FixFor("DBZ-1379")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldResumeStreamingAfterMessageBetweenTransactions() throws Exception {
+        TestHelper.execute("DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true);
+        consumer = testConsumer(2);
+
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (100);");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', 'msg1');");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord insert1 = consumer.remove();
+        assertThat(insert1.topic()).isEqualTo(topicName("s1.a"));
+
+        SourceRecord msg1 = consumer.remove();
+        assertThat(msg1.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessagePrefix(msg1)).isEqualTo("heartbeat");
+        assertThat(getMessageContent(msg1)).isEqualTo("msg1".getBytes());
+
+        stopConnector();
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), false);
+        consumer = testConsumer(2);
+
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (200);");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', 'msg2');");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord insert2 = consumer.remove();
+        assertThat(insert2.topic()).isEqualTo(topicName("s1.a"));
+        assertThat(((Struct) insert2.value()).getStruct("after").getInt32("aa")).isEqualTo(200);
+
+        SourceRecord msg2 = consumer.remove();
+        assertThat(msg2.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessagePrefix(msg2)).isEqualTo("heartbeat");
+        assertThat(getMessageContent(msg2)).isEqualTo("msg2".getBytes());
+    }
+
+    @Test
+    @FixFor("DBZ-1379")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldHandleMessageOperationInWalPositionSearch() throws Exception {
+        TestHelper.execute("DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true);
+        consumer = testConsumer(3);
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', 'before_insert');");
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (1);");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', 'after_insert');");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord msg1 = consumer.remove();
+        assertThat(msg1.topic()).isEqualTo(topicName("message"));
+
+        SourceRecord insert1 = consumer.remove();
+        assertThat(insert1.topic()).isEqualTo(topicName("s1.a"));
+
+        SourceRecord msg2 = consumer.remove();
+        assertThat(msg2.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessageContent(msg2)).isEqualTo("after_insert".getBytes());
+
+        stopConnector();
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), false);
+        consumer = testConsumer(2);
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'heartbeat', 'after_restart');");
+        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (2);");
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        SourceRecord msg3 = consumer.remove();
+        assertThat(msg3.topic()).isEqualTo(topicName("message"));
+        assertThat(getMessageContent(msg3)).isEqualTo("after_restart".getBytes());
+
+        SourceRecord insert2 = consumer.remove();
+        assertThat(insert2.topic()).isEqualTo(topicName("s1.a"));
+        assertThat(((Struct) insert2.value()).getStruct("after").getInt32("aa")).isEqualTo(2);
+    }
+
+    private String getMessagePrefix(SourceRecord record) {
+        Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+        return message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY);
+    }
+
+    private byte[] getMessageContent(SourceRecord record) {
+        Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+        return message.getBytes(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY);
+    }
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         assertInsert(statement, null, expectedSchemaAndValuesByColumn);
     }
