@@ -20,13 +20,14 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
     private long maxValue = Long.MIN_VALUE;
     private long lastValue = 0L;
     private long count = 0L;
-    private double averageValue = 0.0;
+    private long sum = 0L;
 
     @Override
     public synchronized void accept(T event) {
         final long value = event.getValue();
         lastValue = value;
         count++;
+        sum += value;
 
         if (minValue > value) {
             minValue = value;
@@ -35,17 +36,15 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
         if (maxValue < value) {
             maxValue = value;
         }
-
-        averageValue = (averageValue * (count - 1) + value) / count;
     }
 
     @Override
     public synchronized void reset() {
         minValue = Long.MAX_VALUE;
         maxValue = 0L;
-        averageValue = 0L;
         lastValue = 0L;
         count = 0L;
+        sum = 0L;
     }
 
     @Override
@@ -64,7 +63,12 @@ public abstract class SingleValueLongMeasurement<T extends SingleValueEvent<Long
     }
 
     @Override
+    public synchronized Long getSum() {
+        return count == 0L ? null : sum;
+    }
+
+    @Override
     public synchronized Double getAverageValue() {
-        return count == 0L ? null : averageValue;
+        return count == 0L ? null : (double) sum / count;
     }
 }
