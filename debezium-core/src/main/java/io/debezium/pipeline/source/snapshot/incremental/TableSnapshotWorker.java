@@ -121,13 +121,13 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         final TableId tableId = (TableId) context.currentDataCollectionId().getId();
 
         try {
-            LOGGER.info("[{}] 🚀 Starting table snapshot for '{}'",
+            LOGGER.info("[{}] Starting table snapshot for '{}'",
                     Thread.currentThread().getName(), tableId);
 
             // Get table schema
             currentTable = refreshTableSchema(tableId);
             if (currentTable == null) {
-                LOGGER.warn("[{}] ⚠️ Table '{}' schema not found, skipping",
+                LOGGER.warn("[{}] Table '{}' schema not found, skipping",
                         Thread.currentThread().getName(), tableId);
                 context.markCompleted();
                 return;
@@ -139,14 +139,14 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             // Get maximum key
             Object[] maximumKey = getMaximumKey();
             if (maximumKey == null) {
-                LOGGER.info("[{}] ✅ Table '{}' is empty",
+                LOGGER.info("[{}] Table '{}' is empty, skipping",
                         Thread.currentThread().getName(), tableId);
                 context.markCompleted();
                 return;
             }
 
             context.maximumKey(maximumKey);
-            LOGGER.info("[{}] 📊 Table '{}' has data, starting chunk reads",
+            LOGGER.info("[{}] Table '{}' has data, starting chunk reads",
                     Thread.currentThread().getName(), tableId);
 
             // Process all chunks
@@ -166,12 +166,12 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
 
             context.markCompleted();
-            LOGGER.info("[{}] ✅ Completed table snapshot for '{}': {} chunks, {} total rows",
+            LOGGER.info("[{}] Completed table snapshot for '{}': {} chunks, {} total rows",
                     Thread.currentThread().getName(), tableId, chunkCount, totalRowsRead);
 
             // Flush any remaining buffered data
             if (!completionHandlers.isEmpty() && !tableBuffer.isEmpty()) {
-                LOGGER.info("[{}] 🔔 Flushing final batch for table '{}' ({} rows)",
+                LOGGER.info("[{}] Flushing final batch for table '{}' ({} rows)",
                         Thread.currentThread().getName(),
                         tableId,
                         tableBuffer.size());
@@ -201,7 +201,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
         }
         catch (Exception e) {
-            LOGGER.error("[{}] ❌ Error processing table '{}': {}",
+            LOGGER.error("[{}] Error processing table '{}': {}",
                     Thread.currentThread().getName(), tableId, e.getMessage(), e);
             throw new DebeziumException("Failed to snapshot table " + tableId, e);
         }
@@ -218,7 +218,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         final TableId tableId = (TableId) context.currentDataCollectionId().getId();
 
-        LOGGER.debug("[{}] 🔄 Flushing partial buffer for '{}' ({} rows)",
+        LOGGER.debug("[{}] Flushing partial buffer for '{}' ({} rows)",
                 Thread.currentThread().getName(), tableId, tableBuffer.size());
 
         // Create a copy to pass to handlers
@@ -238,7 +238,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                     handler.onTableSnapshotCompleted(tableId.toString(), batchCopy, metadata);
                 }
                 catch (Exception ex) {
-                    LOGGER.error("[{}] ❌ Handler {} failed for partial batch of '{}': {}",
+                    LOGGER.error("[{}] Handler {} failed for partial batch of '{}': {}",
                             Thread.currentThread().getName(),
                             handler.getClass().getSimpleName(),
                             tableId,
@@ -251,7 +251,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         // Clear buffer after flush
         tableBuffer.clear();
-        LOGGER.debug("[{}] 🧹 Cleared partial buffer for '{}'",
+        LOGGER.debug("[{}] Cleared partial buffer for '{}'",
                 Thread.currentThread().getName(), tableId);
     }
 
