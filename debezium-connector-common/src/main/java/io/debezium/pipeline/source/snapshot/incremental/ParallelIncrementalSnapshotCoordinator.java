@@ -58,7 +58,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         JdbcConnection createConnection() throws SQLException;
     }
 
-    public ParallelIncrementalSnapshotCoordinator(int threadCount, JdbcConnection mainConnection,
+    public ParallelIncrementalSnapshotCoordinator(int threadCount,
                                                    ConnectionFactory connectionFactory) throws SQLException {
         if (threadCount < 1) {
             throw new IllegalArgumentException("Thread count must be at least 1, got: " + threadCount);
@@ -73,16 +73,13 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         this.connectionPool = new ConcurrentLinkedQueue<>();
         this.allConnections = new ArrayList<>(threadCount);
 
-        connectionPool.add(mainConnection);
-        allConnections.add(mainConnection);
-
-        for (int i = 1; i < threadCount; i++) {
+        for (int i = 0; i < threadCount; i++) {
             JdbcConnection conn = connectionFactory.createConnection();
             connectionPool.add(conn);
             allConnections.add(conn);
         }
 
-        LOGGER.info("Initialized parallel incremental snapshot coordinator with {} threads and {} connections",
+        LOGGER.info("Initialized parallel incremental snapshot coordinator with {} threads and {} dedicated connections",
                 threadCount, allConnections.size());
     }
 

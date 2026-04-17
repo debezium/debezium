@@ -115,7 +115,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 testConnection.close();
 
                 this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
-                        threads, jdbcConnection, () -> createSnapshotConnection());
+                        threads, () -> createSnapshotConnection());
 
                 LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
             }
