@@ -766,17 +766,7 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
-    public static final Field INCREMENTAL_SNAPSHOT_THREADS = Field.create("incremental.snapshot.threads")
-            .withDisplayName("Incremental snapshot threads")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Number of threads to use for parallel incremental snapshot processing. "
-                    + "Set to 1 for single-threaded mode (default). Values > 1 enable parallel table-level snapshot reads.")
-            .withDefault(1)
-            .withValidation(Field::isNonNegativeInteger);
-
-    public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
+public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
             .withDisplayName("Incremental snapshot batch flush size")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
@@ -1586,7 +1576,6 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
-    private final int incrementalSnapshotThreads;
     private final int incrementalSnapshotBatchFlushSize;
     private final int incrementalSnapshotRetryMaxAttempts;
     private final long incrementalSnapshotRetryInitialDelayMs;
@@ -1648,7 +1637,6 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
-        this.incrementalSnapshotThreads = config.getInteger(INCREMENTAL_SNAPSHOT_THREADS);
         this.incrementalSnapshotBatchFlushSize = config.getInteger(INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE);
         this.incrementalSnapshotRetryMaxAttempts = config.getInteger(INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS);
         this.incrementalSnapshotRetryInitialDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS);
@@ -1843,10 +1831,6 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnapshotChunkSize() {
         return incrementalSnapshotChunkSize;
-    }
-
-    public int getIncrementalSnapshotThreads() {
-        return incrementalSnapshotThreads;
     }
 
     public int getIncrementalSnapshotBatchFlushSize() {
