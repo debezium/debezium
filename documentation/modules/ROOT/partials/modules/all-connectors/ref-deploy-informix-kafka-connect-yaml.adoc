@@ -85,7 +85,7 @@ Specifies the addresses of the repository that store artifacts for the required 
 The OpenShift cluster must have access to the specified server.
 The examples provides URLs for the following components:
 
-`debezium-connector-{connector-file}:::
+`debezium-connector-{connector-file}`:::
 Specifies the source for the {prodname} Kafka connector artifact.
 
 `apicurio-registry-distro-connect-converter`:::
