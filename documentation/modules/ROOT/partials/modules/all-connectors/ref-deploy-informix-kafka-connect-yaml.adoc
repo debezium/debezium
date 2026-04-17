@@ -80,12 +80,12 @@ Valid types are `zip`, `tgz`, or `jar`.
 JDBC driver files are in `.jar` format.
 The `type` value of the artifact must match the extension of the file that is referenced in the `url` field.
 
-`plugins.artifacts.url:::
+`plugins.artifacts.url`:::
 Specifies the addresses of the repository that store artifacts for the required build components.
 The OpenShift cluster must have access to the specified server.
 The examples provides URLs for the following components:
 
-`debezium-connector`-{connector-file}:::
+`debezium-connector-{connector-file}:::
 Specifies the source for the {prodname} Kafka connector artifact.
 
 `apicurio-registry-distro-connect-converter`:::
