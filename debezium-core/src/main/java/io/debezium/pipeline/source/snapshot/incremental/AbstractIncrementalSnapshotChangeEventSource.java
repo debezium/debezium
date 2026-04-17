@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,7 +88,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     protected final NotificationService<P, ? extends OffsetContext> notificationService;
     protected ParallelIncrementalSnapshotCoordinator<P, T> parallelCoordinator;
-    protected SnapshotConnectionPool snapshotConnectionPool;
     protected final IncrementalSnapshotRetryPolicy retryPolicy;
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -110,43 +108,30 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         this.dataListener = dataChangeEventListener;
         this.notificationService = notificationService;
 
-        // Initialize parallel coordinator if multi-threading is enabled for incremental snapshots
-        int threads = config.getIncrementalSnapshotThreads();
+        int threads = config.getSnapshotMaxThreads();
         if (threads > 1) {
             try {
-                // Test if connector supports parallel snapshot connections
-                // This will throw UnsupportedOperationException if not overridden
                 JdbcConnection testConnection = createSnapshotConnection();
                 testConnection.close();
 
-                // Connector supports parallel read, initialize pool
-                this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(threads);
-                this.snapshotConnectionPool = new SnapshotConnectionPool(
-                        threads,
-                        () -> createSnapshotConnection()
-                );
+                this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
+                        threads, jdbcConnection, () -> createSnapshotConnection());
 
-                LOGGER.info("Incremental snapshot multi-threading enabled with {} threads and {} snapshot connections",
-                        threads, threads);
+                LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
             }
             catch (UnsupportedOperationException e) {
-                // Connector doesn't support parallel read, graceful degradation to single-threaded
                 LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by this connector. " +
                         "Falling back to single-threaded mode. Reason: {}", threads, e.getMessage());
                 this.parallelCoordinator = null;
-                this.snapshotConnectionPool = null;
             }
             catch (Exception e) {
-                // Other error during test connection (e.g., SQLException), also fall back
-                LOGGER.warn("Failed to initialize snapshot connection pool for parallel reads. " +
+                LOGGER.warn("Failed to initialize parallel incremental snapshot. " +
                         "Falling back to single-threaded mode. Error: {}", e.getMessage());
                 this.parallelCoordinator = null;
-                this.snapshotConnectionPool = null;
             }
         }
         else {
             this.parallelCoordinator = null;
-            this.snapshotConnectionPool = null;
             LOGGER.info("Incremental snapshot running in single-threaded mode");
         }
 
@@ -369,31 +354,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return;
         }
 
-        // SEQUENTIAL READ with optional parallel SQL execution via connection pool
-        JdbcConnection effectiveConnection = jdbcConnection; // Default: use main connection
+        JdbcConnection effectiveConnection = jdbcConnection;
         boolean acquiredPoolConnection = false;
 
         try {
-            // If connection pool is available, acquire a worker connection for parallel SQL reads
-            if (snapshotConnectionPool != null) {
-                try {
-                    LOGGER.info("[{}] Acquiring worker connection from pool (pool size: {}, available: {})",
-                            Thread.currentThread().getName(),
-                            parallelCoordinator.getThreadCount(),
-                            snapshotConnectionPool.getAvailableConnectionCount());
-
-                    effectiveConnection = snapshotConnectionPool.acquire(30); // 30 second timeout
+            if (parallelCoordinator != null) {
+                JdbcConnection pooled = parallelCoordinator.borrowConnection();
+                if (pooled != null) {
+                    effectiveConnection = pooled;
                     acquiredPoolConnection = true;
-
-                    LOGGER.info("[{}] ✅ Worker connection acquired - using PARALLEL SQL READ for table '{}' chunk",
+                    LOGGER.debug("[{}] Acquired worker connection for table '{}' chunk",
                             Thread.currentThread().getName(),
                             context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "unknown");
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    LOGGER.warn("[{}] ⚠️ Failed to acquire worker connection, falling back to main connection",
-                            Thread.currentThread().getName());
-                    effectiveConnection = jdbcConnection;
                 }
             }
 
@@ -512,12 +484,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             }
         }
         finally {
-            // Release pool connection if acquired
             if (acquiredPoolConnection && effectiveConnection != null) {
-                snapshotConnectionPool.release(effectiveConnection);
-                LOGGER.info("[{}] 🔄 Released worker connection back to pool (available: {})",
-                        Thread.currentThread().getName(),
-                        snapshotConnectionPool.getAvailableConnectionCount());
+                parallelCoordinator.returnConnection(effectiveConnection);
             }
 
             postReadChunk(context);
@@ -547,71 +515,52 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             List<DataCollection<T>> dataCollections,
             String correlationId) {
 
-        final int maxParallelTables = snapshotConnectionPool.getPoolSize();
+        final int maxParallelTables = parallelCoordinator.getConnectionPoolSize();
         final int totalTables = dataCollections.size();
 
-        LOGGER.info("[{}] 🚀 Starting parallel table processing for {} tables with {} workers (batches of {})",
-                Thread.currentThread().getName(),
-                totalTables,
-                parallelCoordinator.getThreadCount(),
-                maxParallelTables);
+        LOGGER.info("Starting parallel table processing for {} tables with {} workers",
+                totalTables, parallelCoordinator.getThreadCount());
 
         long totalRowsAllTables = 0;
         int tablesProcessed = 0;
 
-        // Process tables in batches (max = pool size)
         for (int batchStart = 0; batchStart < totalTables; batchStart += maxParallelTables) {
             int batchEnd = Math.min(batchStart + maxParallelTables, totalTables);
             List<DataCollection<T>> batch = dataCollections.subList(batchStart, batchEnd);
             int batchNumber = (batchStart / maxParallelTables) + 1;
             int totalBatches = (int) Math.ceil((double) totalTables / maxParallelTables);
 
-            LOGGER.info("[{}] Processing batch {}/{}: tables {}-{} of {}",
-                    Thread.currentThread().getName(),
-                    batchNumber, totalBatches,
-                    batchStart + 1, batchEnd, totalTables);
+            LOGGER.info("Processing batch {}/{}: tables {}-{} of {}",
+                    batchNumber, totalBatches, batchStart + 1, batchEnd, totalTables);
 
-            final List<Future<?>> futures = new ArrayList<>();
             final List<TableSnapshotWorker<P, T>> workers = new ArrayList<>();
             final List<JdbcConnection> acquiredConnections = new ArrayList<>();
 
             try {
-                // Create worker for each table in this batch
+                parallelCoordinator.resetTaskCount();
+
                 for (DataCollection<T> dataCollection : batch) {
-                    // Create isolated context for this table
                     TableSnapshotContext<T> tableContext = new TableSnapshotContext<>(dataCollection);
 
-                    // Acquire connection from pool
-                    JdbcConnection workerConnection;
-                    try {
-                        workerConnection = snapshotConnectionPool.acquire(30);
-                        acquiredConnections.add(workerConnection);
-                    }
-                    catch (InterruptedException e) {
-                        LOGGER.warn("[{}] Failed to acquire connection for table '{}', skipping",
-                                Thread.currentThread().getName(), dataCollection.getId());
-                        Thread.currentThread().interrupt();
+                    JdbcConnection workerConnection = parallelCoordinator.borrowConnection();
+                    if (workerConnection == null) {
+                        LOGGER.warn("No connection available for table '{}', skipping", dataCollection.getId());
                         continue;
                     }
+                    acquiredConnections.add(workerConnection);
 
-                    // Get window buffer for this table
                     Map<Struct, Object[]> tableWindowBuffer = parallelCoordinator.getWindowBuffer(dataCollection.getId());
 
-                    // Create watermark callback (connector-specific)
                     TableSnapshotWorker.WatermarkCallback watermarkCallback = new TableSnapshotWorker.WatermarkCallback() {
                         @Override
                         public void openWindow() {
-                            // For read-only mode (PostgreSQL), watermarks handled by worker
-                            // For signal-based mode, this would need synchronization
                         }
 
                         @Override
                         public void closeWindow() {
-                            // Watermark close
                         }
                     };
 
-                    // Create worker
                     TableSnapshotWorker<P, T> worker = new TableSnapshotWorker<>(
                             tableContext,
                             workerConnection,
@@ -627,77 +576,53 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
                     workers.add(worker);
 
-                    // Submit to thread pool
-                    Future<?> future = parallelCoordinator.submitChunkTask(worker);
-                    futures.add(future);
+                    final JdbcConnection conn = workerConnection;
+                    parallelCoordinator.submit(() -> {
+                        try {
+                            worker.run();
+                        }
+                        finally {
+                            parallelCoordinator.returnConnection(conn);
+                        }
+                        return null;
+                    });
 
-                    LOGGER.info("[{}] Spawned worker for table '{}' (batch {}/{})",
-                            Thread.currentThread().getName(),
-                            dataCollection.getId(),
-                            batchNumber, totalBatches);
+                    LOGGER.info("Spawned worker for table '{}' (batch {}/{})",
+                            dataCollection.getId(), batchNumber, totalBatches);
                 }
 
-                LOGGER.info("[{}] Batch {}/{}: {} workers spawned, waiting for completion...",
-                        Thread.currentThread().getName(),
-                        batchNumber, totalBatches,
-                        futures.size());
+                parallelCoordinator.awaitCompletion();
 
-                // Wait for all workers in this batch to complete
-                for (int i = 0; i < futures.size(); i++) {
-                    try {
-                        futures.get(i).get(); // Block until worker completes
-                        long rowsRead = workers.get(i).getTotalRowsRead();
-                        totalRowsAllTables += rowsRead;
-                        tablesProcessed++;
+                for (TableSnapshotWorker<P, T> worker : workers) {
+                    long rowsRead = worker.getTotalRowsRead();
+                    totalRowsAllTables += rowsRead;
+                    tablesProcessed++;
 
-                        LOGGER.info("[{}] Batch {}/{}: Worker {} of {} completed for table '{}' ({} rows)",
-                                Thread.currentThread().getName(),
-                                batchNumber, totalBatches,
-                                i + 1,
-                                futures.size(),
-                                workers.get(i).getContext().currentDataCollectionId().getId(),
-                                rowsRead);
-                    }
-                    catch (Exception e) {
-                        LOGGER.error("[{}] Batch {}/{}: Worker {} failed: {}",
-                                Thread.currentThread().getName(),
-                                batchNumber, totalBatches,
-                                i, e.getMessage(), e);
-                    }
+                    LOGGER.info("Completed table '{}' ({} rows)",
+                            worker.getContext().currentDataCollectionId().getId(), rowsRead);
                 }
 
-                LOGGER.info("[{}] ✅ Batch {}/{} completed! {} tables processed, {} rows total",
-                        Thread.currentThread().getName(),
-                        batchNumber, totalBatches,
-                        futures.size(),
-                        totalRowsAllTables);
-
-                // Mark tables as complete in global context
                 for (TableSnapshotWorker<P, T> worker : workers) {
                     if (worker.getContext().isCompleted()) {
-                        // Remove from global context queue
                         context.nextDataCollection();
                     }
                 }
-
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.error("Interrupted during parallel table processing", e);
+                throw new DebeziumException("Parallel snapshot interrupted", e);
+            }
+            catch (ExecutionException e) {
+                LOGGER.error("Worker failed during parallel table processing", e);
+                throw new DebeziumException("Parallel snapshot worker failed", e);
             }
             finally {
-                // Release all connections back to pool for next batch
-                for (JdbcConnection conn : acquiredConnections) {
-                    snapshotConnectionPool.release(conn);
-                }
-
-                LOGGER.info("[{}] Batch {}/{}: Released {} connections back to pool",
-                        Thread.currentThread().getName(),
-                        batchNumber, totalBatches,
-                        acquiredConnections.size());
+                acquiredConnections.clear();
             }
         }
 
-        LOGGER.info("[{}] ✅ All {} tables completed successfully! Total rows: {}",
-                Thread.currentThread().getName(),
-                tablesProcessed,
-                totalRowsAllTables);
+        LOGGER.info("All {} tables completed. Total rows: {}", tablesProcessed, totalRowsAllTables);
     }
 
     private boolean isTableInvalid(P partition, OffsetContext offsetContext) {
@@ -838,7 +763,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
 
             // Use parallel processing if available
-            if (parallelCoordinator != null && snapshotConnectionPool != null && newDataCollectionIds.size() > 1) {
+            if (parallelCoordinator != null && newDataCollectionIds.size() > 1) {
                 LOGGER.info("Starting PARALLEL table-level snapshot for {} tables with {} worker threads",
                         newDataCollectionIds.size(), parallelCoordinator.getThreadCount());
                 processTablesInParallel(partition, offsetContext, newDataCollectionIds, correlationId);
@@ -1184,10 +1109,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Shutting down parallel incremental snapshot coordinator");
             parallelCoordinator.shutdown();
         }
-        if (snapshotConnectionPool != null) {
-            LOGGER.info("Shutting down snapshot connection pool");
-            snapshotConnectionPool.shutdown();
-        }
     }
 
     /**
@@ -1202,7 +1123,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * @return true if parallel read should be used, false for sequential read
      */
     protected boolean shouldUseParallelRead() {
-        if (snapshotConnectionPool == null) {
+        if (parallelCoordinator == null) {
             return false;
         }
 
