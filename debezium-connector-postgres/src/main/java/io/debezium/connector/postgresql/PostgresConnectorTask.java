@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import io.debezium.pipeline.*;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -43,10 +44,6 @@ import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
-import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
-import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -158,6 +155,21 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
+
+        // Wire WAL lag supplier to task lifecycle metrics (lazy computation on JMX scrape)
+        if (getTaskLifecycleMetrics() != null) {
+            final String slotName = connectorConfig.slotName();
+            getTaskLifecycleMetrics().setReplicationSlotLagSupplier(() -> {
+                try {
+                    return beanRegistryJdbcConnection.getWalLagInBytes(slotName);
+                }
+                catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            // Register the task lifecycle MBean for JMX monitoring
+            JmxUtils.registerMXBean(getTaskLifecycleMetrics(), connectorConfig, "connector-metrics", "task-lifecycle");
+        }
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -515,7 +527,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             if (snapshotterService.getSnapshotter() != null && snapshotterService.getSnapshotter().shouldStream()) {
                 // Logical WAL_LEVEL is only necessary for CDC snapshotting
-                throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
+                throw new RetriableException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
             }
             else {
                 LOGGER.warn("WAL_LEVEL check failed but this is ignored as CDC was not requested");

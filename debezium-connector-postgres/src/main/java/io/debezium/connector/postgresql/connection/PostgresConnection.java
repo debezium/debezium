@@ -299,6 +299,22 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     /**
+     * Returns the WAL lag in bytes between the current WAL position and the replication slot's
+     * restart LSN. This indicates how much WAL data the slot is holding back from being recycled.
+     *
+     * @param slotName the name of the replication slot
+     * @return the WAL lag in bytes, or 0 if the slot is not found
+     * @throws SQLException if a database access error occurs
+     */
+    public long getWalLagInBytes(String slotName) throws SQLException {
+        return prepareQueryAndMap(
+                "SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) AS wal_lag_bytes "
+                        + "FROM pg_replication_slots WHERE slot_name = ?",
+                statement -> statement.setString(1, slotName),
+                rs -> rs.next() ? rs.getLong("wal_lag_bytes") : 0L);
+    }
+
+    /**
      * Retrieves the catalog xmin value from the replication slot.
      *
      * @param slotName the name of the slot
@@ -365,7 +381,13 @@ public class PostgresConnection extends JdbcConnection {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT; attempt++) {
             final ServerInfo.ReplicationSlot slot = fetchReplicationSlotInfo(slotName, pluginName);
             if (slot != null) {
-                LOGGER.info("Obtained valid replication slot {}", slot);
+                if (slot.equals(ServerInfo.ReplicationSlot.INVALID)) {
+                    LOGGER.info("Replication slot '{}' not found for plugin '{}' and database '{}'",
+                            slotName, pluginName, database);
+                }
+                else {
+                    LOGGER.info("Obtained valid replication slot {}", slot);
+                }
                 return slot;
             }
             LOGGER.warn(

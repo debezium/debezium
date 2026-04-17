@@ -197,6 +197,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private final Map<Map<String, ?>, Map<String, ?>> lastOffsets = new HashMap<>();
 
     private Duration retriableRestartWait;
+    private int startRetryCount = 0;
+    private int startMaxRetries = ErrorHandler.RETRIES_UNLIMITED;
+    private TaskLifecycleMetrics taskLifecycleMetrics;
 
     private final ElapsedTimeStrategy pollOutputDelay;
 
@@ -264,6 +267,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
+            startMaxRetries = config.getInteger(CommonConnectorConfig.MAX_RETRIES_ON_ERROR);
+
+            // Register task lifecycle metrics MBean (available before coordinator starts)
+            taskLifecycleMetrics = new TaskLifecycleMetrics();
+            taskLifecycleMetrics.setStartMaxRetries(startMaxRetries);
+            taskLifecycleMetrics.setTaskState("INITIAL");
+
             restartDelay = null;
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
                 throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -435,6 +445,20 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return false;
     }
 
+    private void updateRetryMetrics() {
+        if (taskLifecycleMetrics != null) {
+            taskLifecycleMetrics.setStartRetryCount(startRetryCount);
+            taskLifecycleMetrics.setTaskState(getTaskState().name());
+            if (coordinator != null && coordinator.getErrorHandler() != null) {
+                taskLifecycleMetrics.setPollRetryCount(coordinator.getErrorHandler().getRetries());
+            }
+        }
+    }
+
+    protected TaskLifecycleMetrics getTaskLifecycleMetrics() {
+        return taskLifecycleMetrics;
+    }
+
     /**
      * Returns the next batch of source records, if any are available.
      */
@@ -468,11 +492,20 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
+                    if (startMaxRetries != ErrorHandler.RETRIES_UNLIMITED && startRetryCount >= startMaxRetries) {
+                        LOGGER.error("Maximum start retries ({}) exhausted. Task will not recover.", startMaxRetries);
+                        throw new ConnectException("Task failed to start after " + startRetryCount + " retries");
+                    }
+                    startRetryCount++;
+                    updateRetryMetrics();
+                    LOGGER.warn("Start retry attempt {} of {}", startRetryCount,
+                            startMaxRetries == ErrorHandler.RETRIES_UNLIMITED ? "unlimited" : startMaxRetries);
                     LOGGER.info("Attempting to restart task.");
-                    preStart(config);
                     this.coordinator = start(config);
                     LOGGER.info("Successfully restarted task");
                     restartDelay = null;
+                    startRetryCount = 0;
+                    updateRetryMetrics();
                     setTaskState(DebeziumTaskState.RUNNING);
                     result = true;
                 }
@@ -497,6 +530,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             LOGGER.warn("Error while performing commit.", e);
         }
         finally {
+            if (taskLifecycleMetrics != null) {
+                taskLifecycleMetrics = null;
+            }
             stop(false);
             DebeziumOpenLineageEmitter
                     .cleanup(DebeziumOpenLineageEmitter.connectorContext(getMaskedConfigurationMap(config.asMap()), connectorName(), cdcSourceTaskContext.getRunId()));
