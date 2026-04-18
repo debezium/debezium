@@ -1687,9 +1687,6 @@ Set the property to one of the following values:
 `initial`::
 When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
 
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
-
 |[[vitess-property-snapshot-include-collection-list]]<<vitess-property-snapshot-include-collection-list,`+snapshot.include.collection.list+`>>
 |none
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy. +

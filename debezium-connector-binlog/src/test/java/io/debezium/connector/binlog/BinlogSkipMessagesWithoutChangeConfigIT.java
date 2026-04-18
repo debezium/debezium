@@ -44,7 +44,7 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -65,11 +65,12 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
 
         long skippedBefore = getNumberOfUnchangedEventsSkipped();
         assertThat(skippedBefore).isEqualTo(0);
@@ -112,11 +113,12 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_EXCLUDE_LIST, getQualifiedColumnName("black"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
 
         long skippedBefore = getNumberOfUnchangedEventsSkipped();
         assertThat(skippedBefore).isEqualTo(0);
@@ -158,11 +160,12 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
 
         long skippedBefore = getNumberOfUnchangedEventsSkipped();
         assertThat(skippedBefore).isEqualTo(-1);

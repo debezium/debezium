@@ -2596,7 +2596,7 @@ Set a delay value that is higher than the value of the {link-kafka-docs}/#connec
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_databaseName_._schemaName_._tableName_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:informix-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's xref:informix-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`.
+This property takes effect only if the connector's xref:informix-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`.
 
 This property does not affect the behavior of incremental snapshots.
 

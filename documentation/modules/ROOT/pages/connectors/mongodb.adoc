@@ -2014,8 +2014,6 @@ After the snapshot completes, the connector begins to stream event records for s
 After the snapshot completes, the connector stops.
 It does not transition to streaming event records for subsequent database changes.
 
-`never`:: Deprecated, see `no_data`.
-
 `no_data`:: The connector runs a snapshot that captures the structure of all relevant tables,
 //, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that
 but it does not create `READ` events to represent the data set at the point of the connector's start-up.
