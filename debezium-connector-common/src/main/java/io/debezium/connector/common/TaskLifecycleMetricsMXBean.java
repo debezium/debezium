@@ -20,5 +20,5 @@ public interface TaskLifecycleMetricsMXBean {
 
     String getTaskState();
 
-    long getReplicationSlotLagInBytes();
+    long getLagInBytes();
 }

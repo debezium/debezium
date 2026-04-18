@@ -159,7 +159,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         // Wire WAL lag supplier to task lifecycle metrics (lazy computation on JMX scrape)
         if (getTaskLifecycleMetrics() != null) {
             final String slotName = connectorConfig.slotName();
-            getTaskLifecycleMetrics().setReplicationSlotLagSupplier(() -> {
+            getTaskLifecycleMetrics().setLagSupplier(() -> {
                 try {
                     return beanRegistryJdbcConnection.getWalLagInBytes(slotName);
                 }
@@ -167,8 +167,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     throw new RuntimeException(e);
                 }
             });
-            // Register the task lifecycle MBean for JMX monitoring
-            JmxUtils.registerMXBean(getTaskLifecycleMetrics(), connectorConfig, "connector-metrics", "task-lifecycle");
         }
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);

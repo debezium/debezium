@@ -10,15 +10,7 @@ import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -26,6 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import io.debezium.pipeline.JmxUtils;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -65,6 +58,9 @@ import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -200,6 +196,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private int startRetryCount = 0;
     private int startMaxRetries = ErrorHandler.RETRIES_UNLIMITED;
     private TaskLifecycleMetrics taskLifecycleMetrics;
+    private ObjectName taskLifeCycleMetricsObjectName;
 
     private final ElapsedTimeStrategy pollOutputDelay;
 
@@ -273,6 +270,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             taskLifecycleMetrics = new TaskLifecycleMetrics();
             taskLifecycleMetrics.setStartMaxRetries(startMaxRetries);
             taskLifecycleMetrics.setTaskState("INITIAL");
+            taskLifeCycleMetricsObjectName = taskLifeCycleMetricsObjectName();
+            JmxUtils.registerMXBean(taskLifeCycleMetricsObjectName, taskLifecycleMetrics);
 
             restartDelay = null;
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
@@ -530,7 +529,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             LOGGER.warn("Error while performing commit.", e);
         }
         finally {
-            if (taskLifecycleMetrics != null) {
+            if (null != taskLifeCycleMetricsObjectName) {
+                JmxUtils.unregisterMXBean(taskLifeCycleMetricsObjectName);
                 taskLifecycleMetrics = null;
             }
             stop(false);
@@ -694,5 +694,36 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
         serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
         serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
+    }
+
+    public static Map<String, String> customTagMap(String customTags) {
+        if (customTags == null || customTags.trim().isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return Arrays.stream(customTags.split(","))
+                .map(String::trim)
+                .filter(pair -> !pair.isEmpty())
+                .map(pair -> pair.split("=", 2))
+                .collect(Collectors.toMap(
+                        parts -> parts[0].trim(),
+                        parts -> (parts.length > 1) ? parts[1].trim() : "",
+                        (existing, replacement) -> replacement
+                ));
+    }
+
+    private ObjectName taskLifeCycleMetricsObjectName() {
+        StringBuilder jmxObjectNameBuilder = new StringBuilder("debezium.common:type=connector-metrics,context=task-lifecycle").append(",server=")
+                .append(config.getString("topic.prefix"));
+
+        for (Map.Entry<String, String> customTags : customTagMap(config.getString("custom.metric.tags")).entrySet()) {
+            jmxObjectNameBuilder.append(",").append(customTags.getKey()).append("=").append(customTags.getValue());
+        }
+        try {
+            return new ObjectName(jmxObjectNameBuilder.toString());
+        }
+        catch (MalformedObjectNameException e) {
+            throw new RuntimeException("Unable to register the MBean '" + jmxObjectNameBuilder + "'", e);
+        }
     }
 }

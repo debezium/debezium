@@ -28,8 +28,8 @@ public class TaskLifecycleMetrics implements TaskLifecycleMetricsMXBean {
     private final AtomicInteger startMaxRetries = new AtomicInteger(-1);
     private final AtomicInteger pollRetryCount = new AtomicInteger();
     private final AtomicReference<String> taskState = new AtomicReference<>("INITIAL");
-    private final AtomicLong cachedReplicationSlotLagInBytes = new AtomicLong();
-    private volatile LongSupplier replicationSlotLagSupplier;
+    private final AtomicLong lagInBytes = new AtomicLong();
+    private volatile LongSupplier lagSupplier;
 
     @Override
     public int getStartRetryCount() {
@@ -71,23 +71,23 @@ public class TaskLifecycleMetrics implements TaskLifecycleMetricsMXBean {
      * Sets the supplier that computes replication slot lag on demand.
      * Called once during connector setup with a reference to the JDBC connection.
      */
-    public void setReplicationSlotLagSupplier(LongSupplier supplier) {
-        this.replicationSlotLagSupplier = supplier;
+    public void setLagSupplier(LongSupplier supplier) {
+        this.lagSupplier = supplier;
     }
 
     @Override
-    public long getReplicationSlotLagInBytes() {
-        LongSupplier supplier = replicationSlotLagSupplier;
+    public long getLagInBytes() {
+        LongSupplier supplier = lagSupplier;
         if (supplier != null) {
             try {
                 long lag = supplier.getAsLong();
-                cachedReplicationSlotLagInBytes.set(lag);
+                lagInBytes.set(lag);
                 return lag;
             }
             catch (Exception e) {
                 LOGGER.debug("Failed to compute replication slot lag, returning cached value", e);
             }
         }
-        return cachedReplicationSlotLagInBytes.get();
+        return lagInBytes.get();
     }
 }
