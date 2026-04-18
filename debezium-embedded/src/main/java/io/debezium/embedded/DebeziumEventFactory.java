@@ -27,7 +27,7 @@ import java.util.Map;
  * This allows us to reuse the tested EventConverter code from memiiso/debezium-server-iceberg
  * for handling snapshot data, ensuring consistent null handling and type conversion.
  *
- * @author Debezium Community
+ * @author Ivan Senyk
  */
 public class DebeziumEventFactory {
 

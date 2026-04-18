@@ -37,6 +37,7 @@ import io.debezium.spi.schema.DataCollectionId;
  *
  * <p>Each table gets its own isolated window buffer to prevent thread conflicts.
  *
+ * @author Ivan Senyk
  * @param <P> the type of partition
  * @param <T> the type of data collection identifier
  */

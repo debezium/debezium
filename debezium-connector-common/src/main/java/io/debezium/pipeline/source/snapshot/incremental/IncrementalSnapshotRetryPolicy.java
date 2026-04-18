@@ -46,7 +46,7 @@ import io.debezium.util.Metronome;
  * );
  * </pre>
  *
- * @author Debezium Community
+ * @author Ivan Senyk
  */
 public class IncrementalSnapshotRetryPolicy {
 

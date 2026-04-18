@@ -38,6 +38,7 @@ import io.debezium.util.ColumnUtils;
  * <p>Runs in dedicated thread, processes all chunks of a table independently.
  * Uses isolated TableSnapshotContext to avoid conflicts with main thread.
  *
+ * @author Ivan Senyk
  * @param <P> partition type
  * @param <T> data collection identifier type
  */

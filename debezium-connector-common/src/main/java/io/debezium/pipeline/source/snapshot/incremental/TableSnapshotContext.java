@@ -25,6 +25,7 @@ import io.debezium.util.Strings;
  * <p>Implements IncrementalSnapshotContext interface but only supports methods needed
  * for chunk reading. Other methods throw UnsupportedOperationException.
  *
+ * @author Ivan Senyk
  * @param <T> the type of data collection identifier
  */
 public class TableSnapshotContext<T extends DataCollectionId> implements IncrementalSnapshotContext<T> {
