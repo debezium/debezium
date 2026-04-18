@@ -67,7 +67,7 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     @BeforeEach
     void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -87,12 +87,15 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     }
 
     @Test
-    void shouldCaptureMultipleWriteEvents() throws Exception {
+    void shouldCaptureMultipleWriteEventsUsingStreaming() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         Debug.enable();
         assertConnectorIsRunning();
@@ -140,9 +143,9 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
     }
 
     @Test
-    void shouldCorrectlySkipEventsInCompressedTransaction() throws Exception {
+    void shouldCorrectlySkipEventsInCompressedTransactionUsingStreaming() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 // Since we rely on event counts to determine where to stop and restart,
                 // we need to ensure each event is processed individually
                 .with(BinlogConnectorConfig.MAX_BATCH_SIZE, "1")
@@ -165,6 +168,9 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
         });
 
         assertConnectorIsRunning();
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Execute multiple inserts in a single compressed transaction
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {

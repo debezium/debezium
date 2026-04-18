@@ -45,7 +45,7 @@ public abstract class BinlogEnumColumnIT<C extends SourceConnector> extends Abst
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -65,11 +65,14 @@ public abstract class BinlogEnumColumnIT<C extends SourceConnector> extends Abst
     public void shouldAlterEnumColumnCharacterSet() throws Exception {
 
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_stations_10"))
                 .build();
 
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // There are 5 records to account for the following operations
         // CREATE DATABASE
@@ -94,12 +97,15 @@ public abstract class BinlogEnumColumnIT<C extends SourceConnector> extends Abst
     @FixFor("DBZ-1636")
     public void shouldPropagateColumnSourceType() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_stations_10"))
                 .with("column.propagate.source.type", DATABASE.qualifiedTableName("test_stations_10") + ".type")
                 .build();
 
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         SourceRecords records = consumeRecordsByTopic(5);
 

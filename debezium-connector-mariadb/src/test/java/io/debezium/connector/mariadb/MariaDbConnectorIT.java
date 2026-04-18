@@ -103,7 +103,7 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
         final Configuration initialConfig = database.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName("products"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
         start(getConnectorClass(), initialConfig);
@@ -133,7 +133,7 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName("products"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.GTID_SOURCE_EXCLUDES, ".*")
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
         final Logger binlogClientLogger = Logger.getLogger(BinaryLogClient.class.getName());

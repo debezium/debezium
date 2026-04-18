@@ -183,6 +183,62 @@ public abstract class UniqueDatabase {
         }
     }
 
+    public void create(Map<String, Object> urlProperties) {
+        try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+            String[] ddl = charset != null ? CREATE_DATABASE_WITH_CHARSET_DDL : CREATE_DATABASE_DDL;
+
+            String[] statements = Arrays.stream(ddl)
+                    .map(String::trim)
+                    .filter(x -> !x.startsWith("--") && !x.isEmpty())
+                    .map(x -> {
+                        Matcher m = COMMENT_PATTERN.matcher(x);
+                        return m.matches() ? m.group(1) : x;
+                    })
+                    .map(this::convertSQL)
+                    .toArray(String[]::new);
+
+            connection.execute(statements);
+        }
+        catch (final Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public void create() {
+        create(Collections.emptyMap());
+    }
+
+    public void initialize(Map<String, Object> urlProperties) {
+        final String ddlFile = String.format("ddl/%s.sql", templateName);
+        final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
+        assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
+        try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+            final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(
+                    Stream.concat(
+                            Arrays.stream(new String[]{ "USE `$DBNAME$`;" }),
+                            data)
+                            .map(String::trim)
+                            .filter(x -> !x.startsWith("--") && !x.isEmpty())
+                            .map(x -> {
+                                final Matcher m = COMMENT_PATTERN.matcher(x);
+                                return m.matches() ? m.group(1) : x;
+                            })
+                            .map(this::convertSQL)
+                            .collect(Collectors.joining("\n"))
+                            .split(";"))
+                    .map(x -> x.replace("$$", ";"))
+                    .collect(Collectors.toList()));
+            connection.execute(statements.toArray(new String[0]));
+        }
+        catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public void initialize() {
+        initialize(Collections.emptyMap());
+    }
+
     /**
      * Supports reading the contents of the SQL file, regardless if its bundled in a jar or not.
      *

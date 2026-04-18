@@ -57,6 +57,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 /**
@@ -78,7 +79,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
 
@@ -136,7 +137,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
                 .with(BinlogConnectorConfig.PASSWORD, "replpass")
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, false)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER);
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                // Test user has no lock tables permission
+                .with(BinlogConnectorConfig.SNAPSHOT_LOCKING_MODE_PROPERTY_NAME, "none");
     }
 
     @Test
@@ -146,6 +149,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -206,6 +212,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         // Start the connector ...
         start(getConnectorClass(), config);
 
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
+
         // Poll for records ...
         // Testing.Print.enable();
         int expectedSchemaChangeCount = 5 + 2; // 5 tables plus 2 alters
@@ -217,7 +226,6 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         // There should be no schema changes ...
         assertThat(schemaChanges.recordCount()).isEqualTo(expectedSchemaChangeCount);
         final List<String> expectedAffectedTables = Arrays.asList(
-                null, // CREATE DATABASE
                 "Products", // CREATE TABLE
                 "Products", // ALTER TABLE
                 "products_on_hand", // CREATE TABLE
@@ -227,8 +235,11 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         );
         final List<String> affectedTables = new ArrayList<>();
         schemaChanges.forEach(record -> {
-            affectedTables.add(((Struct) record.value()).getStruct("source").getString("table"));
-            assertThat(((Struct) record.value()).getStruct("source").get("db")).isEqualTo(DATABASE.getDatabaseName());
+            final Struct source = ((Struct) record.value()).getStruct("source");
+            if (!Strings.isNullOrEmpty(source.getString("table"))) {
+                affectedTables.add(source.getString("table"));
+                assertThat(source.get("db")).isEqualTo(DATABASE.getDatabaseName());
+            }
         });
         assertThat(affectedTables).isEqualTo(expectedAffectedTables);
 
@@ -286,10 +297,11 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Start the connector ...
         start(getConnectorClass(), config);
-        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
-        // Lets wait for at least 35 events to be filtered.
-        final int expectedFilterCount = 35;
+        // Lets wait for at least 26 events to be filtered.
+        final int expectedFilterCount = 26;
         final long numberFiltered = filterAtLeast(expectedFilterCount, 20, TimeUnit.SECONDS);
 
         // All events should have been filtered.
@@ -310,7 +322,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     public void shouldHandleTimestampTimezones() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
+        REGRESSION_DATABASE.create();
 
         String tableName = "dbz_85_fractest";
         config = simpleConfig().with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -320,6 +332,10 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
+        REGRESSION_DATABASE.initialize();
 
         int expectedChanges = 1; // only 1 insert
 
@@ -349,7 +365,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     public void shouldHandleMySQLTimeCorrectly() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
+        REGRESSION_DATABASE.create();
 
         String tableName = "dbz_342_timetest";
         config = simpleConfig().with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -359,6 +375,10 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
+        REGRESSION_DATABASE.initialize();
 
         int expectedChanges = 1; // only 1 insert
 
@@ -532,7 +552,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         AtomicReference<Throwable> exception = new AtomicReference<>();
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
 
-        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Confirm that the heartbeat.action.query was executed with the heartbeat
         final String slotQuery = String.format("SELECT COUNT(*) FROM %s.test_heartbeat_table;", DATABASE.getDatabaseName());
@@ -570,6 +591,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -635,7 +659,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Start the connector ...
         start(getConnectorClass(), config);
-        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Create a test table that simulates pt-table-checksum's checksums table
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
