@@ -69,6 +69,11 @@ There are also ethical and legal considerations around authorship, licensing, an
 
 We believe that learning to code and contributing to open source are deeply human endeavors that requires curiosity, slowness, and community.
 
+## Consequences
+
+* We may close issues or pull requests that violate this policy without a detailed explanation.
+* Repeated violations may result in temporary or permanent restrictions from participating in the project.
+
 ## About AGENTS.md
 
 The [AGENTS.md](./AGENTS.md) file contains instructions for AI coding assistants to prompt them to act more like guides than code generators. When someone uses an assistant to contribute, the tool will be prompted to explain the code, point to our documentation, and suggest asking questions in the community channels, rather than writing code directly.
