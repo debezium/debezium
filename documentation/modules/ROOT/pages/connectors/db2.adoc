@@ -3085,7 +3085,7 @@ Set a delay value that is higher than the value of the {link-kafka-docs}/#connec
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:db2-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's xref:db2-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:db2-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.

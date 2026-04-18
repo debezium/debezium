@@ -88,7 +88,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
-import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -174,9 +173,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     @Override
     public void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
-        if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
-            schema.assureNonEmptySchema();
-        }
+        schema.assureNonEmptySchema();
+
         final Set<Envelope.Operation> skippedOperations = connectorConfig.getSkippedOperations();
 
         // Register our event handlers ...

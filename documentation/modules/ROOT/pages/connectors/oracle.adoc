@@ -3946,7 +3946,7 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 
 A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 
-This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 

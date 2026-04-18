@@ -704,4 +704,5 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             lockKeepAliveExecutor = null;
         }
     }
+
 }

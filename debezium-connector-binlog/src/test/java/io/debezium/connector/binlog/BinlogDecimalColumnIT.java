@@ -66,7 +66,7 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
     public void shouldSetPrecisionSchemaParameter() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .build();
 
         // Start the connector ...
@@ -76,10 +76,11 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numCreateDatabase = 1;
-        int numCreateTables = 1;
+        int numSetVariables = 1;
+        int numTables = 1;
+        int numDdlEvents = numTables * 2 + 3;
         int numInserts = 1;
-        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
+        SourceRecords records = consumeRecordsByTopic(numSetVariables + numDdlEvents + numInserts);
         stopConnector();
         assertThat(records).isNotNull();
         records.forEach(this::validate);

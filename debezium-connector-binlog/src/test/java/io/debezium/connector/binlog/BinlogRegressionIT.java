@@ -66,7 +66,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -83,16 +83,17 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-61")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -119,9 +120,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_342_timetest")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(numCreateTables + 1);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -436,17 +437,19 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-61")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreamingAndConnectTimesTypes() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                 .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -471,9 +474,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -653,6 +656,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .build();
 
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -997,6 +1001,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                     .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .build();
             // Start the connector ...
+            DATABASE.initialize();
             start(getConnectorClass(), config);
 
             // ---------------------------------------------------------------------------------------------------------------
@@ -1072,17 +1077,18 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-147")
-    public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -1119,11 +1125,13 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -1163,6 +1171,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------

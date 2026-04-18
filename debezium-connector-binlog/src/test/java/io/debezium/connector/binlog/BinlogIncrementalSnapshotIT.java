@@ -383,7 +383,9 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
         // Testing.Print.enable();
 
         populateTable();
-        final Configuration config = config().with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER).build();
+        final Configuration config = config()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
         start(connectorClass(), config, loggingCompletion());
 
         sendAdHocSnapshotSignal();

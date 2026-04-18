@@ -83,7 +83,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     // Defines how many initial events are generated from loading the test databases.
     private static final int PRODUCTS_TABLE_EVENT_COUNT = 9;
     private static final int ORDERS_TABLE_EVENT_COUNT = 5;
-    private static final int INITIAL_EVENT_COUNT = PRODUCTS_TABLE_EVENT_COUNT + 9 + 4 + ORDERS_TABLE_EVENT_COUNT + 6;
+    private static final int INITIAL_EVENT_COUNT = PRODUCTS_TABLE_EVENT_COUNT + 9 + 10 + ORDERS_TABLE_EVENT_COUNT + 6;
 
     private Configuration config;
 
@@ -1158,58 +1158,13 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     }
 
     @Test
-    void shouldConsumeEventsWithNoSnapshot() throws SQLException, InterruptedException {
-        Files.delete(SCHEMA_HISTORY_PATH);
-
-        // Use the DB configuration to define the connector's configuration ...
-        config = RO_DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .build();
-
-        // Start the connector ...
-        start(getConnectorClass(), config);
-
-        // Consume the first records due to startup and initialization of the database ...
-        // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
-        assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
-        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("Products")).size()).isEqualTo(9);
-        assertThat(records.topics().size()).isEqualTo(4 + 1);
-        assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(6);
-
-        // check float value
-        Optional<SourceRecord> recordWithScientfic = records.recordsForTopic(RO_DATABASE.topicForTable("Products")).stream()
-                .filter(x -> "hammer2".equals(getAfter(x).get("name"))).findFirst();
-        assertThat(recordWithScientfic.isPresent());
-        assertThat(getAfter(recordWithScientfic.get()).get("weight")).isEqualTo(0.875f);
-
-        // Check that all records are valid, can be serialized and deserialized ...
-        records.forEach(this::validate);
-
-        // More records may have been written (if this method were run after the others), but we don't care ...
-        stopConnector();
-
-        records.recordsForTopic(RO_DATABASE.topicForTable("orders")).forEach(record -> {
-            print(record);
-        });
-
-        records.recordsForTopic(RO_DATABASE.topicForTable("customers")).forEach(record -> {
-            print(record);
-        });
-    }
-
-    @Test
     @FixFor("DBZ-7570 - workaround")
     public void shouldConsumeEventsWithNonGracefulDisconnect() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
         // Use the DB configuration to define the connector's configuration ...
         config = RO_DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.USE_NONGRACEFUL_DISCONNECT, true)
                 .build();
@@ -1219,14 +1174,14 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT + 3); // 6 DDL changes
         assertThat(recordsForTopicForRoProductsTable(records).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(9);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
         assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("Products")).size()).isEqualTo(9);
-        assertThat(records.topics().size()).isEqualTo(4 + 1);
-        assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(6);
+        assertThat(records.topics().size()).isEqualTo(4 + 2);
+        assertThat(records.ddlRecordsForDatabase(RO_DATABASE.getDatabaseName()).size()).isEqualTo(13);
 
         // check float value
         Optional<SourceRecord> recordWithScientfic = records.recordsForTopic(RO_DATABASE.topicForTable("Products")).stream()
@@ -1518,7 +1473,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     @FixFor("DBZ-582")
     public void shouldEmitTombstoneOnDeleteByDefault() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .build();
 
         // Start the connector ...
@@ -1561,7 +1516,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     @FixFor("DBZ-582")
     public void shouldEmitNoTombstoneOnDelete() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
@@ -1607,7 +1562,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     @FixFor("DBZ-794")
     public void shouldEmitNoSavepoints() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
@@ -2163,7 +2118,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     public void shouldFailToValidateAdaptivePrecisionMode() {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
                 .build();
 
@@ -2373,7 +2328,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
     @FixFor("DBZ-1531")
     public void shouldEmitHeadersOnPrimaryKeyUpdate() throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .build();
 
         // Start the connector ...
@@ -2493,24 +2448,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         assertThat(changeEvents.size()).isEqualTo(3);
 
         stopConnector();
-    }
-
-    @Test
-    @FixFor("DBZ-1344")
-    public void testNoEmptySchemaLogWarningWithSnapshotNever() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
-
-        config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "my_database")
-                .build();
-
-        start(getConnectorClass(), config);
-
-        consumeRecordsByTopic(12);
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
-
-        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
     }
 
     @Test

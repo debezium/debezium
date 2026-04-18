@@ -174,11 +174,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          */
         RECOVERY("recovery"),
         /**
-         * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
-         * databases and tables that will be captured.
-         */
-        NEVER("never"),
-        /**
          * Perform a snapshot and then stop before attempting to read the binlog.
          */
         INITIAL_ONLY("initial_only"),
@@ -494,9 +489,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the binlog.; "
                     + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions back to streaming. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
                     + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the binlog.; "
-                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.; "
-                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the binlog. "
-                    + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.");
 
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
             .withDisplayName("The time precision mode to be used")
@@ -965,4 +958,5 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public long getBinlogNetReadTimeout() {
         return config.getLong(BINLOG_NET_READ_TIMEOUT);
     }
+
 }

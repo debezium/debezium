@@ -567,7 +567,7 @@ Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 +
-This property takes effect only if the connector's xref:{context}-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`.
+This property takes effect only if the connector's xref:{context}-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`.
 This property does not affect the behavior of incremental snapshots.
 +
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -698,8 +698,6 @@ You can also set the property to periodically prune a database schema history to
 ====
 Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 ====
-`never`:::: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
-This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 `when_needed`:::: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
 
