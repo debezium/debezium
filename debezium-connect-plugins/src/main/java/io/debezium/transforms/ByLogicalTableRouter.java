@@ -12,21 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A logical table consists of one or more physical tables with the same schema. A common use case is sharding -- the
- * two physical tables `db_shard1.my_table` and `db_shard2.my_table` together form one logical table.
+ * @deprecated Use {@link ToLogicalTopicRouter} instead.
  * <p>
- * This Transformation allows us to change a record's topic name and send change events from multiple physical tables to
- * one topic. For instance, we might choose to send the two tables from the above example to the topic
- * `db_shard.my_table`. The config options {@link #TOPIC_REGEX} and {@link #TOPIC_REPLACEMENT} are used
- * to change the record's topic.
- * <p>
- * Now that multiple physical tables can share a topic, the event's key may need to be augmented to include fields other
- * than just those for the record's primary/unique key, since these are not guaranteed to be unique across tables. We
- * need some identifier added to the key that distinguishes the different physical tables. The field name specified by
- * the config option {@link #KEY_FIELD_NAME} is added to the key schema for this purpose. By default, its value will
- * be the old topic name, but if a custom value is desired, the config options {@link #KEY_FIELD_REGEX} and
- * {@link #KEY_FIELD_REPLACEMENT} may be used to change it. For instance, in our above example, we might choose to
- * make the identifier `db_shard1` and `db_shard2` respectively.
+ * This class is deprecated and maintained only for backward compatibility.
+ * {@link ToLogicalTopicRouter} provides the same functionality with improved naming
+ * that uses "logical destination" and "source" terminology instead of table-centric naming.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author David Leibovic

@@ -187,8 +187,8 @@ The following table describes topic routing SMT configuration options.
 Specify `false` if you do not want the transformation to add a key field.  For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables.
 
 |[[by-logical-table-router-key-field-name]]xref:by-logical-table-router-key-field-name[`key.field.name`]
-|`+__dbz__physicalTableIdentifier+`
-|Name of a field to be added to the change event key. The value of this field identifies the original table name. For the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default.
+|`+__dbz__sourceIdentifier+`
+|Name of a field to be added to the change event key. The value of this field identifies the source from which the record originated. For the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default.
 
 |[[by-logical-table-router-key-field-regex]]xref:by-logical-table-router-key-field-regex[`key.field.regex`]
 |
@@ -202,7 +202,7 @@ Specify `false` if you do not want the transformation to add a key field.  For e
 |none
 |Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including: `none` does not apply any adjustment (default), `avro` replaces the characters that cannot be used in the Avro type name with underscore.
 
-|[[by-logical-table-router-logical-table-cache-size]]xref:by-logical-table-router-logical-table-cache-size[`logical.table.cache.size`]
+|[[by-logical-table-router-logical-destination-cache-size]]xref:by-logical-table-router-logical-destination-cache-size[`logical.destination.cache.size`]
 |`16`
-|The size used for holding the max entries in LRUCache. The cache will keep the old/new schema for logical table key and value, also cache the derived key and topic regex result for improving the source record transformation.
+|The size used for holding the max entries in LRUCache. The cache will keep the old/new schema for logical destination key and value, also cache the derived key and topic regex result for improving the source record transformation.
 |===
