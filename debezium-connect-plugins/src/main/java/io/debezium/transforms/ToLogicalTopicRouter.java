@@ -63,7 +63,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .required()
             .withValidation(Field::isRegex)
-            .withDescription("The regex used for extracting the name of the logical table from the original topic name.");
+            .withDescription("The regex used for extracting the name of the logical destination from the original topic name.");
 
     private static final Field TOPIC_REPLACEMENT = Field.create("topic.replacement")
             .withDisplayName("Topic replacement")
@@ -91,10 +91,10 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRegex)
-            .withDescription("The regex used for extracting the physical table identifier from the original topic " +
+            .withDescription("The regex used for extracting the source identifier from the original topic " +
                     "name. Now that multiple physical tables can share a topic, the event's key may need to be augmented " +
                     "to include fields other than just those for the record's primary/unique key, since these are not " +
-                    "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
+                    "guaranteed to be unique across different sources. We need some identifier added to the key that distinguishes " +
                     "the different physical tables.");
 
     private static final Field KEY_FIELD_NAME = Field.create("key.field.name")
@@ -103,7 +103,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             // Default is prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
-            .withDefault("__dbz__physicalTableIdentifier")
+            .withDefault("__dbz__sourceIdentifier")
             .withDescription("Each record's key schema will be augmented with this field name. The purpose of this " +
                     "field is to distinguish the different physical tables that can now share a single topic. Make " +
                     "sure not to configure a field name that is at risk of conflict with existing key schema field " +
@@ -116,7 +116,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(ToLogicalTopicRouter::validateKeyFieldReplacement)
             .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
-                    ". This will be used to create the physical table identifier in the record's key.");
+                    ". This will be used to create the source identifier in the record's key.");
 
     private static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
@@ -128,14 +128,14 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
                             + "'none' does not apply any adjustment");
 
-    private static final Field LOGICAL_TABLE_CACHE_SIZE = Field.create("logical.table.cache.size")
-            .withDisplayName("Logical table cache size")
+    private static final Field LOGICAL_DESTINATION_CACHE_SIZE = Field.create("logical.destination.cache.size")
+            .withDisplayName("Logical destination cache size")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(16)
             .withDescription("The size used for holding the max entries in LRUCache. The cache will keep the old/new " +
-                    "schema for logical table key and value, also cache the derived key and topic regex result for improving " +
+                    "schema for logical destination key and value, also cache the derived key and topic regex result for improving " +
                     "the source record transformation.");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToLogicalTopicRouter.class);
@@ -191,7 +191,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT,
                 SCHEMA_NAME_ADJUSTMENT_MODE,
-                LOGICAL_TABLE_CACHE_SIZE);
+                LOGICAL_DESTINATION_CACHE_SIZE);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -210,7 +210,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
         }
         keyFieldName = config.getString(KEY_FIELD_NAME);
         keyEnforceUniqueness = config.getBoolean(KEY_ENFORCE_UNIQUENESS);
-        int cacheSize = config.getInteger(LOGICAL_TABLE_CACHE_SIZE);
+        int cacheSize = config.getInteger(LOGICAL_DESTINATION_CACHE_SIZE);
         keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
         envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
         keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
@@ -291,7 +291,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                 KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT,
-                LOGICAL_TABLE_CACHE_SIZE);
+                LOGICAL_DESTINATION_CACHE_SIZE);
         return config;
     }
 
@@ -333,7 +333,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
 
         // Now that multiple physical tables can share a topic, the event's key may need to be augmented to include
         // fields other than just those for the record's primary/unique key, since these are not guaranteed to be unique
-        // across tables. We need some identifier added to the key that distinguishes the different physical tables.
+        // across different sources. We need some identifier added to the key that distinguishes the different physical tables.
         if (keyEnforceUniqueness) {
             builder.field(keyFieldName, Schema.STRING_SCHEMA);
         }
@@ -478,6 +478,6 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
                 KEY_FIELD_NAME,
                 KEY_FIELD_REPLACEMENT,
                 SCHEMA_NAME_ADJUSTMENT_MODE,
-                LOGICAL_TABLE_CACHE_SIZE);
+                LOGICAL_DESTINATION_CACHE_SIZE);
     }
 }
