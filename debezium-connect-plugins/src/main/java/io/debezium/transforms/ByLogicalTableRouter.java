@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @deprecated Use {@link ToLogicalTopicRouter} instead.
-  * This class is deprecated and maintained only for backward compatibility.
+ * This class is deprecated and maintained only for backward compatibility.
  * {@link ToLogicalTopicRouter} provides the same functionality with improved naming
  * that uses "logical destination" and "source" terminology instead of table-centric naming.
  *
