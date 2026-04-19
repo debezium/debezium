@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,30 +49,8 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
 
     public static final int DEFAULT_THRESHOLD_BYTES = 100 * 1024;
 
-    private static final String REFERENCE_SCHEMA_NAME = "io.debezium.storage.s3.processor.LargeMessageReference";
-
-    public static final Schema REFERENCE_SCHEMA = SchemaBuilder.struct()
-            .name(REFERENCE_SCHEMA_NAME)
-            .version(1)
-            .doc("Reference to a large field value stored in Amazon S3")
-            .field("bucket", Schema.STRING_SCHEMA)
-            .field("objectId", Schema.STRING_SCHEMA)
-            .build();
-
-    private static final java.lang.reflect.Field STRUCT_SCHEMA_FIELD;
-    private static final java.lang.reflect.Field STRUCT_VALUES_FIELD;
-
-    static {
-        try {
-            STRUCT_SCHEMA_FIELD = Struct.class.getDeclaredField("schema");
-            STRUCT_SCHEMA_FIELD.setAccessible(true);
-            STRUCT_VALUES_FIELD = Struct.class.getDeclaredField("values");
-            STRUCT_VALUES_FIELD.setAccessible(true);
-        }
-        catch (NoSuchFieldException e) {
-            throw new ExceptionInInitializerError("Cannot access Kafka Connect Struct internal fields: " + e.getMessage());
-        }
-    }
+    private static final String INLINE_REFERENCE_PREFIX = "__debezium:s3:ref:v1:";
+    private static final String INLINE_REFERENCE_DELIMITER = "|";
 
     private String bucket;
     private int thresholdBytes;
@@ -146,12 +123,11 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         final Struct before = getFieldStruct(value, Envelope.FieldName.BEFORE);
         final Struct after = getFieldStruct(value, Envelope.FieldName.AFTER);
 
-        final Struct newBefore = (before != null) ? processRecordStruct(before, source, "before") : null;
-        final Struct newAfter = (after != null) ? processRecordStruct(after, source, "after") : null;
-
-        final boolean schemaChanged = (newBefore != before) || (newAfter != after);
-        if (schemaChanged) {
-            rebuildEnvelopeInPlace(value, before, after, newBefore, newAfter);
+        if (before != null) {
+            processRecordStruct(before, source, "before");
+        }
+        if (after != null) {
+            processRecordStruct(after, source, "after");
         }
     }
 
@@ -163,7 +139,7 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         }
     }
 
-    private Struct processRecordStruct(Struct recordStruct, Struct source, String qualifier) {
+    private void processRecordStruct(Struct recordStruct, Struct source, String qualifier) {
         final Schema originalSchema = recordStruct.schema();
         final List<org.apache.kafka.connect.data.Field> fields = originalSchema.fields();
         final List<String> fieldsToReplace = new ArrayList<>();
@@ -175,41 +151,10 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         }
 
         if (fieldsToReplace.isEmpty()) {
-            return recordStruct;
+            return;
         }
 
         LOGGER.debug("Offloading {} field(s) to S3 for {} struct: {}", fieldsToReplace.size(), qualifier, fieldsToReplace);
-        final SchemaBuilder newSchemaBuilder = SchemaBuilder.struct().name(originalSchema.name());
-        if (originalSchema.version() != null) {
-            newSchemaBuilder.version(originalSchema.version());
-        }
-        if (originalSchema.doc() != null) {
-            newSchemaBuilder.doc(originalSchema.doc());
-        }
-
-        for (org.apache.kafka.connect.data.Field field : fields) {
-            if (fieldsToReplace.contains(field.name())) {
-                if (field.schema().isOptional()) {
-                    newSchemaBuilder.field(field.name(), SchemaBuilder.struct()
-                            .name(REFERENCE_SCHEMA_NAME)
-                            .version(1)
-                            .doc("Reference to a large field value stored in Amazon S3")
-                            .field("bucket", Schema.STRING_SCHEMA)
-                            .field("objectId", Schema.STRING_SCHEMA)
-                            .optional()
-                            .build());
-                }
-                else {
-                    newSchemaBuilder.field(field.name(), REFERENCE_SCHEMA);
-                }
-            }
-            else {
-                newSchemaBuilder.field(field.name(), field.schema());
-            }
-        }
-
-        final Schema newSchema = newSchemaBuilder.build();
-        final Struct newStruct = new Struct(newSchema);
 
         for (org.apache.kafka.connect.data.Field field : fields) {
             final Object fieldValue = recordStruct.get(field);
@@ -218,78 +163,24 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
                 final byte[] bytes = toBytes(field.schema(), fieldValue);
 
                 uploadToS3(objectKey, bytes, field.schema().type());
-
-                final Schema refSchema = newSchema.field(field.name()).schema();
-                final Struct reference = new Struct(refSchema);
-                reference.put("bucket", bucket);
-                reference.put("objectId", objectKey);
-                newStruct.put(field.name(), reference);
+                recordStruct.put(field.name(), toInlineReferenceValue(field.schema(), objectKey));
 
                 LOGGER.debug("Field '{}' ({} bytes) offloaded to S3 key '{}'.", field.name(), bytes.length, objectKey);
             }
-            else {
-                newStruct.put(field.name(), fieldValue);
-            }
         }
-
-        return newStruct;
     }
 
-    private void rebuildEnvelopeInPlace(Struct envelope,
-                                        Struct oldBefore, Struct oldAfter,
-                                        Struct newBefore, Struct newAfter) {
-        final Schema origEnvSchema = envelope.schema();
+    private Object toInlineReferenceValue(Schema schema, String objectKey) {
+        final String reference = encodeInlineReference(objectKey);
+        return switch (schema.type()) {
+            case STRING -> reference;
+            case BYTES -> reference.getBytes(StandardCharsets.UTF_8);
+            default -> throw new DebeziumException("Unsupported field type for inline S3 reference: " + schema.type());
+        };
+    }
 
-        final SchemaBuilder envBuilder = SchemaBuilder.struct().name(origEnvSchema.name());
-        if (origEnvSchema.version() != null) {
-            envBuilder.version(origEnvSchema.version());
-        }
-        if (origEnvSchema.doc() != null) {
-            envBuilder.doc(origEnvSchema.doc());
-        }
-
-        for (org.apache.kafka.connect.data.Field f : origEnvSchema.fields()) {
-            if (Envelope.FieldName.BEFORE.equals(f.name()) && newBefore != null) {
-                envBuilder.field(f.name(), newBefore.schema());
-            }
-            else if (Envelope.FieldName.AFTER.equals(f.name()) && newAfter != null) {
-                envBuilder.field(f.name(), newAfter.schema());
-            }
-            else {
-                envBuilder.field(f.name(), f.schema());
-            }
-        }
-
-        final Schema newEnvSchema = envBuilder.build();
-
-        final Struct newEnvelope = new Struct(newEnvSchema);
-        for (org.apache.kafka.connect.data.Field f : origEnvSchema.fields()) {
-            final String name = f.name();
-            if (Envelope.FieldName.BEFORE.equals(name)) {
-                if (newBefore != null) {
-                    newEnvelope.put(name, newBefore);
-                }
-            }
-            else if (Envelope.FieldName.AFTER.equals(name)) {
-                if (newAfter != null) {
-                    newEnvelope.put(name, newAfter);
-                }
-            }
-            else {
-                final Object val = envelope.get(f);
-                if (val != null) {
-                    newEnvelope.put(name, val);
-                }
-            }
-        }
-
-        try {
-            STRUCT_SCHEMA_FIELD.set(envelope, newEnvSchema);
-            STRUCT_VALUES_FIELD.set(envelope, STRUCT_VALUES_FIELD.get(newEnvelope));
-        }
-        catch (IllegalAccessException e) {
-            throw new DebeziumException("Failed to update envelope struct in-place after S3 offloading", e);
-        }
+    private String encodeInlineReference(String objectKey) {
+        return INLINE_REFERENCE_PREFIX + bucket + INLINE_REFERENCE_DELIMITER + objectKey;
     }
 
     private boolean meetsThreshold(Schema schema, Object value) {

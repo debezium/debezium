@@ -5,7 +5,6 @@
  */
 package io.debezium.storage.s3.processor;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,6 +18,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +41,7 @@ public class S3LargeMessagePostProcessorTest {
 
     private static final String BUCKET = "test-bucket";
     private static final String REGION = "us-east-1";
+    private static final String INLINE_REFERENCE_PREFIX = "__debezium:s3:ref:v1:";
 
     private static final int SMALL_THRESHOLD = 10;
 
@@ -161,12 +162,12 @@ public class S3LargeMessagePostProcessorTest {
 
         Struct resultAfter = envelope.getStruct(Envelope.FieldName.AFTER);
         Object replacedValue = resultAfter.get("content");
-        assertInstanceOf(Struct.class, replacedValue);
+        assertInstanceOf(String.class, replacedValue);
 
-        Struct ref = (Struct) replacedValue;
-        assertEquals(BUCKET, ref.getString("bucket"));
+        String inlineReference = (String) replacedValue;
+        assertTrue(inlineReference.startsWith(INLINE_REFERENCE_PREFIX + BUCKET + "|"));
 
-        String objectId = ref.getString("objectId");
+        String objectId = extractObjectId(inlineReference);
         assertNotNull(objectId);
         assertTrue(objectId.contains("content"));
         assertTrue(objectId.endsWith("/after"));
@@ -193,11 +194,11 @@ public class S3LargeMessagePostProcessorTest {
         Struct resultBefore = envelope.getStruct(Envelope.FieldName.BEFORE);
         Struct resultAfter = envelope.getStruct(Envelope.FieldName.AFTER);
 
-        assertInstanceOf(Struct.class, resultBefore.get("notes"));
-        assertInstanceOf(Struct.class, resultAfter.get("notes"));
+        assertInstanceOf(String.class, resultBefore.get("notes"));
+        assertInstanceOf(String.class, resultAfter.get("notes"));
 
-        String beforeObjectId = ((Struct) resultBefore.get("notes")).getString("objectId");
-        String afterObjectId = ((Struct) resultAfter.get("notes")).getString("objectId");
+        String beforeObjectId = extractObjectId((String) resultBefore.get("notes"));
+        String afterObjectId = extractObjectId((String) resultAfter.get("notes"));
         assertTrue(beforeObjectId.endsWith("/before"));
         assertTrue(afterObjectId.endsWith("/after"));
     }
@@ -218,8 +219,8 @@ public class S3LargeMessagePostProcessorTest {
 
         processor.apply(null, envelope);
 
-        Struct ref = (Struct) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
-        assertEquals(BUCKET, ref.getString("bucket"), "Bucket in reference must match configured bucket");
+        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
+        assertTrue(inlineReference.startsWith(INLINE_REFERENCE_PREFIX + BUCKET + "|"), "Bucket in reference must match configured bucket");
     }
 
     @Test
@@ -240,8 +241,43 @@ public class S3LargeMessagePostProcessorTest {
 
         verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 
-        Struct ref = (Struct) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
-        assertNotNull(ref.getString("objectId"));
+        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
+        String objectId = extractObjectId(inlineReference);
+        assertNotNull(objectId);
+        assertTrue(objectId.startsWith("unknown-source/"));
+    }
+
+    @Test
+    void testApplyBytesFieldAboveThresholdUsesInlineReferenceBytes() {
+        processor.configure(baseConfig());
+
+        Schema schema = SchemaBuilder.struct()
+                .field("data", Schema.BYTES_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("data", new byte[SMALL_THRESHOLD + 1]);
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
+        processor.apply(null, envelope);
+
+        verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        Object replacedValue = envelope.getStruct(Envelope.FieldName.AFTER).get("data");
+        assertInstanceOf(byte[].class, replacedValue);
+
+        String inlineReference = new String((byte[]) replacedValue, StandardCharsets.UTF_8);
+        assertTrue(inlineReference.startsWith(INLINE_REFERENCE_PREFIX + BUCKET + "|"));
+
+        String objectId = extractObjectId(inlineReference);
+        assertTrue(objectId.contains("data"));
+        assertTrue(objectId.endsWith("/after"));
+    }
+
+    private String extractObjectId(String inlineReference) {
+        assertNotNull(inlineReference);
+        assertTrue(inlineReference.startsWith(INLINE_REFERENCE_PREFIX + BUCKET + "|"));
+        int delimiterIndex = inlineReference.indexOf('|');
+        return inlineReference.substring(delimiterIndex + 1);
     }
 
     private Map<String, Object> baseConfig() {
