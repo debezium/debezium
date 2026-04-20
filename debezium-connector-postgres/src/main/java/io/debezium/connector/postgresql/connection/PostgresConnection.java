@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -124,8 +125,20 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public static TypeRegistry createTypeRegistry(JdbcConfiguration config) {
+        return createTypeRegistry(config, Collections.emptySet());
+    }
+
+    /**
+     * Creates a {@link TypeRegistry} pre-loaded only with types from the given schemas.
+     * {@code pg_catalog} and {@code information_schema} are always included.
+     * Pass an empty set to load all schemas.
+     *
+     * @param config       {@link JdbcConfiguration} instance, may not be null.
+     * @param schemaFilter schema names to pre-load types from; empty means all schemas
+     */
+    public static TypeRegistry createTypeRegistry(JdbcConfiguration config, Set<String> schemaFilter) {
         try (PostgresConnection connection = new PostgresConnection(config, PostgresConnection.CONNECTION_GENERAL)) {
-            return new TypeRegistry(connection);
+            return new TypeRegistry(connection, schemaFilter);
         }
         catch (DebeziumException e) {
             throw new DebeziumException("Failed to create TypeRegistry", e);
