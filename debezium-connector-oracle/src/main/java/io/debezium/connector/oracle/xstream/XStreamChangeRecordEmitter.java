@@ -27,23 +27,38 @@ import oracle.streams.RowLCR;
 public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnValue> {
 
     private final RowLCR lcr;
+    private final Operation operationOverride;
 
     public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
                                       Table table, OracleDatabaseSchema schema, Clock clock) {
+        this(connectorConfig, partition, offset, lcr, oldChunkValues, newChunkValues, table, schema, clock, null);
+    }
+
+    public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
+                                      Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
+                                      Table table, OracleDatabaseSchema schema, Clock clock,
+                                      Operation operationOverride) {
         super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
                 getColumnValues(table, lcr.getNewValues(), newChunkValues));
         this.lcr = lcr;
+        this.operationOverride = operationOverride;
     }
 
     @Override
     public Operation getOperation() {
+        if (operationOverride != null) {
+            return operationOverride;
+        }
         switch (lcr.getCommandType()) {
             case RowLCR.INSERT:
                 return Operation.CREATE;
             case RowLCR.DELETE:
                 return Operation.DELETE;
             case RowLCR.UPDATE:
+            case RowLCR.LOB_WRITE:
+            case RowLCR.LOB_TRIM:
+            case RowLCR.LOB_ERASE:
                 return Operation.UPDATE;
             case "TRUNCATE TABLE":
                 return Operation.TRUNCATE;
@@ -56,10 +71,6 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         Object[] values = new Object[table.columns().size()];
         if (columnValues != null) {
             for (ColumnValue columnValue : columnValues) {
-                // Skip Oracle ROW_ARCHIVAL column
-                if ("ORA_ARCHIVE_STATE".equals(columnValue.getColumnName())) {
-                    continue;
-                }
                 int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
                 values[index] = columnValue.getColumnData();
             }

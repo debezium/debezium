@@ -5,17 +5,23 @@
  */
 package io.debezium.connector.oracle.xstream;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
@@ -60,7 +66,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
+    private final OracleConnection jdbcConnection;
     private final Map<String, ChunkColumnValues> columnChunks;
+    // Track INSERT operations per ROW_ID+txId so that LOB_WRITE/LOB_TRIM following an INSERT
+    // can be correctly mapped to Operation.CREATE instead of Operation.UPDATE (DBZ-4741).
+    // Key: "ROW_ID|transactionId", cleared on COMMIT.
+    private final Map<String, Boolean> pendingInsertRows;
     private RowLCR currentRow;
 
     LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
@@ -68,6 +79,16 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
                     XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
+        this(connectorConfig, errorHandler, dispatcher, clock, schema, partition, offsetContext,
+                tablenameCaseInsensitive, eventSource, streamingMetrics, null);
+    }
+
+    LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
+                    EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
+                    OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
+                    boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics,
+                    OracleConnection jdbcConnection) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -78,7 +99,9 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
         this.streamingMetrics = streamingMetrics;
+        this.jdbcConnection = jdbcConnection;
         this.columnChunks = new LinkedHashMap<>();
+        this.pendingInsertRows = new HashMap<>();
     }
 
     @Override
@@ -133,9 +156,55 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private void processRowLCR(RowLCR row) throws InterruptedException {
-        if (row.getCommandType().equals(RowLCR.LOB_ERASE)) {
-            LOGGER.warn("LOB_ERASE for table '{}' is not supported, "
-                    + "use DML operations to manipulate LOB columns only.", row.getObjectName());
+        // Track INSERT operations so LOB_WRITE/LOB_TRIM following an INSERT for the same row
+        // can be correctly mapped to Operation.CREATE instead of Operation.UPDATE.
+        // For large LOBs, XStream delivers: INSERT LCR, then LOB_WRITE LCR(s) with the data.
+        if (RowLCR.INSERT.equals(row.getCommandType())) {
+            final Object rowId = row.getAttribute("ROW_ID");
+            if (rowId != null) {
+                final String key = rowId.toString() + "|" + row.getTransactionId();
+                pendingInsertRows.put(key, Boolean.TRUE);
+                LOGGER.trace("Tracking INSERT for row {} in tx {}", rowId, row.getTransactionId());
+            }
+        }
+
+        // Handle LOB WRITE, LOB TRIM, and LOB ERASE as DML operations (DBZ-4741).
+        // These are emitted by DBMS_LOB.WRITE/WRITEAPPEND/TRIM/ERASE calls.
+        // LOB_WRITE with chunks: cache row, process chunks, then re-read full LOB value.
+        // LOB_TRIM/LOB_ERASE without chunks: re-read LOB value directly and dispatch.
+        if (row.getCommandType().equals(RowLCR.LOB_WRITE)
+                || row.getCommandType().equals(RowLCR.LOB_TRIM)
+                || row.getCommandType().equals(RowLCR.LOB_ERASE)) {
+            if (row.hasChunkData()) {
+                LOGGER.debug("Processing {} for table '{}' as UPDATE with chunk data.",
+                        row.getCommandType(), row.getObjectName());
+                currentRow = row;
+            }
+            else {
+                // LOB_TRIM (and rarely LOB_WRITE) without chunk data: dispatch immediately.
+                // Re-read the LOB value directly from the database to get the trimmed value.
+                LOGGER.debug("Processing {} without chunk data for table '{}', re-reading LOB and dispatching.",
+                        row.getCommandType(), row.getObjectName());
+                if (jdbcConnection != null) {
+                    // Build chunkValues with LOB columns for the re-read
+                    TableId tableId = getTableId(row);
+                    Table table = schema.tableFor(tableId);
+                    if (table != null) {
+                        Map<String, Object> lobValues = new HashMap<>();
+                        for (Column column : schema.getLobColumnsForTable(table.id())) {
+                            lobValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+                        }
+                        reselectLobValues(row, lobValues);
+                        dispatchDataChangeEvent(row, lobValues);
+                    }
+                    else {
+                        dispatchDataChangeEvent(row, null);
+                    }
+                }
+                else {
+                    dispatchDataChangeEvent(row, null);
+                }
+            }
             return;
         }
 
@@ -155,6 +224,9 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         LOGGER.debug("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
+            // Clear pending INSERT tracking on COMMIT — LOB operations in subsequent
+            // transactions should not be mapped to CREATE.
+            pendingInsertRows.clear();
             final Instant commitTimestamp = lcr.getSourceTime().timestampValue().toInstant();
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, commitTimestamp);
             return;
@@ -204,12 +276,9 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
         }
 
-        // Xstream does not provide any before state for LOB columns and so this map will be
-        // populated here by column name with the OracleValueConverters.UNAVAILABLE_VALUE.
         Map<String, Object> oldChunkValues = new HashMap<>(0);
 
         if (chunkValues == null) {
-            // Happens when dispatching an LCR without any chunk data.
             chunkValues = new HashMap<>(0);
         }
 
@@ -222,9 +291,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         // So in either case, the values need to be serialized here such that any LOB column that
         // is not explicitly provided in the map is initialized with the unavailable value
         // marker object so its transformed correctly by the value converters.
+        // Note: For LOB_WRITE/LOB_TRIM/LOB_ERASE events, reselectLobValues() replaces
+        // the unavailable markers with actual LOB values read from the database.
 
         for (Column column : schema.getLobColumnsForTable(table.id())) {
-            // again Xstream doesn't supply before state for LOB values; explicitly use unavailable value
+            // Xstream doesn't supply before state for LOB values; explicitly use unavailable value
             oldChunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
             if (!chunkValues.containsKey(column.name())) {
                 // Column not supplied, initialize with unavailable value marker
@@ -238,6 +309,22 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             offsetContext.setRowId(rowIdObject.toString());
         }
 
+        // Determine operation override for LOB events following an INSERT.
+        // If LOB_WRITE/LOB_TRIM/LOB_ERASE follows an INSERT for the same row+tx,
+        // the operation should be CREATE (not UPDATE) since the LOB data is part of the INSERT.
+        Operation operationOverride = null;
+        if (RowLCR.LOB_WRITE.equals(lcr.getCommandType())
+                || RowLCR.LOB_TRIM.equals(lcr.getCommandType())
+                || RowLCR.LOB_ERASE.equals(lcr.getCommandType())) {
+            if (rowIdObject != null) {
+                final String key = rowIdObject.toString() + "|" + lcr.getTransactionId();
+                if (pendingInsertRows.containsKey(key)) {
+                    operationOverride = Operation.CREATE;
+                    LOGGER.debug("LOB operation {} for row {} follows INSERT, mapping to CREATE",
+                            lcr.getCommandType(), rowIdObject);
+                }
+            }
+        }
         dispatcher.dispatchDataChangeEvent(
                 partition,
                 tableId,
@@ -250,7 +337,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         chunkValues,
                         schema.tableFor(tableId),
                         schema,
-                        clock));
+                        clock,
+                        operationOverride));
     }
 
     private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
@@ -416,6 +504,17 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
 
             columnChunks.clear();
+
+            // DBZ-4741: For LOB_WRITE/LOB_TRIM/LOB_ERASE, the chunk data contains only the partial
+            // delta written by DBMS_LOB.WRITE/WRITEAPPEND/TRIM/ERASE, not the full LOB value.
+            // Re-read the full LOB value from the source database directly.
+            if (jdbcConnection != null && currentRow != null
+                    && (RowLCR.LOB_WRITE.equals(currentRow.getCommandType())
+                        || RowLCR.LOB_TRIM.equals(currentRow.getCommandType())
+                        || RowLCR.LOB_ERASE.equals(currentRow.getCommandType()))) {
+                reselectLobValues(currentRow, resolvedChunkValues);
+            }
+
             dispatchDataChangeEvent(currentRow, resolvedChunkValues);
         }
         catch (InterruptedException e) {
@@ -424,6 +523,107 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to process chunk data", e);
+        }
+    }
+
+    /**
+     * Re-reads full LOB column values from the source database for LOB WRITE/TRIM events.
+     * This replaces the partial chunk data with the complete current LOB value.
+     * Only called for LOB_WRITE/LOB_TRIM operations, not for regular DML — this avoids
+     * the performance overhead of ReselectColumnsPostProcessor firing on every event.
+     */
+    private void reselectLobValues(RowLCR row, Map<String, Object> chunkValues) {
+        if (chunkValues.isEmpty()) {
+            return;
+        }
+
+        final TableId tableId = getTableId(row);
+        final Table table = schema.tableFor(tableId);
+        if (table == null) {
+            LOGGER.warn("Cannot reselect LOB values: table {} not found in schema.", tableId);
+            return;
+        }
+
+        // Get primary key columns
+        final List<String> pkColumns = table.primaryKeyColumnNames();
+        if (pkColumns.isEmpty()) {
+            LOGGER.warn("Cannot reselect LOB values for table {}: no primary key defined.", tableId);
+            return;
+        }
+
+        // Get PK values from the LCR's new values
+        final Map<String, Object> pkValues = new LinkedHashMap<>();
+        if (row.getNewValues() != null) {
+            for (oracle.streams.ColumnValue cv : row.getNewValues()) {
+                if (pkColumns.contains(cv.getColumnName())) {
+                    pkValues.put(cv.getColumnName(), cv.getColumnData());
+                }
+            }
+        }
+        // Fall back to old values if PK not in new values
+        if (pkValues.size() < pkColumns.size() && row.getOldValues() != null) {
+            for (oracle.streams.ColumnValue cv : row.getOldValues()) {
+                if (pkColumns.contains(cv.getColumnName()) && !pkValues.containsKey(cv.getColumnName())) {
+                    pkValues.put(cv.getColumnName(), cv.getColumnData());
+                }
+            }
+        }
+
+        if (pkValues.size() < pkColumns.size()) {
+            LOGGER.warn("Cannot reselect LOB values for table {}: incomplete primary key in LCR.", tableId);
+            return;
+        }
+
+        // Build SELECT for each LOB column
+        final String lobColumns = String.join(", ", chunkValues.keySet());
+        final String whereClause = pkColumns.stream()
+                .map(pk -> pk + " = ?")
+                .collect(Collectors.joining(" AND "));
+        final String sql = String.format("SELECT %s FROM %s.%s WHERE %s",
+                lobColumns, row.getObjectOwner(), row.getObjectName(), whereClause);
+
+        try {
+            LOGGER.debug("Reselecting LOB values for {} {} with SQL: {}", row.getCommandType(), tableId, sql);
+            Connection conn = jdbcConnection.connection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                int idx = 1;
+                for (String pkCol : pkColumns) {
+                    Object val = pkValues.get(pkCol);
+                    ps.setObject(idx++, val);
+                }
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        for (String colName : chunkValues.keySet()) {
+                            Column column = table.columnWithName(colName);
+                            if (column != null) {
+                                int jdbcType = column.jdbcType();
+                                // Read as String for CLOB/NCLOB/XMLTYPE, byte[] for BLOB
+                                if (jdbcType == java.sql.Types.BLOB) {
+                                    byte[] blobVal = rs.getBytes(colName);
+                                    if (blobVal != null) {
+                                        chunkValues.put(colName, blobVal);
+                                        LOGGER.debug("Reselected BLOB column {} ({} bytes)", colName, blobVal.length);
+                                    }
+                                }
+                                else {
+                                    String strVal = rs.getString(colName);
+                                    if (strVal != null) {
+                                        chunkValues.put(colName, strVal);
+                                        LOGGER.debug("Reselected CLOB/XMLTYPE column {} ({} chars)", colName, strVal.length());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        LOGGER.warn("Reselect for {} returned no rows (row may have been deleted).", tableId);
+                    }
+                }
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to reselect LOB values for table {}: {}. Using partial chunk data.", tableId, e.getMessage());
         }
     }
 }
