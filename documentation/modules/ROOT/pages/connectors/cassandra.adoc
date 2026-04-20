@@ -1115,6 +1115,27 @@ The following table lists the streaming metrics that are available.
 
 |===
 
+[[cassandra-tracing]]
+=== Tracing
+
+The Cassandra connector supports distributed tracing through the https://opentelemetry.io/docs/specs/otel/[OpenTelemetry] API.
+When tracing is enabled, the connector creates two nested spans for each change event that it emits:
+
+`db-log-write`:: Backdated to the Cassandra mutation timestamp, with source attributes including keyspace, table, cluster, commit log file and position, snapshot flag, and connector version.
+`debezium-read`:: A child span timestamped at {prodname} processing time, with the operation type and processing timestamp.
+
+The connector injects the trace context into Kafka `ProducerRecord` headers (`traceparent`) so that downstream consumers can continue the distributed trace.
+
+[NOTE]
+====
+Unlike other {prodname} connectors, the Cassandra connector does not use the Kafka Connect framework, so the `ActivateTracingSpan` SMT is not supported.
+Tracing is implemented natively at the Kafka emitter level.
+====
+
+To enable tracing, set `tracing.enabled=true` in the connector configuration and ensure that the OpenTelemetry API JAR is available on the connector classpath.
+If tracing is enabled but the OpenTelemetry API is not present on the classpath, the connector starts normally without tracing.
+
+For information about how to install and configure the OpenTelemetry API, see the xref:integrations/tracing.adoc[{prodname} distributed tracing documentation].
 
 [[cassandra-connector-properties]]
 === Connector properties
@@ -1413,6 +1434,11 @@ The property adds following headers:
 `__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
 `__debezium.context.taskId`:: The unique identifier of the connector task.
 `__debezium.context.connectorName`::  The name of the {prodname} connector.
+
+|[[cassandra-property-tracing-enabled]]<<cassandra-property-tracing-enabled, `tracing.enabled`>>
+|`false`
+|Enables OpenTelemetry tracing for change events emitted by the connector, if the OpenTelemetry API JAR is available on the classpath.
+For more information, see xref:cassandra-tracing[Tracing].
 
 |===
 
