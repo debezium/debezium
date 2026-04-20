@@ -52,7 +52,25 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
 
     @Override
     protected DdlParser createDdlParser(BinlogConnectorConfig connectorConfig, MySqlValueConverters valueConverter) {
+        MySqlConnectorConfig mySqlConfig = (MySqlConnectorConfig) connectorConfig;
+        MySqlConnectorConfig.DdlParserType parserType = mySqlConfig.getDdlParserType();
+
+        return parserType == MySqlConnectorConfig.DdlParserType.POSITIVE_TECHNOLOGY
+                ? createLegacyPtParser(connectorConfig)
+                : createOracleParser(connectorConfig);
+    }
+
+    private DdlParser createOracleParser(BinlogConnectorConfig connectorConfig) {
         return new MySqlAntlrDdlParser(
+                true,
+                false,
+                connectorConfig.isSchemaCommentsHistoryEnabled(),
+                getTableFilter(),
+                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+    }
+
+    private DdlParser createLegacyPtParser(BinlogConnectorConfig connectorConfig) {
+        return new io.debezium.connector.mysql.antlr.MySqlPtAntlrDdlParser(
                 true,
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),

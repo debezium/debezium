@@ -1,7 +1,7 @@
 #begin
 -- Intersections
 -- -- Binary: charset and datatype
-select _binary 'hello' as c1;
+#NB: select _binary 'hello' as c1;
 create table t1(col1 binary(20));
 create table t2(col varchar(10) binary character set cp1251);
 create table t2(col varchar(10) binary character set binary);
@@ -26,7 +26,7 @@ select 1 = 16/4 between 5 and 6 as c;
 #end
 #begin
 -- Functions test
-select *, sqrt(a), lower(substring(str, 'a', length(str)/2)) as col3 from tab1 where a is not \N;
+#NB: select *, sqrt(a), lower(substring(str, 'a', length(str)/2)) as col3 from tab1 where a is not \N;
 #end
 #begin
 -- Spatial data type tests

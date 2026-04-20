@@ -26,8 +26,8 @@ public class UseStatementParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterUseStatement(MySqlParser.UseStatementContext ctx) {
-        String dbName = parser.parseName(ctx.uid());
+    public void enterUseCommand(MySqlParser.UseCommandContext ctx) {
+        String dbName = parser.parseName(ctx.schemaRef().identifier());
         parser.setCurrentSchema(dbName);
 
         // Every time MySQL switches to a different database, it sets the "character_set_database" and "collation_database"
@@ -38,6 +38,6 @@ public class UseStatementParserListener extends MySqlParserBaseListener {
 
         // Signal that the variable was set ...
         parser.signalUseDatabase(ctx);
-        super.enterUseStatement(ctx);
+        super.enterUseCommand(ctx);
     }
 }
