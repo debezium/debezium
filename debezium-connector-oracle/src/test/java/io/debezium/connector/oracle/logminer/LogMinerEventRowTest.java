@@ -51,7 +51,7 @@ public class LogMinerEventRowTest {
     void testChangeTime() throws Exception {
         when(resultSet.getTimestamp(eq(4), any(Calendar.class))).thenReturn(new Timestamp(1000L));
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getChangeTime()).isEqualTo(Instant.ofEpochMilli(1000L));
 
         when(resultSet.getTimestamp(eq(4), any(Calendar.class))).thenThrow(SQLException.class);
@@ -64,7 +64,7 @@ public class LogMinerEventRowTest {
     void testEventType() throws Exception {
         when(resultSet.getInt(3)).thenReturn(EventType.UPDATE.getValue());
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getEventType()).isEqualTo(EventType.UPDATE);
         verify(resultSet).getInt(3);
 
@@ -78,7 +78,7 @@ public class LogMinerEventRowTest {
     void testTableName() throws Exception {
         when(resultSet.getString(7)).thenReturn("TABLENAME");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getTableName()).isEqualTo("TABLENAME");
         verify(resultSet).getString(7);
 
@@ -92,7 +92,7 @@ public class LogMinerEventRowTest {
     void testTablespaceName() throws Exception {
         when(resultSet.getString(8)).thenReturn("DEBEZIUM");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getTablespaceName()).isEqualTo("DEBEZIUM");
         verify(resultSet).getString(8);
 
@@ -106,7 +106,7 @@ public class LogMinerEventRowTest {
     void testScn() throws Exception {
         when(resultSet.getString(1)).thenReturn("12345");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getScn()).isEqualTo(Scn.valueOf(12345L));
         verify(resultSet).getString(1);
 
@@ -120,7 +120,7 @@ public class LogMinerEventRowTest {
     void testTransactionId() throws Exception {
         when(resultSet.getBytes(5)).thenReturn("tr_id".getBytes(StandardCharsets.UTF_8));
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getTransactionId()).isEqualToIgnoringCase("74725F6964");
         verify(resultSet).getBytes(5);
 
@@ -135,7 +135,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getString(8)).thenReturn("SCHEMA");
         when(resultSet.getString(7)).thenReturn("TABLE");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getTableId().toString()).isEqualTo(TestHelper.getDatabaseName() + ".SCHEMA.TABLE");
         verify(resultSet).getString(8);
 
@@ -149,7 +149,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getString(8)).thenReturn("Schema");
         when(resultSet.getString(7)).thenReturn("table");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getTableId().toString()).isEqualTo(TestHelper.getDatabaseName() + ".Schema.table");
         verify(resultSet).getString(8);
 
@@ -162,7 +162,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getInt(6)).thenReturn(0);
         when(resultSet.getString(2)).thenReturn("short_sql");
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getRedoSql()).isEqualTo("short_sql");
         verify(resultSet).getInt(6);
         verify(resultSet).getString(2);
@@ -170,7 +170,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getInt(6)).thenReturn(1).thenReturn(0);
         when(resultSet.getString(2)).thenReturn("long").thenReturn("_sql");
 
-        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getRedoSql()).isEqualTo("long_sql");
         verify(resultSet, times(3)).getInt(6);
         verify(resultSet, times(3)).getString(2);
@@ -181,7 +181,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getString(2)).thenReturn(new String(chars));
         when(resultSet.getInt(6)).thenReturn(1, 1, 1, 1, 1, 1, 1, 1, 1, 0);
 
-        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getRedoSql().length()).isEqualTo(40_000);
         verify(resultSet, times(13)).getInt(6);
         verify(resultSet, times(13)).getString(2);
@@ -189,7 +189,7 @@ public class LogMinerEventRowTest {
         when(resultSet.getInt(6)).thenReturn(0);
         when(resultSet.getString(2)).thenReturn(null);
 
-        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getRedoSql()).isNull();
         verify(resultSet, times(14)).getInt(6);
         verify(resultSet, times(14)).getString(2);
@@ -206,26 +206,160 @@ public class LogMinerEventRowTest {
     @Test
     @FixFor("DBZ-3401")
     public void testObjectIdAndVersionDetails() throws Exception {
-        when(resultSet.getLong(18)).thenReturn(1234567890L);
-        when(resultSet.getLong(19)).thenReturn(20L);
-        when(resultSet.getLong(20)).thenReturn(2345678901L);
+        when(resultSet.getLong(16)).thenReturn(1234567890L);
+        when(resultSet.getLong(17)).thenReturn(20L);
+        when(resultSet.getLong(18)).thenReturn(2345678901L);
 
-        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultConfig());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getObjectId()).isEqualTo(1234567890L);
         assertThat(row.getObjectVersion()).isEqualTo(20L);
         assertThat(row.getDataObjectId()).isEqualTo(2345678901L);
+        verify(resultSet).getLong(16);
+        verify(resultSet).getLong(17);
         verify(resultSet).getLong(18);
-        verify(resultSet).getLong(19);
-        verify(resultSet).getLong(20);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldTrackUsernameWhenEnabled() throws Exception {
+        when(resultSet.getString(25)).thenReturn("testuser");
+
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
+        assertThat(row.getUserName()).isEqualTo("testuser");
+        verify(resultSet).getString(25);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldNotTrackUsernameWhenDisabled() throws Exception {
+        when(resultSet.getString(25)).thenReturn("testuser");
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getUserName()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldTrackClientIdWhenEnabled() throws Exception {
+        when(resultSet.getString(26)).thenReturn("testclient");
+
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
+        assertThat(row.getClientId()).isEqualTo("testclient");
+        verify(resultSet).getString(26);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldNotTrackClientIdWhenDisabled() throws Exception {
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getClientId()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldTrackCommitTimestampWhenEnabled() throws Exception {
+        when(resultSet.getTimestamp(eq(23), any(Calendar.class))).thenReturn(new Timestamp(2000L));
+
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
+        assertThat(row.getCommitTime()).isEqualTo(Instant.ofEpochMilli(2000L));
+        verify(resultSet).getTimestamp(eq(23), any(Calendar.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldNotTrackCommitTimestampWhenDisabled() throws Exception {
+        when(resultSet.getTimestamp(eq(23), any(Calendar.class))).thenReturn(new Timestamp(2000L));
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getCommitTime()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldTrackStartTimestampWhenEnabled() throws Exception {
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(3000L));
+
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
+        assertThat(row.getStartTime()).isEqualTo(Instant.ofEpochMilli(3000L));
+        verify(resultSet).getTimestamp(eq(22), any(Calendar.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldNotTrackStartTimestampWhenDisabled() throws Exception {
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(3000L));
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getStartTime()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldShiftClientIdOrdinalWhenUsernameNotTracked() throws Exception {
+        // When USERNAME is excluded from the SELECT, CLIENT_ID shifts from position 26 to 25
+        when(resultSet.getString(25)).thenReturn("shifted-client-id");
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getClientId()).isEqualTo("shifted-client-id");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldShiftUserNameOrdinalWhenRsIdNotTracked() throws Exception {
+        // When RS_ID is excluded from the SELECT, USERNAME shifts from position 25 to 24
+        when(resultSet.getString(24)).thenReturn("shifted-username");
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_RS_ID, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getUserName()).isEqualTo("shifted-username");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldShiftRsIdOrdinalWhenCommitTimestampNotTracked() throws Exception {
+        // When COMMIT_TIMESTAMP is excluded from the SELECT, RS_ID shifts from position 24 to 23
+        when(resultSet.getString(23)).thenReturn("rs-id");
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getRsId()).isEqualTo("rs-id");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    void shouldShiftCommitTimestampOrdinalWhenStartTimestampNotTracked() throws Exception {
+        // When START_TIMESTAMP is excluded from the SELECT, COMMIT_TIMESTAMP shifts from position 23 to 22
+        when(resultSet.getTimestamp(eq(22), any(Calendar.class))).thenReturn(new Timestamp(9999L));
+
+        OracleConnectorConfig config = new OracleConnectorConfig(
+                TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, false).build());
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, LogMinerColumnIndexes.fromConfig(config));
+        assertThat(row.getCommitTime()).isEqualTo(Instant.ofEpochMilli(9999L));
     }
 
     private static OracleConnectorConfig defaultConfig() {
         return new OracleConnectorConfig(TestHelper.defaultConfig().build());
     }
 
+    private static LogMinerColumnIndexes defaultIndexes() {
+        return LogMinerColumnIndexes.fromConfig(defaultConfig());
+    }
+
     private static <T extends Throwable, R> void assertThrows(ResultSet rs, Class<T> throwAs) {
         try {
-            LogMinerEventRow.fromResultSet(rs, null, defaultConfig());
+            LogMinerEventRow.fromResultSet(rs, null, defaultIndexes());
             fail("Should have thrown a " + throwAs.getSimpleName());
         }
         catch (Throwable t) {
