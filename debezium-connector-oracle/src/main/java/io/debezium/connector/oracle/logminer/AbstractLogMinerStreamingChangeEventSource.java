@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,6 +36,8 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
+import io.debezium.connector.oracle.logminer.LogFileSessionSelector.SessionLogSelection;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -123,11 +124,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
     private List<LogFile> sessionLogFiles;
+    private LogFileSessionSelector logFileSessionSelector;
+    private boolean sessionLogFilesChanged = false;
     private List<BigInteger> currentRedoLogSequences;
     private OracleOffsetContext effectiveOffset;
     private OraclePartition partition;
     private ChangeEventSourceContext context;
-    private int currentBatchSize;
     private long currentSleepTime;
     private OffsetActivityMonitor offsetActivityMonitor;
 
@@ -158,9 +160,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(jdbcConnection);
-
-        metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
-        metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
     }
 
     @Override
@@ -182,6 +181,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.partition = partition;
             this.context = context;
             this.offsetActivityMonitor = new OffsetActivityMonitor(MAX_ITERATIONS_BEFORE_OFFSET_STALE, getOffsetContext(), getMetrics());
+            this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig, jdbcConnection);
 
             // perform various pre-streaming initialization steps
             prepareJdbcConnection(false);
@@ -315,6 +315,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return currentLogFiles;
     }
 
+    protected boolean hasSessionLogFilesChanged() {
+        return sessionLogFilesChanged;
+    }
+
     protected List<LogFile> getSessionLogFiles() {
         return sessionLogFiles;
     }
@@ -419,11 +423,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
 
             LOGGER.debug("{}.", getBatchMetrics());
-            LOGGER.debug("Processed in {} ms. Lag {}. Active Transactions: {}. Sleep: {}. Offsets: {}",
+            LOGGER.debug("Processed in {} ms. Lag {}. Active Transactions: {}. Offsets: {}",
                     Duration.between(startProcessTime, Instant.now()),
                     getMetrics().getLagFromSourceInMilliseconds(),
                     getMetrics().getNumberOfActiveTransactions(),
-                    getMetrics().getSleepTimeInMilliseconds(),
                     getOffsetContext());
         }
     }
@@ -870,97 +873,17 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Calculates the mining session's upper boundary based on batch size limits.
+     * Calculates the mining session's upper boundary.
      *
      * @param lowerBoundsScn the current lower boundary
-     * @param previousUpperBounds the previous upper boundary
      * @param currentScn the database current write position system change number
      * @return the next iterations maximum upper boundary
      * @throws SQLException if a database exception is thrown
      */
-    protected Scn calculateUpperBounds(Scn lowerBoundsScn, Scn previousUpperBounds, Scn currentScn) throws SQLException {
+    protected Scn calculateUpperBounds(Scn lowerBoundsScn, Scn currentScn) throws SQLException {
         final Scn maximumScn = getConfig().isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn(lowerBoundsScn) : currentScn;
 
-        final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
-        final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
-        final Scn maxBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeMax());
-
-        // Initially set the upper bounds based on batch size
-        // The following logic will alter this value as needed based on specific rules
-        Scn result = maximumBatchScn;
-
-        // Check if the batch upper bounds is greater than the current upper bounds
-        // If it isn't, there is no need to update the batch size
-        boolean batchUpperBoundsScnAfterCurrentScn = false;
-        if (maximumBatchScn.subtract(maximumScn).compareTo(defaultBatchSizeScn) > 0) {
-            // Don't update the batch size, batch upper bounds currently large enough
-            decrementBatchSize();
-            batchUpperBoundsScnAfterCurrentScn = true;
-        }
-
-        if (maximumScn.subtract(maximumBatchScn).compareTo(defaultBatchSizeScn) > 0) {
-            // Update batch size because the database upper position is greater than the batch size
-            incrementBatchSize();
-        }
-
-        if (maximumScn.compareTo(maximumBatchScn) < 0) {
-            if (!batchUpperBoundsScnAfterCurrentScn) {
-                incrementSleepTime();
-            }
-            // Batch upperbounds greater than database max possible read position.
-            // Cap it at the max possible database read position
-            LOGGER.debug("Batch upper bounds {} exceeds maximum read position, capping to {}.", maximumBatchScn, maximumScn);
-            result = maximumScn;
-        }
-        else {
-            if (!previousUpperBounds.isNull() && maximumBatchScn.compareTo(previousUpperBounds) <= 0) {
-                // Batch size is too small, make a large leap
-                // This will always add the max batch size window rather than smaller increments
-                // This fits more closely to the same semantics as maximumScn, but for very large bursts, it
-                // keeps the window relatively capped.
-                Scn extendedUpperBounds = previousUpperBounds.add(maxBatchSizeScn);
-                if (extendedUpperBounds.compareTo(maximumScn) > 0) {
-                    extendedUpperBounds = maximumScn;
-                }
-                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, extendedUpperBounds);
-                result = extendedUpperBounds;
-            }
-            else {
-                decrementSleepTime();
-                if (maximumBatchScn.compareTo(lowerBoundsScn) < 0) {
-                    // Batch SCN calculation resulted in a value before start SCN, fallback to max read position
-                    LOGGER.debug("Batch upper bounds {} is before start SCN {}, fallback to maximum read position {}.", maximumBatchScn, lowerBoundsScn, maximumScn);
-                    result = maximumScn;
-                }
-                else if (!previousUpperBounds.isNull()) {
-                    final Scn deltaScn = maximumScn.subtract(previousUpperBounds);
-                    if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
-                        Optional<Instant> prevEndScnTimestamp = jdbcConnection.getScnToTimestamp(previousUpperBounds);
-                        if (prevEndScnTimestamp.isPresent()) {
-                            Optional<Instant> upperBoundsScnTimestamp = jdbcConnection.getScnToTimestamp(maximumScn);
-                            if (upperBoundsScnTimestamp.isPresent()) {
-                                long deltaTime = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), upperBoundsScnTimestamp.get());
-                                if (deltaTime < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                                    LOGGER.debug(
-                                            "SCN delta {} is less than {} within a time window of {} milliseconds. " +
-                                                    "This could indicate a high volume of changes or an unusual increase in the SCN over the time window. " +
-                                                    "Using upperbounds SCN {} at timestamp {} (start SCN {}, previous end SCN {} at timestamp {}).",
-                                            deltaScn,
-                                            connectorConfig.getLogMiningScnGapDetectionGapSizeMin(),
-                                            connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs(),
-                                            maximumScn,
-                                            upperBoundsScnTimestamp.get(),
-                                            lowerBoundsScn,
-                                            previousUpperBounds,
-                                            prevEndScnTimestamp.get());
-                                    result = maximumScn;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        Scn result = maximumScn;
 
         // If the connector is configured with maximum SCN deviation, apply the deviation time.
         // This rolls the current maximum read SCN position back based on the deviation duration.
@@ -1035,7 +958,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws InterruptedException if the thread is interrupted
      */
     protected void pauseBetweenMiningSessions() throws InterruptedException {
-        Duration period = Duration.ofMillis(metrics.getSleepTimeInMilliseconds());
+        Duration period = Duration.ofSeconds(1);
         Metronome.sleeper(period, clock).pause();
     }
 
@@ -1092,7 +1015,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected Scn getMaximumArchiveLogsScn(Scn startScn) throws SQLException {
         // It is safe to query these in real-time
-        final List<LogFile> archiveLogs = logCollector.getLogs(startScn).stream().filter(LogFile::isArchive).toList();
+        final List<LogFile> archiveLogs = logCollector.getLogs(startScn).logFiles()
+                .stream().filter(LogFile::isArchive).toList();
         if (archiveLogs.isEmpty()) {
             throw new DebeziumException("Cannot get maximum archive log SCN as no archive logs are present.");
         }
@@ -1158,37 +1082,29 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Collects all the log state for the given SCN window.
+     * Collects all the log state for the given SCN window and computes the final upper boundary.
      *
      * @param lowerBoundsScn the lower SCN window boundary, should never be {@code null}
      * @param upperBoundsScn the upper SCN window boundary, should never be {@code null}
-     * @return {@code true} if a new session must be forced because session logs changed, {@code false} otherwise
+     * @return the updated mining session upper boundary, never {@code null}
      * @throws SQLException if a database exception occurs
      */
-    protected boolean collectLogs(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
-        currentLogFiles = logCollector.getLogs(lowerBoundsScn);
+    protected Scn collectLogsAndFinalUpperBoundary(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
+        final LogFilesResult logFilesResult = logCollector.getLogs(lowerBoundsScn);
+        currentLogFiles = logFilesResult.logFiles();
 
-        boolean forceSession = false;
+        Scn upperBoundaryScn = upperBoundsScn;
         if (!useContinuousMining) {
-            List<LogFile> sessionLogFilesToAdd = new ArrayList<>();
-            for (LogFile logFile : currentLogFiles) {
-                // All logs must be enqueued for redo_log_catalog mode
-                // This is because the later logs, on log switch, will have the data dictionary.
-                // For other mining strategies, it's safe to only enqueue the necessary logs for the range.
-                if (isUsingCatalogInRedoStrategy()) {
-                    sessionLogFilesToAdd.add(logFile);
-                }
-                else if (logFile.getFirstScn().compareTo(upperBoundsScn) <= 0) {
-                    sessionLogFilesToAdd.add(logFile);
-                }
+            SessionLogSelection sessionLogSelection = logFileSessionSelector.selectLogsForSession(logFilesResult, upperBoundsScn);
+
+            sessionLogFilesChanged = !sessionLogSelection.logFiles().equals(sessionLogFiles);
+            sessionLogFiles = sessionLogSelection.logFiles();
+
+            if (sessionLogFilesChanged) {
+                LOGGER.trace("LogMiner session log files list changed, forcing a new mining session.");
             }
 
-            if (!isUsingCatalogInRedoStrategy() && !sessionLogFilesToAdd.equals(sessionLogFiles)) {
-                LOGGER.trace("LogMiner session log file list changed, forcing a new mining session.");
-                forceSession = true;
-            }
-
-            sessionLogFiles = sessionLogFilesToAdd;
+            upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
         }
 
         metrics.setRedoLogStatuses(jdbcConnection.queryAndMap(
@@ -1201,7 +1117,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     return results;
                 }));
 
-        return forceSession;
+        return upperBoundaryScn;
     }
 
     /**
@@ -2154,86 +2070,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
     }
 
-    /**
-     * Increments the mining batch size.
-     */
-    private void incrementBatchSize() {
-        int batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
-        int batchSizeIncrement = connectorConfig.getLogMiningBatchSizeIncrement();
-        if (currentBatchSize < batchSizeMax) {
-            final int previousBatchSize = currentBatchSize;
-            currentBatchSize = Math.min(currentBatchSize + batchSizeIncrement, batchSizeMax);
-            metrics.setBatchSize(currentBatchSize);
-            if (previousBatchSize != currentBatchSize && currentBatchSize == batchSizeMax) {
-                LOGGER.debug("The connector is now using the maximum batch size {}.", currentBatchSize);
-            }
-            else if (previousBatchSize != currentBatchSize) {
-                LOGGER.debug("Updated batch size window, using batch size {}", currentBatchSize);
-            }
-        }
-    }
-
-    /**
-     * Increments the sleep time to wait in between mining iterations.
-     */
-    private void incrementSleepTime() {
-        long sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax().toMillis();
-        long sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
-        if (currentSleepTime < sleepTimeMax) {
-            final long previousSleepTime = currentSleepTime;
-            currentSleepTime = Math.min(currentSleepTime + sleepTimeIncrement, sleepTimeMax);
-            metrics.setSleepTime(currentSleepTime);
-            if (previousSleepTime != currentSleepTime) {
-                if (currentSleepTime == sleepTimeMax) {
-                    LOGGER.debug("The connector is now using the maximum sleep time {}.", currentSleepTime);
-                }
-                else {
-                    LOGGER.debug("Update sleep time, using {}", currentBatchSize);
-                }
-            }
-        }
-    }
-
-    /**
-     * Decrements the mining batch size.
-     */
-    private void decrementBatchSize() {
-        int batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
-        int batchSizeIncrement = connectorConfig.getLogMiningBatchSizeIncrement();
-        if (currentBatchSize > batchSizeMin) {
-            final int previousBatchSize = currentBatchSize;
-            currentBatchSize = Math.max(currentBatchSize - batchSizeIncrement, batchSizeMin);
-            metrics.setBatchSize(currentBatchSize);
-            if (previousBatchSize != currentBatchSize && currentBatchSize == batchSizeMin) {
-                LOGGER.debug("The connector is now using the minimum batch size {}.", currentBatchSize);
-            }
-            else if (previousBatchSize != currentBatchSize) {
-                LOGGER.debug("Updated batch size window, using batch size {}", currentBatchSize);
-            }
-        }
-    }
-
-    /**
-     * Decrements the sleep time to wait in between mining iterations.
-     */
-    private void decrementSleepTime() {
-        long sleepTimeMin = connectorConfig.getLogMiningSleepTimeMin().toMillis();
-        long sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
-        if (currentSleepTime > sleepTimeMin) {
-            final long previousSleepTime = currentSleepTime;
-            currentSleepTime = Math.max(currentSleepTime - sleepTimeIncrement, sleepTimeMin);
-            metrics.setSleepTime(currentSleepTime);
-            if (previousSleepTime != currentSleepTime) {
-                if (currentSleepTime == sleepTimeMin) {
-                    LOGGER.debug("The connector is now using the minimum sleep time {}.", currentSleepTime);
-                }
-                else {
-                    LOGGER.debug("Update sleep time, using {}", currentBatchSize);
-                }
-            }
-        }
-    }
-
     private boolean isNoSqlRedoForTemporaryTable(LogMinerEventRow event) {
         return NO_REDO_SQL_FOR_TEMPORARY_TABLES.equals(event.getRedoSql());
     }
@@ -2256,5 +2092,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 .flatMap(Optional::stream)
                 .min(Scn::compareTo)
                 .orElseThrow(() -> new DebeziumException("Failed to resolve archive logs upper bounds"));
+    }
+
+    private LogFileSessionSelector resolveLogFileSessionSelector(OracleConnectorConfig connectorConfig, OracleConnection connection) throws SQLException {
+        final int minimumLogCountPerThread = connectorConfig.getLogMiningMinimumLogCount();
+        if (minimumLogCountPerThread > 0) {
+            switch (connectorConfig.getLogMiningStrategy()) {
+                case HYBRID, ONLINE_CATALOG: {
+                    final long maximumRedoLogFileSize = connection.getMaximumRedoLogFileSize();
+                    return new CappedLogFileSessionSelector(minimumLogCountPerThread, maximumRedoLogFileSize);
+                }
+            }
+        }
+        return new UnboundedLogFileSessionSelector();
     }
 }

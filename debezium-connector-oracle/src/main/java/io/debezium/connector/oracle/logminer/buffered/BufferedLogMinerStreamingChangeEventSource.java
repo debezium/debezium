@@ -148,7 +148,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 Scn currentScn = getCurrentScn();
                 getMetrics().setCurrentScn(currentScn);
 
-                sessionEndScn = calculateUpperBounds(readScn, sessionEndScn, currentScn);
+                sessionEndScn = calculateUpperBounds(readScn, currentScn);
                 if (sessionEndScn.isNull()) {
                     LOGGER.debug("Requested delay of mining by one iteration");
                     pauseBetweenMiningSessions();
@@ -157,8 +157,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 flushStrategy.flush(getCurrentScn());
 
-                final boolean forceNewSession = collectLogs(sessionStartScn, sessionEndScn);
-                if (!needsNewSession && forceNewSession) {
+                sessionEndScn = collectLogsAndFinalUpperBoundary(sessionStartScn, sessionEndScn);
+                if (!needsNewSession && hasSessionLogFilesChanged()) {
                     endMiningSession();
                     needsNewSession = true;
                 }
