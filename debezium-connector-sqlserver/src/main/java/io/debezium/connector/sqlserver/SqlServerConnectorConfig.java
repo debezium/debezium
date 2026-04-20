@@ -371,7 +371,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field INSTANCE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 8))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withImportance(Importance.LOW)
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
@@ -379,7 +379,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field DATABASE_NAMES = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "names")
             .withDisplayName("Databases")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(SqlServerConnectorConfig::validateDatabaseNames)
@@ -396,7 +396,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDisplayName("Max transactions per iteration")
             .withDefault(DEFAULT_MAX_TRANSACTIONS_PER_ITERATION)
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
@@ -404,7 +404,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -415,7 +415,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
@@ -436,7 +436,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription(
                     "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
                             + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "

@@ -86,7 +86,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
     public static final Field ERROR_HANDLING_MODE = Field.create("reselect.error.handling.mode")
             .withDisplayName("Error Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(ErrorHandlingMode.class, ErrorHandlingMode.WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)

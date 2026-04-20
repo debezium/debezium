@@ -27,29 +27,29 @@ public abstract class AbstractFieldTest {
     }
 
     @Test
-    public void shouldNotAllowDuplicateGroupAssignment() {
+    public void shouldNotHaveDuplicateGroupOrders() {
         Map<Field.Group, Map<Integer, String>> groups = new HashMap<>();
-
         List<String> errors = new ArrayList<>();
+        Map<Field.Group, Integer> counters = new HashMap<>();
 
         allConnectorFields.forEach(field -> {
-            Field.GroupEntry currentGroupEntry = field.group();
-            if (!groups.containsKey(currentGroupEntry.getGroup())) {
-                groups.put(currentGroupEntry.getGroup(), new HashMap<>());
-            }
-            if (groups.get(currentGroupEntry.getGroup()).containsKey(currentGroupEntry.getPositionInGroup())) {
-                if (currentGroupEntry.getPositionInGroup() < 9999) {
-                    errors.add("\"" + field.name() + "\" uses an occupied position in group \"" + currentGroupEntry.getGroup() + "\". Position no. "
-                            + currentGroupEntry.getPositionInGroup() + " is already taken by field: \""
-                            + groups.get(currentGroupEntry.getGroup()).get(currentGroupEntry.getPositionInGroup()));
-                }
+            Field.GroupEntry groupEntry = field.group();
+            Field.Group group = groupEntry.getGroup();
+            int order = counters.merge(group, 1, Integer::sum);
+
+            groups.computeIfAbsent(group, k -> new HashMap<>());
+            if (groups.get(group).containsKey(order)) {
+                errors.add("\"" + field.name() + "\" has a duplicate order in group \"" + group
+                        + "\". Position no. " + order + " is already taken by field: \""
+                        + groups.get(group).get(order) + "\"");
             }
             else {
-                groups.get(currentGroupEntry.getGroup()).put(currentGroupEntry.getPositionInGroup(), field.name());
+                groups.get(group).put(order, field.name());
             }
         });
+
         if (!errors.isEmpty()) {
-            fail("Duplicate field group assignments found: " + String.join("\n", errors));
+            fail("Duplicate field group orders found:\n" + String.join("\n", errors));
         }
     }
 }
