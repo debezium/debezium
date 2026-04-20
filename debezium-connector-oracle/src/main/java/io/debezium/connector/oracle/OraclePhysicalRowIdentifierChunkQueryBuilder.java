@@ -10,6 +10,8 @@ import java.sql.Types;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.PhysicalRowIdentifierChunkQueryBuilder;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
 
 import oracle.jdbc.OracleTypes;
@@ -36,5 +38,12 @@ public class OraclePhysicalRowIdentifierChunkQueryBuilder<T extends DataCollecti
                 null,
                 true,
                 ROWID_TABLE_ALIAS);
+    }
+
+    @Override
+    protected String buildTableReference(Table table) {
+        // Oracle does not use the catalog portion of the table identifier
+        final TableId stripped = new TableId(null, table.id().schema(), table.id().table());
+        return jdbcConnection.quotedTableIdString(stripped);
     }
 }
