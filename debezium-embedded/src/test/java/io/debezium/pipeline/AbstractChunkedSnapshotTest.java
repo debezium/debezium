@@ -246,7 +246,7 @@ public abstract class AbstractChunkedSnapshotTest<T extends SourceConnector> ext
         final Map<String, Integer> tableRowCounts = new HashMap<>();
         final List<String> tableNames = getMultipleSingleKeyTableNames();
         for (String tableName : tableNames) {
-            final int tableRowCount = (int) (Math.random() * (10_000 - 2_500 + 1));
+            final int tableRowCount = 2_500 + (int) (Math.random() * (10_000 - 2_500 + 1));
             tableRowCounts.put(tableName, tableRowCount);
             totalRows += tableRowCount;
 

@@ -17,8 +17,6 @@ import io.debezium.connector.binlog.gtid.GtidSetFactory;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
-import io.debezium.pipeline.signal.SignalPayload;
-import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -57,6 +55,8 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkAndAddDataCollections(partition, offsetContext);
+        checkAndProcessStopFlag(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
@@ -69,7 +69,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -78,9 +78,12 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        if (getContext().currentDataCollectionId() == null) {
             return;
         }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
@@ -91,9 +94,12 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        if (getContext().currentDataCollectionId() == null) {
             return;
         }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
@@ -104,9 +110,12 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        if (getContext().currentDataCollectionId() == null) {
             return;
         }
         readUntilGtidChange(partition, offsetContext);
@@ -137,13 +146,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
-            throws InterruptedException {
-        final Map<String, Object> additionalData = signalPayload.additionalData;
-        super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
-    }
-
-    @Override
     public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         super.requestStopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
     }
@@ -154,13 +156,10 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
 
     private void readUntilGtidChange(P partition, OffsetContext offsetContext) throws InterruptedException {
         String currentGtid = getContext().getCurrentGtid(offsetContext);
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
+        if (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
-            if (currentGtid == null && getContext().watermarksChanged()) {
-                return;
-            }
         }
     }
 
