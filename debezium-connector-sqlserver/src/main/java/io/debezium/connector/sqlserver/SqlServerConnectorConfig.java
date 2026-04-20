@@ -47,6 +47,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
+    public static final String CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME = "change.column.filter.override";
+
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
@@ -401,6 +403,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
+    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.create(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
+            .withDisplayName("CDC column filter override")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "This property can be used to override the default behavior of only including columns that are marked for CDC. Recommended for snapshot-only migrations since SQL Server requires CDC enablement at the table or column-level.");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -525,6 +537,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
+    private final boolean overrideCdcColumnFilter;
     private final boolean optionRecompile;
     private final int queryFetchSize;
     private final DataQueryMode dataQueryMode;
@@ -568,6 +581,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
+        this.overrideCdcColumnFilter = config.getBoolean(CDC_COLUMN_FILTER_OVERRIDE);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
             LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
@@ -627,6 +641,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public int getMaxTransactionsPerIteration() {
         return maxTransactionsPerIteration;
+    }
+
+    public boolean isOverrideCdcColumnFilter() {
+        return overrideCdcColumnFilter;
     }
 
     public boolean getOptionRecompile() {

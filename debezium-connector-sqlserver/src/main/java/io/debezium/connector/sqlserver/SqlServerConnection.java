@@ -103,6 +103,14 @@ public class SqlServerConnection extends JdbcConnection {
             " ORDER BY object_id, column_id";
 
     /**
+     * Queries the list of all column names and their change table identifiers in the given database.
+     */
+    private static final String GET_ALL_COLUMNS = "SELECT tables.object_id, columns.name" +
+            " FROM #db.sys.columns columns" +
+            " INNER JOIN #db.cdc.change_tables tables ON tables.source_object_id = columns.object_id" +
+            " ORDER BY tables.object_id, columns.column_id";
+
+    /**
      * Queries the list of capture instances in the given database.
      *
      * If two or more capture instances with the same start LSN are available for a given source table,
@@ -509,8 +517,10 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public List<SqlServerChangeTable> getChangeTables(String databaseName, Lsn toLsn) throws SQLException {
+        String sqlTemplate = !config.isOverrideCdcColumnFilter() ? GET_CAPTURED_COLUMNS : GET_ALL_COLUMNS;
+
         Map<Integer, List<String>> columns = queryAndMap(
-                replaceDatabaseNamePlaceholder(GET_CAPTURED_COLUMNS, databaseName),
+                replaceDatabaseNamePlaceholder(sqlTemplate, databaseName),
                 rs -> {
                     Map<Integer, List<String>> result = new HashMap<>();
                     while (rs.next()) {

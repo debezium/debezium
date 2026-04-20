@@ -1486,6 +1486,47 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1830")
+    public void whenCaptureInstanceExcludesColumnsAndColumnOverrideExpectSnapshotToIncludeAllColumns() throws Exception {
+        connection.execute(
+                "CREATE TABLE excluded_column_table_a (id int, name varchar(30), amount int, primary key(id))");
+        connection.execute("INSERT INTO excluded_column_table_a VALUES(10, 'a name', 100)");
+
+        TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a",
+                Arrays.asList("id", "name"));
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.CDC_COLUMN_FILTER_OVERRIDE, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        // Note that any change events will fail since 'amount' is not enabled for cdc
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        final SourceRecords records = consumeRecordsByTopic(3);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.excluded_column_table_a");
+
+        Schema expectedSchema = SchemaBuilder.struct()
+                .optional()
+                .name("server1.testDB1.dbo.excluded_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        Struct expectedValueSnapshot = new Struct(expectedSchema)
+                .put("id", 10)
+                .put("name", "a name")
+                .put("amount", 100);
+
+        assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldSchemaIsEqualTo(expectedSchema)
+                .valueAfterFieldIsEqualTo(expectedValueSnapshot);
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-2522")
     public void whenMultipleCaptureInstancesExcludesColumnsExpectLatestCDCTableUtilized() throws Exception {
         connection.execute(
