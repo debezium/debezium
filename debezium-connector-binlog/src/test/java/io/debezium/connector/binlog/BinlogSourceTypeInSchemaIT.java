@@ -46,7 +46,7 @@ public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> exte
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -66,12 +66,14 @@ public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> exte
     public void shouldPropagateSourceTypeAsSchemaParameter() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with("column.propagate.source.type", ".*\\.c1,.*\\.c2,.*\\.c3.*,.*\\.f.")
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -163,13 +165,14 @@ public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> exte
     public void shouldPropagateSourceTypeByDatatype() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with("datatype.propagate.source.type", ".+\\.FLOAT,.+\\.VARCHAR")
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database

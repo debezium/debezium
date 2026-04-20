@@ -91,7 +91,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
     @Override
     protected Configuration.Builder getConfigurationBuilder() {
         return DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

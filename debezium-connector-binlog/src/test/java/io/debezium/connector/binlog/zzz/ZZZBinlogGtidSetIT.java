@@ -93,7 +93,7 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
 
         // Use the DB configuration to define the connector's configuration ...
         config = ro_database.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, ro_database.qualifiedTableName("customers"))
                 .build();
