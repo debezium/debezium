@@ -60,7 +60,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 EventRouterConfigDefinition.FIELD_PAYLOAD,
                 EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP,
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT,
-                EventRouterConfigDefinition.FIELDS_ADDITIONAL_ERROR_ON_MISSING,
+                EventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING,
                 EventRouterConfigDefinition.FIELD_SCHEMA_VERSION,
                 EventRouterConfigDefinition.ROUTE_BY_FIELD,
                 EventRouterConfigDefinition.ROUTE_TOPIC_REGEX,

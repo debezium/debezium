@@ -10,6 +10,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import io.debezium.config.Field;
 import io.debezium.transforms.outbox.AdditionalFieldsValidator;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldMissingBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
@@ -67,6 +68,15 @@ public class MongoEventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
+    static final Field FIELDS_ADDITIONAL_MISSING = Field.create("collection.field.additional.missing")
+            .withDisplayName("Behavior when an additional field is missing in the change data")
+            .withEnum(AdditionalFieldMissingBehavior.class, AdditionalFieldMissingBehavior.ERROR)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("When transforming the 'collection.fields.additional.placement' fields, defines the behavior" +
+                    " when one of the configured fields is missing in the change data." +
+                    " 'error' (default) will throw an exception; 'ignore' will silently skip the missing field.");
+
     static final Field FIELD_SCHEMA_VERSION = Field.create("collection.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
             .withType(ConfigDef.Type.STRING)
@@ -116,7 +126,7 @@ public class MongoEventRouterConfigDefinition {
                 config,
                 "Collection",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
+                FIELDS_ADDITIONAL_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Router",
