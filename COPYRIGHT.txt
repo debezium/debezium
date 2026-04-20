@@ -14,6 +14,7 @@ Ahmed Rachid Hazourli
 Aidas
 Akshansh Jain
 Akshat Sapra
+Akshat Sapra
 Akshath Patkar
 Akula
 Alberto Martino
@@ -112,10 +113,12 @@ Bertrand Paquet
 Bhagyashree Goyal
 Bhumika Bayani
 bhuvan-somisetty
+bhuvan-somisetty
 Biel Garau Estarellas
 Bin Li
 Binayak Das
 Bingqin Zhou
+Björn Bärtschi
 Björn Bärtschi
 Björn Häuser
 Björn Ångbäck
@@ -211,6 +214,7 @@ Dennis Persson
 Derek Moore
 Dhrubajyoti G
 dingqianwen
+dingqianwen
 Divyansh Agrawal
 Divyanshu Kumar
 Dmitry Volontyr
@@ -246,6 +250,7 @@ Erlend Hamnaberg
 Ethan Zou
 Eugene Abramchuk
 Ewen Cheslack-Postava
+exgoya
 exgoya
 Ezer Karavani
 Fabian Aussems
@@ -414,6 +419,7 @@ Julien Roy
 Jun Du
 Jun Wang
 Jun Zhao
+Junsu Lee
 Junsu Lee
 Jure Kajzer
 Justin Hiza
@@ -642,6 +648,7 @@ Rainer Schamm
 Rajender Passi
 Rajendra Dangwal
 Raju Surarapu
+Raju Surarapu
 Ram Satish
 Ramesh Reddy
 Randall Hauch
@@ -733,6 +740,7 @@ Siddhant Agnihotry
 Siddhant Chaturvedi
 SiuFay
 skdus531
+skdus531
 Snigdhajyoti Ghosh
 Sreedev R
 Stanislav Deviatov
@@ -751,7 +759,9 @@ Sujal Shrestha
 Sumit Jha
 Sun Xiao Jian
 Sundong Kim
+Sundong Kim
 Sungho Hwang
+Surya Dhaneshwar
 Surya Dhaneshwar
 Syed Muhammad Sufyian
 Sylvain Marty
@@ -776,6 +786,7 @@ Tim Patterson
 Timo Roeseler
 Timo Schmidt
 Timo Wilhelm
+Timur Rakhmatullin
 Timur Rakhmatullin
 Tin Nguyen
 tisonkun
@@ -843,6 +854,7 @@ yangrong688
 yangsanity
 Yanjie Wang
 Yannick Eisenschmidt
+Yaroslav Perventsev
 Yashashree Chopada
 Yashi Srivastava
 Yauheni Ramanovich
