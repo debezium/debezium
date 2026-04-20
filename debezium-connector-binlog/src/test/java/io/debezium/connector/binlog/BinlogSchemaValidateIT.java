@@ -11,11 +11,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
  * @author Inki Hwang
@@ -386,6 +389,88 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
 
         SourceRecord tombstoneEvent = recordsForTopic.get(3);
         assertTombstone(tombstoneEvent);
+    }
+
+
+    @Test
+    @FixFor("DBZ-1395")
+    public void shouldFailOnInconsistentRowLengthWhenSchemaHandlingModeIsFail() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE, BinlogConnectorConfig.EventProcessingFailureHandlingMode.FAIL)
+                .build();
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+
+        String primaryPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsPrimary);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO dbz7093(id, age, name, newcol) VALUES (201, 1,'name1','newcol1');");
+            }
+        }
+
+        Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
+                .until(() -> logInterceptor.containsMessage("internal schema size") || logInterceptor.containsMessage("different column size"));
+
+        waitForEngineShutdown();
+        assertConnectorNotRunning();
+
+        assertThat(logInterceptor.containsMessage("internal schema size")
+                || logInterceptor.containsMessage("different column size")).isTrue();
+
+        assertThat(exception.get()).isNotNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1395")
+    public void shouldSkipInconsistentRowLengthWhenSchemaHandlingModeIsSkip() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE, BinlogConnectorConfig.EventProcessingFailureHandlingMode.SKIP)
+                .build();
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+
+        String primaryPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsPrimary);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO dbz7093(id, age, name, newcol) VALUES (201, 1,'name1','newcol1');");
+            }
+        }
+
+        Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
+                .until(() -> logInterceptor.containsMessage("applying schema correction and continuing"));
+
+        assertConnectorIsRunning();
+        stopConnector();
+
+        assertThat(exception.get()).isNull();
     }
 
     private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsPrimary) throws SQLException {

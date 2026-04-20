@@ -544,7 +544,9 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "(i.e. internal representation is not consistent with database) should be handled, including: "
                     + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
                     + "'warn' the problematic event and its binlog position will be logged and the event will be skipped; "
-                    + "'skip' the problematic event will be skipped.");
+                    + "'skip' the problematic event will be skipped. "
+                    + "For row/schema column-count mismatches, non-fail modes skip the row instead of attempting any column remapping to avoid potential data misalignment "
+                    + "when synthetic/generated columns are interleaved in event payloads.");
 
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")

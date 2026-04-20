@@ -174,6 +174,7 @@ public class TableSchemaBuilder {
 
         table.columns()
                 .stream()
+                .filter(column -> !column.isSynthetic())
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
                     ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
@@ -287,6 +288,7 @@ public class TableSchemaBuilder {
                                                    ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             List<Column> columnsThatShouldBeAdded = columns.stream()
+                    .filter(column -> !column.isSynthetic())
                     .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                     .collect(Collectors.toList());
             int[] recordIndexes = indexesForColumns(columnsThatShouldBeAdded);
