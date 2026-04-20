@@ -488,15 +488,28 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withValidation(BinlogConnectorConfig::validateSnapshotModeNever)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Select one of the following snapshot options: "
                     + "'when_needed': On startup, the connector runs a snapshot if one is needed.; "
                     + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the binlog.; "
                     + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions back to streaming. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
                     + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the binlog.; "
-                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.; "
-                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the binlog. "
-                    + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.");
+
+    /**
+     * Internal-only property that permits the use of {@code snapshot.mode=never}.
+     * This mode is not supported for production use; it exists solely to allow targeted
+     * testing of the historical binlog-from-beginning behaviour.
+     */
+    public static final Field SNAPSHOT_MODE_NEVER_ALLOWED = Field.createInternal("snapshot.mode.never.allowed")
+            .withDisplayName("Allow 'never' snapshot mode (internal)")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription("Internal use only. When true, allows snapshot.mode=never to be used. "
+                    + "This is not a supported production configuration.");
 
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
             .withDisplayName("The time precision mode to be used")
@@ -964,5 +977,20 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public long getBinlogNetReadTimeout() {
         return config.getLong(BINLOG_NET_READ_TIMEOUT);
+    }
+
+    /**
+     * Validates that {@link SnapshotMode#NEVER} is not used unless the internal opt-in property
+     * ({@link #SNAPSHOT_MODE_NEVER_ALLOWED}) is explicitly set to {@code true}.
+     */
+    protected static int validateSnapshotModeNever(Configuration config, Field field, ValidationOutput problems) {
+        if (SnapshotMode.NEVER == SnapshotMode.parse(config.getString(field))) {
+            if (!config.getBoolean(SNAPSHOT_MODE_NEVER_ALLOWED.name(), false)) {
+                problems.accept(field, config.getString(field),
+                        "Snapshot mode 'never' is not supported. Use another snapshot mode instead.");
+                return 1;
+            }
+        }
+        return 0;
     }
 }

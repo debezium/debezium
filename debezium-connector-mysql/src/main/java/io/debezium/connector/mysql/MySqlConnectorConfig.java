@@ -320,7 +320,9 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
                     JDBC_DRIVER,
                     JDBC_PROTOCOL,
                     SSL_MODE)
-            .connector(SNAPSHOT_LOCKING_MODE)
+            .connector(
+                    SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_MODE_NEVER_ALLOWED)
             .events(
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES,

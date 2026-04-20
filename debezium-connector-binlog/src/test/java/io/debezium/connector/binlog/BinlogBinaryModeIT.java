@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
+import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
@@ -58,71 +60,83 @@ public abstract class BinlogBinaryModeIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-1814")
-    public void shouldReceiveRawBinaryStreaming() throws InterruptedException {
-        consume(SnapshotMode.NEVER, BinaryHandlingMode.BYTES, 1, ByteBuffer.wrap(new byte[]{ 1, 2, 3 }));
+    public void shouldReceiveRawBinaryStreaming() throws InterruptedException, SQLException {
+        consume(false, BinaryHandlingMode.BYTES, 5, ByteBuffer.wrap(new byte[]{ 1, 2, 3 }));
     }
 
     @Test
     @FixFor("DBZ-8076")
-    public void shouldReceiveRawBinarySnapshot() throws InterruptedException {
+    public void shouldReceiveRawBinarySnapshot() throws InterruptedException, SQLException {
         // SET CHARSET, DROP TABLE, DROP DATABASE, CREATE DATABASE, USE DATABASE
-        consume(SnapshotMode.INITIAL, BinaryHandlingMode.BYTES, 5, ByteBuffer.wrap(new byte[]{ 1, 2, 3 }));
+        consume(true, BinaryHandlingMode.BYTES, 5, ByteBuffer.wrap(new byte[]{ 1, 2, 3 }));
     }
 
     @Test
     @FixFor("DBZ-1814")
-    public void shouldReceiveHexBinaryStreaming() throws InterruptedException {
-        consume(SnapshotMode.NEVER, BinaryHandlingMode.HEX, 1, "010203");
+    public void shouldReceiveHexBinaryStreaming() throws InterruptedException, SQLException {
+        consume(false, BinaryHandlingMode.HEX, 5, "010203");
     }
 
     @Test
     @FixFor("DBZ-8076")
-    public void shouldReceiveHexBinarySnapshot() throws InterruptedException {
+    public void shouldReceiveHexBinarySnapshot() throws InterruptedException, SQLException {
         // SET CHARSET, DROP TABLE, DROP DATABASE, CREATE DATABASE, USE DATABASE
-        consume(SnapshotMode.INITIAL, BinaryHandlingMode.HEX, 5, "010203");
+        consume(true, BinaryHandlingMode.HEX, 5, "010203");
     }
 
     @Test
     @FixFor("DBZ-1814")
-    public void shouldReceiveBase64BinaryStream() throws InterruptedException {
-        consume(SnapshotMode.NEVER, BinaryHandlingMode.BASE64, 1, "AQID");
+    public void shouldReceiveBase64BinaryStream() throws InterruptedException, SQLException {
+        consume(false, BinaryHandlingMode.BASE64, 5, "AQID");
     }
 
     @Test
     @FixFor("DBZ-8076")
-    public void shouldReceiveBase64BinarySnapshot() throws InterruptedException {
-        consume(SnapshotMode.INITIAL, BinaryHandlingMode.BASE64, 5, "AQID");
+    public void shouldReceiveBase64BinarySnapshot() throws InterruptedException, SQLException {
+        consume(true, BinaryHandlingMode.BASE64, 5, "AQID");
     }
 
     @Test
     @FixFor("DBZ-5544")
-    public void shouldReceiveBase64UrlSafeBinaryStream() throws InterruptedException {
-        consume(SnapshotMode.NEVER, BinaryHandlingMode.BASE64_URL_SAFE, 1, "AQID");
+    public void shouldReceiveBase64UrlSafeBinaryStream() throws InterruptedException, SQLException {
+        consume(false, BinaryHandlingMode.BASE64_URL_SAFE, 5, "AQID");
     }
 
     @Test
     @FixFor("DBZ-8076")
-    public void shouldReceiveBase64UrlSafeBinarySnapshot() throws InterruptedException {
-        consume(SnapshotMode.INITIAL, BinaryHandlingMode.BASE64_URL_SAFE, 5, "AQID");
+    public void shouldReceiveBase64UrlSafeBinarySnapshot() throws InterruptedException, SQLException {
+        consume(true, BinaryHandlingMode.BASE64_URL_SAFE, 5, "AQID");
     }
 
-    private void consume(SnapshotMode snapshotMode, BinaryHandlingMode binaryHandlingMode, int metadataEventCount, Object expectedValue) throws InterruptedException {
+    private void consume(boolean snapshot, BinaryHandlingMode binaryHandlingMode, int metadataEventCount, Object expectedValue)
+            throws InterruptedException, SQLException {
         // Use the DB configuration to define the connector's configuration ...
-        config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, snapshotMode)
-                .with(BinlogConnectorConfig.BINARY_HANDLING_MODE, binaryHandlingMode)
-                .build();
+        if (snapshot) {
+            config = DATABASE.defaultConfig()
+                    .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(BinlogConnectorConfig.BINARY_HANDLING_MODE, binaryHandlingMode)
+                    .build();
 
-        // Start the connector ...
-        start(getConnectorClass(), config);
+            insertRow();
+            start(getConnectorClass(), config);
+
+        }
+        else {
+            config = DATABASE.defaultConfig()
+                    .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(BinlogConnectorConfig.BINARY_HANDLING_MODE, binaryHandlingMode)
+                    .build();
+
+            start(getConnectorClass(), config);
+            waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+            insertRow();
+        }
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int createTableCount = 1;
-        int insertCount = 1;
-        SourceRecords sourceRecords = consumeRecordsByTopic(metadataEventCount + createTableCount + insertCount);
+        SourceRecords sourceRecords = consumeRecordsByTopic(2 + metadataEventCount);
         stopConnector();
         assertThat(sourceRecords).isNotNull();
 
@@ -140,5 +154,26 @@ public abstract class BinlogBinaryModeIT<C extends SourceConnector> extends Abst
 
         // Check that all records are valid, can be serialized and deserialized ...
         sourceRecords.forEach(this::validate);
+    }
+
+    private void insertRow() throws SQLException {
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("INSERT INTO dbz_1814_binary_mode_test (\n" +
+                    "    id,\n" +
+                    "    blob_col,\n" +
+                    "    tinyblob_col,\n" +
+                    "    mediumblob_col,\n" +
+                    "    longblob_col,\n" +
+                    "    binary_col,\n" +
+                    "    varbinary_col )\n" +
+                    "VALUES (\n" +
+                    "    default,\n" +
+                    "    X'010203',\n" +
+                    "    X'010203',\n" +
+                    "    X'010203',\n" +
+                    "    X'010203',\n" +
+                    "    X'010203',\n" +
+                    "    X'010203' );");
+        }
     }
 }

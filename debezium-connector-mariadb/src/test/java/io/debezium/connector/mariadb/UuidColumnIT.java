@@ -58,19 +58,9 @@ public class UuidColumnIT extends AbstractBinlogConnectorIT<MariaDbConnector> im
 
     @Test
     @FixFor("DBZ-9027")
-    public void shouldHandleUuidStreaming() throws Exception {
-        shouldHandleUuid(SnapshotMode.NEVER);
-    }
-
-    @Test
-    @FixFor("DBZ-9027")
     public void shouldHandleUuidSnapshot() throws Exception {
-        shouldHandleUuid(SnapshotMode.INITIAL);
-    }
-
-    private void shouldHandleUuid(SnapshotMode snapshotMode) throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, snapshotMode)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_uuid"))
                 .build();
 

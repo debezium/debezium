@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.util.Strings;
 
 /**
  * @author Jiri Pechanec
@@ -38,7 +39,7 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
         stopConnector();
         DATABASE = TestHelper.getUniqueDatabase("multitable", "multitable_dbz_871")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        DATABASE.createAndInitialize();
+        DATABASE.create();
 
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
@@ -55,13 +56,16 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
     }
 
     @Test
-    void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // Testing.Print.enable();
         // CREATE DB + 4 * CREATE TABLE + DROP TABLE
@@ -69,16 +73,14 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
         final List<String> tableNames = new ArrayList<>();
         records.forEach(record -> {
             final Struct source = ((Struct) record.value()).getStruct("source");
-            assertThat(source.getString("db")).isEqualTo(DATABASE.getDatabaseName());
-            tableNames.add(source.getString("table"));
+            if (!Strings.isNullOrEmpty(source.getString("table"))) {
+                System.out.println(source);
+                assertThat(source.getString("db")).isEqualTo(DATABASE.getDatabaseName());
+                tableNames.add(source.getString("table"));
+            }
         });
-        assertThat(tableNames.subList(0, 5)).containsExactly(
-                null,
-                "t1",
-                "t2",
-                "t3",
-                "t4");
-        String[] dropTableNames = tableNames.get(5).split(",");
+        assertThat(tableNames.subList(0, 4)).containsExactly("t1", "t2", "t3", "t4");
+        String[] dropTableNames = tableNames.get(4).split(",");
         assertThat(dropTableNames).containsOnly("t1", "t2", "t3", "t4");
 
         stopConnector();
