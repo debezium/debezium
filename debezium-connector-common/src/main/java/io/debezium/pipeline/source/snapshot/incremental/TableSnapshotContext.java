@@ -12,7 +12,6 @@ import java.util.Optional;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Strings;
 
 /**
  * Isolated context for tracking incremental snapshot progress of a single table.
@@ -113,7 +112,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds,
-                                                                     List<AdditionalCondition> additionalCondition, String surrogateKey) {
+                                                                    List<AdditionalCondition> additionalCondition, String surrogateKey) {
         throw new UnsupportedOperationException("Worker context manages single table only");
     }
 

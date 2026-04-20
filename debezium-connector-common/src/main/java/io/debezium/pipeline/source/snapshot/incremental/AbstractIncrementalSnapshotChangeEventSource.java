@@ -224,7 +224,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (parallelCoordinator != null) {
             return parallelCoordinator.getWindowBuffer(dataCollectionId);
         }
-        return window;  // Fallback to global window for single-threaded mode
+        return window; // Fallback to global window for single-threaded mode
     }
 
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
@@ -302,7 +302,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected JdbcConnection createSnapshotConnection() throws SQLException {
         throw new UnsupportedOperationException(
                 "Parallel snapshot connections not supported by this connector implementation. " +
-                "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
+                        "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
     }
 
     @Override
@@ -398,7 +398,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         final JdbcConnection connForMaxKey = effectiveConnection;
                         maximumKey = retryPolicy.executeWithRetry(
                                 () -> connForMaxKey.queryAndMap(
-                                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()), rs -> {
+                                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()),
+                                        rs -> {
                                             if (!rs.next()) {
                                                 return null;
                                             }
@@ -514,10 +515,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * @param surrogateKey surrogate key column name
      */
     protected void processTablesInParallel(
-            P partition,
-            OffsetContext offsetContext,
-            List<DataCollection<T>> dataCollections,
-            String correlationId) {
+                                           P partition,
+                                           OffsetContext offsetContext,
+                                           List<DataCollection<T>> dataCollections,
+                                           String correlationId) {
 
         final int workerCount = parallelCoordinator.getThreadCount();
         final int totalTables = dataCollections.size();
@@ -528,8 +529,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final Queue<DataCollection<T>> workQueue = new ConcurrentLinkedQueue<>(dataCollections);
         final AtomicLong totalRowsAllTables = new AtomicLong(0);
         final AtomicInteger tablesProcessed = new AtomicInteger(0);
-        final List<TableSnapshotWorker<P, T>> allCompletedWorkers =
-                Collections.synchronizedList(new ArrayList<>());
+        final List<TableSnapshotWorker<P, T>> allCompletedWorkers = Collections.synchronizedList(new ArrayList<>());
 
         parallelCoordinator.resetTaskCount();
 
@@ -552,11 +552,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
                         TableSnapshotContext<T> tableContext = new TableSnapshotContext<>(dataCollection);
 
-                        Map<Struct, Object[]> tableWindowBuffer =
-                                parallelCoordinator.getWindowBuffer(dataCollection.getId());
+                        Map<Struct, Object[]> tableWindowBuffer = parallelCoordinator.getWindowBuffer(dataCollection.getId());
 
-                        TableSnapshotWorker.WatermarkCallback watermarkCallback =
-                                new TableSnapshotWorker.WatermarkCallback() {
+                        TableSnapshotWorker.WatermarkCallback watermarkCallback = new TableSnapshotWorker.WatermarkCallback() {
                             @Override
                             public void openWindow() {
                             }

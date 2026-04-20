@@ -27,7 +27,6 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.snapshot.SnapshotTableCompletionHandler;
 import io.debezium.util.ColumnUtils;
@@ -74,21 +73,22 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
      */
     public interface WatermarkCallback {
         void openWindow();
+
         void closeWindow();
     }
 
     public TableSnapshotWorker(
-            TableSnapshotContext<T> context,
-            JdbcConnection connection,
-            RelationalDatabaseConnectorConfig connectorConfig,
-            RelationalDatabaseSchema databaseSchema,
-            ChunkQueryBuilder<T> chunkQueryBuilder,
-            EventDispatcher<P, T> dispatcher,
-            Map<Struct, Object[]> windowBuffer,
-            IncrementalSnapshotRetryPolicy retryPolicy,
-            P partition,
-            WatermarkCallback watermarkCallback,
-            OffsetContext offsetContext) {
+                               TableSnapshotContext<T> context,
+                               JdbcConnection connection,
+                               RelationalDatabaseConnectorConfig connectorConfig,
+                               RelationalDatabaseSchema databaseSchema,
+                               ChunkQueryBuilder<T> chunkQueryBuilder,
+                               EventDispatcher<P, T> dispatcher,
+                               Map<Struct, Object[]> windowBuffer,
+                               IncrementalSnapshotRetryPolicy retryPolicy,
+                               P partition,
+                               WatermarkCallback watermarkCallback,
+                               OffsetContext offsetContext) {
 
         this.context = context;
         this.connection = connection;
@@ -108,8 +108,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         // Load SPI handlers for table completion notifications
         this.completionHandlers = new ArrayList<>();
-        ServiceLoader<SnapshotTableCompletionHandler> loader =
-            ServiceLoader.load(SnapshotTableCompletionHandler.class);
+        ServiceLoader<SnapshotTableCompletionHandler> loader = ServiceLoader.load(SnapshotTableCompletionHandler.class);
         loader.forEach(handler -> {
             completionHandlers.add(handler);
             LOGGER.info("[{}] Registered SnapshotTableCompletionHandler: {}",
@@ -229,8 +228,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         final io.debezium.relational.TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
         // Wrap Table, TableSchema, and OffsetContext for handlers that need them
-        final io.debezium.spi.snapshot.SnapshotTableMetadata metadata =
-                new io.debezium.spi.snapshot.SnapshotTableMetadata(currentTable, tableSchema, offsetContext);
+        final io.debezium.spi.snapshot.SnapshotTableMetadata metadata = new io.debezium.spi.snapshot.SnapshotTableMetadata(currentTable, tableSchema, offsetContext);
 
         for (SnapshotTableCompletionHandler handler : completionHandlers) {
             if (handler.shouldHandle(tableId.toString())) {

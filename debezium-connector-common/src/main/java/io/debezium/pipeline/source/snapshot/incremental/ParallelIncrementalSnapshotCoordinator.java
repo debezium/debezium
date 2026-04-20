@@ -60,7 +60,8 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     }
 
     public ParallelIncrementalSnapshotCoordinator(int threadCount,
-                                                   ConnectionFactory connectionFactory) throws SQLException {
+                                                  ConnectionFactory connectionFactory)
+            throws SQLException {
         if (threadCount < 1) {
             throw new IllegalArgumentException("Thread count must be at least 1, got: " + threadCount);
         }

@@ -69,11 +69,11 @@ public class IncrementalSnapshotRetryPolicy {
      * @param clock Clock for time operations and delays.
      */
     public IncrementalSnapshotRetryPolicy(
-            int maxAttempts,
-            long initialDelayMs,
-            long maxDelayMs,
-            double backoffMultiplier,
-            Clock clock) {
+                                          int maxAttempts,
+                                          long initialDelayMs,
+                                          long maxDelayMs,
+                                          double backoffMultiplier,
+                                          Clock clock) {
         this.maxAttempts = maxAttempts;
         this.initialDelayMs = initialDelayMs;
         this.maxDelayMs = maxDelayMs;
@@ -163,8 +163,9 @@ public class IncrementalSnapshotRetryPolicy {
      * @throws InterruptedException if the operation or retry wait is interrupted
      */
     public <T> T executeWithRetryInterruptible(
-            RetryableOperationInterruptible<T> operation,
-            String operationName) throws SQLException, InterruptedException {
+                                               RetryableOperationInterruptible<T> operation,
+                                               String operationName)
+            throws SQLException, InterruptedException {
 
         int attempt = 0;
         SQLException lastException = null;

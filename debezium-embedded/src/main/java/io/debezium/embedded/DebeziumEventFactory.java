@@ -3,13 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.embedded;
 
-import io.debezium.embedded.EmbeddedEngineChangeEvent;
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchema;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -18,8 +16,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
 
 /**
  * Factory to create Debezium change events from JDBC ResultSet rows.
@@ -72,10 +71,10 @@ public class DebeziumEventFactory {
      * @return EmbeddedEngineChangeEvent with flat value struct matching unwrap SMT output
      */
     public static EmbeddedEngineChangeEvent createSnapshotChangeEvent(
-            Object[] row,
-            TableId tableId,
-            TableSchema tableSchema,
-            OffsetContext offsetContext) {
+                                                                      Object[] row,
+                                                                      TableId tableId,
+                                                                      TableSchema tableSchema,
+                                                                      OffsetContext offsetContext) {
 
         // Use TableSchema's generators for both value and key
         // These have proper ValueConverters configured for JDBC → Debezium type conversion
@@ -89,8 +88,8 @@ public class DebeziumEventFactory {
 
         // Build a flat schema: all column fields from 'after' + metadata fields
         // This matches what ExtractNewRecordState would produce with:
-        //   add.fields=op,table,source.ts_ms,source.ts_ns,db,ts_ms,ts_ns
-        //   delete.handling.mode=rewrite
+        // add.fields=op,table,source.ts_ms,source.ts_ns,db,ts_ms,ts_ns
+        // delete.handling.mode=rewrite
         SchemaBuilder flatSchemaBuilder = SchemaBuilder.struct();
 
         // Add all table column fields from the after struct
@@ -132,12 +131,13 @@ public class DebeziumEventFactory {
                         sourceTsNs = sourceTsMs * 1_000_000L;
                     }
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 LOGGER.debug("Could not extract ts_ms from OffsetContext, using current time");
             }
         }
 
-        flatValue.put("__op", "r");  // 'r' = read (snapshot)
+        flatValue.put("__op", "r"); // 'r' = read (snapshot)
         flatValue.put("__table", tableId.table());
         flatValue.put("__source_ts_ms", sourceTsMs);
         flatValue.put("__source_ts_ns", sourceTsNs);
@@ -149,18 +149,16 @@ public class DebeziumEventFactory {
         // Create SourceRecord with FLAT value (not envelope)
         // This matches the format StructEventConverter expects after ExtractNewRecordState
         SourceRecord sourceRecord = new SourceRecord(
-            createSourcePartition(tableId),
-            createSourceOffset(),
-            tableId.toString(),
-            tableSchema.keySchema(),
-            key,
-            flatSchema,
-            flatValue
-        );
+                createSourcePartition(tableId),
+                createSourceOffset(),
+                tableId.toString(),
+                tableSchema.keySchema(),
+                key,
+                flatSchema,
+                flatValue);
 
         return new EmbeddedEngineChangeEvent<>(null, null, null, sourceRecord);
     }
-
 
     /**
      * Creates source partition metadata.
