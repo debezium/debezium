@@ -6,8 +6,11 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import io.debezium.util.Interner;
 
 final class ColumnEditorImpl implements ColumnEditor {
 
@@ -242,8 +245,15 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
-                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, comment);
+        Column column = new ColumnImpl(
+                Interner.intern(name), position, jdbcType, nativeType,
+                Interner.intern(typeName), Interner.intern(typeExpression),
+                Interner.intern(charsetName), Interner.intern(tableCharsetName),
+                length, scale, enumValues == null ? null : Interner.intern(Collections.unmodifiableList(enumValues)),
+                optional, autoIncremented, generated,
+                Interner.intern(defaultValueExpression), hasDefaultValue,
+                Interner.intern(comment));
+        return Interner.intern(column);
     }
 
     @Override
