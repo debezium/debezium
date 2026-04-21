@@ -403,16 +403,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
-    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.create(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
-            .withDisplayName("CDC column filter override")
-            .withDefault(false)
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isBoolean)
-            .withDescription(
-                    "This property can be used to override the default behavior of only including columns that are marked for CDC. Recommended for snapshot-only migrations since SQL Server requires CDC enablement at the table or column-level.");
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -456,6 +446,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                             + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
                             + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                             + "snapshot is taken.");
+
+    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.createInternal(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
+            .withDisplayName("CDC column filter override")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "This property can be used to override the default behavior of only including columns that have been enabled for CDC. Must only be used for snapshot migrations, otherwise columns not enabled for CDC will be missing from change events and would result in inconsistent schemas and possible failures.");
 
     public static final Field INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE = Field.create("incremental.snapshot.option.recompile")
             .withDisplayName("Recompile SELECT statements")
