@@ -7,22 +7,17 @@ package io.debezium.engine.source;
 
 import java.util.Map;
 
-import org.apache.kafka.common.metrics.PluginMetrics;
-import org.apache.kafka.connect.source.SourceTaskContext;
-import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
-
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
 
 /**
  * Implementation of {@link DebeziumSourceTaskContext} which holds references to objects which spans whole task life-cycle.
- * At the same time implements also Kafka Connect {@link SourceTaskContext} as current implementation of
- * {@link DebeziumSourceTask} only wraps Kafka Connect {@link org.apache.kafka.connect.source.SourceTask}.
  *
  * @author vjuranek
  */
-public class EngineSourceTaskContext implements DebeziumSourceTaskContext, SourceTaskContext {
+public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
 
     private final Map<String, String> config;
     private final OffsetStorageReader offsetReader;
@@ -74,17 +69,5 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext, Sourc
     @Override
     public Transformations transformations() {
         return transformations;
-    }
-
-    @Override
-    public Map<String, String> configs() {
-        // we don't support config changes on the fly yet
-        return null;
-    }
-
-    @Override
-    public PluginMetrics pluginMetrics() {
-        // we don't support metrics yet
-        return null;
     }
 }
