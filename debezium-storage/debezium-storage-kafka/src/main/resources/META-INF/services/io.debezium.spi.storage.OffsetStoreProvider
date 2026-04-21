@@ -1,0 +1,3 @@
+io.debezium.storage.kafka.offset.KafkaFileOffsetProvider
+io.debezium.storage.kafka.offset.KafkaMemoryOffsetProvider
+io.debezium.storage.kafka.offset.KafkaOffsetStoreProvider
