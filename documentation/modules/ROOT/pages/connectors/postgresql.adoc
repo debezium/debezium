@@ -3289,7 +3289,10 @@ By default, all non-system schemas have their changes captured. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire identifier for the schema; it does not match substrings that might be present in a schema name. +
-If you include this property in the configuration, do not also set the `schema.exclude.list` property.
+If you include this property in the configuration, do not also set the `schema.exclude.list` property. +
+
+*Performance note:* {prodname} uses `schema.include.list` (and `schema.exclude.list`) to restrict which PostgreSQL custom types are pre-loaded into memory at startup, reducing heap usage in databases with many schemas or custom types (for example, multi-tenant deployments).
+The built-in system schemas `pg_catalog` and `information_schema` are always pre-loaded.
 
 |[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
