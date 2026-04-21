@@ -28,6 +28,10 @@ import io.debezium.util.LoggingContext;
 public class ChangeEventQueueTest {
 
     private static final DataChangeEvent EVENT = getDataChangeEvent();
+    private static final String ASSERTION_MESSAGE = """
+            Expected the total number of events read to be %d , but was %d.
+            These tests require average processing speed to pass.
+            Therefore, if the processing speed is below the buffer included in the tests, they may fail.""";
 
     static Stream<Arguments> data() {
         int[] writers = { 1, 2, 4, 8, 16 };
@@ -91,7 +95,7 @@ public class ChangeEventQueueTest {
             for (Thread reader : readers) {
                 reader.join(maxWaitTimeout);
             }
-            assertEquals(totalNoOfEvents, recordsRead.get());
+            assertEquals(totalNoOfEvents, recordsRead.get(), ASSERTION_MESSAGE.formatted(totalNoOfEvents, recordsRead.get()));
         }
         finally {
             for (Thread thread : writers) {
@@ -152,7 +156,7 @@ public class ChangeEventQueueTest {
                     reader.join(remaining);
                 }
             }
-            assertEquals(totalNoOfEvents, recordsRead.get());
+            assertEquals(totalNoOfEvents, recordsRead.get(), ASSERTION_MESSAGE.formatted(totalNoOfEvents, recordsRead.get()));
         }
         finally {
             for (Thread thread : writers) {
@@ -212,7 +216,7 @@ public class ChangeEventQueueTest {
                     reader.join(remaining);
                 }
             }
-            assertEquals(0, recordsRead.get());
+            assertEquals(0, recordsRead.get(), ASSERTION_MESSAGE.formatted(totalNoOfEvents, recordsRead.get()));
         }
         finally {
             for (Thread thread : writers) {
@@ -273,7 +277,7 @@ public class ChangeEventQueueTest {
                     reader.join(remaining);
                 }
             }
-            assertEquals(totalNoOfEvents, recordsRead.get());
+            assertEquals(totalNoOfEvents, recordsRead.get(), ASSERTION_MESSAGE.formatted(totalNoOfEvents, recordsRead.get()));
         }
         finally {
             for (Thread thread : writers) {
