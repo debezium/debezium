@@ -16,7 +16,7 @@ import java.util.List;
  * <p>This allows sink implementations (e.g., Iceberg, BigQuery) to perform custom
  * actions like immediate flushing, without coupling debezium-core to specific sinks.
  *
- * @author Debezium Community
+ * @author Ivan Senyk
  */
 public interface SnapshotTableCompletionHandler {
 

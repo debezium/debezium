@@ -766,7 +766,7 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
-public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
+    public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
             .withDisplayName("Incremental snapshot batch flush size")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)

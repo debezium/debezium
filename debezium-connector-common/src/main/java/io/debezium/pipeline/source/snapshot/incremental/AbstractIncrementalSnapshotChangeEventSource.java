@@ -22,7 +22,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -115,7 +119,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 testConnection.close();
 
                 this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
-                        threads, jdbcConnection, () -> createSnapshotConnection());
+                        threads, () -> createSnapshotConnection());
 
                 LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
             }
@@ -220,7 +224,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (parallelCoordinator != null) {
             return parallelCoordinator.getWindowBuffer(dataCollectionId);
         }
-        return window;  // Fallback to global window for single-threaded mode
+        return window; // Fallback to global window for single-threaded mode
     }
 
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
@@ -298,7 +302,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected JdbcConnection createSnapshotConnection() throws SQLException {
         throw new UnsupportedOperationException(
                 "Parallel snapshot connections not supported by this connector implementation. " +
-                "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
+                        "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
     }
 
     @Override
@@ -356,6 +360,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         JdbcConnection effectiveConnection = jdbcConnection;
         boolean acquiredPoolConnection = false;
+        boolean createdOnDemandConnection = false;
 
         try {
             if (parallelCoordinator != null) {
@@ -366,6 +371,31 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     LOGGER.debug("[{}] Acquired worker connection for table '{}' chunk",
                             Thread.currentThread().getName(),
                             context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "unknown");
+                }
+                else {
+                    try {
+                        effectiveConnection = createSnapshotConnection();
+                        createdOnDemandConnection = true;
+                        LOGGER.info("[{}] Pool exhausted, created on-demand snapshot connection for table '{}'",
+                                Thread.currentThread().getName(),
+                                context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "unknown");
+                    }
+                    catch (Exception e) {
+                        LOGGER.warn("[{}] Failed to create on-demand snapshot connection, using default: {}",
+                                Thread.currentThread().getName(), e.getMessage());
+                    }
+                }
+            }
+            else {
+                try {
+                    effectiveConnection = createSnapshotConnection();
+                    createdOnDemandConnection = true;
+                }
+                catch (UnsupportedOperationException e) {
+                    LOGGER.trace("createSnapshotConnection not supported, using default connection");
+                }
+                catch (Exception e) {
+                    LOGGER.debug("Could not create snapshot connection, using default: {}", e.getMessage());
                 }
             }
 
@@ -394,7 +424,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         final JdbcConnection connForMaxKey = effectiveConnection;
                         maximumKey = retryPolicy.executeWithRetry(
                                 () -> connForMaxKey.queryAndMap(
-                                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()), rs -> {
+                                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()),
+                                        rs -> {
                                             if (!rs.next()) {
                                                 return null;
                                             }
@@ -487,6 +518,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (acquiredPoolConnection && effectiveConnection != null) {
                 parallelCoordinator.returnConnection(effectiveConnection);
             }
+            else if (createdOnDemandConnection && effectiveConnection != null) {
+                try {
+                    effectiveConnection.close();
+                }
+                catch (Exception e) {
+                    LOGGER.debug("Error closing on-demand snapshot connection", e);
+                }
+            }
 
             postReadChunk(context);
             if (!context.snapshotRunning()) {
@@ -510,119 +549,109 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * @param surrogateKey surrogate key column name
      */
     protected void processTablesInParallel(
-            P partition,
-            OffsetContext offsetContext,
-            List<DataCollection<T>> dataCollections,
-            String correlationId) {
+                                           P partition,
+                                           OffsetContext offsetContext,
+                                           List<DataCollection<T>> dataCollections,
+                                           String correlationId) {
 
-        final int maxParallelTables = parallelCoordinator.getConnectionPoolSize();
+        final int workerCount = parallelCoordinator.getThreadCount();
         final int totalTables = dataCollections.size();
 
-        LOGGER.info("Starting parallel table processing for {} tables with {} workers",
-                totalTables, parallelCoordinator.getThreadCount());
+        LOGGER.info("Starting parallel table processing for {} tables with {} workers (work-queue mode)",
+                totalTables, workerCount);
 
-        long totalRowsAllTables = 0;
-        int tablesProcessed = 0;
+        final Queue<DataCollection<T>> workQueue = new ConcurrentLinkedQueue<>(dataCollections);
+        final AtomicLong totalRowsAllTables = new AtomicLong(0);
+        final AtomicInteger tablesProcessed = new AtomicInteger(0);
+        final List<TableSnapshotWorker<P, T>> allCompletedWorkers = Collections.synchronizedList(new ArrayList<>());
 
-        for (int batchStart = 0; batchStart < totalTables; batchStart += maxParallelTables) {
-            int batchEnd = Math.min(batchStart + maxParallelTables, totalTables);
-            List<DataCollection<T>> batch = dataCollections.subList(batchStart, batchEnd);
-            int batchNumber = (batchStart / maxParallelTables) + 1;
-            int totalBatches = (int) Math.ceil((double) totalTables / maxParallelTables);
+        parallelCoordinator.resetTaskCount();
 
-            LOGGER.info("Processing batch {}/{}: tables {}-{} of {}",
-                    batchNumber, totalBatches, batchStart + 1, batchEnd, totalTables);
-
-            final List<TableSnapshotWorker<P, T>> workers = new ArrayList<>();
-            final List<JdbcConnection> acquiredConnections = new ArrayList<>();
-
-            try {
-                parallelCoordinator.resetTaskCount();
-
-                for (DataCollection<T> dataCollection : batch) {
-                    TableSnapshotContext<T> tableContext = new TableSnapshotContext<>(dataCollection);
-
-                    JdbcConnection workerConnection = parallelCoordinator.borrowConnection();
-                    if (workerConnection == null) {
-                        LOGGER.warn("No connection available for table '{}', skipping", dataCollection.getId());
-                        continue;
-                    }
-                    acquiredConnections.add(workerConnection);
-
-                    Map<Struct, Object[]> tableWindowBuffer = parallelCoordinator.getWindowBuffer(dataCollection.getId());
-
-                    TableSnapshotWorker.WatermarkCallback watermarkCallback = new TableSnapshotWorker.WatermarkCallback() {
-                        @Override
-                        public void openWindow() {
-                        }
-
-                        @Override
-                        public void closeWindow() {
-                        }
-                    };
-
-                    TableSnapshotWorker<P, T> worker = new TableSnapshotWorker<>(
-                            tableContext,
-                            workerConnection,
-                            connectorConfig,
-                            databaseSchema,
-                            chunkQueryBuilder,
-                            dispatcher,
-                            tableWindowBuffer,
-                            retryPolicy,
-                            partition,
-                            watermarkCallback,
-                            offsetContext);
-
-                    workers.add(worker);
-
-                    final JdbcConnection conn = workerConnection;
-                    parallelCoordinator.submit(() -> {
-                        try {
-                            worker.run();
-                        }
-                        finally {
-                            parallelCoordinator.returnConnection(conn);
-                        }
-                        return null;
-                    });
-
-                    LOGGER.info("Spawned worker for table '{}' (batch {}/{})",
-                            dataCollection.getId(), batchNumber, totalBatches);
+        for (int i = 0; i < workerCount; i++) {
+            parallelCoordinator.submit(() -> {
+                JdbcConnection workerConnection = parallelCoordinator.borrowConnection();
+                if (workerConnection == null) {
+                    LOGGER.warn("[{}] No connection available, exiting worker",
+                            Thread.currentThread().getName());
+                    return null;
                 }
 
-                parallelCoordinator.awaitCompletion();
+                try {
+                    DataCollection<T> dataCollection;
+                    while ((dataCollection = workQueue.poll()) != null) {
+                        LOGGER.info("[{}] Picked table '{}' from work queue ({} remaining)",
+                                Thread.currentThread().getName(),
+                                dataCollection.getId(),
+                                workQueue.size());
 
-                for (TableSnapshotWorker<P, T> worker : workers) {
-                    long rowsRead = worker.getTotalRowsRead();
-                    totalRowsAllTables += rowsRead;
-                    tablesProcessed++;
+                        TableSnapshotContext<T> tableContext = new TableSnapshotContext<>(dataCollection);
 
-                    LOGGER.info("Completed table '{}' ({} rows)",
-                            worker.getContext().currentDataCollectionId().getId(), rowsRead);
-                }
+                        Map<Struct, Object[]> tableWindowBuffer = parallelCoordinator.getWindowBuffer(dataCollection.getId());
 
-                for (TableSnapshotWorker<P, T> worker : workers) {
-                    if (worker.getContext().isCompleted()) {
-                        context.nextDataCollection();
+                        TableSnapshotWorker.WatermarkCallback watermarkCallback = new TableSnapshotWorker.WatermarkCallback() {
+                            @Override
+                            public void openWindow() {
+                            }
+
+                            @Override
+                            public void closeWindow() {
+                            }
+                        };
+
+                        TableSnapshotWorker<P, T> worker = new TableSnapshotWorker<>(
+                                tableContext,
+                                workerConnection,
+                                connectorConfig,
+                                databaseSchema,
+                                chunkQueryBuilder,
+                                dispatcher,
+                                tableWindowBuffer,
+                                retryPolicy,
+                                partition,
+                                watermarkCallback,
+                                offsetContext);
+
+                        worker.run();
+
+                        long rowsRead = worker.getTotalRowsRead();
+                        totalRowsAllTables.addAndGet(rowsRead);
+                        int done = tablesProcessed.incrementAndGet();
+                        allCompletedWorkers.add(worker);
+
+                        LOGGER.info("[{}] Completed table '{}' ({} rows). Progress: {}/{} tables",
+                                Thread.currentThread().getName(),
+                                dataCollection.getId(),
+                                rowsRead,
+                                done,
+                                totalTables);
                     }
                 }
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.error("Interrupted during parallel table processing", e);
-                throw new DebeziumException("Parallel snapshot interrupted", e);
-            }
-            catch (ExecutionException e) {
-                LOGGER.error("Worker failed during parallel table processing", e);
-                throw new DebeziumException("Parallel snapshot worker failed", e);
-            }
-            finally {
-                acquiredConnections.clear();
+                finally {
+                    parallelCoordinator.returnConnection(workerConnection);
+                }
+                return null;
+            });
+        }
+
+        try {
+            parallelCoordinator.awaitCompletion();
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Parallel snapshot interrupted", e);
+        }
+        catch (ExecutionException e) {
+            throw new DebeziumException("Parallel snapshot worker failed", e);
+        }
+
+        for (TableSnapshotWorker<P, T> worker : allCompletedWorkers) {
+            if (worker.getContext().isCompleted()) {
+                context.nextDataCollection();
             }
         }
 
-        LOGGER.info("All {} tables completed. Total rows: {}", tablesProcessed, totalRowsAllTables);
+        LOGGER.info("All {} tables completed (work-queue mode). Total rows: {}",
+                tablesProcessed.get(), totalRowsAllTables.get());
     }
 
     private boolean isTableInvalid(P partition, OffsetContext offsetContext) {

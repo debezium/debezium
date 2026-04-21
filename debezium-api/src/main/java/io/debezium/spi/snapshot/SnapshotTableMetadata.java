@@ -13,7 +13,7 @@ package io.debezium.spi.snapshot;
  * - TableSchema (Kafka Connect schemas) for creating Debezium change events
  * - OffsetContext (source metadata with LSN, txId, etc.) for proper source struct creation
  *
- * @author Debezium Community
+ * @author Ivan Senyk
  */
 public class SnapshotTableMetadata {
 

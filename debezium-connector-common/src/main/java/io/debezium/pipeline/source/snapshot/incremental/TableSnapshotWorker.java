@@ -27,7 +27,6 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.snapshot.SnapshotTableCompletionHandler;
 import io.debezium.util.ColumnUtils;
@@ -38,6 +37,7 @@ import io.debezium.util.ColumnUtils;
  * <p>Runs in dedicated thread, processes all chunks of a table independently.
  * Uses isolated TableSnapshotContext to avoid conflicts with main thread.
  *
+ * @author Ivan Senyk
  * @param <P> partition type
  * @param <T> data collection identifier type
  */
@@ -73,21 +73,22 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
      */
     public interface WatermarkCallback {
         void openWindow();
+
         void closeWindow();
     }
 
     public TableSnapshotWorker(
-            TableSnapshotContext<T> context,
-            JdbcConnection connection,
-            RelationalDatabaseConnectorConfig connectorConfig,
-            RelationalDatabaseSchema databaseSchema,
-            ChunkQueryBuilder<T> chunkQueryBuilder,
-            EventDispatcher<P, T> dispatcher,
-            Map<Struct, Object[]> windowBuffer,
-            IncrementalSnapshotRetryPolicy retryPolicy,
-            P partition,
-            WatermarkCallback watermarkCallback,
-            OffsetContext offsetContext) {
+                               TableSnapshotContext<T> context,
+                               JdbcConnection connection,
+                               RelationalDatabaseConnectorConfig connectorConfig,
+                               RelationalDatabaseSchema databaseSchema,
+                               ChunkQueryBuilder<T> chunkQueryBuilder,
+                               EventDispatcher<P, T> dispatcher,
+                               Map<Struct, Object[]> windowBuffer,
+                               IncrementalSnapshotRetryPolicy retryPolicy,
+                               P partition,
+                               WatermarkCallback watermarkCallback,
+                               OffsetContext offsetContext) {
 
         this.context = context;
         this.connection = connection;
@@ -107,8 +108,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         // Load SPI handlers for table completion notifications
         this.completionHandlers = new ArrayList<>();
-        ServiceLoader<SnapshotTableCompletionHandler> loader =
-            ServiceLoader.load(SnapshotTableCompletionHandler.class);
+        ServiceLoader<SnapshotTableCompletionHandler> loader = ServiceLoader.load(SnapshotTableCompletionHandler.class);
         loader.forEach(handler -> {
             completionHandlers.add(handler);
             LOGGER.info("[{}] Registered SnapshotTableCompletionHandler: {}",
@@ -121,13 +121,13 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         final TableId tableId = (TableId) context.currentDataCollectionId().getId();
 
         try {
-            LOGGER.info("[{}] 🚀 Starting table snapshot for '{}'",
+            LOGGER.info("[{}] Starting table snapshot for '{}'",
                     Thread.currentThread().getName(), tableId);
 
             // Get table schema
             currentTable = refreshTableSchema(tableId);
             if (currentTable == null) {
-                LOGGER.warn("[{}] ⚠️ Table '{}' schema not found, skipping",
+                LOGGER.warn("[{}] Table '{}' schema not found, skipping",
                         Thread.currentThread().getName(), tableId);
                 context.markCompleted();
                 return;
@@ -139,14 +139,14 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             // Get maximum key
             Object[] maximumKey = getMaximumKey();
             if (maximumKey == null) {
-                LOGGER.info("[{}] ✅ Table '{}' is empty",
+                LOGGER.info("[{}] Table '{}' is empty, skipping",
                         Thread.currentThread().getName(), tableId);
                 context.markCompleted();
                 return;
             }
 
             context.maximumKey(maximumKey);
-            LOGGER.info("[{}] 📊 Table '{}' has data, starting chunk reads",
+            LOGGER.info("[{}] Table '{}' has data, starting chunk reads",
                     Thread.currentThread().getName(), tableId);
 
             // Process all chunks
@@ -166,12 +166,12 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
 
             context.markCompleted();
-            LOGGER.info("[{}] ✅ Completed table snapshot for '{}': {} chunks, {} total rows",
+            LOGGER.info("[{}] Completed table snapshot for '{}': {} chunks, {} total rows",
                     Thread.currentThread().getName(), tableId, chunkCount, totalRowsRead);
 
             // Flush any remaining buffered data
             if (!completionHandlers.isEmpty() && !tableBuffer.isEmpty()) {
-                LOGGER.info("[{}] 🔔 Flushing final batch for table '{}' ({} rows)",
+                LOGGER.info("[{}] Flushing final batch for table '{}' ({} rows)",
                         Thread.currentThread().getName(),
                         tableId,
                         tableBuffer.size());
@@ -201,7 +201,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
         }
         catch (Exception e) {
-            LOGGER.error("[{}] ❌ Error processing table '{}': {}",
+            LOGGER.error("[{}] Error processing table '{}': {}",
                     Thread.currentThread().getName(), tableId, e.getMessage(), e);
             throw new DebeziumException("Failed to snapshot table " + tableId, e);
         }
@@ -218,7 +218,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         final TableId tableId = (TableId) context.currentDataCollectionId().getId();
 
-        LOGGER.debug("[{}] 🔄 Flushing partial buffer for '{}' ({} rows)",
+        LOGGER.debug("[{}] Flushing partial buffer for '{}' ({} rows)",
                 Thread.currentThread().getName(), tableId, tableBuffer.size());
 
         // Create a copy to pass to handlers
@@ -228,8 +228,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         final io.debezium.relational.TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
         // Wrap Table, TableSchema, and OffsetContext for handlers that need them
-        final io.debezium.spi.snapshot.SnapshotTableMetadata metadata =
-                new io.debezium.spi.snapshot.SnapshotTableMetadata(currentTable, tableSchema, offsetContext);
+        final io.debezium.spi.snapshot.SnapshotTableMetadata metadata = new io.debezium.spi.snapshot.SnapshotTableMetadata(currentTable, tableSchema, offsetContext);
 
         for (SnapshotTableCompletionHandler handler : completionHandlers) {
             if (handler.shouldHandle(tableId.toString())) {
@@ -238,7 +237,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                     handler.onTableSnapshotCompleted(tableId.toString(), batchCopy, metadata);
                 }
                 catch (Exception ex) {
-                    LOGGER.error("[{}] ❌ Handler {} failed for partial batch of '{}': {}",
+                    LOGGER.error("[{}] Handler {} failed for partial batch of '{}': {}",
                             Thread.currentThread().getName(),
                             handler.getClass().getSimpleName(),
                             tableId,
@@ -251,7 +250,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         // Clear buffer after flush
         tableBuffer.clear();
-        LOGGER.debug("[{}] 🧹 Cleared partial buffer for '{}'",
+        LOGGER.debug("[{}] Cleared partial buffer for '{}'",
                 Thread.currentThread().getName(), tableId);
     }
 
