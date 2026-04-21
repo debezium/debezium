@@ -7,7 +7,10 @@ package io.debezium.config;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 
@@ -29,6 +32,7 @@ public class ConfigDefinition {
     private final List<Field> connector;
     private final List<Field> history;
     private final List<Field> events;
+    private final Map<String, Integer> fieldGroupOrderMap;
 
     ConfigDefinition(String connectorName, List<Field> type, List<Field> connector, List<Field> history,
                      List<Field> events) {
@@ -37,6 +41,34 @@ public class ConfigDefinition {
         this.connector = Collections.unmodifiableList(connector);
         this.history = Collections.unmodifiableList(history);
         this.events = Collections.unmodifiableList(events);
+        this.fieldGroupOrderMap = Collections.unmodifiableMap(buildFieldGroupOrderMap());
+    }
+
+    /**
+     * Builds a map of field name to its implicit order within its {@link Field.Group},
+     * based on the order fields appear in this {@link ConfigDefinition}.
+     * This avoids the need for explicit position numbers on each field declaration.
+     */
+    private Map<String, Integer> buildFieldGroupOrderMap() {
+        final Map<Field.Group, Integer> groupCounters = new HashMap<>();
+        final Map<String, Integer> fieldOrders = new LinkedHashMap<>();
+        for (Field field : all()) {
+            if (field.group() != null) {
+                final Field.Group group = field.group().getGroup();
+                final int order = groupCounters.merge(group, 0, Integer::sum);
+                groupCounters.put(group, order + 1);
+                fieldOrders.put(field.name(), order);
+            }
+        }
+        return fieldOrders;
+    }
+
+    /**
+     * Returns a map of field name to its implicit order within its {@link Field.Group},
+     * derived from the order fields appear in this {@link ConfigDefinition}.
+     */
+    public Map<String, Integer> fieldGroupOrderMap() {
+        return fieldGroupOrderMap;
     }
 
     /**

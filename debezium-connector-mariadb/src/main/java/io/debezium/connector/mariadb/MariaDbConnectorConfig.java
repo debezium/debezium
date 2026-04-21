@@ -247,7 +247,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
             .withEnum(MariaDbSecureConnectionMode.class, MariaDbSecureConnectionMode.DISABLE)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withDescription("Whether to use an encrypted connection to the database. Options include: "
                     + "'disable' to use an unencrypted connection; "
                     + "'trust' to use a secure (encrypted) connection, but not perform certificate or hostname verification; "

@@ -40,7 +40,7 @@ public interface Heartbeat extends AutoCloseable {
     Field HEARTBEAT_INTERVAL = Field.create(HEARTBEAT_INTERVAL_PROPERTY_NAME)
             .withDisplayName("Connector heartbeat interval (milli-seconds)")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED_HEARTBEAT, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED_HEARTBEAT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Length of an interval in milli-seconds in in which the connector periodically sends heartbeat messages "
@@ -53,7 +53,7 @@ public interface Heartbeat extends AutoCloseable {
     Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
             .withDisplayName("A prefix used for naming of heartbeat topics")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED_HEARTBEAT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED_HEARTBEAT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("The prefix that is used to name heartbeat topics."
