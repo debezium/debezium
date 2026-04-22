@@ -354,5 +354,9 @@ Day-dreamer0,Rajender Passi
 VanKhanhAnny,Anny Dang
 Hisoka-X,Jia Fan
 JerryGao0805,Jerry Gao
-JacobF7,Jacob Falzon 
+JacobF7,Jacob Falzon
 danastott,Dana Stott
+maciejblawat,Maciej Blawat
+nirnx,Pawel Torbus
+Aangbaeck,Björn Ångbäck
+yonatan-h,Yonatan Haile

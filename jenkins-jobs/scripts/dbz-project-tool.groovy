@@ -356,6 +356,11 @@ def getProjectIssuesForIteration(iteration) {
                 return
             }
             def labels = content.labels.nodes.collect { it.name }
+            def noStatus = item.fieldValues.nodes.findAll({ it.__typename == 'ProjectV2ItemFieldSingleSelectValue' && it.field.name == 'Status' }).collect({ it.name }).empty
+            if (noStatus) {
+                System.err.println("Status not found for project item ${item}")
+                System.exit(8)
+            }
             def status = item.fieldValues.nodes.findAll({ it.__typename == 'ProjectV2ItemFieldSingleSelectValue' && it.field.name == 'Status' }).collect({ it.name }).first()
             def iterations = item.fieldValues.nodes.findAll({ it.__typename == 'ProjectV2ItemFieldIterationValue' }).collectEntries { [(it.field.name): it.title] }
             issue = new GitHubIssue(itemId: item.id, issueId: content.id, number: content.number, title: content.title, url: content.url, labels: labels, status: status, iterations: iterations)

@@ -72,6 +72,7 @@ artiship
 Arthur Le Ray
 Artur Albov
 Artur Gukasian
+Arya Dharmadhikari
 Ashhar Hasan
 Ashique Ansari
 Ashmeet Lamba
@@ -103,6 +104,7 @@ Biel Garau Estarellas
 Bin Li
 Binayak Das
 Bingqin Zhou
+Björn Ångbäck
 Björn Häuser
 Blake Peno
 Bob Roldan
@@ -240,6 +242,7 @@ Ganesh Bankar
 Ganesh Ramasubramanian
 Giljae Joo
 Gilles Vaquez
+Gio Gutierrez
 Giovanni De Stefano
 Gong Chang Hua
 Govinda Sakhare
@@ -357,6 +360,7 @@ Jos Huiting
 Jose Carvajal Hilario
 Jose Luis
 Jose Luis Sánchez
+José Felipe
 Joseph Koshakow
 Josh Arenberg
 Josh Ribera
@@ -416,6 +420,7 @@ Luke Alexander
 lyidataminr
 M Sazzadul Hoque
 Maarten Vercruysse
+Maciej Blawat
 Maciej Bryński
 Mans Singh
 MaoXiang Pan
@@ -440,6 +445,7 @@ Martin Tosney
 Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
+Matei Alexandru Gatin
 Mateusz Michalik
 Mateusz Tworek
 Mathijs van den Worm
@@ -525,6 +531,7 @@ Paul Cheung
 Paul Mellor
 Paul Tzen
 Paweł Malon
+Pawel Torbus
 Peng Lyu
 Petar Kostov
 Peter Goransson
@@ -533,6 +540,7 @@ Peter Larsson
 Peter Urbanetz
 Philip Sanetra
 Philipp Bouzid
+Philippe Camus
 Philippe Labat
 Piotr Piastucki
 Piotr Wolny
@@ -548,6 +556,7 @@ Qishang Zhong
 rptroberts
 Raf Liwoch
 Rafael Câmara
+Rafael Rain
 Raghava Ponnam
 Rajendra Dangwal
 Ram Satish
@@ -685,6 +694,7 @@ Vaibhav Kushwaha
 Vasily Ulianko
 Vedit Firat Arig
 Vincenzo Santonastaso
+Vineeth Yelagandula
 Victar Malinouski
 Victor Castaño
 Victor Xiang
@@ -727,6 +737,7 @@ Yiming Liu
 Yingying Tang
 Yoann Rodière
 Yohei Yoshimuta
+Yonatan Haile
 Yossi Shirizli
 Yuan Zhang
 Yuang Li
