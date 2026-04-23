@@ -1079,8 +1079,17 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 headerConverter = converterBuilder.headerConverter();
                 recordConverter = converterBuilder.toFormat(headerConverter);
             }
-            return new AsyncEmbeddedEngine(config, consumer, handler, classLoader, clock, completionCallback, connectorCallback, offsetCommitPolicy, headerConverter,
-                    recordConverter, shutdown);
+            return new AsyncEmbeddedEngine(config,
+                    consumer,
+                    handler,
+                    classLoader,
+                    clock,
+                    completionCallback,
+                    connectorCallback,
+                    offsetCommitPolicy,
+                    headerConverter,
+                    recordConverter,
+                    shutdown);
         }
     }
 
