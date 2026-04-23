@@ -19,5 +19,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-config</artifactId>
         </dependency>
+        <!-- TODO: remove once config is Kafka independet -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-runtime</artifactId>
+        </dependency>
     </dependencies>
 </project>
