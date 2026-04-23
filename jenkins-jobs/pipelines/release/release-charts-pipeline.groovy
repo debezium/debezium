@@ -111,6 +111,12 @@ node('Slave') {
             echo "=== Downloading Debezium operator chart ==="
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
 
+            // Determine chart structure based on version (3.6+ uses new structure)
+            def versionParts = RELEASE_VERSION.tokenize('.')
+            def majorVersion = versionParts[0].toInteger()
+            def minorVersion = versionParts[1].tokenize(/[^0-9]/)[0].toInteger()
+            def useNewStructure = (majorVersion > 3) || (majorVersion == 3 && minorVersion >= 6)
+
             dir(TMP_WORKDIR) {
 
                 sh(
@@ -127,19 +133,32 @@ node('Slave') {
                             """
                 )
 
-                dir("debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator") {
+                // Set chart path based on structure
+                def chartPath = useNewStructure ?
+                    "debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator" :
+                    "debezium-operator-${RELEASE_SEM_VERSION}"
+
+                dir(chartPath) {
                     fileUtils.modifyFile("values.yaml", { content ->
-                        return content.replaceAll(
-                                /(image:\s*[^:]+:)[^\s]+/,
-                                "\$1${RELEASE_SEM_VERSION}"
-                        )
+                        // Old structure uses quoted values, new structure uses unquoted
+                        if (useNewStructure) {
+                            return content.replaceAll(
+                                    /(image:\s*[^:]+:)[^\s]+/,
+                                    "\$1${RELEASE_SEM_VERSION}"
+                            )
+                        } else {
+                            return content.replaceAll(
+                                    /(image:\s*"[^:]+:)[^"]+(")/,
+                                    "\$1${RELEASE_SEM_VERSION}\$2"
+                            )
+                        }
                     })
 
                 }
 
                 sh(label: 'Repackage',
                         script: """
-                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator
+                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} ${chartPath}
                             cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
                         """
                 )
