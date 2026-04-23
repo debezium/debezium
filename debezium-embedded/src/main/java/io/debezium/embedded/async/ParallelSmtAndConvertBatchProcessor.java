@@ -28,12 +28,14 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
     final DebeziumEngine.RecordCommitter committer;
     final DebeziumEngine.ChangeConsumer<R> userHandler;
     final Function<SourceRecord, R> convertor;
+    private final DebeziumEngine.Watcher watcher;
 
     ParallelSmtAndConvertBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<R> userHandler,
-                                        final Function<SourceRecord, R> convertor) {
+                                        final Function<SourceRecord, R> convertor, DebeziumEngine.Watcher watcher) {
         this.committer = committer;
         this.userHandler = userHandler;
         this.convertor = convertor;
+        this.watcher = watcher;
     }
 
     @Override
@@ -52,7 +54,9 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
             }
         }
 
-        LOGGER.trace("Calling user handler.");
-        userHandler.handleBatch(convertedRecords, committer);
+        if (watcher.engine().isConsuming()) {
+            LOGGER.trace("Calling user handler.");
+            userHandler.handleBatch(convertedRecords, committer);
+        }
     }
 }

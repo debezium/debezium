@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
+import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,10 +30,12 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
 
     final DebeziumEngine.RecordCommitter committer;
     final Consumer<SourceRecord> consumer;
+    private final Watcher watcher;
 
-    ParallelSmtConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer) {
+    ParallelSmtConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer, Watcher watcher) {
         this.committer = committer;
         this.consumer = consumer;
+        this.watcher = watcher;
     }
 
     @Override
@@ -47,6 +50,9 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
+            if (!watcher.engine().isConsuming()) {
+                break;
+            }
             SourceRecord record = recordFutures[i].get();
             if (record != null) {
                 try {
