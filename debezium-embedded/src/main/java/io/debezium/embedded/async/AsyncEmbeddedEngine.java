@@ -122,6 +122,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
     private final CountDownLatch shutDownLatch = new CountDownLatch(1);
     private Signaler signaler;
+    private final DebeziumShutdown<R> debeziumShutdown;
+    private final Watcher watcher;
 
     private AsyncEmbeddedEngine(Properties config,
                                 Consumer<R> consumer,
@@ -132,7 +134,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                                 ConnectorCallback connectorCallback,
                                 OffsetCommitPolicy offsetCommitPolicy,
                                 HeaderConverter headerConverter,
-                                Function<SourceRecord, R> recordConverter) {
+                                Function<SourceRecord, R> recordConverter,
+                                DebeziumShutdown<R> debeziumShutdown) {
 
         this.config = Configuration.from(Objects.requireNonNull(config, "A connector configuration must be specified."));
         this.consumer = consumer;
@@ -144,6 +147,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         this.headerConverter = headerConverter;
         this.recordConverter = recordConverter;
         this.sourceConverter = (record) -> ((EmbeddedEngineChangeEvent<?, ?, ?>) record).sourceRecord();
+        this.debeziumShutdown = debeziumShutdown;
 
         // Ensure either user ChangeConsumer or Consumer is provided and validate supported records ordering is provided when relevant.
         if (this.handler == null & this.consumer == null) {
@@ -195,6 +199,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
         offsetKeyConverter.configure(internalConverterConfig, true);
         offsetValueConverter.configure(internalConverterConfig, false);
+        this.watcher = () -> () -> State.POLLING_TASKS.compareTo(state.get()) == 0;
     }
 
     List<EngineSourceTask> tasks() {
@@ -593,25 +598,51 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @return {@link RecordProcessor} instance which will be used for processing the records.
      */
     private RecordProcessor createRecordProcessor(String processorClassName, EngineSourceTask task) {
+        SourceRecordCommitter committer = new SourceRecordCommitter(task);
+
         if (ParallelSmtBatchProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtBatchProcessor(new SourceRecordCommitter(task), (DebeziumEngine.ChangeConsumer<SourceRecord>) handler);
+            return new ParallelSmtBatchProcessor(committer,
+                    (ChangeConsumer<SourceRecord>) ShutdownChangeConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(handler, committer), watcher);
         }
         if (ParallelSmtAndConvertBatchProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtAndConvertBatchProcessor(new ConvertingRecordCommitter(task), handler, recordConverter);
+            ConvertingRecordCommitter convertingCommitter = new ConvertingRecordCommitter(task);
+
+            return new ParallelSmtAndConvertBatchProcessor(convertingCommitter,
+                    ShutdownChangeConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(handler, convertingCommitter),
+                    recordConverter, watcher);
         }
         if (ParallelSmtConsumerProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtConsumerProcessor(new SourceRecordCommitter(task), (Consumer<SourceRecord>) consumer);
+            return new ParallelSmtConsumerProcessor(committer,
+                    (Consumer<SourceRecord>) ShutdownConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(consumer, committer), watcher);
         }
         if (ParallelSmtAndConvertConsumerProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtAndConvertConsumerProcessor(new SourceRecordCommitter(task), consumer, recordConverter);
+            return new ParallelSmtAndConvertConsumerProcessor(committer,
+                    ShutdownConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(consumer, committer),
+                    recordConverter,
+                    watcher);
         }
         if (ParallelSmtAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtAsyncConsumerProcessor(new SourceRecordCommitter(task), (Consumer<SourceRecord>) consumer);
+            return new ParallelSmtAsyncConsumerProcessor(committer,
+                    (Consumer<SourceRecord>) ShutdownConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(consumer, committer), watcher);
         }
         if (ParallelSmtAndConvertAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
-            return new ParallelSmtAndConvertAsyncConsumerProcessor(new SourceRecordCommitter(task), consumer, recordConverter);
+            return new ParallelSmtAndConvertAsyncConsumerProcessor(committer,
+                    ShutdownConsumer.create(debeziumShutdown, shutdownWorkflow()).apply(consumer, committer),
+                    recordConverter, watcher);
         }
+
         throw new IllegalStateException("Unable to create RecordProcessor instance, this should never happen.");
+    }
+
+    private Runnable shutdownWorkflow() {
+        return () -> {
+            try {
+                close();
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
     }
 
     /**
@@ -922,6 +953,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         private HeaderConverter headerConverter;
         private Function<SourceRecord, R> recordConverter;
         private ConverterBuilder converterBuilder;
+        private DebeziumShutdown<SourceRecord> shutdown;
 
         AsyncEngineBuilder() {
             this((KeyValueHeaderChangeEventFormat<?, ?, ?>) null);
@@ -966,6 +998,45 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 config.put(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), "false");
             }
             return this;
+        }
+
+        @Override
+        public ShutdownBuilder<R> shutdown() {
+            return new ShutdownBuilder<>() {
+                @Override
+                public BeforeBuilder<R> before() {
+                    return () -> new ConsumedBuilder<>() {
+                        @Override
+                        public Builder<R> records(int number) {
+                            AsyncEngineBuilder.this.shutdown = DebeziumShutdown.countdownBeforeProcessing(number);
+                            return AsyncEngineBuilder.this;
+                        }
+
+                        @Override
+                        public Builder<R> custom(ShutdownStrategy<R> shutdownStrategy) {
+                            AsyncEngineBuilder.this.shutdown = DebeziumShutdown.shutdownBeforeProcessing(shutdownStrategy, recordConverter);
+                            return AsyncEngineBuilder.this;
+                        }
+                    };
+                }
+
+                @Override
+                public AfterBuilder<R> after() {
+                    return () -> new ConsumedBuilder<>() {
+                        @Override
+                        public Builder<R> records(int number) {
+                            AsyncEngineBuilder.this.shutdown = DebeziumShutdown.countdownAfterProcessing(number);
+                            return AsyncEngineBuilder.this;
+                        }
+
+                        @Override
+                        public Builder<R> custom(ShutdownStrategy<R> shutdownStrategy) {
+                            AsyncEngineBuilder.this.shutdown = DebeziumShutdown.shutdownAfterProcessing(shutdownStrategy, recordConverter);
+                            return AsyncEngineBuilder.this;
+                        }
+                    };
+                }
+            };
         }
 
         @Override
@@ -1014,7 +1085,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 recordConverter = converterBuilder.toFormat(headerConverter);
             }
             return new AsyncEmbeddedEngine(config, consumer, handler, classLoader, clock, completionCallback, connectorCallback, offsetCommitPolicy, headerConverter,
-                    recordConverter);
+                    recordConverter, shutdown);
         }
     }
 

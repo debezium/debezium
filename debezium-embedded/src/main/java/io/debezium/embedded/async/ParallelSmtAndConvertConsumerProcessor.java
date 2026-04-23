@@ -11,6 +11,7 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +32,14 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
     final DebeziumEngine.RecordCommitter committer;
     final Consumer<R> consumer;
     final Function<SourceRecord, R> convertor;
+    private final Watcher watcher;
 
-    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor,
+                                           Watcher watcher) {
         this.committer = committer;
         this.consumer = consumer;
         this.convertor = convertor;
+        this.watcher = watcher;
     }
 
     @Override
@@ -50,6 +54,9 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
+            if (!watcher.engine().isConsuming()) {
+                break;
+            }
             R record = recordFutures[i].get();
             if (record != null) {
                 try {

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
+import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +27,13 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
 
     final DebeziumEngine.RecordCommitter committer;
     final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler;
+    private final Watcher watcher;
 
-    ParallelSmtBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler) {
+    ParallelSmtBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler,
+                              Watcher watcher) {
         this.committer = committer;
         this.userHandler = userHandler;
+        this.watcher = watcher;
     }
 
     @Override
@@ -47,7 +51,9 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
             }
         }
 
-        LOGGER.trace("Calling user handler.");
-        userHandler.handleBatch(transformedRecords, committer);
+        if (watcher.engine().isConsuming()) {
+            LOGGER.trace("Calling user handler.");
+            userHandler.handleBatch(transformedRecords, committer);
+        }
     }
 }

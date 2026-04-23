@@ -12,6 +12,7 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +33,16 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
     final DebeziumEngine.RecordCommitter committer;
     final Consumer<R> consumer;
     final Function<SourceRecord, R> convertor;
+    private final Watcher watcher;
 
-    ParallelSmtAndConvertAsyncConsumerProcessor(DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertAsyncConsumerProcessor(DebeziumEngine.RecordCommitter committer,
+                                                final Consumer<R> consumer,
+                                                final Function<SourceRecord, R> convertor,
+                                                Watcher watcher) {
         this.committer = committer;
         this.consumer = consumer;
         this.convertor = convertor;
+        this.watcher = watcher;
     }
 
     @Override
@@ -47,7 +53,7 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
         Iterator<SourceRecord> recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
             recordFutures[i] = recordService
-                    .submit(new ProcessingCallables.TransformConvertConsumeRecord<>(recordsIterator.next(), transformations, convertor, consumer));
+                    .submit(new ProcessingCallables.TransformConvertConsumeRecord<>(recordsIterator.next(), transformations, convertor, consumer, watcher));
         }
 
         LOGGER.trace("Waiting for the batch to finish processing.");
