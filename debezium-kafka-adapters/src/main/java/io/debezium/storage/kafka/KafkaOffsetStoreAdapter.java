@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+import org.apache.kafka.connect.runtime.WorkerConfig;
+
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStore;
 
@@ -31,8 +33,13 @@ public class KafkaOffsetStoreAdapter implements OffsetStore, KafkaStorageAdapter
     @Override
     public void configure(Configuration config) {
         // Convert Debezium Configuration to Kafka WorkerConfig
-        org.apache.kafka.connect.runtime.WorkerConfig kafkaConfig = new org.apache.kafka.connect.runtime.distributed.DistributedConfig(config.asMap());
+        WorkerConfig kafkaConfig = new org.apache.kafka.connect.runtime.distributed.DistributedConfig(config.asMap());
         delegate.configure(kafkaConfig);
+    }
+
+    @Override
+    public void configure(WorkerConfig workerConfig) {
+        delegate.configure(workerConfig);
     }
 
     @Override

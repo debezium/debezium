@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+import org.apache.kafka.connect.runtime.WorkerConfig;
+
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 
@@ -32,6 +34,20 @@ public interface OffsetStore {
      * @param config the configuration
      */
     void configure(Configuration config);
+
+    /**
+     * Configure the offset backing store with Kafka WorkerConfig.
+     * <p>
+     * This method is called once before {@link #start()}.
+     *
+     * This method is deprecated and should be removed once Debezium config is not dependent on Kafka config.
+     *
+     * @param config the configuration
+     */
+    @Deprecated
+    default void configure(WorkerConfig config) {
+        configure(Configuration.from(config.values()));
+    }
 
     /**
      * Start the offset backing store.

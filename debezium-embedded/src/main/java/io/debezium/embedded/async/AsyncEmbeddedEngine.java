@@ -831,9 +831,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final String offsetStoreName = config.getString(AsyncEngineConfig.OFFSET_STORAGE);
         LOGGER.debug("Creating instance of offset store for '{}'", offsetStoreName);
 
-        final OffsetStore offsetStore;
-        final Configuration debeziumConfig = Configuration.from(workerConfig.originalsStrings());
-
         ServiceLoader<OffsetStoreProvider> providers = ServiceLoader.load(OffsetStoreProvider.class, classLoader);
         OffsetStoreProvider matchedProvider = null;
 
@@ -851,6 +848,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
         }
 
+        final OffsetStore offsetStore;
+        final Configuration debeziumConfig = Configuration.from(workerConfig.values());
+
         if (matchedProvider != null) {
             LOGGER.info("Found offset store provider '{}' for '{}'", matchedProvider.getName(), offsetStoreName);
             offsetStore = matchedProvider.create(debeziumConfig, connectorConfig);
@@ -863,7 +863,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         // Configure and start the offset store
         try {
             LOGGER.debug("Configuring and starting offset store");
-            offsetStore.configure(debeziumConfig);
+            // TODO use Debezium config one we get rid off Kafka-dependent config
+            offsetStore.configure(workerConfig);
             offsetStore.start();
         }
         catch (Throwable t) {
