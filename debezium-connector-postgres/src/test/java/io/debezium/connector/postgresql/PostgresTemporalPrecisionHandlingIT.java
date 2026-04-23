@@ -344,6 +344,56 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
+    void shouldConvertInfinityTimestampsToLongMinMax() throws Exception {
+        Testing.Print.disable();
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "temporaltype")
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.NANOSECONDS)
+                .build());
+        start(PostgresConnector.class, config.getConfig());
+        assertConnectorIsRunning();
+
+        TestHelper.execute("""
+                INSERT INTO temporaltype.test_data_types
+                VALUES (10 , NULL, NULL, NULL, 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', NULL, NULL, NULL, NULL );""");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        SourceRecord insertRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertEquals(TOPIC_NAME, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, "c_id", 10);
+        Struct after = getAfter(insertRecord);
+        assertEquals(after.get("c_id"), 10);
+        assertEquals(after.get("c_timestamp0"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp1"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp2"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp3"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp4"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp5"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp6"), Long.MAX_VALUE);
+
+        TestHelper.execute("""
+                INSERT INTO temporaltype.test_data_types
+                VALUES (11 , NULL, NULL, NULL, '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', NULL, NULL, NULL, NULL );""");
+
+        records = consumeRecordsByTopic(1);
+        insertRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertEquals(TOPIC_NAME, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, "c_id", 11);
+        after = getAfter(insertRecord);
+        assertEquals(after.get("c_id"), 11);
+        assertEquals(after.get("c_timestamp0"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp1"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp2"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp3"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp4"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp5"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp6"), Long.MIN_VALUE);
+
+        stopConnector();
+    }
+
+    @Test
     void shouldReceiveDeletesWithInfinityDate() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
