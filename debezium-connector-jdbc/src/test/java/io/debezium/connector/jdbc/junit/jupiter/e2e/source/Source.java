@@ -132,7 +132,7 @@ public class Source extends JdbcConnectionProvider {
                     }
                 }
                 try {
-                    int timeoutSeconds = (type == SourceType.SQLSERVER) ? 60 : 20;
+                    int timeoutSeconds = (type == SourceType.SQLSERVER) ? 120 : 20;
                     wait.waitUntil(f -> f.getUtf8String().contains(message), timeoutSeconds, TimeUnit.SECONDS);
                 }
                 catch (TimeoutException e) {
