@@ -2271,56 +2271,44 @@ az postgres server configuration set --resource-group mygroup --server-name myse
 az postgres server restart --resource-group mygroup --name myserver
 ```
 ifdef::community[]
+[[postgresql-on-gcp]]
 [[cloud-sql-for-postgresql]]
-==== Cloud SQL for PostgreSQL
+==== PostgreSQL on GCP (Cloud SQL for PostgreSQL)
 
-To use {prodname} with link:https://cloud.google.com/sql/postgresql/[Cloud SQL for PostgreSQL], you must configure the database to use the `pgoutput` logical decoding plug-in.
+It is possible to use {prodname} with link:https://cloud.google.com/sql/postgresql/[Cloud SQL for PostgreSQL], which supports logical decoding for PostgreSQL.
 
-The following sections provide an overview of the tasks that you must complete to prepare a Cloud SQL for PostgreSQL database for use with {prodname}.
+To use Cloud SQL with {prodname}:
+
+* Enable the `cloudsql.logical_decoding` flag so Cloud SQL configures `wal_level=logical`.
+* Configure the replication user with privileges required for logical decoding.
+* Set the {prodname} `plugin.name` parameter to `pgoutput`.
+* For Cloud SQL-specific steps to configure logical replication, publications, and replication slots, see the link:https://cloud.google.com/sql/docs/postgres/replication/configure-logical-replication[Google Cloud documentation].
 
 .Setting the `cloudsql.logical_decoding` flag
-In Cloud SQL, you can enable logical decoding by setting the `cloudsql.logical_decoding` flag to `on`.
-After you set the flag, it automatically adjusts the `wal_level` configuration parameter to `logical`.
-
-You can use either the Google Cloud console or the `gcloud` command-line tool to edit the `cloudsql.logical_decoding` flag.
-
-For detailed instructions about how to change the value of flags in Cloud SQL, see the link:https://cloud.google.com/sql/docs/postgres/flags/[Google Cloud SQL documentation].
-
-To verify that the value of the setting reflects your changes, run the following query:
+In Cloud SQL, set the `cloudsql.logical_decoding` flag to `on` by using either the Google Cloud console or the `gcloud` CLI.
+After you apply the change, verify that the server reports logical decoding enabled:
 
 ----
 SHOW wal_level;
 ----
 
-.Creating a replication user
-To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+.Configuring a replication user
+To use logical decoding, create a PostgreSQL user with the `REPLICATION` attribute (or grant it to an existing user).
+Run the commands as `postgres` or as a member of the `cloudsqlsuperuser` group:
 
-To create a user with the `REPLICATION` attribute::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
 ----
 CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
-----
-
-To set the `REPLICATION` attribute on an existing user::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
 ALTER USER existing_user WITH REPLICATION;
 ----
 
 .Specifying the {prodname} `plugin.name`
-
-In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
+In the connector configuration, set `plugin.name` to `pgoutput`:
 
 ----
 {
-      ..
-      "plugin.name": "pgoutput",
-      ..
-      ..
+  ..
+  "plugin.name": "pgoutput",
+  ..
 }
 ----
 endif::community[]
