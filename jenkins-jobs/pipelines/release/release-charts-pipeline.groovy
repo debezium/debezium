@@ -127,11 +127,11 @@ node('Slave') {
                             """
                 )
 
-                dir("debezium-operator-${RELEASE_SEM_VERSION}") {
+                dir("debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator") {
                     fileUtils.modifyFile("values.yaml", { content ->
                         return content.replaceAll(
-                                /(image:\s*"[^:]+:)[^"]+(")/,
-                                "\$1${RELEASE_SEM_VERSION}\$2"
+                                /(image:\s*[^:]+:)[^\s]+/,
+                                "\$1${RELEASE_SEM_VERSION}"
                         )
                     })
 
@@ -139,7 +139,7 @@ node('Slave') {
 
                 sh(label: 'Repackage',
                         script: """
-                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} debezium-operator-${RELEASE_SEM_VERSION}
+                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator
                             cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
                         """
                 )
