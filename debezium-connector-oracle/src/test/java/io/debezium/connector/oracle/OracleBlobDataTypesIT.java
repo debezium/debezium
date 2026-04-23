@@ -899,7 +899,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor({ "DBZ-2948", "DBZ-5773" })
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "DBZ-4741 enables LOB_ERASE propagation for XStream; OLR handled by its own test")
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE BLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1004,6 +1004,162 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
         assertThat(after.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("DBZ-4741")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_WRITE re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobWriteAppend() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert with a known BLOB value.
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+
+        // Consume (and discard) the insert record.
+        consumeRecordsByTopic(1);
+
+        // WRITEAPPEND 4 KB of additional bytes. XStream emits LOB_WRITE LCRs; the
+        // adapter should re-read the full BLOB and surface an UPDATE with the new value.
+        final byte[] appended = new byte[]{ 0x41, 0x42, 0x43, 0x44 };
+        connection.prepareQuery(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "END;",
+                p -> { p.setInt(1, appended.length); p.setBytes(2, appended); },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        // Full post-append value should be surfaced via reselect, not the 4-byte chunk
+        // that DBMS_LOB.WRITEAPPEND actually sent.
+        byte[] expected = Arrays.copyOf(part(BIN_DATA, 0, 8000), 8000 + appended.length);
+        System.arraycopy(appended, 0, expected, 8000, appended.length);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(expected));
+    }
+
+    @Test
+    @FixFor("DBZ-4741")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_TRIM re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobTrim() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Trim the BLOB to the first 5000 bytes. XStream emits LOB_TRIM with no chunk data;
+        // the adapter should reselect and emit an UPDATE whose value reflects the truncated BLOB.
+        connection.execute(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.TRIM(loc, 5000); "
+                        + "END;");
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(part(BIN_DATA, 0, 5000)));
+    }
+
+    @Test
+    @FixFor("DBZ-4741")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_ERASE re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobErase() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // ERASE 100 bytes starting at offset 1. Erased bytes are zero-filled by Oracle,
+        // so the reselected value has zeros over the affected range.
+        connection.execute(
+                "DECLARE loc BLOB; amount integer := 100; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.ERASE(loc, amount, 1); "
+                        + "END;");
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        byte[] expected = Arrays.copyOf(part(BIN_DATA, 0, 8000), 8000);
+        for (int i = 0; i < 100; i++) {
+            expected[i] = 0;
+        }
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(expected));
     }
 
     @Test
