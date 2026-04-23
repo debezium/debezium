@@ -1182,6 +1182,33 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            return null;
+        }
+
+        if (data instanceof Instant instant) {
+            if (POSITIVE_INFINITY_INSTANT.equals(instant)) {
+                return Long.MAX_VALUE;
+            }
+            else if (NEGATIVE_INFINITY_INSTANT.equals(instant)) {
+                return Long.MIN_VALUE;
+            }
+        }
+
+        if (data instanceof LocalDateTime localDateTime) {
+            if (POSITIVE_INFINITY_LOCAL_DATE_TIME.equals(localDateTime)) {
+                return Long.MAX_VALUE;
+            }
+            else if (NEGATIVE_INFINITY_LOCAL_DATE_TIME.equals(localDateTime)) {
+                return Long.MIN_VALUE;
+            }
+        }
+
+        return super.convertTimestampToEpochNanos(column, fieldDefn, data);
+    }
+
+    @Override
     protected int getTimePrecision(Column column) {
         return column.scale().orElse(-1);
     }
