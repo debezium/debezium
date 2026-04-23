@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.Watcher;
 
 /**
  * {@link RecordProcessor} which runs transformations of the records in parallel and then pass the whole batch to the user-provided handler.
