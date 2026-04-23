@@ -1057,6 +1057,108 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
+    void testOffsetIsCommittedUponCountdown() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> builder = DebeziumEngine.create(Connect.class, Connect.class, Connect.class,
+                ConvertingAsyncEngineBuilderFactory.class.getName());
+
+        appendLinesToSource(NUMBER_OF_LINES);
+        CountDownLatch recordsLatch = new CountDownLatch(NUMBER_OF_LINES);
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> firstIteration = builder
+                .using(props)
+                .shutdown()
+                .after()
+                .consuming()
+                .records(2)
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> recordsLatch.countDown())
+                .build();
+
+        firstIteration.run();
+
+        Awaitility.await()
+                .atMost(5, TimeUnit.MINUTES)
+                .untilAsserted(() -> assertThat(recordsLatch.getCount())
+                        .isEqualTo(NUMBER_OF_LINES - 2));
+
+        CountDownLatch latch = new CountDownLatch(NUMBER_OF_LINES - 2);
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> secondIteration = builder
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> latch.countDown())
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            secondIteration.run();
+        });
+
+        Awaitility.await()
+                .atMost(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(latch.getCount())
+                        .isEqualTo(0L));
+    }
+
+    @Test
+    void testOffsetIsCommittedUponCustomShutdown() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> builder = DebeziumEngine.create(Connect.class, Connect.class, Connect.class,
+                ConvertingAsyncEngineBuilderFactory.class.getName());
+
+        appendLinesToSource(NUMBER_OF_LINES);
+        CountDownLatch recordsLatch = new CountDownLatch(NUMBER_OF_LINES);
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> firstIteration = builder
+                .using(props)
+                .shutdown()
+                .after()
+                .consuming()
+                .custom(record -> record.value().value().equals("Generated line number 2"))
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> recordsLatch.countDown())
+                .build();
+
+        firstIteration.run();
+
+        Awaitility.await()
+                .atMost(5, TimeUnit.MINUTES)
+                .untilAsserted(() -> assertThat(recordsLatch.getCount())
+                        .isEqualTo(NUMBER_OF_LINES - 2));
+
+        CountDownLatch latch = new CountDownLatch(NUMBER_OF_LINES - 2);
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> secondIteration = builder
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> latch.countDown())
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            secondIteration.run();
+        });
+
+        Awaitility.await()
+                .atMost(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(latch.getCount())
+                        .isEqualTo(0L));
+    }
+
+    @Test
     @FixFor("DBZ-8948")
     void testPollingCallbacksAreCalled() throws Exception {
         final Properties props = new Properties();
