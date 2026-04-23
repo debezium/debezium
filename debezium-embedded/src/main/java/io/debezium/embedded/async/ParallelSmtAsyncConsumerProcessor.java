@@ -11,12 +11,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
-import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
 
 /**

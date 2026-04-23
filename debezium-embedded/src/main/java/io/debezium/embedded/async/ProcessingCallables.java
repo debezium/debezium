@@ -9,10 +9,10 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import io.debezium.engine.DebeziumEngine.Watcher;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.embedded.Transformations;
+import io.debezium.engine.DebeziumEngine.Watcher;
 
 /**
  * // TODO: Document this
