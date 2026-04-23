@@ -31,12 +31,6 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
     public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
-                                      Table table, OracleDatabaseSchema schema, Clock clock) {
-        this(connectorConfig, partition, offset, lcr, oldChunkValues, newChunkValues, table, schema, clock, null);
-    }
-
-    public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
-                                      Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
                                       Table table, OracleDatabaseSchema schema, Clock clock,
                                       Operation operationOverride) {
         super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
@@ -71,6 +65,10 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         Object[] values = new Object[table.columns().size()];
         if (columnValues != null) {
             for (ColumnValue columnValue : columnValues) {
+                // Skip Oracle ROW_ARCHIVAL column
+                if ("ORA_ARCHIVE_STATE".equals(columnValue.getColumnName())) {
+                    continue;
+                }
                 int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
                 values[index] = columnValue.getColumnData();
             }
