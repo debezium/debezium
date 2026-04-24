@@ -1804,7 +1804,10 @@ The precision can range from 0 (no fractional seconds) to 6 (microsecond precisi
  +
 Represents the number of nanoseconds past the epoch, and does not include timezone information.
 In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
-The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
+The precision can range from 0 (no fractional seconds) to 6 (microsecond precision). +
+ +
+PostgreSQL supports using `+/-infinite` values in `TIMESTAMP` columns.
+When `time.precision.mode` is set to `nanoseconds`, these special values are converted to `Long.MAX_VALUE` (`9223372036854775807`) for positive infinity and `Long.MIN_VALUE` (`-9223372036854775808`) for negative infinity to prevent overflow when representing timestamps as nanoseconds.
 
 |===
 
