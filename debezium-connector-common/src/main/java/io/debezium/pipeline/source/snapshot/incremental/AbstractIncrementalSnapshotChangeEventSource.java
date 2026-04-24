@@ -791,8 +791,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
 
-            // Use parallel processing if available
-            if (parallelCoordinator != null && newDataCollectionIds.size() > 1) {
+            // Use parallel processing if available (even for single tables, to get streaming flush)
+            if (parallelCoordinator != null) {
                 LOGGER.info("Starting PARALLEL table-level snapshot for {} tables with {} worker threads",
                         newDataCollectionIds.size(), parallelCoordinator.getThreadCount());
                 processTablesInParallel(partition, offsetContext, newDataCollectionIds, correlationId);

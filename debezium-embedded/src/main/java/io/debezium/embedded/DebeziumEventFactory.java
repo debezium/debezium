@@ -161,6 +161,13 @@ public class DebeziumEventFactory {
     }
 
     /**
+     * Wraps a SourceRecord into an EmbeddedEngineChangeEvent.
+     */
+    public static EmbeddedEngineChangeEvent wrapSourceRecord(SourceRecord record) {
+        return new EmbeddedEngineChangeEvent<>(null, null, null, record);
+    }
+
+    /**
      * Creates source partition metadata.
      */
     private static Map<String, Object> createSourcePartition(TableId tableId) {

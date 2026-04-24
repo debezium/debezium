@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.spi.snapshot.SnapshotTableCompletionHandler;
 import io.debezium.util.ColumnUtils;
 
 /**
@@ -58,12 +58,24 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private final OffsetContext offsetContext;
     private final List<SnapshotTableCompletionHandler> completionHandlers;
 
+    private static volatile RecordTransformer RECORD_TRANSFORMER = null;
+
+    public static void registerRecordTransformer(RecordTransformer transformer) {
+        LoggerFactory.getLogger(TableSnapshotWorker.class)
+                .info("Registered RecordTransformer for snapshot events");
+        RECORD_TRANSFORMER = transformer;
+    }
+
+    public static void unregisterRecordTransformer() {
+        RECORD_TRANSFORMER = null;
+    }
+
     private Table currentTable;
     private long totalRowsRead = 0;
     private volatile boolean cancelled = false;
 
     // Buffer for snapshot data (used if handlers are registered)
-    private final List<Object[]> tableBuffer = new ArrayList<>();
+    private final List<SourceRecord> recordBuffer = new ArrayList<>();
 
     // Flush buffer every N rows to avoid memory accumulation (configurable)
     private final int batchFlushSize;
@@ -170,12 +182,12 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                     Thread.currentThread().getName(), tableId, chunkCount, totalRowsRead);
 
             // Flush any remaining buffered data
-            if (!completionHandlers.isEmpty() && !tableBuffer.isEmpty()) {
-                LOGGER.info("[{}] Flushing final batch for table '{}' ({} rows)",
+            if (!completionHandlers.isEmpty() && !recordBuffer.isEmpty()) {
+                LOGGER.info("[{}] Flushing final batch for table '{}' ({} records)",
                         Thread.currentThread().getName(),
                         tableId,
-                        tableBuffer.size());
-                flushPartialBuffer();
+                        recordBuffer.size());
+                flushRecordBuffer();
             }
 
             // Signal to handlers that this table is fully done (no more chunks)
@@ -207,34 +219,22 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         }
     }
 
-    /**
-     * Flush partial buffer to handlers to avoid memory accumulation.
-     * Called every BATCH_FLUSH_SIZE rows during table processing.
-     */
-    private void flushPartialBuffer() {
-        if (tableBuffer.isEmpty()) {
+    private void flushRecordBuffer() {
+        if (recordBuffer.isEmpty()) {
             return;
         }
 
         final TableId tableId = (TableId) context.currentDataCollectionId().getId();
 
-        LOGGER.debug("[{}] Flushing partial buffer for '{}' ({} rows)",
-                Thread.currentThread().getName(), tableId, tableBuffer.size());
+        LOGGER.debug("[{}] Flushing record buffer for '{}' ({} records)",
+                Thread.currentThread().getName(), tableId, recordBuffer.size());
 
-        // Create a copy to pass to handlers
-        List<Object[]> batchCopy = new ArrayList<>(tableBuffer);
-
-        // Get Debezium TableSchema (contains Kafka Connect schemas for event creation)
-        final io.debezium.relational.TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
-
-        // Wrap Table, TableSchema, and OffsetContext for handlers that need them
-        final io.debezium.spi.snapshot.SnapshotTableMetadata metadata = new io.debezium.spi.snapshot.SnapshotTableMetadata(currentTable, tableSchema, offsetContext);
+        List<SourceRecord> batchCopy = new ArrayList<>(recordBuffer);
 
         for (SnapshotTableCompletionHandler handler : completionHandlers) {
             if (handler.shouldHandle(tableId.toString())) {
                 try {
-                    // Pass SnapshotTableMetadata containing Table, TableSchema, and OffsetContext
-                    handler.onTableSnapshotCompleted(tableId.toString(), batchCopy, metadata);
+                    handler.onTableSnapshotCompleted(tableId.toString(), batchCopy);
                 }
                 catch (Exception ex) {
                     LOGGER.error("[{}] Handler {} failed for partial batch of '{}': {}",
@@ -243,14 +243,12 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                             tableId,
                             ex.getMessage(),
                             ex);
-                    // Don't rethrow - continue processing
                 }
             }
         }
 
-        // Clear buffer after flush
-        tableBuffer.clear();
-        LOGGER.debug("[{}] Cleared partial buffer for '{}'",
+        recordBuffer.clear();
+        LOGGER.debug("[{}] Cleared record buffer for '{}'",
                 Thread.currentThread().getName(), tableId);
     }
 
@@ -332,11 +330,20 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                     // If completion handlers registered, accumulate in local buffer for flush
                     // Otherwise use shared window buffer (original behavior)
                     if (!completionHandlers.isEmpty()) {
-                        tableBuffer.add(row);
+                        SourceRecord record = SnapshotRecordBuilder.buildFlatRecord(
+                                row, currentTable.id(), tableSchema, offsetContext);
+                        if (record != null) {
+                            RecordTransformer transformer = RECORD_TRANSFORMER;
+                            if (transformer != null) {
+                                record = transformer.transform(record);
+                            }
+                            if (record != null) {
+                                recordBuffer.add(record);
+                            }
+                        }
 
-                        // Flush buffer progressively to avoid memory accumulation
-                        if (tableBuffer.size() >= batchFlushSize) {
-                            flushPartialBuffer();
+                        if (recordBuffer.size() >= batchFlushSize) {
+                            flushRecordBuffer();
                         }
                     }
                     else {
