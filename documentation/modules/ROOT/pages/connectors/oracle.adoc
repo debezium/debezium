@@ -6200,3 +6200,34 @@ This exception can be avoided by upgrading the Oracle db to 19.25 and applying p
 *Debezium 2.7 introduced breaking changes with `decimal.handling.mode`, is there a way to use the legacy behavior?*::
 Yes, the legacy behavior can be enabled by setting the connector configuration property `legacy.decimal.handling.strategy` to a value of `true`.
 By setting this to `true`, the connector will no longer treat all zero scale numbers as `VariableScaleDecimal` types, and will continue to emit them as INT8, INT16, INT32, and INT64 based on the column's size.
+
+*What causes `ORA-17023: Unsupported feature: getOCIHandles` and how to fix it?*::
+This error occurs when the {prodname} Oracle connector is configured to use XStream but connects to Oracle using the Thin JDBC driver instead of the OCI driver.
++
+When the connector starts, XStream internally calls `connection.getOCIHandles()` to attach to the outbound server.
+The Oracle JDBC driver provides two connection types:
+
+* *Thin driver* (`jdbc:oracle:thin:@`) -- a pure-Java driver that creates a `T4CConnection`. It does not support native OCI handles.
+* *OCI driver* (`jdbc:oracle:oci:@`) -- uses Oracle native client libraries to create a `T2CConnection`. It supports the native OCI handles required by XStream.
+
+If `database.url` is omitted, or uses `jdbc:oracle:thin:@`, the connector fails with:
+
+----
+oracle.streams.StreamsException: Oracle XStreamOut: failed to attach to XStream outbound server
+Caused by: java.sql.SQLFeatureNotSupportedException: ORA-17023: Unsupported feature: getOCIHandles
+----
+
+To fix this, ensure all three of the following are configured:
+
+. Set the `database.url` connector property to use the `jdbc:oracle:oci:@` prefix, for example:
+`database.url=jdbc:oracle:oci:@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=<host>)(PORT=<port>)))(CONNECT_DATA=(SERVICE_NAME=<service>)))`
+The `ENABLE=broken` descriptor enables TCP keepalive, which prevents network load balancers or firewalls from silently dropping idle XStream connections.
+
+. Set `-Djava.library.path=/path/to/instant_client/` as a JVM argument.
+`LD_LIBRARY_PATH` alone is not sufficient -- the JVM uses `java.library.path` for `System.loadLibrary()` when loading the OCI native library.
+
+. Install `libaio` on the host system.
+The Oracle Instant Client documentation covers downloading and extracting the native libraries, but does not mention that `libaio` must also be present on the host.
+The OCI native library `libocijdbc23.so` has a runtime dependency on `libaio.so.1`.
+This library is not included in all base operating system images, and its absence causes a silent load failure of the OCI driver.
+Run `yum install -y libaio` on RHEL/UBI/CentOS, or `apt-get install -y libaio1` on Debian/Ubuntu.
