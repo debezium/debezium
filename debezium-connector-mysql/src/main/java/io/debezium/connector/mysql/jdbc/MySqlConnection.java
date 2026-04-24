@@ -38,12 +38,31 @@ public class MySqlConnection extends BinlogConnectorConnection {
             });
         }
         catch (SQLException e) {
-            LOGGER.info("Using '{}' to get binary log status", MASTER_STATUS_STATEMENT);
+            if (isNetworkError(e)) {
+                throw new DebeziumException("Failed to establish connection with the database: ", e);
+            }
+
+            try {
+                String version = queryAndMap("SELECT VERSION()", rs -> {
+                    return rs.next() ? rs.getString(1) : "unknown";
+                });
+                LOGGER.info("MySQL version {} detected, falling back to '{}'",
+                        version, MASTER_STATUS_STATEMENT);
+            }
+            catch (SQLException ve) {
+                LOGGER.warn("Could not determine MySQL version during fallback detection: {}", ve.getMessage());
+            }
+
             binaryLogStatusStatement = MASTER_STATUS_STATEMENT;
             return;
         }
         LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
         binaryLogStatusStatement = BINARY_LOG_STATUS_STATEMENT;
+    }
+
+    public boolean isNetworkError(SQLException e) {
+        String sqlState = e.getSQLState();
+        return sqlState != null && sqlState.startsWith("08");
     }
 
     public String binaryLogStatusStatement() {
