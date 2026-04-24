@@ -46,11 +46,23 @@ public class MySqlConnection extends BinlogConnectorConnection {
                 String version = queryAndMap("SELECT VERSION()", rs -> {
                     return rs.next() ? rs.getString(1) : "unknown";
                 });
-                LOGGER.info("MySQL version {} detected, falling back to '{}'",
-                        version, MASTER_STATUS_STATEMENT);
+
+                String[] parts = version.split("\\.");
+                int major = Integer.parseInt(parts[0]); // 8
+                int minor = Integer.parseInt(parts[1]); // 4
+
+                if (major > 8 || (major == 8 && minor >= 4)) {
+                    throw new DebeziumException("MySQL version " + version +
+                            " should support SHOW BINARY LOG STATUS but it failed. Check database permissions or connectivity.", e);
+                }
+
+                LOGGER.info("MySQL version {} detected, falling back to '{}'", version, MASTER_STATUS_STATEMENT);
             }
             catch (SQLException ve) {
                 LOGGER.warn("Could not determine MySQL version during fallback detection: {}", ve.getMessage());
+            }
+            catch (NumberFormatException nfe) {
+                LOGGER.warn("Could not parse MySQL version string during fallback detection: {}", nfe.getMessage());
             }
 
             binaryLogStatusStatement = MASTER_STATUS_STATEMENT;
@@ -60,9 +72,17 @@ public class MySqlConnection extends BinlogConnectorConnection {
         binaryLogStatusStatement = BINARY_LOG_STATUS_STATEMENT;
     }
 
-    public boolean isNetworkError(SQLException e) {
+    public static boolean isNetworkError(SQLException e) {
         String sqlState = e.getSQLState();
-        return sqlState != null && sqlState.startsWith("08");
+        if (sqlState == null) {
+            return false;
+        }
+
+        // Network-related connection failures (not config/auth errors)
+        return sqlState.equals("08001") // Cannot connect to server
+                || sqlState.equals("08003") // Connection does not exist
+                || sqlState.equals("08006") // Connection failure
+                || sqlState.equals("08S01"); // Communication link failure
     }
 
     public String binaryLogStatusStatement() {
