@@ -28,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -1045,7 +1044,10 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
                         + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
                         + "  DBMS_LOB.CLOSE(loc); "
                         + "END;",
-                p -> { p.setInt(1, appended.length); p.setBytes(2, appended); },
+                p -> {
+                    p.setInt(1, appended.length);
+                    p.setBytes(2, appended);
+                },
                 null);
         connection.commit();
 
