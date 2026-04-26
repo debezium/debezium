@@ -689,9 +689,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
         int tryCount = 0;
+        boolean isReplicationSlotBehindOffsetStore = offset.compareTo(defaultStartingPos) > 0;
         while (true) {
             try {
-                if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
+                if (connectorConfig.slotSeekToKnownOffsetOnStart() && isReplicationSlotBehindOffsetStore) {
                     validateSlotIsInExpectedState(walPosition);
                 }
                 return createReplicationStream(lsn, walPosition);
