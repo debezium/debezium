@@ -323,6 +323,12 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
 
         // No need to send schema events or store DDL if no table has changed
+        // Also skip if DDL matches the filter (e.g., CREATE FUNCTION, PROCEDURE, VIEW, TRIGGER)
+        if (ddlFilter().test(ddlStatements)) {
+            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
+            return schemaChangeEvents;
+        }
+
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
