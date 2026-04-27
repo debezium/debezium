@@ -211,7 +211,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         try {
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
-                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID))))
+                    .map(x -> new DataCollection<T>(
+                            (T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)),
+                            stripWrappingParentheses(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)),
+                            ""))
                     .filter(x -> x.getId() != null)
                     .collect(Collectors.toList());
             return dataCollectionsList;
@@ -219,6 +222,23 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         catch (JsonProcessingException e) {
             throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information: " + dataCollectionsStr);
         }
+    }
+
+    /**
+     * Strips the outer parentheses added by {@link DataCollection#getAdditionalCondition()} during
+     * serialization, so the deserialized {@link DataCollection} field holds the same bare condition
+     * value as it did before serialization. Without this, the field would re-wrap on subsequent
+     * serialization cycles, accumulating parentheses and ultimately breaking
+     * {@code Document.parse} when the condition is applied to MongoDB queries.
+     */
+    private static String stripWrappingParentheses(String wrapped) {
+        if (wrapped == null) {
+            return "";
+        }
+        if (wrapped.length() < 2 || !wrapped.startsWith("(") || !wrapped.endsWith(")")) {
+            return wrapped;
+        }
+        return wrapped.substring(1, wrapped.length() - 1);
     }
 
     public boolean snapshotRunning() {
