@@ -6228,6 +6228,17 @@ The `ENABLE=broken` descriptor enables TCP keepalive, which prevents network loa
 
 . Install `libaio` on the host system.
 The Oracle Instant Client documentation covers downloading and extracting the native libraries, but does not mention that `libaio` must also be present on the host.
-The OCI native library `libocijdbc23.so` has a runtime dependency on `libaio.so.1`.
+The OCI native library `libocijdbcXX.so` has a runtime dependency on `libaio`.
 This library is not included in all base operating system images, and its absence causes a silent load failure of the OCI driver.
-Run `yum install -y libaio` on RHEL/UBI/CentOS, or `apt-get install -y libaio1` on Debian/Ubuntu.
+.. For RHEL/UBI/CentOS, run the following:
++
+[source,bash]
+----
+yum install -y libaio
+----
+.. For Debezium/Ubuntu, run the following:
++
+[source,bash]
+----
+apt-get install -y libaio1
+----
