@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
 
 /**
@@ -29,10 +30,12 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
 
     final DebeziumEngine.RecordCommitter committer;
     final Consumer<SourceRecord> consumer;
+    private final Watcher watcher;
 
-    ParallelSmtConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer) {
+    ParallelSmtConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer, Watcher watcher) {
         this.committer = committer;
         this.consumer = consumer;
+        this.watcher = watcher;
     }
 
     @Override
@@ -47,6 +50,9 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
+            if (!watcher.engine().isConsuming()) {
+                break;
+            }
             SourceRecord record = recordFutures[i].get();
             if (record != null) {
                 try {

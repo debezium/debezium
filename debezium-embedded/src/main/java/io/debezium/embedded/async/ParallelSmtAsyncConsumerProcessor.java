@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
 
 /**
@@ -30,10 +31,12 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
 
     final DebeziumEngine.RecordCommitter committer;
     final Consumer<SourceRecord> consumer;
+    private final Watcher watcher;
 
-    ParallelSmtAsyncConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer) {
+    ParallelSmtAsyncConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer, Watcher watcher) {
         this.committer = committer;
         this.consumer = consumer;
+        this.watcher = watcher;
     }
 
     @Override
@@ -42,7 +45,7 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
         final Future<Void>[] recordFutures = new Future[records.size()];
         Iterator<SourceRecord> recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
-            recordFutures[i] = recordService.submit(new ProcessingCallables.TransformAndConsumeRecord(recordsIterator.next(), transformations, consumer));
+            recordFutures[i] = recordService.submit(new ProcessingCallables.TransformAndConsumeRecord(recordsIterator.next(), transformations, consumer, watcher));
         }
 
         LOGGER.trace("Waiting for the batch to finish processing.");

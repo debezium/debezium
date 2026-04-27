@@ -12,6 +12,7 @@ import java.util.function.Function;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.embedded.Transformations;
+import io.debezium.engine.DebeziumEngine.Watcher;
 
 /**
  * // TODO: Document this
@@ -25,17 +26,19 @@ public class ProcessingCallables {
         private final SourceRecord record;
         private final Transformations transformations;
         private final Consumer<SourceRecord> consumer;
+        private final Watcher watcher;
 
-        TransformAndConsumeRecord(final SourceRecord record, final Transformations transformations, final Consumer<SourceRecord> consumer) {
+        TransformAndConsumeRecord(final SourceRecord record, final Transformations transformations, final Consumer<SourceRecord> consumer, Watcher watcher) {
             this.record = record;
             this.transformations = transformations;
             this.consumer = consumer;
+            this.watcher = watcher;
         }
 
         @Override
         public Void call() {
             final SourceRecord transformedRecord = transformations.transform(record);
-            if (transformedRecord != null) {
+            if (transformedRecord != null && watcher.engine().isConsuming()) {
                 consumer.accept(transformedRecord);
             }
             return null;
@@ -90,19 +93,21 @@ public class ProcessingCallables {
         private final Transformations transformations;
         private final Function<SourceRecord, R> serializer;
         private final Consumer<R> consumer;
+        private final Watcher watcher;
 
         TransformConvertConsumeRecord(final SourceRecord record, final Transformations transformations, final Function<SourceRecord, R> serializer,
-                                      final Consumer<R> consumer) {
+                                      final Consumer<R> consumer, Watcher watcher) {
             this.record = record;
             this.transformations = transformations;
             this.serializer = serializer;
             this.consumer = consumer;
+            this.watcher = watcher;
         }
 
         @Override
         public Void call() {
             final SourceRecord transformedRecord = transformations.transform(record);
-            if (transformedRecord != null) {
+            if (transformedRecord != null && watcher.engine().isConsuming()) {
                 consumer.accept(serializer.apply(transformedRecord));
             }
             return null;
