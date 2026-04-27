@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.connector.postgresql.TypeId;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
@@ -212,12 +213,33 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     }
 
     private static String extractEnumDefault(String enumTypeName, String defaultValue) {
-        if (defaultValue != null && enumTypeName != null && defaultValue.endsWith("::" + enumTypeName)) {
-            defaultValue = defaultValue.substring(0, defaultValue.length() - ("::" + enumTypeName).length());
-            if (defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
-                return defaultValue.substring(1, defaultValue.length() - 1);
-            }
+        if (defaultValue == null || enumTypeName == null) {
+            return null;
         }
+
+        final var typeId = TypeId.parse(enumTypeName);
+        if (typeId == null) {
+            return null;
+        }
+
+        // Find the type cast suffix (::typename or ::schema.typename)
+        final var castIndex = defaultValue.lastIndexOf("::");
+        if (castIndex == -1) {
+            return null;
+        }
+
+        // Parse the suffix as a TypeId and compare
+        final var suffixTypeId = TypeId.parse(defaultValue.substring(castIndex + 2));
+        if (suffixTypeId == null || !typeId.equals(suffixTypeId)) {
+            return null;
+        }
+
+        // Extract the value before the cast
+        final var valueWithoutCast = defaultValue.substring(0, castIndex);
+        if (valueWithoutCast.startsWith("'") && valueWithoutCast.endsWith("'")) {
+            return valueWithoutCast.substring(1, valueWithoutCast.length() - 1);
+        }
+
         return null;
     }
 
