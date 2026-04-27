@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
@@ -1217,6 +1218,36 @@ public class EventRouterTest {
         assertThat(eans2.size()).isEqualTo(2);
 
         assertThat(eventRouted.valueSchema()).isEqualTo(eventRouted2.valueSchema());
+    }
+
+    @Test
+    public void canSetFieldIntoTheEnvelopeWithMissingField() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:alias");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_MISSING.name(), EventRouterConfigDefinition.AdditionalFieldMissingBehavior.IGNORE.getValue());
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord();
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        // alias should not be in the struct
+        assertThat(((Struct) eventRouted.value()).schema().field("alias")).isNull();
+    }
+
+    @Test
+    public void shouldFailOnMissingField() {
+        assertThrows(ConnectException.class, () -> {
+            final EventRouter<SourceRecord> router = new EventRouter<>();
+            final Map<String, String> config = new HashMap<>();
+            config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "nonExistingField:envelope:alias");
+            // 'error' is the default for collection.field.additional.missing
+            router.configure(config);
+
+            final SourceRecord eventRecord = createEventRecord();
+            router.apply(eventRecord);
+        });
     }
 
     private SourceRecord createEventRecord() {
