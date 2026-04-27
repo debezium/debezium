@@ -7,7 +7,6 @@ package io.debezium.connector.postgresql;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import io.debezium.annotation.Immutable;
 
@@ -18,7 +17,16 @@ import io.debezium.annotation.Immutable;
  * @author Debezium Authors
  */
 @Immutable
-public final class TypeId {
+public record TypeId(String schemaName, String typeName) {
+
+    /**
+     * Compact constructor with validation.
+     */
+    public TypeId {
+        if (typeName == null) {
+            throw new IllegalArgumentException("typeName cannot be null");
+        }
+    }
 
     /**
      * Parse the supplied string into a TypeId, handling PostgreSQL quoting rules.
@@ -90,23 +98,6 @@ public final class TypeId {
         return parts;
     }
 
-    private final String schemaName;
-    private final String typeName;
-    private final String id;
-
-    /**
-     * Create a new type identifier.
-     *
-     * @param schemaName the name of the database schema that contains the type; may be null
-     * @param typeName the name of the type; may not be null
-     */
-    public TypeId(String schemaName, String typeName) {
-        this.schemaName = schemaName;
-        this.typeName = typeName;
-        assert this.typeName != null;
-        this.id = typeId(this.schemaName, this.typeName);
-    }
-
     /**
      * Get the name of the schema.
      *
@@ -117,21 +108,12 @@ public final class TypeId {
     }
 
     /**
-     * Get the name of the type.
-     *
-     * @return the type name; never null
-     */
-    public String typeName() {
-        return typeName;
-    }
-
-    /**
      * Get the full identifier string.
      *
      * @return the identifier string
      */
     public String identifier() {
-        return id;
+        return typeId(schemaName, typeName);
     }
 
     /**
@@ -148,24 +130,6 @@ public final class TypeId {
         quoted.append(quote(typeName));
 
         return quoted.toString();
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(schemaName, typeName);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof TypeId)) {
-            return false;
-        }
-        final var other = (TypeId) obj;
-        return Objects.equals(this.schemaName, other.schemaName) &&
-                Objects.equals(this.typeName, other.typeName);
     }
 
     @Override
