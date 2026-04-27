@@ -74,7 +74,7 @@ Kafka Connect:: You run {prodname} connectors as Kafka Connect plugins.
 {prodname} Server:: You run {prodname} in standalone server mode.
 
 The same OpenLineage event model and features are available across the deployment types.
-But different processes are needed to configure the integration and to install dependencies.
+However, the configuration and dependency installation processes differ.
 
 // Type: assembly
 [id="debezium-openlineage-how-debezium-integrates-with-openlineage"]
@@ -111,7 +111,7 @@ The integration applies the following principles when it creates dataset mapping
 
 Output datasets::
 Represent the Kafka topics where CDC events are written.
-For Kafka Connect deployments, output datasets are created when you apply the OpenLineage single message transformation (SMT).
+For Kafka Connect deployments, output datasets are emitted when you apply the OpenLineage single message transformation (SMT).
 For {prodname} Server deployments, output datasets are automatically captured.
 +
 Output dataset mappings are created according to the following principles:
@@ -166,15 +166,12 @@ Path: integrations/openlineage.adoc
 [id="debezium-openlineage-preparing-to-deploy-the-integration"]
 == Preparing to deploy the {prodname} OpenLineage integration
 
-// Type: concept
+ifdef::community[]
 [id="debezium-openlineage-required-dependencies"]
 === Required Dependencies
 
 The OpenLineage integration requires several JAR files that are bundled together in the `debezium-openlineage-core-libs` archive.
 
-// Type: procedure
-// Title: Deploy the {prodname} OpenLineage integration on Kafka Connect
-// ModuleID: debezium-openlineage-deploy-the-integration-on-kafka-connect
 [id="debezium-openlineage-kafka-connect-dependencies"]
 === Kafka Connect
 
@@ -184,40 +181,261 @@ Before you can use {prodname} with OpenLineage in Kafka Connect, you must obtain
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}-libs.tar.gz[OpenLineage core archive].
 . Extract the contents of the archive into the {prodname} plug-in directories in your Kafka Connect environment.
+endif::community[]
 
 ifdef::product[]
 
-// Type: procedure
-[id="debezium-openlineage-deploy-the-integration-on-streams"]
-=== Deploy the {prodname} OpenLineage integration on {StreamsName}
+// Type: assembly
+[id="debezium-openlineage-streams-deployment-procedure"]
+=== Deploying the OpenLineage integration on {StreamsName}
 
-In a {StreamsName} environment, you can deploy the integration by adding the Maven URL for the OpenLineage artifact to the Kafka Connect custom resource YAML file.
+You can deploy the {prodname} OpenLineage integration in a {StreamsName} environment to enable lineage tracking for your {prodname} connectors.
+
+In {StreamsName} environments, Kafka Connect runs as an immutable, containerized workload managed by the Streams operator.
+You cannot modify running Kafka Connect pods by copying files or adding libraries after deployment.
+To enable the OpenLineage integration, you must complete the following tasks:
+
+. Specify the OpenLineage Java client as a Maven dependency in the Kafka Connect build configuration.
+. Provide OpenLineage runtime configuration in a ConfigMap.
+. Mount the configuration into the Kafka Connect pod.
+
+When you deploy OpenLineage on {StreamsName}, consider the following deployment characteristics:
+
+Build-time dependency inclusion::
+You include the OpenLineage Java client as a Maven dependency in the KafkaConnect custom resource.
+During deployment, the Streams operator automatically builds a Kafka Connect image that contains the required OpenLineage artifacts.
+
+Maven repository access::
+The Kafka Connect build process must be able to access a Maven repository that hosts the OpenLineage artifacts.
+This repository can be a remote repository, such as Maven Central, or an internal mirror in restricted or disconnected environments.
+
+Externalized runtime configuration::
+OpenLineage runtime configuration cannot be defined inline in the KafkaConnect custom resource alone.
+You must provide the `openlineage.yml` configuration file by using an external Kubernetes resource, such as a `ConfigMap`, and mount it into the Kafka Connect container.
+
+Explicit configuration discovery::
+The OpenLineage Java client does not automatically discover configuration files in containerized Kafka Connect deployments.
+To ensure that your deployment can read the configuration, define the `OPENLINEAGE_CONFIG` environment variable in the Kafka Connect custom resource to specify the path to the mounted configuration file.
+
+Cluster-level scope::
+OpenLineage configuration applies at the Kafka Connect cluster level.
+All connectors in the cluster share the same configuration, and changes to the OpenLineage configuration require restarting the Kafka Connect pods to take effect.
+This approach centralizes OpenLineage behavior while enabling you to define a unique job identity for each connector.
+
+// Type: procedure
+[id="debezium-openlineage-streams-add-dependencies"]
+==== Adding OpenLineage dependencies to your {StreamsName} Kafka Connect image
+
+Now that you understand the deployment model, the first step toward enabling lineage tracking is to specify the OpenLineage client as a dependency in your Kafka Connect custom resource.
+
+The OpenLineage Java client is a Java library that is available on Maven Central.
+
+To include OpenLineage in your Kafka Connect deployment, you specify the OpenLineage Java client as a Maven dependency in your KafkaConnect custom resource.
+The Streams operator automatically retrieves and installs the artifacts, enabling you to track lineage without manual file management.
+When you list OpenLineage artifacts in the `spec.build.plugins` section of the `KafkaConnect` custom resource, the operator automatically resolves and downloads the required artifacts from a Maven repository and installs them into the Kafka Connect plugin path.
+
+It is not necessary to manually download or extract OpenLineage archives.
 
 .Procedure
 
-* Add the OpenLineage artifact by inserting te following lines in the `spec.build` section of the YAML that defines your Kafka Connect CR.
+. Add the OpenLineage artifact by inserting the following lines in the `spec.build` section of the YAML that defines your Kafka Connect CR:
++
 [source,yaml,subs="+attributes"]
 ----
-...
-      image: debezium-streams-connect:latest
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: debezium-connect
+spec:
+  version: 3.7.0
+  bootstrapServers: my-cluster-kafka-bootstrap:9092
+  build:
+    output:
+      type: docker
+      image: my-registry/debezium-connect:latest
     plugins:
-      - name: debezium-connector
+      - name: openlineage
         artifacts:
-          - type: zip
-            url: {red-hat-maven-repository}debezium/debezium-openlineage-core/{debezium-version}.Final/debezium-openlineage-core-{debezium-version}.Final-libs.zip
+          - type: maven
+            group: io.openlineage
+            artifact: openlineage-java
+            version: 1.15.0
 ----
++
+The following list describes the purpose of select lines in the preceding Kafka Connect configuration example:
++
+bootstrapServers::
+Specifies the Kafka bootstrap address that Kafka Connect uses to connect to the Kafka cluster.
++
+build::
+Enables operator-managed container image builds for Kafka Connect.
++
+build.output.image::
+Specifies the name of the container image that the Streams operator generates and uses to deploy Kafka Connect pods.
++
+build.plugins::
+Declares additional plugins and dependencies to include in the Kafka Connect image.
++
+plugins.name::
+Provides a logical name for the plugin.
+Kafka Connect uses the name for organization and does not affect runtime behavior.
++
+artifacts.type = maven::
+Indicates that the operator retrieves the artifact from a Maven repository during the image build.
+You specify the artifact using Maven coordinates (groupId, artifactId, and version).
+By default, the operator uses the Maven Central repository.
+To use a different repository, set the `MAVEN_REPOSITORY` environment variable in `spec.template.connectContainer.env` in the `KafkaConnect` custom resource.
++
+artifacts.group::
+Specifies the Maven group ID of the OpenLineage Java client artifact.
++
+artifacts.artifact::
+Specifies the Maven artifact ID of the OpenLineage Java client.
++
+artifacts.version::
+Specifies the version of the OpenLineage Java client that the operator includes in the Kafka Connect image.
+
+[NOTE]
+====
+To retrieve the OpenLineage artifacts, the Kafka Connect cluster must be able to access the configured Maven repository.
+In a restricted or disconnected environment, configure access to a mirrored or internal repository.
+====
+
+// Type: procedure
+[id="debezium-openlineage-streams-configure-behavior"]
+==== Configuring OpenLineage behavior in {StreamsName}
+
+To complete the deployment, you must make your OpenLineage configuration accessible to the Kafka Connect pods.
+
+With OpenLineage included in your image, the next step is to configure how it behaves and where it sends lineage events.
+The OpenLineage integration uses runtime configuration that is external to the KafkaConnect custom resource.
+You cannot define this configuration inline in the Kafka Connect custom resource alone.
+In {StreamsName} environments, you supply the OpenLineage configuration in an OpenShift `ConfigMap`, which is mounted into the Kafka Connect pod and referenced by the Kafka Connect custom resource.
+
+.Procedure
+
+. Create a ConfigMap that contains the OpenLineage configuration:
++
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openlineage-config
+data:
+  openlineage.yml: |
+    transport:
+      type: http
+      url: http://openlineage-server:5000
+----
++
+The following list describes the purpose of select lines in the preceding OpenLineage ConfigMap example:
++
+metadata.name::
+Defines the name of the `ConfigMap` that provides the OpenLineage configuration.
+You reference this name in the Kafka Connect custom resource.
++
+data.openlineage.yml::
+Defines the OpenLineage configuration file that you mount into the Kafka Connect container.
++
+transport.type::
+Specifies the transport mechanism that the OpenLineage client uses to emit lineage events.
++
+transport.url::
+Specifies the endpoint of the OpenLineage service that receives lineage events.
+
+. Create the `ConfigMap` in the same namespace as the Kafka Connect cluster.
+
+// Type: procedure
+[id="debezium-openlineage-streams-mount-configuration"]
+==== Mounting the OpenLineage configuration in {StreamsName} Kafka Connect
+
+To make the OpenLineage configuration available to Kafka Connect, mount the `ConfigMap` into the Kafka Connect container and specify the configuration file location by using an environment variable.
+
+[IMPORTANT]
+====
+As part of enabling the OpenLineage integration, you must explicitly specify the location from which Kafka Connect loads the OpenLineage configuration.
+The `OPENLINEAGE_CONFIG` environment variable specifies where the configuration file is located, while the values defined in `openlineage.yml` specify how OpenLineage behaves.
+These settings serve different purposes and you configure them independently.
+====
+
+
+The following configuration mounts the `openlineage.yml` file into the Kafka Connect container making it available to the OpenLineage client at startup.
+
+.Procedure
+
+. Add the following configuration to your KafkaConnect custom resource:
++
+[source,yaml]
+----
+spec:
+  template:
+    connectContainer:
+      env:
+        - name: OPENLINEAGE_CONFIG
+          value: /opt/openlineage/openlineage.yml
+      volumeMounts:
+        - name: openlineage-config
+          mountPath: /opt/openlineage
+    pod:
+      volumes:
+        - name: openlineage-config
+          configMap:
+            name: openlineage-config
+----
++
+The following list describes the purpose of select lines in the preceding example:
++
+env.name = OPENLINEAGE_CONFIG::
+Defines the environment variable used by the OpenLineage Java client to locate its configuration file.
+The variable specifies where the OpenLineage client loads the specified configuration file from at startup.
+It does not define or modify OpenLineage behavior.
++
+env.value::
+Specifies the absolute filesystem path to the OpenLineage configuration file, `openlineage.yml` within the Kafka Connect container.
+The location of the `openlineage.yml` file is not fixed. 
+In operator-managed {StreamsName} environments, you can mount the configuration file at any path, as long as you reference the path in the `OPENLINEAGE_CONFIG` environment, and Kafka Connect can read the file.
++
+volumeMounts.mountPath::
+Defines the directory inside the Kafka Connect container where you mount the `ConfigMap`.
+The `mountPath` field is essential to placethe ConfigMap into the container, and making the configuration available.
++
+volumes.configMap.name::
+References the `ConfigMap` resource that contains the OpenLineage configuration file.
+
+
+// Type: reference
+[id="debezium-openlineage-streams-post-deployment-expectations"]
+==== Post-deployment characteristics for OpenLineage on {StreamsName}
+
+After you deploy OpenLineage using the operator-managed approach, the following characteristics apply:
+
+Image updates:: If you make changes to OpenLineage dependencies, the operator rebuilds the Kafka Connect image.
+Configuration changes:: Modifying OpenLineage behavior requires updating the ConfigMap and restarting Kafka Connect pods.
+Scope of impact:: All connectors in the Kafka Connect cluster share the same OpenLineage configuration.
+Operational model:: The immutable container approach prevents manual file modifications, ensuring consistency.
+
+// Type: concept
+[id="debezium-openlineage-streams-deployment-benefits"]
+==== Benefits of the {StreamsName} operator-managed deployment approach
+
+The operator-managed deployment approach enables lineage tracking for your {prodname} connectors while:
+
+* Maintaining the immutable, operator-managed deployment model of {StreamsName}.
+* Avoiding manual file management in running containers.
+* Ensuring consistent OpenLineage configuration across your Kafka Connect cluster.
+* Leveraging Kubernetes-native configuration management.
+
+The operator-managed deployment approach gives you the lineage visibility you need without compromising the operational benefits of the Streams platform.
 
 .Additional resources
 * xref:debezium-openlineage-configuring-the-integration[]
-* xrefdebezium-openlineage-configuring-the-openlineage-client[]
+* xref:debezium-openlineage-configuring-the-openlineage-client[]
 endif::product[]
 
-
 // Type: procedure
-// Title: Deploy the {prodname} OpenLineage integration on {prodname} Server
-// ModuleID: debezium-openlineage-deploy-the-integration-on-debezium-server
 [id="debezium-openlineage-server-dependencies"]
-=== {prodname} Server
+=== Obtain OpenLineage dependencies for {prodname} Server
 
 Before you can use {prodname} Server with OpenLineage, you must obtain the required dependencies.
 
@@ -247,16 +465,18 @@ To enable {prodname} to integrate with OpenLineage in Kafka Connect, add propert
 ----
 # Enable OpenLineage integration
 openlineage.integration.enabled=true
-
+ifdef::community[]
 # Path to OpenLineage configuration file
 openlineage.integration.config.file.path=/path/to/openlineage.yml
-
+endif::community[]
 # Job metadata (optional but recommended)
 openlineage.integration.job.namespace=myNamespace
 openlineage.integration.job.description=CDC connector for products database
 openlineage.integration.job.tags=env=prod,team=data-engineering
 openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engineer
 ----
+
+ If you deploy multiple connectors in a cluster, you can set unique job metadata for each connector.
 
 // Type: reference
 // Title: {prodname} configuration for enabling OpenLineage in a {prodname} Server environment
@@ -282,17 +502,20 @@ debezium.source.openlineage.integration.job.owners=Alice Smith=maintainer,Bob Jo
 ----
 
 // Type: reference
-[id="debezium-openlineage-configuring-the-openlineage-client"]
-=== Configuring the OpenLineage client
+[id="debezium-openlineage-configure-the-openlineage-client"]
+=== Configure the OpenLineage client
 
 Create an `openlineage.yml` file to configure the OpenLineage client.
 The `openlineage.yml` configuration file is used in both Kafka Connect and {prodname} Server deployments.
-
+ifdef::community[]
 For Kafka Connect deployments, place the `openlineage.yml` file where the Kafka Connect worker nodes can read it.
-Similarly, for {prodname} Server deployments, place the `openlineage.yml` file where the {prodname} Server process can read it.
+Common locations include `/kafka/openlineage.yml` and `/etc/debezium/openlineage.yml`.
+endif::community[]
+ifdef::product[]
+In a {StreamsName} deployment, place the `openlineage.yml` file where the Kafka Connect process can read it, and specify the path in the `OPENLINEAGE_CONFIG` environment variable.
+endif::product[]
+For {prodname} Server deployments, place the `openlineage.yml` file where the {prodname} Server process can read it, typically in a subdirectory of the {prodname} Server installation directory, for example, `config/openlineage.yml`.
 
-Common locations for storing the file on Kafka Connect include `/kafka/openlineage.yml` and `/etc/debezium/openlineage.yml`.
-For {prodname} Server, it is typical to store the file in a subdirectory of the {prodname} Server installation directory, for example, `config/openlineage.yml`.
 .Procedure
 . Create an `openlineage.yml` file in the appropriate location and configure it according to your needs using the following example as a guide:
 +
@@ -310,8 +533,12 @@ transport:
 # transport:
 #   type: console
 ----
+ifdef::community[]
 . Edit the `config` section of the deployment configuration YAML file for your platform to specify the `openlineage.yml` file path.
-
+endif::community[]
+ifdef::product[]
+. Define the `OPENLINEAGE_CONFIG` environment variable in the KafkaConnect custom resource to point to the mounted `openlineage.yml` configuration file. 
+endif::product[]
 . Restart the {prodname} Server or Kafka Connect worker to apply the changes.
 ifdef::community[]
 For details about OpenLineage client configuration options, refer to the https://openlineage.io/docs/client/java[OpenLineage client documentation].
@@ -329,7 +556,7 @@ endif::product[]
 
 The following table lists the OpenLineage configuration properties for both deployment types.
 
-NOTE: For {prodname} Server, prefix all property names with `debezium.source.` (for example, `debezium.source.openlineage.integration.enabled`).
+NOTE: For {prodname} Server, prefix all property names with `_debezium.source._`, for example, `__debezium.source.__openlineage.integration.enabled`.
 
 [cols="3,4,1,2"]
 |===
@@ -339,12 +566,12 @@ NOTE: For {prodname} Server, prefix all property names with `debezium.source.` (
 |Enables and disables the OpenLineage integration.
 |Yes
 |`false`
-
+ifdef::community[]
 |`openlineage.integration.config.file.path`
 |Path to the OpenLineage YAML configuration file.
 |Yes
 |No default value
-
+endif::community[]
 |`openlineage.integration.job.namespace`
 |Namespace used for the job.
 |No
@@ -449,6 +676,7 @@ The following examples show complete configurations for enabling OpenLineage int
 
 The following example shows a complete configuration for enabling a PostgreSQL connector to integrate with OpenLineage in Kafka Connect:
 
+ifdef::community[]
 [source,json]
 ----
 {
@@ -476,6 +704,39 @@ The following example shows a complete configuration for enabling a PostgreSQL c
   }
 }
 ----
+endif::community[]
+
+ifdef::product[]
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: inventory-connector-postgres
+  labels:
+    strimzi.io/cluster: debezium-connect
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: postgres
+    database.port: 5432
+    database.user: postgres
+    database.password: postgres
+    database.dbname: postgres
+    topic.prefix: inventory
+    snapshot.mode: initial
+    slot.name: inventory
+    schema.history.internal.kafka.bootstrap.servers: kafka:9092
+    schema.history.internal.kafka.topic: schema-changes.inventory
+    openlineage.integration.enabled: true
+    openlineage.integration.job.description: CDC connector for inventory database
+    openlineage.integration.job.tags: env=production,team=data-platform,database=postgresql
+    openlineage.integration.job.owners: Data Team=maintainer,Alice Johnson=Data Engineer
+    transforms: openlineage
+    transforms.openlineage.type: io.debezium.transforms.openlineage.OpenLineage
+----
+endif::product[]
 
 // Type: reference
 // Title: {prodname} Server OpenLineage integration complete configuration example
@@ -516,13 +777,24 @@ quarkus.log.console.json=false
 ----
 
 
+// Type: assembly
+// Title: OpenLineage sink connector configuration examples
+[id="debezium-openlineage-sink-connector-configuration-examples"]
+=== Sink connector configuration examples
+
+The following examples show complete configurations for enabling {prodname} sink connectors to integrate with OpenLineage in Kafka Connect.
+
+NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics.
+Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
+
 // Type: reference
 // Title: {prodname} OpenLineage integration complete MongoDB sink connector configuration example
 [id="debezium-openlineage-mongodb-sink-connector-configuration-example"]
-=== MongoDB sink connector configuration example
+==== MongoDB sink connector
 
 The following example shows a complete configuration for enabling the MongoDB sink connector to integrate with OpenLineage in Kafka Connect:
 
+ifdef::community[]
 [source,json]
 ----
 {
@@ -542,17 +814,40 @@ The following example shows a complete configuration for enabling the MongoDB si
   }
 }
 ----
+endif::community[]
 
-NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics.
-Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
+ifdef::product[]
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: mongodb-sink
+  labels:
+    strimzi.io/cluster: debezium-connect
+spec:
+  class: io.debezium.connector.mongodb.MongoDbSinkConnector
+  tasksMax: 1
+  config:
+    mongodb.connection.string: mongodb://admin:admin@mongodb:27017
+    topics: inventory.inventory.products
+    sink.database: inventory2
+    openlineage.integration.enabled: true
+    openlineage.integration.job.description: Sink connector for MongoDB
+    openlineage.integration.job.tags: env=prod,team=cdc
+    openlineage.integration.job.owners: Mario=maintainer,John Doe=Data scientist
+    openlineage.integration.dataset.kafka.bootstrap.servers: kafka:9092
+----
+endif::product[]
 
 // Type: reference
 // Title: {prodname} OpenLineage integration complete JDBC sink connector configuration example
 [id="debezium-openlineage-jdbc-sink-connector-configuration-example"]
-=== JDBC sink connector configuration example
+==== JDBC sink connector
 
 The following example shows a complete configuration for enabling the JDBC sink connector to integrate with OpenLineage in Kafka Connect:
 
+ifdef::community[]
 [source,json]
 ----
 {
@@ -575,6 +870,34 @@ The following example shows a complete configuration for enabling the JDBC sink 
   }
 }
 ----
+endif::community[]
+
+ifdef::product[]
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: jdbc-sink
+  labels:
+    strimzi.io/cluster: debezium-connect
+spec:
+  class: io.debezium.connector.jdbc.JdbcSinkConnector
+  tasksMax: 1
+  config:
+    connection.url: jdbc:postgresql://postgres:5432/inventory
+    connection.username: postgres
+    connection.password: postgres
+    topics: inventory.inventory.customers
+    insert.mode: upsert
+    primary.key.mode: record_key
+    openlineage.integration.enabled: true
+    openlineage.integration.job.description: Sink connector for JDBC
+    openlineage.integration.job.tags: env=prod,team=data-engineering
+    openlineage.integration.job.owners: Data Team=maintainer,Alice Johnson=Data Engineer
+    openlineage.integration.dataset.kafka.bootstrap.servers: kafka:9092
+----
+endif::product[]
 
 // Type: assembly
 // ModuleID: debezium-openlineage-dataset-namespace-formatting
