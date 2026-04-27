@@ -1034,7 +1034,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
         // Consume (and discard) the insert record.
         consumeRecordsByTopic(1);
 
-        // WRITEAPPEND 4 KB of additional bytes. XStream emits LOB_WRITE LCRs; the
+        // WRITEAPPEND 4 bytes of additional data. XStream emits LOB_WRITE LCRs; the
         // adapter should re-read the full BLOB and surface an UPDATE with the new value.
         final byte[] appended = new byte[]{ 0x41, 0x42, 0x43, 0x44 };
         connection.prepareQuery(
