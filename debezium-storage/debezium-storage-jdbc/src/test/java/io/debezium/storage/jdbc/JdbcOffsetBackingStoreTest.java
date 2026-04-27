@@ -44,6 +44,7 @@ public class JdbcOffsetBackingStoreTest {
         store = new JdbcOffsetBackingStore();
         props = new HashMap<>();
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, "dummy");
+        props.put("bootstrap.servers", "localhost:9092");
         props.put("offset.storage.jdbc.url", "jdbc:sqlite:" + dbFile.getAbsolutePath());
         props.put("offset.storage.jdbc.user", "user");
         props.put("offset.storage.jdbc.password", "pass");

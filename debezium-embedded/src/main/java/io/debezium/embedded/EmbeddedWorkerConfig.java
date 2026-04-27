@@ -39,6 +39,7 @@ public class EmbeddedWorkerConfig extends WorkerConfig {
      * the embedded engine (since the source records are never serialized) ...
      */
     protected static Map<String, String> addRequiredWorkerConfig(Map<String, String> props) {
+        props.putIfAbsent(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         props.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         return props;
