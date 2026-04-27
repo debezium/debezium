@@ -37,12 +37,14 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
     @Override
     public void enterCreateView(MySqlParser.CreateViewContext ctx) {
         if (!parser.skipViews()) {
-            tableEditor = parser.databaseTables().editOrCreateTable(parser.parseQualifiedTableId(ctx.fullId()));
+            tableEditor = parser.databaseTables().editOrCreateTable(parser.parseQualifiedTableId(ctx.viewName()));
             // create new columns just with specified name for now
-            if (ctx.uidList() != null) {
-                ctx.uidList().uid().stream().map(parser::parseName).forEach(columnName -> {
-                    tableEditor.addColumn(Column.editor().name(columnName).create());
-                });
+            if (ctx.viewTail().columnInternalRefList() != null) {
+                ctx.viewTail().columnInternalRefList().columnInternalRef().stream()
+                        .map(colRef -> parser.parseName(colRef.identifier()))
+                        .forEach(columnName -> {
+                            tableEditor.addColumn(Column.editor().name(columnName).create());
+                        });
             }
             selectColumnsListener = new ViewSelectedColumnsParserListener(tableEditor, parser);
             listeners.add(selectColumnsListener);
@@ -62,7 +64,7 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
             listeners.remove(selectColumnsListener);
         }, tableEditor);
         // signal view even if it was skipped
-        parser.signalCreateView(parser.parseQualifiedTableId(ctx.fullId()), ctx);
+        parser.signalCreateView(parser.parseQualifiedTableId(ctx.viewName()), ctx);
         super.exitCreateView(ctx);
     }
 }

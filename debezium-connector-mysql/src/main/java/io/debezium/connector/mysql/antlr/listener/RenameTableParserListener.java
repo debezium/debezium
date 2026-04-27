@@ -30,9 +30,9 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterRenameTableClause(MySqlParser.RenameTableClauseContext ctx) {
-        TableId oldTable = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
-        TableId newTable = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
+    public void enterRenamePair(MySqlParser.RenamePairContext ctx) {
+        TableId oldTable = parser.parseQualifiedTableId(ctx.tableRef());
+        TableId newTable = parser.parseQualifiedTableId(ctx.tableName());
         if (parser.getTableFilter().isIncluded(oldTable) && !parser.getTableFilter().isIncluded(newTable)) {
             LOG.warn("Renaming included table {} to non-included table {}, this can lead to schema inconsistency", oldTable, newTable);
         }
@@ -41,6 +41,6 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
         }
         parser.databaseTables().renameTable(oldTable, newTable);
         parser.signalAlterTable(newTable, oldTable, ctx);
-        super.enterRenameTableClause(ctx);
+        super.enterRenamePair(ctx);
     }
 }

@@ -128,10 +128,9 @@
                                 <configuration>
                                     <verbose>false</verbose>
                                     <showTree>false</showTree>
-                                    <entryPoint>root</entryPoint>
+                                    <entryPoint>queries</entryPoint>
                                     <grammarName>MySql</grammarName>
                                     <packageName>io.debezium.ddl.parser.mysql.generated</packageName>
-                                    <caseInsensitiveType>UPPER</caseInsensitiveType>
                                     <exampleFiles>src/test/resources/mysql/examples</exampleFiles>
                                     <enabled>${antlr.tests.enabled}</enabled>
                                 </configuration>

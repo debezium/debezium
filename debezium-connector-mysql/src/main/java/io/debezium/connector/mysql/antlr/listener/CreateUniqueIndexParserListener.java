@@ -36,18 +36,19 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterCreateIndex(MySqlParser.CreateIndexContext ctx) {
-        if (ctx.UNIQUE() != null) {
-            TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+        if (ctx.UNIQUE_SYMBOL() != null) {
+            TableId tableId = parser.parseQualifiedTableId(ctx.createIndexTarget().tableRef());
             if (!parser.getTableFilter().isIncluded(tableId)) {
                 LOG.debug("{} is not monitored, no need to process unique index", tableId);
                 return;
             }
             TableEditor tableEditor = parser.databaseTables().editTable(tableId);
             if (tableEditor != null) {
-                if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
-                    parser.parseUniqueIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+                MySqlParser.KeyListWithExpressionContext keyList = ctx.createIndexTarget().keyListWithExpression();
+                if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(keyList, tableEditor)) {
+                    parser.parseUniqueIndexColumnNames(keyList, tableEditor);
                     parser.databaseTables().overwriteTable(tableEditor.create());
-                    parser.signalCreateIndex(parser.parseName(ctx.uid()), tableId, ctx);
+                    parser.signalCreateIndex(parser.parseName(ctx.indexName().identifier()), tableId, ctx);
                 }
             }
             else {
