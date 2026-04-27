@@ -63,14 +63,27 @@ public class JdbcSinkConnectorConfigTest {
     }
 
     @Test
-    public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeNotRecordKey() {
+    public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeNone() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "none");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
+                .isFalse();
+    }
+
+    @Test
+    public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeRecordValue() {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_value");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
-                .isFalse();
+                .isTrue();
+        assertThat(config.isDeleteEnabled()).isTrue();
     }
 
     @Test
@@ -78,6 +91,18 @@ public class JdbcSinkConnectorConfigTest {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_key");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
+                .isTrue();
+        assertThat(config.isDeleteEnabled()).isTrue();
+    }
+
+    @Test
+    public void testNonDefaultDeleteEnabledPropertyWithPrimaryKeyModeRecordHeader() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_header");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.DELETE_ENABLED_FIELD, JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD), LOGGER::error))
