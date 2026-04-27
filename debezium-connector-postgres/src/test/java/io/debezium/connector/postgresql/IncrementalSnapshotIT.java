@@ -543,6 +543,26 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         assertThat(dbChanges).contains(entry(1, 1));
     }
 
+    @Test
+    @FixFor("DBZ-1638")
+    public void shouldSnapshotTableWithoutPriorDmlEvents() throws Exception {
+        // start connector (no initial snapshot)
+        startConnector();
+
+        // create a new table AFTER connector is running
+        // (so Debezium has never seen any events for it)
+        TestHelper.execute(
+                "CREATE TABLE s1.new_table (pk SERIAL, val integer, PRIMARY KEY(pk));" +
+                        "INSERT INTO s1.new_table (val) VALUES (1), (2), (3);");
+
+        // trigger incremental snapshot on the new table
+        sendAdHocSnapshotSignal("s1.new_table");
+
+        // verify we get the 3 records (3 data + 3 signal records)
+        final var records = consumeRecordsByTopic(3 + 3);
+        assertThat(records.recordsForTopic("test_server.s1.new_table")).hasSize(3);
+    }
+
     protected void populate4PkTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a4");
