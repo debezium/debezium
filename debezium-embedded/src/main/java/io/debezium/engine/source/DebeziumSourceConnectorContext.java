@@ -5,11 +5,10 @@
  */
 package io.debezium.engine.source;
 
-import org.apache.kafka.connect.storage.OffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
-
 import io.debezium.common.annotation.Incubating;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
 
 /**
  * {@link DebeziumSourceConnectorContext} holds useful objects used during the lifecycle of {@link DebeziumSourceConnector}.
@@ -20,11 +19,11 @@ import io.debezium.common.annotation.Incubating;
 public interface DebeziumSourceConnectorContext {
 
     /**
-     * Returns the {@link OffsetBackingStore} used by this connector.
+     * Returns the {@link OffsetStore} used by this connector.
      * This should be used mainly for proper closing the offset backing store.
-     * @return the {@link OffsetBackingStore} use by this connector.
+     * @return the {@link OffsetStore} use by this connector.
      */
-    OffsetBackingStore offsetStore();
+    OffsetStore offsetStore();
 
     /**
      * Returns the {@link OffsetStorageReader} for this DebeziumConnectorContext.

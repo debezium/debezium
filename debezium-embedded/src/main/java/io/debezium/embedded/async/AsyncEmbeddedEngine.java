@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
@@ -51,9 +52,6 @@ import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +79,15 @@ import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
 import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.source.kafka.KafkaSourceTaskContextAdapter;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
+import io.debezium.spi.storage.OffsetStoreProvider;
+import io.debezium.storage.kafka.KafkaOffsetStorageReaderAdapter;
+import io.debezium.storage.kafka.KafkaOffsetStorageWriterAdapter;
+import io.debezium.storage.kafka.KafkaOffsetStoreAdapter;
+import io.debezium.storage.kafka.KafkaStorageAdapter;
 import io.debezium.util.DelayStrategy;
 
 /**
@@ -372,9 +379,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
 
             LOGGER.debug("Initializing offset store, offset reader and writer");
-            final OffsetBackingStore offsetStore = createAndStartOffsetStore(connectorConfig);
-            final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
-            final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
+            final OffsetStore offsetStore = createAndStartOffsetStore(connectorConfig);
+            final OffsetStorageReader offsetReader = new KafkaOffsetStorageReaderAdapter((KafkaStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+                    offsetKeyConverter, offsetValueConverter);
+            final OffsetStorageWriter offsetWriter = new KafkaOffsetStorageWriterAdapter((KafkaStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+                    offsetKeyConverter, offsetValueConverter);
 
             LOGGER.debug("Initializing Connect connector itself");
             connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
@@ -422,7 +431,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                         offsetCommitPolicy,
                         clock,
                         transformations);
-                task.initialize(taskContext); // Initialize Kafka Connect source task
+                // TODO: remove switching to Kafka
+                task.initialize(
+                        new KafkaSourceTaskContextAdapter(taskContext.config(),
+                                ((KafkaStorageAdapter.OffsetStorageReader) taskContext.offsetStorageReader()).getDelegate()).getDelegate()); // Initialize Kafka Connect source task
                 tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
             }
         }
@@ -808,49 +820,99 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     /**
      * Determines which offset backing store should be used, instantiate it and starts the offset store.
+     * <p>
+     * {@link OffsetStoreProvider} is loaded via ServiceLoader (SPI), either based on its name or fully qualified class name.
+     * If it's not found, it falls back to loading Kafka-based store via direct instantiation.
      *
      * @param connectorConfig {@link Map<String, String>} with the connector configuration.
-     * @return {@link OffsetBackingStore} instance used by the engine.
+     * @return {@link OffsetStore} instance used by the engine.
      */
-    private OffsetBackingStore createAndStartOffsetStore(final Map<String, String> connectorConfig) throws Exception {
-        final String offsetStoreClassName = config.getString(AsyncEngineConfig.OFFSET_STORAGE);
+    private OffsetStore createAndStartOffsetStore(final Map<String, String> connectorConfig) throws Exception {
+        final String offsetStoreName = config.getString(AsyncEngineConfig.OFFSET_STORAGE);
+        LOGGER.debug("Creating instance of offset store for '{}'", offsetStoreName);
 
-        LOGGER.debug("Creating instance of offset store for {}.", offsetStoreClassName);
-        final OffsetBackingStore offsetStore;
-        // Kafka 3.5 no longer provides offset stores with non-parametric constructors
-        if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-            offsetStore = KafkaConnectUtil.memoryOffsetBackingStore();
+        ServiceLoader<OffsetStoreProvider> providers = ServiceLoader.load(OffsetStoreProvider.class, classLoader);
+        OffsetStoreProvider matchedProvider = null;
+
+        for (OffsetStoreProvider provider : providers) {
+            // Match by provider name first.
+            if (offsetStoreName.equals(provider.getName())) {
+                matchedProvider = provider;
+                break;
+            }
+
+            // Match classname as a fallback.
+            if (offsetStoreName.equals(provider.getOffsetStoreClassName())) {
+                matchedProvider = provider;
+                break;
+            }
         }
-        else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
-            offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
-        }
-        else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
-            offsetStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
+
+        final OffsetStore offsetStore;
+        final Configuration debeziumConfig = Configuration.from(workerConfig.values());
+
+        if (matchedProvider != null) {
+            LOGGER.info("Found offset store provider '{}' for '{}'", matchedProvider.getName(), offsetStoreName);
+            offsetStore = matchedProvider.create(debeziumConfig, connectorConfig);
         }
         else {
-            final Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-            offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+            LOGGER.debug("No ServiceLoader provider found for '{}', attempting direct instantiation of a Kafka OffsetBackingStore (legacy mode)", offsetStoreName);
+            offsetStore = createKafkaOffsetStoreWithAdapter(offsetStoreName, connectorConfig);
         }
 
+        // Configure and start the offset store
         try {
-            LOGGER.debug("Starting offset store.");
+            LOGGER.debug("Configuring and starting offset store");
+            // TODO use Debezium config one we get rid off Kafka-dependent config
             offsetStore.configure(workerConfig);
             offsetStore.start();
         }
         catch (Throwable t) {
-            LOGGER.debug("Failed to start offset store, stopping it now.");
-            offsetStore.stop();
+            LOGGER.debug("Failed to start offset store, stopping it now");
+            try {
+                offsetStore.stop();
+            }
+            catch (Exception stopException) {
+                t.addSuppressed(stopException);
+            }
             throw t;
         }
 
-        LOGGER.debug("Offset store {} successfully started.", offsetStoreClassName);
+        LOGGER.info("Offset store '{}' successfully started", offsetStoreName);
         return offsetStore;
     }
 
     /**
-     * Commits the offset to {@link OffsetBackingStore} via {@link OffsetStorageWriter}.
+     * Creates a Kafka Connect offset store and wraps it in a Debezium OffsetStore adapter.
+     * This is the legacy fallback path for backward compatibility with Kafka Connect offset stores.
+     */
+    private OffsetStore createKafkaOffsetStoreWithAdapter(String offsetStoreClassName, Map<String, String> connectorConfig) throws Exception {
+        LOGGER.debug("Creating Kafka offset store '{}' with adapter", offsetStoreClassName);
+
+        final org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore;
+
+        // Kafka 3.5 no longer provides offset stores with non-parametric constructors
+        if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
+            kafkaStore = KafkaConnectUtil.memoryOffsetBackingStore();
+        }
+        else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
+            kafkaStore = KafkaConnectUtil.fileOffsetBackingStore();
+        }
+        else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
+            kafkaStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
+        }
+        else {
+            final Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+            kafkaStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+        }
+
+        return new KafkaOffsetStoreAdapter(kafkaStore);
+    }
+
+    /**
+     * Commits the offset to {@link OffsetStore} via {@link OffsetStorageWriter}.
      *
-     * @param offsetWriter {@link OffsetStorageWriter} which performs the flushing the offset into {@link OffsetBackingStore}.
+     * @param offsetWriter {@link OffsetStorageWriter} which performs the flushing the offset into {@link OffsetStore}.
      * @param commitTimeout amount of time to wait for offset flush to finish before it's aborted.
      * @param task {@link SourceTask} which performs the offset commit.
      * @return {@code true} if the offset was successfully committed, {@code false} otherwise.
