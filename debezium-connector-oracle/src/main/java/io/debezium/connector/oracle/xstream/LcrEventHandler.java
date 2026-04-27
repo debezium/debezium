@@ -510,17 +510,16 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     if (column == null) {
                         continue;
                     }
+                    // Always overwrite — including with null — so a column whose row truly
+                    // holds NULL is reported as null, not as the UNAVAILABLE_VALUE placeholder
+                    // that was pre-seeded in chunkValues. (Without this, a multi-LOB row whose
+                    // LOB op only touched one column would emit the unavailable marker for the
+                    // others.)
                     if (column.jdbcType() == java.sql.Types.BLOB) {
-                        final byte[] blobVal = rs.getBytes(colName);
-                        if (blobVal != null) {
-                            chunkValues.put(colName, blobVal);
-                        }
+                        chunkValues.put(colName, rs.getBytes(colName));
                     }
                     else {
-                        final String strVal = rs.getString(colName);
-                        if (strVal != null) {
-                            chunkValues.put(colName, strVal);
-                        }
+                        chunkValues.put(colName, rs.getString(colName));
                     }
                 }
             });
