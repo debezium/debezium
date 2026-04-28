@@ -150,9 +150,6 @@ public abstract class InformixTests extends ConnectorTest {
     public void shouldExtractNewRecordState(SqlDatabaseController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
 
-        // FIXME: Remove when https://github.com/debezium/dbz/issues/1704 is resolved
-        Thread.sleep(Duration.ofMinutes(3));
-
         connectorConfig = connectorConfig.addJdbcUnwrapSMT();
         connectController.deployConnector(connectorConfig);
 
