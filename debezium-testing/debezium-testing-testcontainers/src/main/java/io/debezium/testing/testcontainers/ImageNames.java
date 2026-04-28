@@ -13,13 +13,13 @@ public final class ImageNames {
 
     private static final String TIMESCALE_DB_IMAGE = "quay.io/debezium/timescale-timescaledb:latest-pg15";
 
+    public static final String OFFICIAL_MONGODB_IMAGE = "quay.io/debezium/official-mongo:8.0";
+
     public static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
     public static final DockerImageName TIMESCALE_DB_IMAGE_NAME = DockerImageName.parse(TIMESCALE_DB_IMAGE)
             .asCompatibleSubstituteFor("postgres");
-
-    public static final String OFFICIAL_MONGODB_IMAGE = "mirror.gcr.io/library/mongo:6.0";
 
     public static final DockerImageName OFFICIAL_DOCKER_IMAGE_NAME = DockerImageName.parse(OFFICIAL_MONGODB_IMAGE)
             .asCompatibleSubstituteFor("mongodb");
