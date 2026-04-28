@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.util.Strings;
 
 /**
  * Unique identifier for a PostgreSQL type, supporting both simple and schema-qualified type names.
@@ -37,7 +38,7 @@ public record TypeId(String schemaName, String typeName) {
      * @return the type ID, or null if it could not be parsed
      */
     public static TypeId parse(String str) {
-        if (str == null || str.isEmpty()) {
+        if (Strings.isNullOrEmpty(str)) {
             return null;
         }
 
@@ -123,7 +124,7 @@ public record TypeId(String schemaName, String typeName) {
     public String toDoubleQuotedString() {
         final var quoted = new StringBuilder();
 
-        if (schemaName != null && !schemaName.isEmpty()) {
+        if (!Strings.isNullOrEmpty(schemaName)) {
             quoted.append(quote(schemaName)).append(".");
         }
 
@@ -138,7 +139,7 @@ public record TypeId(String schemaName, String typeName) {
     }
 
     private static String typeId(String schema, String type) {
-        if (schema == null || schema.isEmpty()) {
+        if (Strings.isNullOrEmpty(schema)) {
             return type;
         }
         return schema + "." + type;
@@ -148,7 +149,7 @@ public record TypeId(String schemaName, String typeName) {
      * Quotes the given identifier part with double quotes.
      */
     private static String quote(String identifierPart) {
-        if (identifierPart == null || identifierPart.isEmpty()) {
+        if (Strings.isNullOrEmpty(identifierPart)) {
             return "\"\"";
         }
 
