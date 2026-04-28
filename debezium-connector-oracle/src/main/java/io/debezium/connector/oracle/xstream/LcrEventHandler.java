@@ -63,7 +63,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
-    private final OracleConnection jdbcConnection;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
@@ -71,8 +70,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                    XStreamStreamingChangeEventSourceMetrics streamingMetrics,
-                    OracleConnection jdbcConnection) {
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -83,7 +81,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
         this.streamingMetrics = streamingMetrics;
-        this.jdbcConnection = jdbcConnection;
         this.columnChunks = new LinkedHashMap<>();
     }
 
@@ -454,7 +451,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
      * fallback logic with the {@code ReselectColumnsPostProcessor} path.
      */
     private void reselectLobValues(RowLCR row, Table table, Map<String, Object> chunkValues) {
-        if (chunkValues.isEmpty() || jdbcConnection == null) {
+        if (chunkValues.isEmpty()) {
             return;
         }
 
@@ -499,12 +496,20 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         final List<String> lobColumnNames = new ArrayList<>(chunkValues.keySet());
 
-        try {
+        // Use a separate, short-lived connection for the reselect — pinned to the PDB the
+        // table lives in. The streaming JDBC connection cannot be reused: it is bound to
+        // the CDB root in CDB+PDB deployments and would not see the user table. This
+        // mirrors getTableMetadataDdl above and BaseChangeRecordEmitter's reselect path.
+        final String pdbName = connectorConfig.getPdbName();
+        try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
+            if (!Strings.isNullOrBlank(pdbName)) {
+                connection.setSessionToPdb(pdbName);
+            }
             // reselectColumns advances the ResultSet cursor internally before invoking
             // the consumer, so we read column values directly without calling rs.next().
             // A return of `false` means no matching row was found — typically the row
             // was deleted between the LCR emission and our reselect.
-            final boolean found = jdbcConnection.reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
+            final boolean found = connection.reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
                 for (String colName : lobColumnNames) {
                     final Column column = table.columnWithName(colName);
                     if (column == null) {
@@ -531,10 +536,14 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to reselect LOB values for table {} (tx={}, scn={}, rowId={}): {}. "
-                    + "Emitting partial chunk data.",
-                    table.id(), row.getTransactionId(), offsetContext.getScn(),
-                    row.getAttribute("ROW_ID"), e.getMessage());
+            // Match BaseChangeRecordEmitter.emitUpdateAsPrimaryKeyChangeRecord — surface
+            // the failure rather than emit partial chunk data with UNAVAILABLE_VALUE
+            // placeholders. A silent fallback masks real configuration problems
+            // (wrong PDB, missing privileges, table not yet visible) and produces
+            // wire records that fail downstream assertions in non-obvious ways.
+            throw new DebeziumException("Failed to reselect LOB values for table " + table.id()
+                    + " (tx=" + row.getTransactionId() + ", scn=" + offsetContext.getScn()
+                    + ", rowId=" + row.getAttribute("ROW_ID") + ")", e);
         }
     }
 
