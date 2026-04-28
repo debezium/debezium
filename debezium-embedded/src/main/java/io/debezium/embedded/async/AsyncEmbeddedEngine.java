@@ -640,7 +640,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 close();
             }
             catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new DebeziumException(e);
             }
         };
     }
