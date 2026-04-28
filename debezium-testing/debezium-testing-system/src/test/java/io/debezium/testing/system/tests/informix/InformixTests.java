@@ -11,7 +11,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_INFORMI
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
-import java.time.Duration;
 
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
