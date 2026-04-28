@@ -89,8 +89,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     private final ColumnNamingStrategy columnNamingStrategy;
     private FieldFilterFactory.FieldNameFilter fieldsFilter;
     private final int batchSize;
-    private final boolean truncateEnabled;
-    private final boolean deleteEnabled;
     private final String cloudEventsSchemaNamePattern;
 
     public MongoDbSinkConnectorConfig(Configuration config) {
@@ -105,8 +103,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
-        this.truncateEnabled = config.getBoolean(SinkConnectorConfig.TRUNCATE_ENABLED_FIELD);
-        this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
     }
@@ -191,12 +187,12 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
 
     @Override
     public boolean isTruncateEnabled() {
-        return truncateEnabled;
+        return false;
     }
 
     @Override
     public boolean isDeleteEnabled() {
-        return deleteEnabled;
+        return false;
     }
 
     @Override
