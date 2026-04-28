@@ -29,17 +29,14 @@ import io.debezium.engine.StopEngineException;
 public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertConsumerProcessor.class);
 
-    final DebeziumEngine.RecordCommitter committer;
-    final Consumer<R> consumer;
-    final Function<SourceRecord, R> convertor;
-    private final Watcher watcher;
+    private final DebeziumEngine.RecordCommitter committer;
+    private final Function<SourceRecord, R> convertor;
+    private final SingleProcessor<R> processor;
 
-    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor,
-                                           Watcher watcher) {
+    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Function<SourceRecord, R> convertor, SingleProcessor<R> processor) {
         this.committer = committer;
-        this.consumer = consumer;
         this.convertor = convertor;
-        this.watcher = watcher;
+        this.processor = processor;
     }
 
     @Override
@@ -54,13 +51,10 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
-            if (!watcher.engine().isConsuming()) {
-                break;
-            }
             R record = recordFutures[i].get();
             if (record != null) {
                 try {
-                    consumer.accept(record);
+                    processor.process(record);
                 }
                 catch (StopEngineException e) {
                     committer.markProcessed(recordsIterator.next());
@@ -72,5 +66,26 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
 
         LOGGER.trace("Marking batch as finished.");
         committer.markBatchFinished();
+    }
+
+    public static <R> ParallelSmtAndConvertConsumerProcessor<R> create(
+            DebeziumEngine.RecordCommitter<SourceRecord> committer,
+            Consumer<R> consumer,
+            Function<SourceRecord, R> convertor,
+            Watcher watcher,
+            DebeziumShutdown<R> shutdown,
+            Runnable workflow) {
+
+        if (shutdown == null) {
+            return new ParallelSmtAndConvertConsumerProcessor<>(committer, convertor,
+                    new AbstractRecordProcessor.SingleProcessor.DirectSingleProcessor<>(consumer));
+        }
+
+        return new ParallelSmtAndConvertConsumerProcessor<>(committer,
+                convertor,
+                new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
+                        DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
+                        DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                        consumer)));
     }
 }
