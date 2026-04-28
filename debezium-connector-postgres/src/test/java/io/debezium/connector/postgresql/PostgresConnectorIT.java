@@ -2163,11 +2163,18 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
+        return getConfirmedFlushLsn(
+                connection,
+                TestHelper.decoderPlugin(),
+                ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+    }
+
+    private String getConfirmedFlushLsn(PostgresConnection connection, LogicalDecoder decoder, String slotName) throws SQLException {
         final String lsn = connection.prepareQueryAndMap(
-                "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                    statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+                "select confirmed_flush_lsn from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                    statement.setString(1, slotName);
                     statement.setString(2, "postgres");
-                    statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                    statement.setString(3, decoder.getPostgresPluginName());
                 },
                 rs -> {
                     if (rs.next()) {
@@ -4389,5 +4396,70 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(matched.size()).isEqualTo(1);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1863")
+    public void testTrustGreaterLsnWithNonCapturedTableUpdates() throws Exception {
+        // This test verifies that when offset.mismatch.strategy is set to trust_greater_lsn,
+        // updates to non-captured tables (i.e., tables not included in the publication) do
+        // not cause connector restart failures.
+        // In this test, s1.a is treated as the captured table, and s2.a as the non-captured table.
+
+        final String PUBLICATION = "dbz_s1_a";
+        final String SLOT = "dbz_s1_a_slot";
+
+        try {
+            TestHelper.execute(SETUP_TABLES_STMT);
+            TestHelper.execute("CREATE PUBLICATION " + PUBLICATION + " FOR TABLE s1.a;");
+
+            Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false")
+                    .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, "true")
+                    .with(PostgresConnectorConfig.PUBLICATION_NAME, PUBLICATION)
+                    .with(PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.PGOUTPUT)
+                    .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver")
+                    .with(PostgresConnectorConfig.SLOT_NAME, SLOT)
+                    .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn");
+
+            start(PostgresConnector.class, configBuilder.build());
+            assertConnectorIsRunning();
+
+            try (PostgresConnection connection = TestHelper.create()) {
+                Lsn lsnBeforeCapturedTableInsert = Lsn.valueOf(getConfirmedFlushLsn(connection, LogicalDecoder.PGOUTPUT, SLOT));
+                TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (2, 'hello');");
+
+                Awaitility.await()
+                        .alias("confirmed_flush_lsn did not advance after non-captured table update")
+                        .pollInterval(1000, TimeUnit.MILLISECONDS)
+                        .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                        .until(() -> {
+                            Lsn lsnAfterNonCapturedTableInsert = Lsn.valueOf(getConfirmedFlushLsn(connection, LogicalDecoder.PGOUTPUT, SLOT));
+                            return lsnAfterNonCapturedTableInsert.compareTo(lsnBeforeCapturedTableInsert) > 0;
+                        });
+            }
+            stopConnector();
+            assertConnectorNotRunning();
+
+            LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+            start(PostgresConnector.class, configBuilder.build());
+
+            // Note we do not call assertConnectorIsRunning() immediately after start().
+            // When the issue occurs, the connector fails during the startup process.
+            // Calling assertConnectorIsRunning() too early can incorrectly succeed
+            // because the connector is still in the process of starting.
+            Awaitility.await().atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                    .until(() -> interceptor
+                            .containsMessage("Starting replication stream from LSN"));
+            assertConnectorIsRunning();
+
+            stopConnector();
+            assertConnectorNotRunning();
+        }
+        finally {
+            TestHelper.execute("DROP PUBLICATION IF EXISTS " + PUBLICATION + ";");
+            TestHelper.execute("SELECT pg_drop_replication_slot('" + SLOT + "');");
+        }
     }
 }
