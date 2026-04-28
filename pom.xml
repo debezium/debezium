@@ -161,7 +161,7 @@
         <version.cassandra5>5.0.2</version.cassandra5>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
-        <version.com.google.protobuf>3.25.5</version.com.google.protobuf>
+        <version.com.google.protobuf>4.34.1</version.com.google.protobuf>
         <!-- The version is separate so different protoc can be used in product -->
         <version.com.google.protobuf.protoc>3.25.5</version.com.google.protobuf.protoc>
 
