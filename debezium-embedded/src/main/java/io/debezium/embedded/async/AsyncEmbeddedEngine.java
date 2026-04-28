@@ -799,6 +799,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
         if (configInfos.errorCount() > 0) {
+            // TODO Remove the reflection when minimum Kafka version is 4.2. Reflection is necessary to keep
+            // with older Kafka versions
             @SuppressWarnings("unchecked")
             final String errors = ((List<ConfigInfo>) Reflections.invokeMethodWithFallbackName(configInfos, "configs", "values", List.class)).stream()
                     .flatMap(v -> v.configValue().errors().stream())
