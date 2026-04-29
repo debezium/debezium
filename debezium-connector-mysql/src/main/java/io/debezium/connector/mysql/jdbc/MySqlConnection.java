@@ -33,9 +33,28 @@ public class MySqlConnection extends BinlogConnectorConnection {
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
 
+        this.binaryLogStatusStatement = resolveBinaryLogStatusStatement();
+    }
+
+    public static boolean isNetworkError(SQLException e) {
+        String sqlState = e.getSQLState();
+        if (sqlState == null) {
+            return false;
+        }
+
+        return sqlState.equals("08001") // Cannot connect to server
+                || sqlState.equals("08003") // Connection does not exist
+                || sqlState.equals("08004") // Connection rejected by server
+                || sqlState.equals("08006") // Connection failure
+                || sqlState.equals("08S01"); // Communication link failure
+    }
+
+    private String resolveBinaryLogStatusStatement() {
         try {
             query(BINARY_LOG_STATUS_STATEMENT, rs -> {
             });
+            LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
+            return BINARY_LOG_STATUS_STATEMENT;
         }
         catch (SQLException e) {
             if (isNetworkError(e)) {
@@ -48,6 +67,11 @@ public class MySqlConnection extends BinlogConnectorConnection {
                 });
 
                 String[] parts = version.split("\\.");
+                if (parts.length < 2) {
+                    LOGGER.warn("Unexpected MySQL version format: {}. Proceeding with fallback.", version);
+                    return MASTER_STATUS_STATEMENT;
+                }
+
                 int major = Integer.parseInt(parts[0]); // 8
                 int minor = Integer.parseInt(parts[1]); // 4
 
@@ -64,25 +88,8 @@ public class MySqlConnection extends BinlogConnectorConnection {
             catch (NumberFormatException nfe) {
                 LOGGER.warn("Could not parse MySQL version string during fallback detection: {}", nfe.getMessage());
             }
-
-            binaryLogStatusStatement = MASTER_STATUS_STATEMENT;
-            return;
+            return MASTER_STATUS_STATEMENT;
         }
-        LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
-        binaryLogStatusStatement = BINARY_LOG_STATUS_STATEMENT;
-    }
-
-    public static boolean isNetworkError(SQLException e) {
-        String sqlState = e.getSQLState();
-        if (sqlState == null) {
-            return false;
-        }
-
-        // Network-related connection failures (not config/auth errors)
-        return sqlState.equals("08001") // Cannot connect to server
-                || sqlState.equals("08003") // Connection does not exist
-                || sqlState.equals("08006") // Connection failure
-                || sqlState.equals("08S01"); // Communication link failure
     }
 
     public String binaryLogStatusStatement() {
