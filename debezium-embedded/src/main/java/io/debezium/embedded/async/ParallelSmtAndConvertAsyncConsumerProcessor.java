@@ -12,11 +12,11 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import io.debezium.embedded.Transformations;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
@@ -80,8 +80,7 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
         if (shutdown == null) {
             return new ParallelSmtAndConvertAsyncConsumerProcessor<>(
                     committer,
-                    record -> new ProcessingCallables.TransformConvertConsumeRecord<>(record, transformations, convertor, consumer)
-            );
+                    record -> new ProcessingCallables.TransformConvertConsumeRecord<>(record, transformations, convertor, consumer));
         }
         return new ParallelSmtAndConvertAsyncConsumerProcessor<>(
                 committer,
@@ -94,7 +93,6 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
                                     if (transformedRecord != null && watcher.engine().isConsuming()) {
                                         consumer.accept(transformedRecord);
                                     }
-                                }))
-        );
+                                })));
     }
 }

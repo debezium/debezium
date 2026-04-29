@@ -69,12 +69,12 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
     }
 
     public static <R> ParallelSmtAndConvertConsumerProcessor<R> create(
-            DebeziumEngine.RecordCommitter<SourceRecord> committer,
-            Consumer<R> consumer,
-            Function<SourceRecord, R> convertor,
-            Watcher watcher,
-            DebeziumShutdown<R> shutdown,
-            Runnable workflow) {
+                                                                       DebeziumEngine.RecordCommitter<SourceRecord> committer,
+                                                                       Consumer<R> consumer,
+                                                                       Function<SourceRecord, R> convertor,
+                                                                       Watcher watcher,
+                                                                       DebeziumShutdown<R> shutdown,
+                                                                       Runnable workflow) {
 
         if (shutdown == null) {
             return new ParallelSmtAndConvertConsumerProcessor<>(committer, convertor,

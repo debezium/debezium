@@ -9,11 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import io.debezium.embedded.async.AbstractRecordProcessor.BatchProcessor.ObservableProcessor;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.embedded.async.AbstractRecordProcessor.BatchProcessor.ObservableProcessor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Watcher;
 
@@ -51,10 +51,10 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
     }
 
     public static <R> ParallelSmtBatchProcessor create(DebeziumEngine.RecordCommitter<SourceRecord> committer,
-                                                   final DebeziumEngine.ChangeConsumer<R> userHandler,
-                                                   Watcher watcher,
+                                                       final DebeziumEngine.ChangeConsumer<R> userHandler,
+                                                       Watcher watcher,
                                                        DebeziumShutdown<R> shutdown,
-                                                   Runnable runner) {
+                                                       Runnable runner) {
 
         if (shutdown == null) {
             return new ParallelSmtBatchProcessor(new BatchProcessor.DirectProcessor(committer, userHandler));

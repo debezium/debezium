@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import io.debezium.engine.DebeziumEngine;
 import org.apache.kafka.connect.source.SourceRecord;
-
-import io.debezium.embedded.Transformations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.embedded.Transformations;
+import io.debezium.engine.DebeziumEngine;
 
 /**
  * Abstract implementation of {@link RecordProcessor}, which provides implementation of processor initialization, while the record processing implementation

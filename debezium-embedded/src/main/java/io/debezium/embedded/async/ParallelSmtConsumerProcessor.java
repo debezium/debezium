@@ -67,11 +67,11 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
     }
 
     public static <R> ParallelSmtConsumerProcessor create(
-            DebeziumEngine.RecordCommitter<SourceRecord> committer,
-            Consumer<R> consumer,
-            Watcher watcher,
-            DebeziumShutdown<R> shutdown,
-            Runnable workflow) {
+                                                          DebeziumEngine.RecordCommitter<SourceRecord> committer,
+                                                          Consumer<R> consumer,
+                                                          Watcher watcher,
+                                                          DebeziumShutdown<R> shutdown,
+                                                          Runnable workflow) {
 
         if (shutdown == null) {
             return new ParallelSmtConsumerProcessor(
@@ -82,8 +82,8 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
         return new ParallelSmtConsumerProcessor(
                 committer,
                 new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
-                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
-                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
-                (Consumer<SourceRecord>) consumer)));
+                        (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
+                        (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                        (Consumer<SourceRecord>) consumer)));
     }
 }
