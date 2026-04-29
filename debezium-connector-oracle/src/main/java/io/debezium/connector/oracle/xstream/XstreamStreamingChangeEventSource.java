@@ -112,7 +112,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.effectiveOffset = offsetContext;
 
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
-                partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
+                partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics, jdbcConnection);
 
         try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
             try {
