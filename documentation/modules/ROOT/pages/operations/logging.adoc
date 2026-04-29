@@ -29,38 +29,30 @@ In such cases, you can change the logging level so that the connector generates 
 [id="logging-concepts"]
 == Logging concepts
 
-Before configuring logging, you should understand what Log4J _loggers_, _log levels_, and _appenders_ are.
+{prodname} uses Log4j loggers, log levels, and appenders to control which messages appear in logs and where they are written.
+Logging configuration specifies the level for each logger and the appenders where {prodname} writes log messages.
+Because loggers are hierarchical, the root logger configuration serves as a default for all loggers in the hierarchy, but you can override individual child or descendant loggers.
 
-[discrete]
-=== Loggers
-
-Each log message produced by the application is sent to a specific _logger_
-(for example, `io.debezium.connector.mysql`).
+Loggers::
+The application sends each log message to a specific logger, for example, `io.debezium.connector.mysql`.
 Loggers are arranged in hierarchies.
-For example, the `io.debezium.connector.mysql` logger is the child of the `io.debezium.connector` logger,
-which is the child of the `io.debezium` logger.
-At the top of the hierarchy,
-the _root logger_ defines the default logger configuration for all of the loggers beneath it.
+For example, the `io.debezium.connector.mysql` logger is the child of the `io.debezium.connector` logger, which is the child of the `io.debezium` logger.
+The root logger is the parent of all other loggers in the hierarchy.
+Descendants in the logging hierarchy inherit the configuration of the root logger by default.
 
-[discrete]
-=== Log levels
+Log levels::
+The application assigns one of the following log levels to each log message:
 
-Every log message produced by the application also has a specific _log level_:
+[horizontal]
+`ERROR`::: Errors, exceptions, and other significant problems.
+`WARN`::: Potential problems and issues.
+`INFO`::: Status and general activity (usually low-volume).
+`DEBUG`::: More detailed activity that is useful in diagnosing unexpected behavior.
+`TRACE`::: Very verbose and detailed activity (usually very high-volume).
 
-1. `ERROR` - errors, exceptions, and other significant problems
-2. `WARN` - _potential_ problems and issues
-3. `INFO` - status and general activity (usually low-volume)
-4. `DEBUG` - more detailed activity that would be useful in diagnosing unexpected behavior
-5. `TRACE` - very verbose and detailed activity (usually very high-volume)
-
-[discrete]
-=== Appenders
-
-An _appender_ is essentially a destination where log messages are written.
-Each appender controls the format of its log messages,
-giving you even more control over what the log messages look like.
-
-To configure logging, you specify the desired level for each logger and the appender(s) where those log messages should be written. Since loggers are hierarchical, the configuration for the root logger serves as a default for all of the loggers below it, although you can override any child (or descendant) logger.
+Appenders::
+An appender specifies the destination where {prodname} writes log messages.
+Because each appender delegates message formatting to an associated Layout, you can control the message format by sending messages to a specific appender.
 
 
 // Type: concept
