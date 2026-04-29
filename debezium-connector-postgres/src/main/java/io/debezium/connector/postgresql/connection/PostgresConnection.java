@@ -724,7 +724,7 @@ public class PostgresConnection extends JdbcConnection {
             }
 
             final String defaultValueExpression = columnMetadata.getString(13);
-            if (defaultValueExpression != null && getDefaultValueConverter().supportConversion(column.typeName())) {
+            if (defaultValueExpression != null && getDefaultValueConverter().supportConversion(nativeType.getName())) {
                 column.defaultValueExpression(defaultValueExpression);
             }
 
