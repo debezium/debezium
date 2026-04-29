@@ -32,7 +32,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.ColumnValue;
@@ -63,6 +62,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
+    private final OracleConnection jdbcConnection;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
@@ -70,7 +70,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics,
+                    OracleConnection jdbcConnection) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -81,6 +82,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
         this.streamingMetrics = streamingMetrics;
+        this.jdbcConnection = jdbcConnection;
         this.columnChunks = new LinkedHashMap<>();
     }
 
@@ -316,18 +318,34 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private String getTableMetadataDdl(TableId tableId) throws NonRelationalTableException {
         LOGGER.info("Getting database metadata for table '{}'", tableId);
-        final String pdbName = connectorConfig.getPdbName();
-        // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
-        // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
-            if (!Strings.isNullOrBlank(pdbName)) {
-                connection.setSessionToPdb(pdbName);
-            }
-            return connection.getTableMetadataDdl(tableId);
+        try {
+            return getConnection().getTableMetadataDdl(tableId);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to get table DDL metadata for: " + tableId, e);
         }
+    }
+
+    /**
+     * Returns the streaming JDBC connection ready for an out-of-bands query against the
+     * captured database. Reconnects the underlying connection if it is currently
+     * disconnected (e.g. after an Oracle restart) and pins the session to the configured
+     * PDB on (re)connection. Reused across out-of-bands callbacks (DDL fetch, LOB
+     * reselect) so we don't open and tear down a JDBC connection per LCR.
+     *
+     * <p>The connection is dedicated to the XStream change-event source — the snapshot
+     * phase has its own connection — so swapping its session to a PDB once is safe.
+     * Future downstream-mining-DB support can extend this helper to manage a separate
+     * source-side connection.
+     */
+    private OracleConnection getConnection() throws SQLException {
+        if (!jdbcConnection.isConnected()) {
+            jdbcConnection.connect();
+            if (connectorConfig.isUsingPluggableDatabase()) {
+                jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+            }
+        }
+        return jdbcConnection;
     }
 
     private void setWatermark() {
@@ -496,24 +514,24 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         final List<String> lobColumnNames = new ArrayList<>(chunkValues.keySet());
 
-        // Use a separate, short-lived connection for the reselect — pinned to the PDB the
-        // table lives in. The streaming JDBC connection cannot be reused: it is bound to
-        // the CDB root in CDB+PDB deployments and would not see the user table. This
-        // mirrors getTableMetadataDdl above and BaseChangeRecordEmitter's reselect path.
-        final String pdbName = connectorConfig.getPdbName();
-        try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
-            if (!Strings.isNullOrBlank(pdbName)) {
-                connection.setSessionToPdb(pdbName);
-            }
+        try {
             // reselectColumns advances the ResultSet cursor internally before invoking
             // the consumer, so we read column values directly without calling rs.next().
             // A return of `false` means no matching row was found — typically the row
             // was deleted between the LCR emission and our reselect.
-            final boolean found = connection.reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
+            final boolean found = getConnection().reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
                 for (String colName : lobColumnNames) {
                     final Column column = table.columnWithName(colName);
                     if (column == null) {
-                        continue;
+                        // The lobColumnNames list comes from chunkValues, which was populated
+                        // earlier in dispatchDataChangeEvent from schema.getLobColumnsForTable(table.id())
+                        // — i.e. columns of the same Table we're using here. A null lookup
+                        // means our schema view is internally inconsistent; fail loudly so the
+                        // root cause surfaces instead of emitting partial-but-passing data.
+                        throw new DebeziumException("Schema cache for table " + table.id()
+                                + " does not include LOB column '" + colName
+                                + "' that was registered for reselection (tx=" + row.getTransactionId()
+                                + ", scn=" + offsetContext.getScn() + ").");
                     }
                     // Always overwrite — including with null — so a column whose row truly
                     // holds NULL is reported as null, not as the UNAVAILABLE_VALUE placeholder
