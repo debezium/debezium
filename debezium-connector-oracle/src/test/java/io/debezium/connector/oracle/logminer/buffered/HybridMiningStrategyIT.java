@@ -1216,6 +1216,7 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         embeddedConfig.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, keyConverter.getClass().getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, valueConverter.getClass().getName());
+        embeddedConfig.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         System.out.println(embeddedConfig);
 
         final OffsetBackingStore store = KafkaConnectUtil.fileOffsetBackingStore();
