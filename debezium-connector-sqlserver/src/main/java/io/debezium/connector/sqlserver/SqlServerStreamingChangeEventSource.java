@@ -181,9 +181,19 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             TxLogPosition lastProcessedPosition = streamingExecutionContext.getLastProcessedPosition();
 
             if (context.isRunning()) {
-                commitTransaction();
-                endTransaction(partition, offsetContext.getSourceTime());
-                final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                Lsn toLsn;
+                // Recover before iteration state mutates: a connection idle-killed during long schema
+                // recovery surfaces here on the first DB call. Refresh only the broken side and retry
+                // once so streaming resumes instead of failing the task.
+                try {
+                    commitTransaction();
+                    endTransaction(partition, offsetContext.getSourceTime());
+                    toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                }
+                catch (SQLException e) {
+                    recoverStaleConnections(e, databaseName);
+                    toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                }
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
@@ -402,6 +412,32 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             dataConnection.commit();
             metadataConnection.commit();
         }
+    }
+
+    private void recoverStaleConnections(SQLException e, String databaseName) throws SQLException {
+        boolean dataValid;
+        boolean metadataValid;
+        try {
+            dataValid = dataConnection.isValid();
+            metadataValid = metadataConnection.isValid();
+        }
+        catch (SQLException probeEx) {
+            e.addSuppressed(probeEx);
+            throw e;
+        }
+        if (dataValid && metadataValid) {
+            throw e;
+        }
+        LOGGER.warn("Stale connection detected at start of streaming iteration for database '{}' (data valid={}, metadata valid={}); refreshing",
+                databaseName, dataValid, metadataValid, e);
+        if (!dataValid) {
+            dataConnection.reconnect();
+        }
+        if (!metadataValid) {
+            metadataConnection.reconnect();
+        }
+        LOGGER.info("Refreshed connections (data refreshed={}, metadata refreshed={}) for database '{}'",
+                !dataValid, !metadataValid, databaseName);
     }
 
     private void migrateTable(SqlServerPartition partition, final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext)

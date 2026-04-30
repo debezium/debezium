@@ -319,6 +319,14 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public synchronized void reconnect() throws SQLException {
+        // JdbcConnection#reconnect() bypasses connection(boolean) and would skip setAutoCommit(false).
+        LOGGER.info("Reopening SQL Server JDBC connection");
+        close();
+        connection();
+    }
+
+    @Override
     public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
         return super.getAllTableIds(catalogName);
     }
