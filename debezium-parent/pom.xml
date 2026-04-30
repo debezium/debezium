@@ -88,6 +88,8 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
+                        <printSummary>true</printSummary>
+                        <reportFormat>plain</reportFormat>
                         <argLine>${debug.argline} ${modules.argline} ${test.argline} ${mockito.argLine}</argLine>
                         <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                         <systemPropertyVariables combine.children="append">
@@ -250,6 +252,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <printSummary>true</printSummary>
+                    <reportFormat>plain</reportFormat>
                     <systemPropertyVariables combine.children="append">
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
