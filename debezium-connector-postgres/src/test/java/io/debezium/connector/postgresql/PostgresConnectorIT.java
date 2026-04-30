@@ -4399,7 +4399,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1863")
+    @FixFor("debezium/dbz#1863")
     public void testTrustGreaterLsnWithNonCapturedTableUpdates() throws Exception {
         // This test verifies that when offset.mismatch.strategy is set to trust_greater_lsn,
         // updates to non-captured tables (i.e., tables not included in the publication) do
