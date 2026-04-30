@@ -469,7 +469,7 @@ jobs:
         - variables:
             ORACLE_VERSION: 23.26.1
             ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
-            ORACLE_PROFILE_ARGS: "-Poracle-26 -pl debezium-connector-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-26"
             TEST_PROFILE: oracle
 
   ###############################################################################################
@@ -494,5 +494,6 @@ jobs:
         - variables:
             ORACLE_VERSION: 23.26.1-xs
             ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
-            ORACLE_PROFILE_ARGS: "-Poracle-26,oracle-xstream -pl debezium-connector-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-26,oracle-xstream"
+            ORACLE_ARG: "-Poracle-xstream,oracle-26"
             TEST_PROFILE: oracle
