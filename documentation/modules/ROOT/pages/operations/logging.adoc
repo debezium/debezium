@@ -29,15 +29,15 @@ In such cases, you can change the logging level so that the connector generates 
 [id="logging-concepts"]
 == Logging concepts
 
-The Log4j logging configuration determines which {prodname} messages you see and where they appear, so that you can monitor connector health, troubleshoot problems, and understand connector behavior.
-Understanding how loggers, log levels, and appenders work together helps you set a logging configuration that filters log output to ensure visibility of relevant information.
+The Log4j logging configuration determines which {prodname} messages you see and where they appear, so that you can monitor connector health, troubleshoot problems, and understand connector behavior. 
+Understanding how loggers, log levels, and appenders work together helps you to set a logging configuration that filters log output in ways that enhance visibility of relevant information. 
 
 Loggers::
-The application sends each log message to a specific logger, for example, `io.debezium.connector.mysql`.
+{prodname} sends each log message that it produces to a specific logger, for example, `io.debezium.connector.mysql`.
 Loggers are arranged in hierarchies.
 For example, the `io.debezium.connector.mysql` logger is the child of the `io.debezium.connector` logger, which is the child of the `io.debezium` logger.
 The root logger is the parent of all other loggers in the hierarchy and its configuration serves as the default configuration for all of its descendants.
-You can override the default configuration of individual child or descendant loggers.
+You can override the default configuration of descendant loggers to specify unique log levels and appenders.
 
 Log levels::
 The application assigns one of the following log levels to each log message:
