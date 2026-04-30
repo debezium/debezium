@@ -6242,3 +6242,23 @@ yum install -y libaio
 ----
 apt-get install -y libaio1
 ----
+
+*What causes `ORA-26913` when using XStream with Oracle RAC?*::
+This error only occurs in Oracle Real Application Clusters (RAC) environments and does not affect standalone Oracle installations.
++
+In a RAC environment, the XStream outbound server is pinned to a specific RAC instance.
+When the JDBC connection is load-balanced by the Oracle listener to a different instance, XStream cannot attach and fails with:
+
+----
+oracle.streams.StreamsException: ORA-26913: must connect to instance X where XStream Outbound server is running
+----
+
+When `database.hostname` and `database.port` are used, the connector has no control over which RAC instance the connection lands on, as the Oracle listener can route the connection to any available instance.
+
+To fix this, use the `database.url` property with a full TNS descriptor that specifies the `SERVICE_NAME` of an instance-pinned service.
+Including `ENABLE=broken` in the descriptor also enables TCP keepalive, which prevents network load balancers or firewalls from silently dropping idle XStream connections:
+
+`database.url=jdbc:oracle:oci:@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=<host>)(PORT=<port>)))(CONNECT_DATA=(SERVICE_NAME=<instance-pinned-service>)))`
+
+Note that a PDB service name must not be used.
+The XStream outbound server is defined at the CDB level (`CDB$ROOT`), and connecting via a PDB service name results in `ORA-26701: Streams process does not exist`.
