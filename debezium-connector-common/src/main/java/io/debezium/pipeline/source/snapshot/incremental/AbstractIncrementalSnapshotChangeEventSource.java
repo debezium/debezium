@@ -688,7 +688,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             else {
                 progressListener.currentChunk(partition, context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
             }
-            context.nextChunkPosition(lastKey);
+            context.nextChunkPosition(chunkQueryBuilder.resolveChunkEndPosition(context, currentTable, lastKey));
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from {}", (Object) context.chunkEndPosititon());
             }
