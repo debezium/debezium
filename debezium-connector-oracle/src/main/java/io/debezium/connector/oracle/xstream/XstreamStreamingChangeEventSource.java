@@ -203,6 +203,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return e.getErrorCode() == 26653
                 || e.getErrorCode() == 23656
                 || e.getErrorCode() == 26928
+                || e.getErrorCode() == 26812 // An active session currently attached to XStream server
                 || e.getMessage().contains("did not start properly and is currently in state")
                 || e.getMessage().contains("Timeout occurred while starting XStream process")
                 || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");
