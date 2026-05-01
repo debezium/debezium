@@ -2983,7 +2983,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1605")
+    @FixFor("debezium/dbz#1605")
     void shouldApplyLsnFlushModeHeartbeatFallbackWhenNoOpportunityForFlush() {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
@@ -4370,7 +4370,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1800")
+    @FixFor("debezium/dbz#1800")
     void shouldInitializeTypeRegistryOnlyOnceOnConnectorStart() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(TypeRegistry.class);
         interceptor.setLoggerLevel(TypeRegistry.class, Level.TRACE);
