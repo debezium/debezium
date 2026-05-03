@@ -8,6 +8,7 @@ package io.debezium.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.history.HistoryRecord.Fields;
 
@@ -325,4 +327,67 @@ public class ByLogicalTableRouterTest {
 
     // FIXME: This SMT can use more tests for more detailed coverage.
     // The creation of a DBZ-ish SourceRecord is required for each test
+
+    @Test
+    @FixFor("DBZ-1075")
+    public void shouldHandleMongoDbEnvelopeWithoutBeforeField() {
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
+
+        props.put("topic.regex", "(.*)shard(.*)");
+        props.put("topic.replacement", "$1all_shards$2");
+        props.put("key.enforce.uniqueness", "false");
+        router.configure(props);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("mongo.mydb.mycollection_shard1.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Schema afterSchema = SchemaBuilder.struct()
+                .name("mongo.mydb.mycollection_shard1.Value")
+                .optional()
+                .field("_id", Schema.STRING_SCHEMA)
+                .field("field1", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+
+        Schema envelopeSchema = SchemaBuilder.struct()
+                .name("mongo.mydb.mycollection_shard1.Envelope")
+                .field(Envelope.FieldName.AFTER, afterSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+
+        Struct afterValue = new Struct(afterSchema)
+                .put("_id", "abc123")
+                .put("field1", "hello");
+
+        Struct envelopeValue = new Struct(envelopeSchema)
+                .put(Envelope.FieldName.AFTER, afterValue)
+                .put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code())
+                .put(Envelope.FieldName.TIMESTAMP, Instant.now().toEpochMilli());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(), new HashMap<>(),
+                "mongo.mydb.mycollection_shard1",
+                keySchema, new Struct(keySchema).put("id", "abc123"),
+                envelopeSchema, envelopeValue);
+
+        SourceRecord transformed = router.apply(record);
+        assertThat(transformed).isNotNull();
+        assertThat(transformed.topic()).isEqualTo("mongo.mydb.mycollection_all_shards1");
+
+        Schema transformedEnvelopeSchema = transformed.valueSchema();
+        assertThat(transformedEnvelopeSchema.name())
+                .isEqualTo("mongo.mydb.mycollection_all_shards1.Envelope");
+        assertThat(transformedEnvelopeSchema.field(Envelope.FieldName.BEFORE)).isNull();
+        assertThat(transformedEnvelopeSchema.field(Envelope.FieldName.AFTER)).isNotNull();
+        assertThat(transformedEnvelopeSchema.field(Envelope.FieldName.AFTER).schema().name())
+                .isEqualTo("mongo.mydb.mycollection_all_shards1.Value");
+
+        Struct transformedEnvelope = (Struct) transformed.value();
+        Struct transformedAfter = (Struct) transformedEnvelope.get(Envelope.FieldName.AFTER);
+        assertThat(transformedAfter.get("_id")).isEqualTo("abc123");
+        assertThat(transformedAfter.get("field1")).isEqualTo("hello");
+    }
 }
