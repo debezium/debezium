@@ -600,6 +600,13 @@
                 <version>${version.docling}</version>
             </dependency>
 
+            <!-- Statistics dependencies -->
+            <dependency>
+                <groupId>com.datadoghq</groupId>
+                <artifactId>sketches-java</artifactId>
+                <version>${version.datadog.sketches}</version>
+            </dependency>
+
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
