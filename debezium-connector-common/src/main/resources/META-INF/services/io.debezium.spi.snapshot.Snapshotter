@@ -5,3 +5,4 @@ io.debezium.snapshot.mode.NoDataSnapshotter
 io.debezium.snapshot.mode.RecoverySnapshotter
 io.debezium.snapshot.mode.WhenNeededSnapshotter
 io.debezium.snapshot.mode.ConfigurationBasedSnapshotter
+io.debezium.snapshot.mode.WhenNeededNoDataSnapshotter
