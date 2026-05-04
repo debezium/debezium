@@ -7,43 +7,22 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>debezium-storage-kafka</artifactId>
-    <name>Debezium Storage Kafka Module</name>
+    <artifactId>debezium-storage-api</artifactId>
+    <name>Debezium Storage API Module</name>
     <packaging>jar</packaging>
     <dependencies>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-kafka-adapters</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-connector-common</artifactId>
+            <artifactId>debezium-config</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
+        <!-- TODO: remove once config is Kafka independet -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-json</artifactId>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
-
