@@ -6,6 +6,8 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -25,10 +27,29 @@ public class TruncateTableParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
-        TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+    public void enterTruncateTableStatement(MySqlParser.TruncateTableStatementContext ctx) {
+        // Skip TRUNCATE statements inside EVENT/TRIGGER/PROCEDURE/FUNCTION bodies
+        if (isInsideRoutineBody(ctx)) {
+            return;
+        }
+        TableId tableId = parser.parseQualifiedTableId(ctx.tableRef());
         // Be aware the legacy parser is not signaling truncate events
         parser.signalTruncateTable(tableId, ctx);
-        super.enterTruncateTable(ctx);
+        super.enterTruncateTableStatement(ctx);
+    }
+
+    private boolean isInsideRoutineBody(ParserRuleContext ctx) {
+        ParserRuleContext parent = ctx.getParent();
+        while (parent != null) {
+            if (parent instanceof MySqlParser.CreateEventContext ||
+                    parent instanceof MySqlParser.AlterEventContext ||
+                    parent instanceof MySqlParser.CreateTriggerContext ||
+                    parent instanceof MySqlParser.CreateProcedureContext ||
+                    parent instanceof MySqlParser.CreateFunctionContext) {
+                return true;
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 }

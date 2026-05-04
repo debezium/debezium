@@ -11,5 +11,4 @@ import io.debezium.connector.binlog.BinlogDefaultValueIT;
  * @author luobo
  */
 public class MysqlDefaultValueIT extends BinlogDefaultValueIT<MySqlConnector> implements MySqlCommon {
-
 }
