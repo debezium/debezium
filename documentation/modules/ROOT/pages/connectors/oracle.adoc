@@ -2684,10 +2684,14 @@ archive log list
 
 exit;
 ----
+ifdef::community[]
+Oracle AWS RDS does not allow you to execute the commands above nor does it allow you to log in as sysdba.
+AWS provides these alternative commands to configure LogMiner.
+Before executing these commands, ensure that your Oracle AWS RDS instance is enabled for backups.
 
-Oracle AWS RDS does not allow you to execute the commands above nor does it allow you to log in as sysdba. AWS provides these alternative commands to configure LogMiner. Before executing these commands, ensure that your Oracle AWS RDS instance is enabled for backups.
-
-To confirm that Oracle has backups enabled, execute the command below first. The LOG_MODE should say ARCHIVELOG. If it does not, you may need to reboot your Oracle AWS RDS instance.
+To confirm that Oracle has backups enabled, execute the command below first.
+The LOG_MODE should say ARCHIVELOG.
+If it does not, you may need to reboot your Oracle AWS RDS instance.
 
 .Configuration needed for Oracle AWS RDS LogMiner
 [source,indent=0]
@@ -2726,6 +2730,7 @@ Minimal supplemental logging must be enabled at the database level and can be co
 ----
 ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
+endif::community[]
 
 // Type: concept
 // Title: Resizing Oracle redo logs to accommodate the data dictionary
@@ -5654,7 +5659,7 @@ endif::community[]
 
 // Type: assembly
 // ModuleID: using-oracle-xstream-databases-with-debezium
-// Title: Using Oracle XStream databases with {prodname} 
+// Title: Using Oracle XStream databases with {prodname}
 [[oracle-xstreams-support]]
 == XStream support
 
@@ -6025,7 +6030,7 @@ The intent is that this mode will eventually transition to the default, and like
 Yes, the Hybrid mode for `log.mining.strategy` is still a work-in-progress strategy, and therefore does not yet support all data types.
 At this time, this mode cannot reconstruct SQL statements that include operations against `CLOB`, `NCLOB`, `BLOB`, `XML`, nor `JSON` data types.
 So in short, if you enable `lob.enabled` with a value of `true`, you will be unable to use the Hybrid strategy and the connector will fail to start as this combination is unsupported.
-
+ifdef::community[]
 *Why does the connector appear to stop capturing changes on AWS?*::
 Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
 JDBC calls that require more than 350 seconds to complete can hang indefinitely.
@@ -6033,12 +6038,7 @@ JDBC calls that require more than 350 seconds to complete can hang indefinitely.
 In situations where calls to the Oracle LogMiner API take more than 350 seconds to complete, a timeout can be triggered, causing the AWS Gateway Load Balancer to hang.
 For example, such timeouts can occur when a LogMiner session that processes large amounts of data runs concurrently with Oracle's periodic checkpointing task.
 +
-ifdef::product[]
-To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following steps as root or a super-user:
-endif::product[]
-ifdef::community[]
 To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the kafka Connect or Debezium Server environment, by performing the following task as the root user or as a super-user in the environment that hosts the connector:
-endif::community[]
 
 . From a terminal, run the following command:
 +
@@ -6056,9 +6056,9 @@ net.ipv4.tcp_keepalive_time=60
 database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(Host=hostname)(Port=port)))(CONNECT_DATA=(SERVICE_NAME=serviceName)))
 ```
 
-+
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
+endif::community[]
 
 [id="what-causes-redo-thread-inconsistency"]
 *What causes redo thread inconsistency?*::
