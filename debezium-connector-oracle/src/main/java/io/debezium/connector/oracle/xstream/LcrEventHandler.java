@@ -7,8 +7,10 @@ package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -30,9 +32,9 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 import oracle.streams.ChunkColumnValue;
+import oracle.streams.ColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.DefaultRowLCR;
 import oracle.streams.LCR;
@@ -60,6 +62,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
+    private final OracleConnection jdbcConnection;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
@@ -67,7 +70,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics,
+                    OracleConnection jdbcConnection) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -78,6 +82,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
         this.streamingMetrics = streamingMetrics;
+        this.jdbcConnection = jdbcConnection;
         this.columnChunks = new LinkedHashMap<>();
     }
 
@@ -133,12 +138,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private void processRowLCR(RowLCR row) throws InterruptedException {
-        if (row.getCommandType().equals(RowLCR.LOB_ERASE)) {
-            LOGGER.warn("LOB_ERASE for table '{}' is not supported, "
-                    + "use DML operations to manipulate LOB columns only.", row.getObjectName());
-            return;
-        }
-
         if (row.hasChunkData()) {
             // If the row has chunk data, the RowLCR cannot be immediately dispatched.
             // The handler needs to cache the current row and wait for the chunks to be delivered before
@@ -204,12 +203,9 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
         }
 
-        // Xstream does not provide any before state for LOB columns and so this map will be
-        // populated here by column name with the OracleValueConverters.UNAVAILABLE_VALUE.
         Map<String, Object> oldChunkValues = new HashMap<>(0);
 
         if (chunkValues == null) {
-            // Happens when dispatching an LCR without any chunk data.
             chunkValues = new HashMap<>(0);
         }
 
@@ -222,15 +218,28 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         // So in either case, the values need to be serialized here such that any LOB column that
         // is not explicitly provided in the map is initialized with the unavailable value
         // marker object so its transformed correctly by the value converters.
+        // Note: For LOB_WRITE/LOB_TRIM/LOB_ERASE events, reselectLobValues() replaces
+        // the unavailable markers with actual LOB values read from the database.
 
         for (Column column : schema.getLobColumnsForTable(table.id())) {
-            // again Xstream doesn't supply before state for LOB values; explicitly use unavailable value
+            // Xstream doesn't supply before state for LOB values; explicitly use unavailable value
             oldChunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
             if (!chunkValues.containsKey(column.name())) {
                 // Column not supplied, initialize with unavailable value marker
                 LOGGER.trace("\tColumn '{}' not supplied, initialized with unavailable value", column.name());
                 chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
             }
+        }
+
+        // For LOB_WRITE/LOB_TRIM/LOB_ERASE, the chunk stream (if any) only carries the partial
+        // delta written by DBMS_LOB, not the full post-operation value. Reselect against the
+        // current row so downstream consumers see a consistent full LOB state. Gated on these
+        // specific command types so regular DML is not slowed down — callers who want
+        // per-DML reselection continue to use ReselectColumnsPostProcessor.
+        if (RowLCR.LOB_WRITE.equals(lcr.getCommandType())
+                || RowLCR.LOB_TRIM.equals(lcr.getCommandType())
+                || RowLCR.LOB_ERASE.equals(lcr.getCommandType())) {
+            reselectLobValues(lcr, table, chunkValues);
         }
 
         final Object rowIdObject = lcr.getAttribute("ROW_ID");
@@ -309,18 +318,48 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private String getTableMetadataDdl(TableId tableId) throws NonRelationalTableException {
         LOGGER.info("Getting database metadata for table '{}'", tableId);
-        final String pdbName = connectorConfig.getPdbName();
-        // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
-        // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
-            if (!Strings.isNullOrBlank(pdbName)) {
-                connection.setSessionToPdb(pdbName);
-            }
-            return connection.getTableMetadataDdl(tableId);
+        try {
+            return getConnection().getTableMetadataDdl(tableId);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to get table DDL metadata for: " + tableId, e);
         }
+    }
+
+    /**
+     * Pins the streaming JDBC connection's session to the configured PDB, when the
+     * connector is configured against a CDB+PDB topology. Called once after construction
+     * and before any LCRs are processed, while the connection is already active from the
+     * upstream XStream attach. The reconnect branch in {@link #getConnection()} re-pins
+     * the session if the underlying connection has to be reopened later (e.g. after an
+     * Oracle restart).
+     */
+    void init() throws SQLException {
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+        }
+    }
+
+    /**
+     * Returns the streaming JDBC connection ready for an out-of-bands query against the
+     * captured database. Reconnects the underlying connection if it is currently
+     * disconnected (e.g. after an Oracle restart) and re-pins the session to the
+     * configured PDB on reconnection. Reused across out-of-bands callbacks (DDL fetch,
+     * LOB reselect) so we don't open and tear down a JDBC connection per LCR.
+     *
+     * <p>The connection is dedicated to the XStream change-event source — the snapshot
+     * phase has its own connection — so swapping its session to a PDB once is safe.
+     * Future downstream-mining-DB support can extend this helper to manage a separate
+     * source-side connection.
+     */
+    private OracleConnection getConnection() throws SQLException {
+        if (!jdbcConnection.isConnected()) {
+            jdbcConnection.connect();
+            if (connectorConfig.isUsingPluggableDatabase()) {
+                jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+            }
+        }
+        return jdbcConnection;
     }
 
     private void setWatermark() {
@@ -418,6 +457,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
 
             columnChunks.clear();
+
             dispatchDataChangeEvent(currentRow, resolvedChunkValues);
         }
         catch (InterruptedException e) {
@@ -428,4 +468,117 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             throw new DebeziumException("Failed to process chunk data", e);
         }
     }
+
+    /**
+     * Re-reads full LOB column values from the source database for
+     * {@code LOB_WRITE} / {@code LOB_TRIM} / {@code LOB_ERASE} events and
+     * overwrites the corresponding entries in {@code chunkValues}.
+     *
+     * <p>The chunk data XStream delivers for these operations is only the
+     * partial delta passed to {@code DBMS_LOB.WRITE} / {@code WRITEAPPEND}
+     * / {@code TRIM} / {@code ERASE}, not the full post-operation LOB
+     * value. Reselecting against the current row is the only way to
+     * materialize a consistent full value for downstream consumers.
+     *
+     * <p>Delegates to {@link OracleConnection#reselectColumns} so this path
+     * shares the existing SQL builder, identifier quoting, and flashback
+     * fallback logic with the {@code ReselectColumnsPostProcessor} path.
+     */
+    private void reselectLobValues(RowLCR row, Table table, Map<String, Object> chunkValues) {
+        if (chunkValues.isEmpty()) {
+            return;
+        }
+
+        final List<String> pkColumns = table.primaryKeyColumnNames();
+        if (pkColumns.isEmpty()) {
+            LOGGER.warn("Cannot reselect LOB values for table {}: no primary key defined "
+                    + "(tx={}, scn={}, rowId={}).",
+                    table.id(), row.getTransactionId(), offsetContext.getScn(),
+                    row.getAttribute("ROW_ID"));
+            return;
+        }
+
+        // PK values: prefer newValues, fall back to oldValues for any that are missing.
+        final Map<String, Object> pkValuesMap = new LinkedHashMap<>();
+        if (row.getNewValues() != null) {
+            for (ColumnValue cv : row.getNewValues()) {
+                if (pkColumns.contains(cv.getColumnName())) {
+                    pkValuesMap.put(cv.getColumnName(), cv.getColumnData());
+                }
+            }
+        }
+        if (pkValuesMap.size() < pkColumns.size() && row.getOldValues() != null) {
+            for (ColumnValue cv : row.getOldValues()) {
+                if (pkColumns.contains(cv.getColumnName())
+                        && !pkValuesMap.containsKey(cv.getColumnName())) {
+                    pkValuesMap.put(cv.getColumnName(), cv.getColumnData());
+                }
+            }
+        }
+        if (pkValuesMap.size() < pkColumns.size()) {
+            LOGGER.warn("Cannot reselect LOB values for table {}: incomplete primary key in LCR "
+                    + "(tx={}, scn={}, rowId={}).",
+                    table.id(), row.getTransactionId(), offsetContext.getScn(),
+                    row.getAttribute("ROW_ID"));
+            return;
+        }
+
+        final List<Object> pkValues = new ArrayList<>(pkColumns.size());
+        for (String pkColumn : pkColumns) {
+            pkValues.add(pkValuesMap.get(pkColumn));
+        }
+
+        final List<String> lobColumnNames = new ArrayList<>(chunkValues.keySet());
+
+        try {
+            // reselectColumns advances the ResultSet cursor internally before invoking
+            // the consumer, so we read column values directly without calling rs.next().
+            // A return of `false` means no matching row was found — typically the row
+            // was deleted between the LCR emission and our reselect.
+            final boolean found = getConnection().reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
+                for (String colName : lobColumnNames) {
+                    final Column column = table.columnWithName(colName);
+                    if (column == null) {
+                        // The lobColumnNames list comes from chunkValues, which was populated
+                        // earlier in dispatchDataChangeEvent from schema.getLobColumnsForTable(table.id())
+                        // — i.e. columns of the same Table we're using here. A null lookup
+                        // means our schema view is internally inconsistent; fail loudly so the
+                        // root cause surfaces instead of emitting partial-but-passing data.
+                        throw new DebeziumException("Schema cache for table " + table.id()
+                                + " does not include LOB column '" + colName
+                                + "' that was registered for reselection (tx=" + row.getTransactionId()
+                                + ", scn=" + offsetContext.getScn() + ").");
+                    }
+                    // Always overwrite — including with null — so a column whose row truly
+                    // holds NULL is reported as null, not as the UNAVAILABLE_VALUE placeholder
+                    // that was pre-seeded in chunkValues. (Without this, a multi-LOB row whose
+                    // LOB op only touched one column would emit the unavailable marker for the
+                    // others.)
+                    if (column.jdbcType() == java.sql.Types.BLOB) {
+                        chunkValues.put(colName, rs.getBytes(colName));
+                    }
+                    else {
+                        chunkValues.put(colName, rs.getString(colName));
+                    }
+                }
+            });
+            if (!found) {
+                LOGGER.warn("Reselect for table {} returned no rows — the row may have been deleted "
+                        + "between the LCR and the reselect (tx={}, scn={}, rowId={}).",
+                        table.id(), row.getTransactionId(), offsetContext.getScn(),
+                        row.getAttribute("ROW_ID"));
+            }
+        }
+        catch (SQLException e) {
+            // Match BaseChangeRecordEmitter.emitUpdateAsPrimaryKeyChangeRecord — surface
+            // the failure rather than emit partial chunk data with UNAVAILABLE_VALUE
+            // placeholders. A silent fallback masks real configuration problems
+            // (wrong PDB, missing privileges, table not yet visible) and produces
+            // wire records that fail downstream assertions in non-obvious ways.
+            throw new DebeziumException("Failed to reselect LOB values for table " + table.id()
+                    + " (tx=" + row.getTransactionId() + ", scn=" + offsetContext.getScn()
+                    + ", rowId=" + row.getAttribute("ROW_ID") + ")", e);
+        }
+    }
+
 }
