@@ -42,6 +42,9 @@
 
         <!-- Storages -->
 
+        <!-- RocksDB -->
+        <version.rocksdb>9.8.4</version.rocksdb>
+
         <!-- Redis -->
         <version.jedis>6.0.0</version.jedis>
 
@@ -579,6 +582,13 @@
                 <groupId>io.fabric8</groupId>
                 <artifactId>kubernetes-client</artifactId>
                 <version>${version.kubernetes.client}</version>
+            </dependency>
+
+            <!-- RocksDB Storage -->
+            <dependency>
+                <groupId>org.rocksdb</groupId>
+                <artifactId>rocksdbjni</artifactId>
+                <version>${version.rocksdb}</version>
             </dependency>
 
             <!-- Debezium AI dependencies-->
