@@ -128,7 +128,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertConnectorIsRunning();
 
         assertSnapshotMetrics();
-        consumeRecords(2);
+        consumeRecords((int) expectedEvents());
 
         assertStreamingMetrics(false, expectedEvents());
         assertStreamingStatistics(expectedEvents());
@@ -146,7 +146,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         start(x -> x.with(CommonConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata"));
 
         assertSnapshotWithCustomMetrics(customMetricTags);
-        consumeRecords(2);
+        consumeRecords((int) expectedEvents());
         assertStreamingWithCustomMetrics(customMetricTags, expectedEvents());
     }
 
@@ -188,13 +188,13 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         invokeOperation(getMultiplePartitionStreamingMetricsObjectName(), "pause");
         insertRecords();
-        assertAdvancedMetrics(2);
+        assertAdvancedMetrics(expectedEvents());
 
         invokeOperation(getMultiplePartitionStreamingMetricsObjectName(), "resume");
         insertRecords();
-        consumeRecords(4);
-        assertAdvancedMetrics(4);
-        assertStreamingStatistics(4);
+        consumeRecords(2 * (int) expectedEvents());
+        assertAdvancedMetrics(2 * expectedEvents());
+        assertStreamingStatistics(2 * expectedEvents());
     }
 
     @Test
@@ -240,7 +240,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Check snapshot metrics
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalTableCount")).isEqualTo(1);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "CapturedTables")).isEqualTo(new String[]{ tableName() });
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(expectedEvents());
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "RemainingTableCount")).isEqualTo(0);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(false);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(false);
@@ -259,7 +259,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Check snapshot metrics
         assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
         assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(new String[]{ tableName() });
-        assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(2L);
+        assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(expectedEvents());
         assertThat(mBeanServer.getAttribute(objectName, "RemainingTableCount")).isEqualTo(0);
         assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
         assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
@@ -304,7 +304,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[]{ tableName() });
 
         if (checkAdvancedMetrics) {
-            assertAdvancedMetrics(2L);
+            assertAdvancedMetrics(expectedEvents());
         }
     }
 
