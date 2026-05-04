@@ -327,11 +327,25 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     /**
+     * Pins the streaming JDBC connection's session to the configured PDB, when the
+     * connector is configured against a CDB+PDB topology. Called once after construction
+     * and before any LCRs are processed, while the connection is already active from the
+     * upstream XStream attach. The reconnect branch in {@link #getConnection()} re-pins
+     * the session if the underlying connection has to be reopened later (e.g. after an
+     * Oracle restart).
+     */
+    void init() throws SQLException {
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+        }
+    }
+
+    /**
      * Returns the streaming JDBC connection ready for an out-of-bands query against the
      * captured database. Reconnects the underlying connection if it is currently
-     * disconnected (e.g. after an Oracle restart) and pins the session to the configured
-     * PDB on (re)connection. Reused across out-of-bands callbacks (DDL fetch, LOB
-     * reselect) so we don't open and tear down a JDBC connection per LCR.
+     * disconnected (e.g. after an Oracle restart) and re-pins the session to the
+     * configured PDB on reconnection. Reused across out-of-bands callbacks (DDL fetch,
+     * LOB reselect) so we don't open and tear down a JDBC connection per LCR.
      *
      * <p>The connection is dedicated to the XStream change-event source — the snapshot
      * phase has its own connection — so swapping its session to a PDB once is safe.
