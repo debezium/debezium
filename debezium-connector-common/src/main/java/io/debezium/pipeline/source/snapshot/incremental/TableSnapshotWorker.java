@@ -23,6 +23,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -147,6 +148,15 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
             // Prepare table for chunk query builder
             currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
+
+            final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
+            if (keyColumns == null || keyColumns.isEmpty()) {
+                LOGGER.info("[{}] Table '{}' has no key columns, reading as single chunk",
+                        Thread.currentThread().getName(), tableId);
+                readKeylessTable();
+                context.markCompleted();
+                return;
+            }
 
             // Get maximum key
             Object[] maximumKey = getMaximumKey();
@@ -280,6 +290,56 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                     Thread.currentThread().getName(), tableId, e);
             return null;
         }
+    }
+
+    private void readKeylessTable() throws SQLException {
+        final TableId tableId = (TableId) context.currentDataCollectionId().getId();
+        final TableSchema tableSchema = databaseSchema.schemaFor(tableId);
+
+        final StringBuilder sql = new StringBuilder("SELECT * FROM ")
+                .append(connection.quotedTableIdString(tableId));
+
+        context.currentDataCollectionId().getAdditionalCondition()
+                .ifPresent(cond -> sql.append(" WHERE ").append(cond));
+
+        LOGGER.info("[{}] Keyless table '{}' query: {}", Thread.currentThread().getName(), tableId, sql);
+
+        try (PreparedStatement statement = connection.connection().prepareStatement(sql.toString());
+             ResultSet rs = statement.executeQuery()) {
+
+            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
+            while (rs.next()) {
+                final Object[] row = connection.rowToArray(currentTable, rs, columnArray);
+
+                if (!completionHandlers.isEmpty()) {
+                    SourceRecord record = SnapshotRecordBuilder.buildFlatRecord(
+                            row, currentTable.id(), tableSchema, offsetContext);
+                    if (record != null) {
+                        RecordTransformer transformer = RECORD_TRANSFORMER;
+                        if (transformer != null) {
+                            record = transformer.transform(record);
+                        }
+                        if (record != null) {
+                            recordBuffer.add(record);
+                        }
+                    }
+                    if (recordBuffer.size() >= batchFlushSize) {
+                        flushRecordBuffer();
+                    }
+                }
+                else {
+                    final Struct keyStruct = tableSchema.keyFromColumnData(row);
+                    windowBuffer.put(keyStruct, row);
+                }
+                totalRowsRead++;
+            }
+        }
+
+        if (!recordBuffer.isEmpty()) {
+            flushRecordBuffer();
+        }
+
+        LOGGER.info("[{}] Keyless table '{}' read {} rows", Thread.currentThread().getName(), tableId, totalRowsRead);
     }
 
     private boolean readNextChunk() throws SQLException {
