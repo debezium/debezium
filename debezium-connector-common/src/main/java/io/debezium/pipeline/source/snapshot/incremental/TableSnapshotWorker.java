@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -445,11 +446,26 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
         // Check if current position >= maximum key
         for (int i = 0; i < currentPos.length; i++) {
-            @SuppressWarnings("unchecked")
-            final Comparable<Object> curr = (Comparable<Object>) currentPos[i];
-            final Object max = maxKey[i];
+            Object currVal = currentPos[i];
+            Object maxVal = maxKey[i];
 
-            final int comparison = curr.compareTo(max);
+            // SpecialValueDecimal (NUMERIC/DECIMAL PK) does not implement Comparable.
+            // Unwrap to BigDecimal which does.
+            if (currVal instanceof SpecialValueDecimal) {
+                currVal = ((SpecialValueDecimal) currVal).getDecimalValue()
+                        .orElseThrow(() -> new DebeziumException(
+                                "Cannot compare special decimal value (NaN/Infinity) as snapshot primary key"));
+            }
+            if (maxVal instanceof SpecialValueDecimal) {
+                maxVal = ((SpecialValueDecimal) maxVal).getDecimalValue()
+                        .orElseThrow(() -> new DebeziumException(
+                                "Cannot compare special decimal value (NaN/Infinity) as snapshot primary key"));
+            }
+
+            @SuppressWarnings("unchecked")
+            final Comparable<Object> curr = (Comparable<Object>) currVal;
+
+            final int comparison = curr.compareTo(maxVal);
             if (comparison < 0) {
                 return false;
             }
