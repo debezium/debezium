@@ -2532,6 +2532,11 @@ Specify one of the following values:
 |[[informix-property-poll-interval-ms]]<<informix-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500` (0.5 seconds)
 |Positive integer value that specifies the number of milliseconds that the connector waits for new change events to appear before it starts processing a batch of events.
+If a value greater than 5000 milliseconds (5 seconds) is provided, the effective wait time will be capped at 5000 milliseconds.
+
+|[[informix-property-poll-dispatch-interval-ms]]<<informix-property-poll-dispatch-interval-ms, `+poll.dispatch.interval.ms+`>>
+|`0`
+|An integer value that specifies the number of milliseconds the connector should accumulate events in the queue before each queue consumption.
 
 |[[informix-property-max-batch-size]]<<informix-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
