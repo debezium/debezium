@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import io.debezium.DebeziumException;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
@@ -1765,6 +1766,9 @@ public class JdbcConnection implements AutoCloseable {
      * Sets value on {@link PreparedStatement} and set explicit SQL type for it if necessary
      */
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
+        if (value instanceof SpecialValueDecimal) {
+            value = ((SpecialValueDecimal) value).getDecimalValue().orElse(null);
+        }
         statement.setObject(pos, value);
     }
 
