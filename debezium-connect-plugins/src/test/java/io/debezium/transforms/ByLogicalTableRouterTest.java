@@ -8,6 +8,7 @@ package io.debezium.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.history.HistoryRecord.Fields;
 
@@ -321,6 +323,62 @@ public class ByLogicalTableRouterTest {
         SourceRecord transformed = router.apply(record);
         assertThat(transformed.topic()).isEqualTo("schema_changes_rerouted");
         assertThat(transformed.value()).isSameAs(record.value());
+    }
+
+    @Test
+    @FixFor("dbz#1848")
+    public void shouldPreserveNullForNullableFieldWithNonNullDefault() {
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
+        props.put("topic.regex", "(.+)\\.(.+)\\.(.+)");
+        props.put("topic.replacement", "$1.$3");
+        props.put("key.enforce.uniqueness", "false");
+        router.configure(props);
+
+        Schema flagSchema = SchemaBuilder.int16().optional().defaultValue((short) 0).build();
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("shard_1.inventory.customers.Key")
+                .field("id", Schema.INT64_SCHEMA)
+                .field("flag", flagSchema)
+                .build();
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("shard_1.inventory.customers.Value")
+                .field("id", Schema.INT64_SCHEMA)
+                .field("flag", flagSchema)
+                .build();
+
+        Schema sourceSchema = SchemaBuilder.struct()
+                .name("source")
+                .field("table", Schema.STRING_SCHEMA)
+                .build();
+
+        Envelope envelope = Envelope.defineSchema()
+                .withName("shard_1.inventory.customers.Envelope")
+                .withRecord(valueSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", 1L).put("flag", null);
+        Struct before = new Struct(valueSchema).put("id", 1L).put("flag", null);
+        Struct after = new Struct(valueSchema).put("id", 1L).put("flag", null);
+        Struct source = new Struct(sourceSchema).put("table", "customers");
+        Struct envelopeValue = envelope.update(before, after, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(null, null, "shard_1.inventory.customers", null,
+                keySchema, key, envelope.schema(), envelopeValue);
+
+        SourceRecord transformed = router.apply(record);
+
+        Struct transformedKey = (Struct) transformed.key();
+        Struct transformedValue = (Struct) transformed.value();
+        Struct transformedBefore = transformedValue.getStruct(Envelope.FieldName.BEFORE);
+        Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(transformedKey.getWithoutDefault("flag")).isNull();
+        assertThat(transformedBefore.getWithoutDefault("flag")).isNull();
+        assertThat(transformedAfter.getWithoutDefault("flag")).isNull();
     }
 
     // FIXME: This SMT can use more tests for more detailed coverage.

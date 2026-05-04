@@ -342,7 +342,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private Struct updateKey(Schema newKeySchema, Struct oldKey, String oldTopic) {
         final Struct newKey = new Struct(newKeySchema);
         for (org.apache.kafka.connect.data.Field field : oldKey.schema().fields()) {
-            newKey.put(field.name(), oldKey.get(field));
+            newKey.put(field.name(), oldKey.getWithoutDefault(field.name()));
         }
 
         String physicalTableIdentifier = oldTopic;
@@ -413,7 +413,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private Struct updateValue(Schema newValueSchema, Struct oldValue) {
         final Struct newValue = new Struct(newValueSchema);
         for (org.apache.kafka.connect.data.Field field : oldValue.schema().fields()) {
-            newValue.put(field.name(), oldValue.get(field));
+            newValue.put(field.name(), oldValue.getWithoutDefault(field.name()));
         }
         return newValue;
     }
