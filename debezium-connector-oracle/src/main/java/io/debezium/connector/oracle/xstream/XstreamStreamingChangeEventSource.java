@@ -116,6 +116,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
         try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
             try {
+                eventHandler.init();
                 // 2. receive events while running
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
