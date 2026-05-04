@@ -42,6 +42,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -63,6 +64,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.RetryExecutor;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -92,7 +94,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     protected final NotificationService<P, ? extends OffsetContext> notificationService;
     protected ParallelIncrementalSnapshotCoordinator<P, T> parallelCoordinator;
-    protected final IncrementalSnapshotRetryPolicy retryPolicy;
+    protected final RetryExecutor retryPolicy;
+    protected final PostProcessorRegistry postProcessorRegistry;
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                         JdbcConnection jdbcConnection,
@@ -140,12 +143,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
 
         // Initialize retry policy for handling database connection failures
-        this.retryPolicy = new IncrementalSnapshotRetryPolicy(
+        this.retryPolicy = new RetryExecutor(
                 config.getIncrementalSnapshotRetryMaxAttempts(),
                 config.getIncrementalSnapshotRetryInitialDelayMs(),
                 config.getIncrementalSnapshotRetryMaxDelayMs(),
                 config.getIncrementalSnapshotRetryBackoffMultiplier(),
                 clock);
+
+        this.postProcessorRegistry = config.getServiceRegistry().tryGetService(PostProcessorRegistry.class);
     }
 
     @Override
@@ -609,7 +614,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                 retryPolicy,
                                 partition,
                                 watermarkCallback,
-                                offsetContext);
+                                offsetContext,
+                                postProcessorRegistry,
+                                progressListener,
+                                clock);
 
                         worker.run();
 

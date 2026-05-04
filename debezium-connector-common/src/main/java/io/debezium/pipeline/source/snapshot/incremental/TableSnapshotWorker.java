@@ -22,16 +22,24 @@ import io.debezium.DebeziumException;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.processors.PostProcessorRegistry;
+import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.SnapshotChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.schema.DataCollectionSchema;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.RetryExecutor;
 
 /**
  * Worker that processes a complete incremental snapshot for a single table.
@@ -54,23 +62,14 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private final ChunkQueryBuilder<T> chunkQueryBuilder;
     private final EventDispatcher<P, T> dispatcher;
     private final Map<Struct, Object[]> windowBuffer;
-    private final IncrementalSnapshotRetryPolicy retryPolicy;
+    private final RetryExecutor retryPolicy;
     private final P partition;
     private final WatermarkCallback watermarkCallback;
     private final OffsetContext offsetContext;
+    private final PostProcessorRegistry postProcessorRegistry;
+    private final SnapshotProgressListener<P> progressListener;
+    private final Clock clock;
     private final List<SnapshotTableCompletionHandler> completionHandlers;
-
-    private static volatile RecordTransformer RECORD_TRANSFORMER = null;
-
-    public static void registerRecordTransformer(RecordTransformer transformer) {
-        LoggerFactory.getLogger(TableSnapshotWorker.class)
-                .info("Registered RecordTransformer for snapshot events");
-        RECORD_TRANSFORMER = transformer;
-    }
-
-    public static void unregisterRecordTransformer() {
-        RECORD_TRANSFORMER = null;
-    }
 
     private Table currentTable;
     private long totalRowsRead = 0;
@@ -99,10 +98,13 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                                ChunkQueryBuilder<T> chunkQueryBuilder,
                                EventDispatcher<P, T> dispatcher,
                                Map<Struct, Object[]> windowBuffer,
-                               IncrementalSnapshotRetryPolicy retryPolicy,
+                               RetryExecutor retryPolicy,
                                P partition,
                                WatermarkCallback watermarkCallback,
-                               OffsetContext offsetContext) {
+                               OffsetContext offsetContext,
+                               PostProcessorRegistry postProcessorRegistry,
+                               SnapshotProgressListener<P> progressListener,
+                               Clock clock) {
 
         this.context = context;
         this.connection = connection;
@@ -115,6 +117,9 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         this.partition = partition;
         this.watermarkCallback = watermarkCallback;
         this.offsetContext = offsetContext;
+        this.postProcessorRegistry = postProcessorRegistry;
+        this.progressListener = progressListener;
+        this.clock = clock;
 
         // Read configurable batch flush size (default 20K, was hardcoded 100K)
         this.batchFlushSize = connectorConfig.getIncrementalSnapshotBatchFlushSize();
@@ -155,6 +160,8 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 LOGGER.info("[{}] Table '{}' has no key columns, reading as single chunk",
                         Thread.currentThread().getName(), tableId);
                 readKeylessTable();
+                progressListener.rowsScanned(partition, tableId, totalRowsRead);
+                progressListener.dataCollectionSnapshotCompleted(partition, tableId, totalRowsRead);
                 context.markCompleted();
                 return;
             }
@@ -189,6 +196,10 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
 
             context.markCompleted();
+
+            progressListener.rowsScanned(partition, tableId, totalRowsRead);
+            progressListener.dataCollectionSnapshotCompleted(partition, tableId, totalRowsRead);
+
             LOGGER.info("[{}] Completed table snapshot for '{}': {} chunks, {} total rows",
                     Thread.currentThread().getName(), tableId, chunkCount, totalRowsRead);
 
@@ -313,17 +324,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 final Object[] row = connection.rowToArray(currentTable, rs, columnArray);
 
                 if (!completionHandlers.isEmpty()) {
-                    SourceRecord record = SnapshotRecordBuilder.buildFlatRecord(
-                            row, currentTable.id(), tableSchema, offsetContext);
-                    if (record != null) {
-                        RecordTransformer transformer = RECORD_TRANSFORMER;
-                        if (transformer != null) {
-                            record = transformer.transform(record);
-                        }
-                        if (record != null) {
-                            recordBuffer.add(record);
-                        }
-                    }
+                    emitSnapshotRecord(row, tableSchema);
                     if (recordBuffer.size() >= batchFlushSize) {
                         flushRecordBuffer();
                     }
@@ -388,27 +389,13 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
                     lastKey = key;
 
-                    // If completion handlers registered, accumulate in local buffer for flush
-                    // Otherwise use shared window buffer (original behavior)
                     if (!completionHandlers.isEmpty()) {
-                        SourceRecord record = SnapshotRecordBuilder.buildFlatRecord(
-                                row, currentTable.id(), tableSchema, offsetContext);
-                        if (record != null) {
-                            RecordTransformer transformer = RECORD_TRANSFORMER;
-                            if (transformer != null) {
-                                record = transformer.transform(record);
-                            }
-                            if (record != null) {
-                                recordBuffer.add(record);
-                            }
-                        }
-
+                        emitSnapshotRecord(row, tableSchema);
                         if (recordBuffer.size() >= batchFlushSize) {
                             flushRecordBuffer();
                         }
                     }
                     else {
-                        // Add to window buffer (thread-safe) - original behavior
                         final Struct keyStruct = tableSchema.keyFromColumnData(row);
                         windowBuffer.put(keyStruct, row);
                     }
@@ -423,6 +410,40 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         }
 
         return hasData;
+    }
+
+    private void emitSnapshotRecord(Object[] row, TableSchema tableSchema) throws SQLException {
+        final SnapshotChangeRecordEmitter<P> emitter = new SnapshotChangeRecordEmitter<>(
+                partition, offsetContext, row, clock, connectorConfig);
+
+        try {
+            emitter.emitChangeRecords(tableSchema, new ChangeRecordEmitter.Receiver<P>() {
+                @Override
+                public void changeRecord(P partition, DataCollectionSchema schema,
+                                          io.debezium.data.Envelope.Operation operation,
+                                          Object key, Struct envelope,
+                                          OffsetContext offset,
+                                          org.apache.kafka.connect.header.ConnectHeaders headers)
+                        throws InterruptedException {
+
+                    if (postProcessorRegistry != null) {
+                        for (PostProcessor processor : postProcessorRegistry.getProcessors()) {
+                            processor.apply(key, envelope);
+                        }
+                    }
+
+                    SourceRecord record = SnapshotRecordBuilder.buildEnvelopeRecord(
+                            key, envelope, currentTable.id(), tableSchema);
+                    if (record != null) {
+                        recordBuffer.add(record);
+                    }
+                }
+            });
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SQLException("Snapshot record emission interrupted", e);
+        }
     }
 
     private Object[] keyFromRow(Object[] row) {

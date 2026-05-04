@@ -766,16 +766,21 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
+    public static final int DEFAULT_INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = 5_000;
+    public static final int DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = 5;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = 1000L;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = 60_000L;
+    public static final String DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = "2.0";
+
     public static final Field INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE = Field.create("incremental.snapshot.batch.flush.size")
             .withDisplayName("Incremental snapshot batch flush size")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Number of rows accumulated in memory before flushing to the sink during incremental snapshot. "
-                    + "Lower values reduce memory usage but increase flush overhead. "
-                    + "Default 20000 keeps memory under 300MB per worker thread.")
-            .withDefault(20_000)
-            .withValidation(Field::isNonNegativeInteger);
+                    + "Lower values reduce memory usage but increase flush overhead.")
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_BATCH_FLUSH_SIZE)
+            .withValidation(Field::isPositiveInteger);
 
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = Field.create("incremental.snapshot.retry.max.attempts")
             .withDisplayName("Incremental snapshot retry max attempts")
@@ -783,7 +788,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Maximum number of retry attempts for incremental snapshot operations. Use -1 for unlimited retries.")
-            .withDefault(5)
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS)
             .withValidation(Field::isInteger);
 
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = Field.create("incremental.snapshot.retry.initial.delay.ms")
@@ -792,7 +797,8 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Initial delay in milliseconds before the first retry attempt for incremental snapshot operations.")
-            .withDefault(1000L);
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS)
+            .withValidation(Field::isPositiveLong);
 
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = Field.create("incremental.snapshot.retry.max.delay.ms")
             .withDisplayName("Incremental snapshot retry max delay (ms)")
@@ -800,7 +806,8 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Maximum delay in milliseconds between retry attempts for incremental snapshot operations.")
-            .withDefault(60000L);
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS)
+            .withValidation(Field::isPositiveLong);
 
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = Field.create("incremental.snapshot.retry.backoff.multiplier")
             .withDisplayName("Incremental snapshot retry backoff multiplier")
@@ -808,7 +815,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Multiplier for exponential backoff between retry attempts for incremental snapshot operations.")
-            .withDefault("2.0");
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER);
 
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
