@@ -66,6 +66,14 @@
         <net.bytebuddy.experimental>false</net.bytebuddy.experimental>
 
         <version.openlineage>1.31.0</version.openlineage>
+
+        <!-- Apicurio -->
+        <apicurio.image>quay.io/apicurio/apicurio-registry</apicurio.image>
+        <apicurio.image.log>.*Using the following RegistryStorage.*</apicurio.image.log>
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <apicurio.image.audit.level>OFF</apicurio.image.audit.level> <!-- Controls audit logging level -->
+
     </properties>
 
     <dependencyManagement>
