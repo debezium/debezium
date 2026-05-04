@@ -25,15 +25,13 @@ import io.debezium.engine.DebeziumEngine;
 public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertBatchProcessor.class);
 
-    final DebeziumEngine.RecordCommitter committer;
-    final DebeziumEngine.ChangeConsumer<R> userHandler;
-    final Function<SourceRecord, R> convertor;
+    private final Function<SourceRecord, R> convertor;
+    private final BatchProcessor<R> processor;
 
-    ParallelSmtAndConvertBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<R> userHandler,
-                                        final Function<SourceRecord, R> convertor) {
-        this.committer = committer;
-        this.userHandler = userHandler;
+    ParallelSmtAndConvertBatchProcessor(Function<SourceRecord, R> convertor,
+                                        BatchProcessor<R> processor) {
         this.convertor = convertor;
+        this.processor = processor;
     }
 
     @Override
@@ -52,7 +50,27 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
             }
         }
 
-        LOGGER.trace("Calling user handler.");
-        userHandler.handleBatch(convertedRecords, committer);
+        processor.process(convertedRecords);
+
+    }
+
+    public static <R> ParallelSmtAndConvertBatchProcessor<R> create(DebeziumEngine.RecordCommitter<R> committer,
+                                                                    Function<SourceRecord, R> convertor,
+                                                                    DebeziumEngine.ChangeConsumer<R> userHandler,
+                                                                    DebeziumEngine.Watcher watcher,
+                                                                    DebeziumShutdown<R> shutdown,
+                                                                    Runnable runner) {
+        if (shutdown == null) {
+            return new ParallelSmtAndConvertBatchProcessor<>(convertor, new BatchProcessor.DirectProcessor<>(committer, userHandler));
+        }
+
+        return new ParallelSmtAndConvertBatchProcessor<>(
+                convertor,
+                new BatchProcessor.ObservableProcessor<>(watcher, committer,
+                        new ShutdownChangeConsumer<>(
+                                DefaultShutdownHandler.create(shutdown.before(), runner, committer),
+                                DefaultShutdownHandler.create(shutdown.after(), runner, committer),
+                                userHandler)));
+
     }
 }

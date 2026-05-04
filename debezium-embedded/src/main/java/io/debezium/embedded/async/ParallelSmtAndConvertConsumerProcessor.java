@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
 
 /**
@@ -28,14 +29,14 @@ import io.debezium.engine.StopEngineException;
 public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertConsumerProcessor.class);
 
-    final DebeziumEngine.RecordCommitter committer;
-    final Consumer<R> consumer;
-    final Function<SourceRecord, R> convertor;
+    private final DebeziumEngine.RecordCommitter committer;
+    private final Function<SourceRecord, R> convertor;
+    private final SingleProcessor<R> processor;
 
-    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Function<SourceRecord, R> convertor, SingleProcessor<R> processor) {
         this.committer = committer;
-        this.consumer = consumer;
         this.convertor = convertor;
+        this.processor = processor;
     }
 
     @Override
@@ -53,7 +54,7 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
             R record = recordFutures[i].get();
             if (record != null) {
                 try {
-                    consumer.accept(record);
+                    processor.process(record);
                 }
                 catch (StopEngineException e) {
                     committer.markProcessed(recordsIterator.next());
@@ -65,5 +66,26 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
 
         LOGGER.trace("Marking batch as finished.");
         committer.markBatchFinished();
+    }
+
+    public static <R> ParallelSmtAndConvertConsumerProcessor<R> create(
+                                                                       DebeziumEngine.RecordCommitter<SourceRecord> committer,
+                                                                       Consumer<R> consumer,
+                                                                       Function<SourceRecord, R> convertor,
+                                                                       Watcher watcher,
+                                                                       DebeziumShutdown<R> shutdown,
+                                                                       Runnable workflow) {
+
+        if (shutdown == null) {
+            return new ParallelSmtAndConvertConsumerProcessor<>(committer, convertor,
+                    new AbstractRecordProcessor.SingleProcessor.DirectSingleProcessor<>(consumer));
+        }
+
+        return new ParallelSmtAndConvertConsumerProcessor<>(committer,
+                convertor,
+                new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
+                        DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
+                        DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                        consumer)));
     }
 }
