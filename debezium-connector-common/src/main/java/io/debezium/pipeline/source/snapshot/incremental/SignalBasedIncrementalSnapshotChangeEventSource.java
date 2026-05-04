@@ -148,4 +148,12 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
         return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now()));
     }
+
+    @Override
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        throw new UnsupportedOperationException(
+                "Parallel snapshot connections not supported for SignalBasedIncrementalSnapshotChangeEventSource. " +
+                        "Parallel incremental snapshots are only supported for read-only snapshot implementations. " +
+                        "To use parallel snapshots, configure your connector to use read-only incremental snapshots.");
+    }
 }
