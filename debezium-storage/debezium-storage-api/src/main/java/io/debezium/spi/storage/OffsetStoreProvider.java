@@ -6,6 +6,7 @@
 package io.debezium.spi.storage;
 
 import java.util.Map;
+import java.util.Optional;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
@@ -56,9 +57,9 @@ public interface OffsetStoreProvider {
      * <p>
      * Default implementation returns null, indicating no class name mapping.
      *
-     * @return the offset store class name, or null if not applicable
+     * @return {@link Optional} of the offset store class name, which is empty if not applicable.
      */
-    default String getOffsetStoreClassName() {
-        return null;
+    default Optional<String> getOffsetStoreClassName() {
+        return Optional.empty();
     }
 }
