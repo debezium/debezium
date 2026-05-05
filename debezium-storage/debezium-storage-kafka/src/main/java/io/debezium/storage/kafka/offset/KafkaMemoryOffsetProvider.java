@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
-import io.debezium.storage.kafka.KafkaOffsetStoreAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
 
 /**
  * Provider for Kafka Connect's {@link MemoryOffsetBackingStore}.
@@ -48,7 +48,7 @@ public class KafkaMemoryOffsetProvider implements OffsetStoreProvider {
                 return null;
             }
         };
-        return new KafkaOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
     @Override
