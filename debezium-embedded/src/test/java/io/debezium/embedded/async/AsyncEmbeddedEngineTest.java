@@ -1459,12 +1459,12 @@ public class AsyncEmbeddedEngineTest {
         }
     }
 
-    static class KafkaFailureEmulatingOffsetBackingStore
+    public static class KafkaFailureEmulatingOffsetBackingStore
             extends FileOffsetBackingStore {
 
         private static final AtomicInteger counter = new AtomicInteger();
 
-        KafkaFailureEmulatingOffsetBackingStore() {
+        public KafkaFailureEmulatingOffsetBackingStore() {
             super(KafkaOffsetStoreConverter.jsonConverter());
 
             counter.set(0);
