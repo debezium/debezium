@@ -20,15 +20,16 @@ import io.debezium.spi.storage.OffsetStorageReader;
  *
  * @author Debezium Authors
  */
-public class KafkaOffsetStorageReaderAdapter implements OffsetStorageReader, KafkaStorageAdapter.OffsetStorageReader {
+public class KafkaConnectOffsetStorageReaderAdapter implements OffsetStorageReader, KafkaConnectStorageAdapter.OffsetStorageReader {
 
     private final org.apache.kafka.connect.storage.OffsetStorageReader delegate;
 
-    public KafkaOffsetStorageReaderAdapter(org.apache.kafka.connect.storage.OffsetStorageReader kafkaReader) {
+    public KafkaConnectOffsetStorageReaderAdapter(org.apache.kafka.connect.storage.OffsetStorageReader kafkaReader) {
         this.delegate = kafkaReader;
     }
 
-    public KafkaOffsetStorageReaderAdapter(KafkaStorageAdapter.OffsetBackingStore offsetStore, String namespace, Converter keyConverter, Converter valueConverter) {
+    public KafkaConnectOffsetStorageReaderAdapter(KafkaConnectStorageAdapter.OffsetBackingStore offsetStore, String namespace, Converter keyConverter,
+                                                  Converter valueConverter) {
         this.delegate = new OffsetStorageReaderImpl(offsetStore.getDelegate(), namespace, keyConverter, valueConverter);
     }
 
