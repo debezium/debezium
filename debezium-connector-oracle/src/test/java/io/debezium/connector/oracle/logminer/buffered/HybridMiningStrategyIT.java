@@ -63,6 +63,8 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
+import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -1219,7 +1221,7 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         embeddedConfig.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         System.out.println(embeddedConfig);
 
-        final OffsetBackingStore store = KafkaConnectUtil.fileOffsetBackingStore();
+        final OffsetBackingStore store = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
         store.configure(new TestWorkerConfig(embeddedConfig));
         store.start();
 
