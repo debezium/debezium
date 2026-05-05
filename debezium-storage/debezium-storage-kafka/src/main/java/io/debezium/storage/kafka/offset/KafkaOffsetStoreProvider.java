@@ -49,11 +49,11 @@ public class KafkaOffsetStoreProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public OffsetStore create(Configuration config, Map<String, String> connectorConfig) {
+    public OffsetStore create(Configuration config) {
         LOGGER.debug("Creating Kafka KafkaOffsetBackingStore");
 
         final String clientId = "debezium-server";
-        final Map<String, Object> adminProps = new HashMap<>(connectorConfig);
+        final Map<String, Object> adminProps = new HashMap<>(config.asMap());
         adminProps.put(CLIENT_ID_CONFIG, clientId + "shared-admin");
 
         // Validate required configuration

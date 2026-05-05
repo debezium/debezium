@@ -6,7 +6,6 @@
 package io.debezium.storage.kafka.offset;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.connect.json.JsonConverter;
@@ -39,7 +38,7 @@ public class KafkaFileOffsetProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public OffsetStore create(Configuration config, Map<String, String> connectorConfig) {
+    public OffsetStore create(Configuration config) {
         LOGGER.debug("Creating Kafka FileOffsetBackingStore");
 
         // Create JSON converter for offset serialization

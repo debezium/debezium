@@ -1238,7 +1238,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
-        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
+        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null)).getDelegate();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         try {
@@ -1270,7 +1270,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
-        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
+        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null)).getDelegate();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         var latch = new CountDownLatch(1);

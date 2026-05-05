@@ -5,7 +5,6 @@
  */
 package io.debezium.spi.storage;
 
-import java.util.Map;
 import java.util.Optional;
 
 import io.debezium.common.annotation.Incubating;
@@ -44,10 +43,9 @@ public interface OffsetStoreProvider {
      * and {@link OffsetStore#start()} on the returned instance.
      *
      * @param config the configuration
-     * @param connectorConfig the connector-specific configuration
      * @return a configured offset backing store instance, never null
      */
-    OffsetStore create(Configuration config, Map<String, String> connectorConfig);
+    OffsetStore create(Configuration config);
 
     /**
      * Returns the fully qualified class name of the {@link OffsetStore} implementation
