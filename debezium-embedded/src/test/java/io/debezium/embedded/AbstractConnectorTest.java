@@ -54,7 +54,7 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
+import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.awaitility.Awaitility;
@@ -73,6 +73,8 @@ import io.debezium.function.BooleanConsumer;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.HistoryRecord;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
+import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
@@ -1236,7 +1238,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
-        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
+        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         try {
@@ -1268,7 +1270,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
-        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
+        OffsetBackingStore offsetStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         var latch = new CountDownLatch(1);
