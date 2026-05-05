@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -35,6 +36,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
 import io.debezium.connector.oracle.util.TimestampUtils;
+import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -61,6 +63,7 @@ import oracle.sql.RAW;
 import oracle.sql.TIMESTAMP;
 import oracle.sql.TIMESTAMPLTZ;
 import oracle.sql.TIMESTAMPTZ;
+import oracle.sql.json.OracleJsonFactory;
 
 public class OracleValueConverters extends JdbcValueConverters {
 
@@ -91,6 +94,8 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
+
+    private final OracleJsonFactory jsonFactory = new OracleJsonFactory();
 
     private final OracleConnection connection;
     private final boolean legacyDecimalModeStrategy;
@@ -149,6 +154,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.ROWID:
                 return SchemaBuilder.string();
             default: {
+                if ("JSON".equals(column.typeName())) {
+                    return Json.builder();
+                }
+
                 SchemaBuilder builder = super.schemaBuilder(column);
                 logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder != null ? builder.getClass().getName() : null, column.name());
                 return builder;
@@ -233,6 +242,11 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return (data) -> convertIntervalDaySecond(column, fieldDefn, data);
             case OracleTypes.RAW:
                 return (data) -> convertBinary(column, fieldDefn, data, binaryMode);
+            default: {
+                if ("JSON".equals(column.typeName())) {
+                    return (data) -> convertJson(column, fieldDefn, data);
+                }
+            }
         }
 
         return super.converter(column, fieldDefn);
@@ -376,6 +390,38 @@ public class OracleValueConverters extends JdbcValueConverters {
         catch (SQLException e) {
             throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
+    }
+
+    protected Object convertJson(Column column, Field fieldDefn, Object data) {
+        try {
+            if (data instanceof String stringData) {
+                if (stringData.startsWith("/* JSON */ ")) {
+                    stringData = stringData.substring(11);
+                }
+
+                if (EMPTY_CLOB_FUNCTION.equals(stringData) || EMPTY_BLOB_FUNCTION.equals(stringData)) {
+                    return column.isOptional() ? null : "";
+                }
+                else if (UnistrHelper.isUnistrFunction(stringData)) {
+                    return UnistrHelper.convert(stringData);
+                }
+                else if (isHexToRawFunctionCall(stringData)) {
+                    final byte[] jsonData = RAW.hexString2Bytes(getHexToRawHexString(stringData));
+                    return jsonFactory.createJsonBinaryValue(ByteBuffer.wrap(jsonData)).asJsonObject().toString();
+                }
+
+                data = stringData;
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't convert value for json column " + column.name(), e);
+        }
+
+        if (data == UNAVAILABLE_VALUE) {
+            return unavailableValuePlaceholderString;
+        }
+
+        return super.convertString(column, fieldDefn, data);
     }
 
     @Override
