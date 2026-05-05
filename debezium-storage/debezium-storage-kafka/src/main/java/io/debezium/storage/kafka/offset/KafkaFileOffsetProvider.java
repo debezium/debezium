@@ -7,6 +7,7 @@ package io.debezium.storage.kafka.offset;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
@@ -50,8 +51,8 @@ public class KafkaFileOffsetProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public String getOffsetStoreClassName() {
-        return FileOffsetBackingStore.class.getName();
+    public Optional<String> getOffsetStoreClassName() {
+        return Optional.of(FileOffsetBackingStore.class.getName());
     }
 
     /**

@@ -10,6 +10,7 @@ import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.json.JsonConverter;
@@ -81,8 +82,8 @@ public class KafkaOffsetStoreProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public String getOffsetStoreClassName() {
-        return KafkaOffsetBackingStore.class.getName();
+    public Optional<String> getOffsetStoreClassName() {
+        return Optional.of(KafkaOffsetBackingStore.class.getName());
     }
 
     /**
