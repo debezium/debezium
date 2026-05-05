@@ -16,7 +16,7 @@ import org.apache.kafka.connect.storage.OffsetStorageReader;
  *
  * @author Debezium Authors
  */
-public class KafkaSourceTaskContextAdapter implements SourceTaskContext {
+public class KafkaSourceTaskContextAdapter {
     private final SourceTaskContext delegate;
 
     public KafkaSourceTaskContextAdapter(SourceTaskContext delegate) {
@@ -40,21 +40,6 @@ public class KafkaSourceTaskContextAdapter implements SourceTaskContext {
                 return null; // not supported
             }
         };
-    }
-
-    @Override
-    public Map<String, String> configs() {
-        return delegate.configs();
-    }
-
-    @Override
-    public OffsetStorageReader offsetStorageReader() {
-        return delegate.offsetStorageReader();
-    }
-
-    @Override
-    public PluginMetrics pluginMetrics() {
-        return delegate.pluginMetrics();
     }
 
     /**
