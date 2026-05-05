@@ -895,4 +895,15 @@ public class TestHelper {
         };
     }
 
+    public static void enableGoldenGateReplication() throws SQLException {
+        try (OracleConnection admin = adminConnection(true)) {
+            admin.execute("ALTER SYSTEM SET enable_goldengate_replication=TRUE SCOPE=BOTH");
+        }
+    }
+
+    public static void disableGoldenGateReplication() throws SQLException {
+        try (OracleConnection admin = adminConnection(true)) {
+            admin.execute("ALTER SYSTEM SET enable_goldengate_replication=TRUE SCOPE=BOTH");
+        }
+    }
 }

@@ -521,6 +521,23 @@ public class LogMinerDmlParser implements DmlParser {
                 index += 1;
                 start = index;
             }
+            else if (c == '/' && lookAhead == '*' && lookAhead2 == ' ' && inColumnValue && !inSingleQuote) {
+                // Handles special use cases of hints, e.g. '/* JSON */' in values
+                if (!inSpecial) {
+                    start = index;
+                    inSpecial = true;
+                }
+                for (int i = index + 2; i < sql.length() - 1; i++) {
+                    if (sql.charAt(i) == '*' && sql.charAt(i + 1) == '/') {
+                        index = i + 1;
+                        break;
+                    }
+                }
+                // Skip whitespace between comment and the actual value
+                while (index + 1 < sql.length() && sql.charAt(index + 1) == ' ') {
+                    index++;
+                }
+            }
             else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
                     start = index;
