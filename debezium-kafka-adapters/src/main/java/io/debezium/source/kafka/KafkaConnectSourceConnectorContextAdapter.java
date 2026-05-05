@@ -14,15 +14,15 @@ import org.apache.kafka.connect.storage.OffsetStorageReader;
  *
  * @author Debezium Authors
  */
-public class KafkaSourceConnectorContextAdapter {
+public class KafkaConnectSourceConnectorContextAdapter {
 
     private final SourceConnectorContext delegate;
 
-    public KafkaSourceConnectorContextAdapter(SourceConnectorContext delegate) {
+    public KafkaConnectSourceConnectorContextAdapter(SourceConnectorContext delegate) {
         this.delegate = delegate;
     }
 
-    public KafkaSourceConnectorContextAdapter(OffsetStorageReader reader) {
+    public KafkaConnectSourceConnectorContextAdapter(OffsetStorageReader reader) {
         this.delegate = new SourceConnectorContext() {
             @Override
             public OffsetStorageReader offsetStorageReader() {

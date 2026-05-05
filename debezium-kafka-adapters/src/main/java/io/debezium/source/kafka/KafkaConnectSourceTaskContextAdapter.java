@@ -16,14 +16,14 @@ import org.apache.kafka.connect.storage.OffsetStorageReader;
  *
  * @author Debezium Authors
  */
-public class KafkaSourceTaskContextAdapter {
+public class KafkaConnectSourceTaskContextAdapter {
     private final SourceTaskContext delegate;
 
-    public KafkaSourceTaskContextAdapter(SourceTaskContext delegate) {
+    public KafkaConnectSourceTaskContextAdapter(SourceTaskContext delegate) {
         this.delegate = delegate;
     }
 
-    public KafkaSourceTaskContextAdapter(final Map<String, String> config, final OffsetStorageReader offsetReader) {
+    public KafkaConnectSourceTaskContextAdapter(final Map<String, String> config, final OffsetStorageReader offsetReader) {
         this.delegate = new SourceTaskContext() {
             @Override
             public Map<String, String> configs() {
