@@ -26,7 +26,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
-import io.debezium.storage.kafka.KafkaOffsetStoreAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
 
 /**
  * Provider for Kafka Connect's {@link KafkaOffsetBackingStore}.
@@ -78,7 +78,7 @@ public class KafkaOffsetStoreProvider implements OffsetStoreProvider {
 
         // Create Kafka Connect KafkaOffsetBackingStore and wrap it
         org.apache.kafka.connect.storage.KafkaOffsetBackingStore kafkaStore = new KafkaOffsetBackingStore(sharedAdmin, () -> clientId, converter);
-        return new KafkaOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
     @Override

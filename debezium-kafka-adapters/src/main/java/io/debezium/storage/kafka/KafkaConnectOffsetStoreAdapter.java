@@ -22,11 +22,11 @@ import io.debezium.spi.storage.OffsetStore;
  *
  * @author Debezium Authors
  */
-public class KafkaOffsetStoreAdapter implements OffsetStore, KafkaStorageAdapter.OffsetBackingStore {
+public class KafkaConnectOffsetStoreAdapter implements OffsetStore, KafkaConnectStorageAdapter.OffsetBackingStore {
 
     private final org.apache.kafka.connect.storage.OffsetBackingStore delegate;
 
-    public KafkaOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore) {
+    public KafkaConnectOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore) {
         this.delegate = kafkaStore;
     }
 

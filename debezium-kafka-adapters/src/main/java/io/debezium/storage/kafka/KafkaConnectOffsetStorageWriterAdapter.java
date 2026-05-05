@@ -22,15 +22,16 @@ import io.debezium.spi.storage.OffsetStore;
  *
  * @author Debezium Authors
  */
-public class KafkaOffsetStorageWriterAdapter implements OffsetStorageWriter, KafkaStorageAdapter.OffsetStorageWriter {
+public class KafkaConnectOffsetStorageWriterAdapter implements OffsetStorageWriter, KafkaConnectStorageAdapter.OffsetStorageWriter {
 
     private final org.apache.kafka.connect.storage.OffsetStorageWriter delegate;
 
-    public KafkaOffsetStorageWriterAdapter(org.apache.kafka.connect.storage.OffsetStorageWriter kafkaWriter) {
+    public KafkaConnectOffsetStorageWriterAdapter(org.apache.kafka.connect.storage.OffsetStorageWriter kafkaWriter) {
         this.delegate = kafkaWriter;
     }
 
-    public KafkaOffsetStorageWriterAdapter(KafkaStorageAdapter.OffsetBackingStore offsetStore, String namespace, Converter keyConverter, Converter valueConverter) {
+    public KafkaConnectOffsetStorageWriterAdapter(KafkaConnectStorageAdapter.OffsetBackingStore offsetStore, String namespace, Converter keyConverter,
+                                                  Converter valueConverter) {
         this.delegate = new org.apache.kafka.connect.storage.OffsetStorageWriter(offsetStore.getDelegate(), namespace, keyConverter, valueConverter);
     }
 

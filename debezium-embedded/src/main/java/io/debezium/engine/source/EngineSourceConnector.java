@@ -7,8 +7,8 @@ package io.debezium.engine.source;
 
 import org.apache.kafka.connect.source.SourceConnector;
 
-import io.debezium.source.kafka.KafkaSourceConnectorContextAdapter;
-import io.debezium.storage.kafka.KafkaStorageAdapter;
+import io.debezium.source.kafka.KafkaConnectSourceConnectorContextAdapter;
+import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 
 /**
  * Implementation of {@link DebeziumSourceConnector} which currently serves only as a wrapper
@@ -39,6 +39,7 @@ public class EngineSourceConnector implements DebeziumSourceConnector {
         this.context = context;
         // TODO: remove switching to Kafka
         this.connectConnector.initialize(
-                new KafkaSourceConnectorContextAdapter(((KafkaStorageAdapter.OffsetStorageReader) context.offsetStorageReader()).getDelegate()).getDelegate());
+                new KafkaConnectSourceConnectorContextAdapter(((KafkaConnectStorageAdapter.OffsetStorageReader) context.offsetStorageReader()).getDelegate())
+                        .getDelegate());
     }
 }

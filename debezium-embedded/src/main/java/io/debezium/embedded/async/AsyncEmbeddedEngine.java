@@ -83,15 +83,15 @@ import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.source.kafka.KafkaSourceTaskContextAdapter;
+import io.debezium.source.kafka.KafkaConnectSourceTaskContextAdapter;
 import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
-import io.debezium.storage.kafka.KafkaOffsetStorageReaderAdapter;
-import io.debezium.storage.kafka.KafkaOffsetStorageWriterAdapter;
-import io.debezium.storage.kafka.KafkaOffsetStoreAdapter;
-import io.debezium.storage.kafka.KafkaStorageAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStorageReaderAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
+import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Reflections;
 
@@ -390,9 +390,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
             LOGGER.debug("Initializing offset store, offset reader and writer");
             final OffsetStore offsetStore = createAndStartOffsetStore(connectorConfig);
-            final OffsetStorageReader offsetReader = new KafkaOffsetStorageReaderAdapter((KafkaStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+            final OffsetStorageReader offsetReader = new KafkaConnectOffsetStorageReaderAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
                     offsetKeyConverter, offsetValueConverter);
-            final OffsetStorageWriter offsetWriter = new KafkaOffsetStorageWriterAdapter((KafkaStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+            final OffsetStorageWriter offsetWriter = new KafkaConnectOffsetStorageWriterAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
                     offsetKeyConverter, offsetValueConverter);
 
             LOGGER.debug("Initializing Connect connector itself");
@@ -446,8 +446,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                         connectorTaskId);
                 // TODO: remove switching to Kafka
                 task.initialize(
-                        new KafkaSourceTaskContextAdapter(taskContext.config(),
-                                ((KafkaStorageAdapter.OffsetStorageReader) taskContext.offsetStorageReader()).getDelegate()).getDelegate()); // Initialize Kafka Connect source task
+                        new KafkaConnectSourceTaskContextAdapter(taskContext.config(),
+                                ((KafkaConnectStorageAdapter.OffsetStorageReader) taskContext.offsetStorageReader()).getDelegate()).getDelegate()); // Initialize Kafka Connect source task
                 tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
             }
         }
@@ -968,7 +968,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             kafkaStore = offsetStoreClass.getDeclaredConstructor().newInstance();
         }
 
-        return new KafkaOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
     /**
