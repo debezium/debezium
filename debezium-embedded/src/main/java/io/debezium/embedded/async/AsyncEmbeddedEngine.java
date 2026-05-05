@@ -49,13 +49,10 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.HeaderConverter;
-import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.apache.kafka.connect.util.LoggingContext;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,11 +86,8 @@ import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.kafka.KafkaConnectOffsetStorageReaderAdapter;
 import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
-import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
 import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
-import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
-import io.debezium.storage.kafka.offset.KafkaMemoryOffsetProvider;
-import io.debezium.storage.kafka.offset.KafkaOffsetStoreProvider;
+import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Reflections;
 
@@ -776,7 +770,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
-     * Stops {@link OffsetBackingStore} used by engine if there is any.
+     * Stops {@link OffsetStore} used by engine if there is any.
      * If engine fails during initialization phase before connector context is created, the reference may be {@code null} and in such this method does nothing.
      *
      * @param connectorContext {@link DebeziumSourceConnectorContext} used by the connector or {@code null} if the context hasn't been initialized yet.
@@ -919,7 +913,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         else {
             // As the last resort, try legacy instantiation of Kafka OffsetBackingStore.
             LOGGER.debug("No ServiceLoader provider found for '{}', attempting direct instantiation of a Kafka OffsetBackingStore (legacy mode)", offsetStoreName);
-            offsetStore = createKafkaOffsetStoreWithAdapter(offsetStoreName, connectorConfig);
+            offsetStore = KafkaConnectOffsetUtil.createKafkaOffsetStoreWithAdapter(classLoader, offsetStoreName, connectorConfig);
         }
 
         // Configure and start the offset store
@@ -942,33 +936,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         LOGGER.info("Offset store '{}' successfully started", offsetStoreName);
         return offsetStore;
-    }
-
-    /**
-     * Creates a Kafka Connect offset store and wraps it in a Debezium OffsetStore adapter.
-     * This is the legacy fallback path for backward compatibility with Kafka Connect offset stores.
-     */
-    private OffsetStore createKafkaOffsetStoreWithAdapter(String offsetStoreClassName, Map<String, String> connectorConfig) throws Exception {
-        LOGGER.debug("Creating Kafka offset store '{}' with adapter", offsetStoreClassName);
-
-        final org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore;
-
-        // Kafka 3.5 no longer provides offset stores with non-parametric constructors
-        if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaMemoryOffsetProvider()).create(null)).getDelegate();
-        }
-        else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null)).getDelegate();
-        }
-        else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaOffsetStoreProvider()).create(Configuration.from(connectorConfig))).getDelegate();
-        }
-        else {
-            final Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-            kafkaStore = offsetStoreClass.getDeclaredConstructor().newInstance();
-        }
-
-        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
     /**
