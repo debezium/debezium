@@ -837,30 +837,27 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         LOGGER.debug("Creating instance of offset store for '{}'", offsetStoreName);
 
         ServiceLoader<OffsetStoreProvider> providers = ServiceLoader.load(OffsetStoreProvider.class, classLoader);
-        OffsetStoreProvider matchedProvider = null;
 
-        for (OffsetStoreProvider provider : providers) {
-            // Match by provider name first.
-            if (offsetStoreName.equals(provider.getName())) {
-                matchedProvider = provider;
-                break;
-            }
+        // Match by provider name first.
+        Optional<OffsetStoreProvider> matchedProvider = providers.stream().map(ServiceLoader.Provider::get)
+                .filter(p -> offsetStoreName.equals(p.getName())).findFirst();
 
+        if (matchedProvider.isEmpty()) {
             // Match classname as a fallback.
-            if (offsetStoreName.equals(provider.getOffsetStoreClassName())) {
-                matchedProvider = provider;
-                break;
-            }
+            matchedProvider = providers.stream().map(ServiceLoader.Provider::get)
+                    .filter(p -> p.getOffsetStoreClassName().isPresent())
+                    .filter(p -> offsetStoreName.equals(p.getOffsetStoreClassName().get())).findFirst();
         }
 
         final OffsetStore offsetStore;
         final Configuration debeziumConfig = Configuration.from(workerConfig.values());
 
-        if (matchedProvider != null) {
-            LOGGER.info("Found offset store provider '{}' for '{}'", matchedProvider.getName(), offsetStoreName);
-            offsetStore = matchedProvider.create(debeziumConfig, connectorConfig);
+        if (matchedProvider.isPresent()) {
+            LOGGER.info("Found offset store provider '{}' for '{}'", matchedProvider.get().getName(), offsetStoreName);
+            offsetStore = matchedProvider.get().create(debeziumConfig, connectorConfig);
         }
         else {
+            // As the last resort, try legacy instantiation of Kafka OffsetBackingStore.
             LOGGER.debug("No ServiceLoader provider found for '{}', attempting direct instantiation of a Kafka OffsetBackingStore (legacy mode)", offsetStoreName);
             offsetStore = createKafkaOffsetStoreWithAdapter(offsetStoreName, connectorConfig);
         }

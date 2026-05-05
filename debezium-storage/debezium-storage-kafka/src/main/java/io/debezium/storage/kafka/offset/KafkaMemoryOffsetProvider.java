@@ -6,6 +6,7 @@
 package io.debezium.storage.kafka.offset;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
@@ -51,7 +52,7 @@ public class KafkaMemoryOffsetProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public String getOffsetStoreClassName() {
-        return MemoryOffsetBackingStore.class.getName();
+    public Optional<String> getOffsetStoreClassName() {
+        return Optional.of(MemoryOffsetBackingStore.class.getName());
     }
 }
