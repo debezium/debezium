@@ -67,7 +67,6 @@ import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.EmbeddedEngineSignaler;
 import io.debezium.embedded.EmbeddedWorkerConfig;
-import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -89,6 +88,9 @@ import io.debezium.storage.kafka.KafkaConnectOffsetStorageReaderAdapter;
 import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
 import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
 import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
+import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
+import io.debezium.storage.kafka.offset.KafkaMemoryOffsetProvider;
+import io.debezium.storage.kafka.offset.KafkaOffsetStoreProvider;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Reflections;
 
@@ -895,13 +897,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // Kafka 3.5 no longer provides offset stores with non-parametric constructors
         if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-            kafkaStore = KafkaConnectUtil.memoryOffsetBackingStore();
+            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaMemoryOffsetProvider()).create(null, null)).getDelegate();
         }
         else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
-            kafkaStore = KafkaConnectUtil.fileOffsetBackingStore();
+            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null, null)).getDelegate();
         }
         else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
-            kafkaStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
+            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaOffsetStoreProvider()).create(null, connectorConfig)).getDelegate();
         }
         else {
             final Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
