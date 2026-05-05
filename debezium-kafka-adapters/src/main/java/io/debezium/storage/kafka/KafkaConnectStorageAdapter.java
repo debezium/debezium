@@ -10,7 +10,7 @@ package io.debezium.storage.kafka;
  *
  * @author Debezium Authors
  */
-public interface KafkaStorageAdapter {
+public interface KafkaConnectStorageAdapter {
 
     interface OffsetStorageReader {
         /**
