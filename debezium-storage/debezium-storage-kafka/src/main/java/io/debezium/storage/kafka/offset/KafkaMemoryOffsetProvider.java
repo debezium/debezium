@@ -36,7 +36,7 @@ public class KafkaMemoryOffsetProvider implements OffsetStoreProvider {
     }
 
     @Override
-    public OffsetStore create(Configuration config, Map<String, String> connectorConfig) {
+    public OffsetStore create(Configuration config) {
         LOGGER.debug("Creating Kafka MemoryOffsetBackingStore");
 
         // Create MemoryOffsetBackingStore with connectorPartitions override
