@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.storage.kafka.offset;
 
 import java.util.Collections;
 
@@ -12,15 +12,13 @@ import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.storage.Converter;
 
 /**
- * An auxilliary class that provides internal Kafka Connect related data structures and operations.
- * The code are usually snippets from Kafka Connect runtime codebase.
+ * An auxiliary converter for Kafka {@link io.debezium.storage.kafka.KafkaConnectStorageAdapter.OffsetBackingStore}
  *
- * @author Jiri Pechanec
- *
+ * @author Debezium Authors
  */
-public class KafkaConnectUtil {
+public class KafkaOffsetStoreConverter {
 
-    public static final Converter converterForOffsetStore() {
+    public static Converter jsonConverter() {
         final JsonConverter converter = new JsonConverter();
         converter.configure(Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false"), true);
         return converter;

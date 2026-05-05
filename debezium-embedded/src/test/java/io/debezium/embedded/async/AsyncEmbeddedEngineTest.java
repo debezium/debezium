@@ -50,7 +50,6 @@ import io.debezium.embedded.DebeziumEngineTestUtils;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.EmbeddedEngineHeader;
-import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -58,6 +57,7 @@ import io.debezium.engine.format.Json;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.storage.kafka.offset.KafkaOffsetStoreConverter;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
@@ -1677,7 +1677,7 @@ public class AsyncEmbeddedEngineTest {
         private static final AtomicInteger counter = new AtomicInteger();
 
         KafkaFailureEmulatingOffsetBackingStore() {
-            super(KafkaConnectUtil.converterForOffsetStore());
+            super(KafkaOffsetStoreConverter.jsonConverter());
 
             counter.set(0);
         }
