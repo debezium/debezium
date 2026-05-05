@@ -14,7 +14,7 @@ import org.apache.kafka.connect.storage.OffsetStorageReader;
  *
  * @author Debezium Authors
  */
-public class KafkaSourceConnectorContextAdapter implements SourceConnectorContext {
+public class KafkaSourceConnectorContextAdapter {
 
     private final SourceConnectorContext delegate;
 
@@ -44,26 +44,6 @@ public class KafkaSourceConnectorContextAdapter implements SourceConnectorContex
                 return null; // not supported
             }
         };
-    }
-
-    @Override
-    public OffsetStorageReader offsetStorageReader() {
-        return delegate.offsetStorageReader();
-    }
-
-    @Override
-    public void requestTaskReconfiguration() {
-        delegate.requestTaskReconfiguration();
-    }
-
-    @Override
-    public void raiseError(Exception e) {
-        delegate.raiseError(e);
-    }
-
-    @Override
-    public PluginMetrics pluginMetrics() {
-        return delegate.pluginMetrics();
     }
 
     /**
