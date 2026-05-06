@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
@@ -63,13 +61,13 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultSinkConfig);
+        JdbcSinkConnectorConfig config = getConfig(defaultSinkConfig);
         try {
             consume(factory.createRecordNoKey(topicName, config));
             stopSinkConnector();
         }
         catch (Throwable t) {
-            assertThat(t.getCause().getCause().getMessage()).startsWith("Could not find table: ");
+            assertExceptionCauseMessage(t, "Could not find table: .*");
         }
     }
 
@@ -82,13 +80,13 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultSinkConfig);
+        JdbcSinkConnectorConfig config = getConfig(defaultSinkConfig);
         try {
             consume(factory.updateRecord(topicName, config));
             stopSinkConnector();
         }
         catch (Throwable t) {
-            assertThat(t.getCause().getCause().getMessage()).startsWith("Could not find table: ");
+            assertExceptionCauseMessage(t, "Could not find table: .*");
         }
     }
 
@@ -101,13 +99,13 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultSinkConfig);
+        JdbcSinkConnectorConfig config = getConfig(defaultSinkConfig);
         try {
             consume(factory.deleteRecord(topicName, config));
             stopSinkConnector();
         }
         catch (Throwable t) {
-            assertThat(t.getCause().getCause().getMessage()).startsWith("Could not find table: ");
+            assertExceptionCauseMessage(t, "Could not find table: .*");
         }
     }
 
@@ -122,7 +120,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
 
@@ -145,7 +143,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord updateRecord = factory.updateRecord(topicName, config);
         consume(updateRecord);
 
@@ -169,7 +167,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecord(topicName, config);
         consume(deleteRecord);
 
@@ -192,7 +190,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -238,7 +236,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -275,7 +273,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         // Create record, optionals provided.
         final JdbcKafkaSinkRecord createRecord = factory.createBuilder(config)
                 .name("prefix")
@@ -349,7 +347,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         // Create record, optionals provided.
         final JdbcKafkaSinkRecord createRecord = factory.createBuilder(config)
                 .name("prefix")
@@ -436,7 +434,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         // Create record, optionals provided.
         final JdbcKafkaSinkRecord createRecord = factory.createBuilder(config)
                 .name("prefix")

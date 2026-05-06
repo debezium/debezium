@@ -24,7 +24,6 @@ import javax.management.remote.JMXServiceURL;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.images.PullPolicy;
@@ -113,12 +112,8 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public DebeziumContainer withKafka(final StrimziKafkaCluster kafkaCluster) {
         final GenericContainer<?> kafkaContainer = kafkaCluster.getNodes().stream().findFirst().get();
-        return withKafka(kafkaContainer.getNetwork(), kafkaCluster.getNetworkBootstrapServers());
-    }
-
-    public DebeziumContainer withKafka(final Network network, final String bootstrapServers) {
-        withNetwork(network);
-        withEnv("BOOTSTRAP_SERVERS", bootstrapServers);
+        withNetwork(kafkaContainer.getNetwork());
+        withEnv("BOOTSTRAP_SERVERS", kafkaCluster.getNetworkBootstrapServers());
         return self();
     }
 

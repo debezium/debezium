@@ -14,10 +14,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -34,6 +39,8 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.batch.Batch;
+import io.debezium.sink.batch.BatchRecord;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -283,6 +290,76 @@ public class DefaultRecordWriter implements RecordWriter {
             }
         }
         throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
+    }
+
+    public void write(Batch records) {
+        // resolve tables outside of doWork (DDL needs session access that conflicts with active doWork connection)
+        Map<TableDescriptor, List<JdbcSinkRecord>> insertsByTable = new LinkedHashMap<>();
+        Map<TableDescriptor, List<JdbcSinkRecord>> deletesByTable = new LinkedHashMap<>();
+
+        for (BatchRecord batchRecord : records) {
+            var record = (JdbcKafkaSinkRecord) batchRecord.record();
+            var collectionId = batchRecord.collectionId();
+
+            final TableDescriptor table;
+            try {
+                table = checkAndApplyTableChangesIfNeeded(collectionId, record);
+            }
+            catch (SQLException | JDBCException e) {
+                throw new ConnectException("Error while checking and applying table changes for collection '" + collectionId + "'", e);
+            }
+
+            if (record.isTruncate()) {
+                try {
+                    writeTruncate(collectionId);
+                }
+                catch (SQLException | JDBCException e) {
+                    throw new ConnectException("Failed to truncate collection '" + collectionId + "'", e);
+                }
+            }
+            else if (record.isDelete()) {
+                deletesByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
+            }
+            else {
+                insertsByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
+            }
+        }
+
+        if (insertsByTable.isEmpty() && deletesByTable.isEmpty()) {
+            return;
+        }
+
+        // write records inside doWork/transaction with retry support
+        String tableNames = Stream.concat(
+                insertsByTable.keySet().stream(),
+                deletesByTable.keySet().stream())
+                .map(t -> t.getId().name())
+                .distinct()
+                .collect(Collectors.joining(", "));
+        executeWithRetries("flush records for table(s) '" + tableNames + "'",
+                () -> {
+                    Stopwatch writeStopwatch = Stopwatch.reusable();
+                    writeStopwatch.start();
+                    final Transaction transaction = session.beginTransaction();
+                    try {
+                        session.doWork(conn -> {
+                            for (var entry : insertsByTable.entrySet()) {
+                                performWrite(conn, getSqlStatementInfo(entry.getKey(), entry.getValue()), entry.getValue());
+                            }
+                            for (var entry : deletesByTable.entrySet()) {
+                                performWrite(conn, getSqlStatementInfo(entry.getKey(), entry.getValue()), entry.getValue());
+                            }
+                        });
+                        transaction.commit();
+                    }
+                    catch (Exception e) {
+                        transaction.rollback();
+                        throw e;
+                    }
+                    writeStopwatch.stop();
+                    LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
+                    return null;
+                });
     }
 
     @Override

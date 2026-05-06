@@ -39,7 +39,7 @@ public interface SinkConnectorIT {
     String SOURCE_CONNECTOR_NAME = "inventory";
     String SINK_CONNECTOR_NAME = "mongodb-sink";
 
-    default Configuration.Builder mySqlSourceConfig() {
+    static Configuration.Builder mySqlSourceConfig() {
         return Configuration.create()
                 .with("connector.class", "io.debezium.connector.mysql.MySqlConnector")
                 .with("database.hostname", "mysql")
@@ -49,24 +49,23 @@ public interface SinkConnectorIT {
                 .with("database.server.id", "148045")
                 .with("topic.prefix", "dbserver1")
                 .with("database.include.list", "inventory")
-                .with("schema.history.internal.kafka.bootstrap.servers", TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")
+                .with("schema.history.internal.kafka.bootstrap.servers", TestInfrastructureHelper.getKafkaCluster().getNetworkBootstrapServers())
                 .with("schema.history.internal.kafka.topic", "schema-changes.inventory");
     }
 
-    default void sendSourceData() {
-        TestInfrastructureHelper.defaultDebeziumContainer(Module.version());
-        TestInfrastructureHelper.startContainers(DATABASE.MYSQL);
-        final Configuration config = mySqlSourceConfig().build();
-        TestInfrastructureHelper.getDebeziumContainer().registerConnector(SOURCE_CONNECTOR_NAME, ConnectorConfiguration.from(config.asMap()));
-        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorTaskState(SOURCE_CONNECTOR_NAME, 0, Connector.State.RUNNING);
-        try {
-            TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("mysql", config.getString(CommonConnectorConfig.TOPIC_PREFIX));
+    static void sendSourceData() {
+        try (var debeziumContainer = TestInfrastructureHelper.defaultDebeziumContainer(Module.version())) {
+            TestInfrastructureHelper.startContainers(DATABASE.MYSQL);
+            final Configuration config = mySqlSourceConfig().build();
+            debeziumContainer.registerConnector(SOURCE_CONNECTOR_NAME, ConnectorConfiguration.from(config.asMap()));
+            debeziumContainer.ensureConnectorTaskState(SOURCE_CONNECTOR_NAME, 0, Connector.State.RUNNING);
+            debeziumContainer.waitForStreamingRunning("mysql", config.getString(CommonConnectorConfig.TOPIC_PREFIX));
             Thread.sleep(1_000L); // ensure all topics are properly created and filled with data
+            TestInfrastructureHelper.getDebeziumContainer().deleteConnector(SOURCE_CONNECTOR_NAME);
         }
         catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        TestInfrastructureHelper.getDebeziumContainer().deleteConnector(SOURCE_CONNECTOR_NAME);
     }
 
     private Configuration.Builder mongodbSinkConfig() {
@@ -83,7 +82,7 @@ public interface SinkConnectorIT {
     }
 
     default void startSink(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), null, TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
         TestInfrastructureHelper.startContainers(DATABASE.DEBEZIUM_ONLY);
         final Configuration config = custConfig.apply(mongodbSinkConfig()).build();
         TestInfrastructureHelper.getDebeziumContainer().registerConnector(SINK_CONNECTOR_NAME, ConnectorConfiguration.from(config.asMap()));

@@ -271,13 +271,37 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .group(Field.Group.CONNECTION, CONNECTION_URL_FIELD, CONNECTION_USER_FIELD, CONNECTION_PASSWORD_FIELD, CONNECTION_POOL_MIN_SIZE_FIELD,
-                    CONNECTION_POOL_MAX_SIZE_FIELD, CONNECTION_POOL_TIMEOUT_FIELD)
-            .group(Field.Group.CONNECTOR, INSERT_MODE_FIELD, DELETE_ENABLED_FIELD, TRUNCATE_ENABLED_FIELD, COLLECTION_NAME_FORMAT_FIELD, PRIMARY_KEY_MODE_FIELD,
-                    PRIMARY_KEY_FIELDS_FIELD, SCHEMA_EVOLUTION_FIELD, QUOTE_IDENTIFIERS_FIELD, COLLECTION_NAMING_STRATEGY_FIELD, COLUMN_NAMING_STRATEGY_FIELD,
-                    COLLECTION_TABLE_FORMAT_FIELD, USE_TIME_ZONE_FIELD, POSTGRES_POSTGIS_SCHEMA_FIELD, POSTGRES_UNNEST_INSERT_FIELD, SQLSERVER_IDENTITY_INSERT_FIELD,
-                    BATCH_SIZE_FIELD, FIELD_INCLUDE_LIST_FIELD, FIELD_EXCLUDE_LIST_FIELD, FLUSH_MAX_RETRIES_FIELD, FLUSH_RETRY_DELAY_MS_FIELD,
-                    CONNECTION_RESTART_ON_ERRORS_FIELD, CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
+            .group(Field.Group.CONNECTION,
+                    CONNECTION_URL_FIELD,
+                    CONNECTION_USER_FIELD,
+                    CONNECTION_PASSWORD_FIELD,
+                    CONNECTION_POOL_MIN_SIZE_FIELD,
+                    CONNECTION_POOL_MAX_SIZE_FIELD,
+                    CONNECTION_POOL_TIMEOUT_FIELD)
+            .group(Field.Group.CONNECTOR,
+                    INSERT_MODE_FIELD,
+                    DELETE_ENABLED_FIELD,
+                    TRUNCATE_ENABLED_FIELD,
+                    COLLECTION_NAME_FORMAT_FIELD,
+                    PRIMARY_KEY_MODE_FIELD,
+                    PRIMARY_KEY_FIELDS_FIELD,
+                    SCHEMA_EVOLUTION_FIELD,
+                    QUOTE_IDENTIFIERS_FIELD,
+                    COLLECTION_NAMING_STRATEGY_FIELD,
+                    COLUMN_NAMING_STRATEGY_FIELD,
+                    COLLECTION_TABLE_FORMAT_FIELD,
+                    USE_TIME_ZONE_FIELD,
+                    POSTGRES_POSTGIS_SCHEMA_FIELD,
+                    POSTGRES_UNNEST_INSERT_FIELD,
+                    SQLSERVER_IDENTITY_INSERT_FIELD,
+                    BATCH_SIZE_FIELD,
+                    KEYED_MESSAGE_BATCH_MODE_FIELD,
+                    FIELD_INCLUDE_LIST_FIELD,
+                    FIELD_EXCLUDE_LIST_FIELD,
+                    FLUSH_MAX_RETRIES_FIELD,
+                    FLUSH_RETRY_DELAY_MS_FIELD,
+                    CONNECTION_RESTART_ON_ERRORS_FIELD,
+                    CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
             .create();
 
     /**
@@ -388,11 +412,13 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final long flushRetryDelayMs;
     private final int batchSize;
     private final boolean useReductionBuffer;
+    private final KeyedMessageBatchMode keyedMessageBatchMode;
     private final boolean connectionRestartOnErrors;
     private final String cloudEventsSchemaNamePattern;
     private final PrimaryKeyMode primaryKeyMode;
     private final Set<String> primaryKeyFields;
     private final FieldNameFilter fieldsFilter;
+    private final boolean isSharedChangeEventSinkEnabled;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -408,6 +434,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
+        this.keyedMessageBatchMode = KeyedMessageBatchMode.parse(config.getString(KEYED_MESSAGE_BATCH_MODE_FIELD));
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
@@ -419,6 +446,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         String fieldIncludeList = config.getString(SinkConnectorConfig.FIELD_INCLUDE_LIST_FIELD);
         String fieldExcludeList = config.getString(SinkConnectorConfig.FIELD_EXCLUDE_LIST_FIELD);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
+        this.isSharedChangeEventSinkEnabled = config.getBoolean(ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD);
     }
 
     public void validate() {
@@ -470,12 +498,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
-        return primaryKeyMode;
+        return this.primaryKeyMode;
     }
 
     @Override
     public Set<String> getPrimaryKeyFields() {
-        return primaryKeyFields;
+        return this.primaryKeyFields;
     }
 
     public SchemaEvolutionMode getSchemaEvolutionMode() {
@@ -500,13 +528,18 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     @Override
+    public KeyedMessageBatchMode getKeyedMessageBatchMode() {
+        return keyedMessageBatchMode;
+    }
+
+    @Override
     public CollectionNamingStrategy getCollectionNamingStrategy() {
         return collectionNamingStrategy;
     }
 
     @Override
     public FieldNameFilter fieldFilter() {
-        return fieldsFilter;
+        return this.fieldsFilter;
     }
 
     public ColumnNamingStrategy getColumnNamingStrategy() {
@@ -608,6 +641,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         final ColumnNamingStrategy namingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         namingStrategy.configure(properties);
         return namingStrategy;
+    }
+
+    public boolean isSharedChangeEventSinkEnabled() {
+        return isSharedChangeEventSinkEnabled;
     }
 
     private static int validateInsertMode(Configuration config, Field field, ValidationOutput problems) {
