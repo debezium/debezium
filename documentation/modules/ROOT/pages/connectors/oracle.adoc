@@ -2428,6 +2428,51 @@ _This data type is not supported when using Oracle XStream._
 
 The {prodname} connector for Oracle does not support the Oracle VECTOR data type.
 
+[id="oracle-json-types"]
+=== JSON types
+ifdef::community[]
+[NOTE]
+====
+Support for `JSON` is currently in an incubating state.
+Depending on the feedback that we receive, the exact semantics, configuration options, and so forth might change in future revisions.
+Please let us know if you encounter any problems with using these data types.
+====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the `JSON` with the {prodname} Oracle connector is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
+
+[IMPORTANT]
+====
+The ability to capture changes for a table that includes a `JSON` column type is limited to the Oracle LogMiner adapter, and requires that `ENABLE_GOLDENGATE_REPLICATION` database feature be enabled.
+Oracle's support for `JSON` data types is a premium feature that is only available through a GoldenGate license.
+
+The ability to capture `JSON` data types using the Oracle XStream adapter is currently unsupported.
+This is due to an Oracle OCI driver limitation that does not currently allow the driver to read metadata for tables that contain a `JSON` column type.
+The limitation is present in all Oracle 21.x and 23.x drivers tested through 23.26.1.
+====
+
+The following table describes how the connector maps JSON data types.
+
+.Mappings for Oracle JSON data types
+[cols="20%a,15%a,55%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`JSON`
+|`STRING`
+|`io.debezium.data.Json`
+
+|===
+
 [id="oracle-xml-types"]
 === XML types
 ifdef::community[]
