@@ -6302,6 +6302,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                                     TestHelper.getDatabaseName())));
 
             assertNoRecordsToConsume();
+            waitForEngineShutdown();
         }
         finally {
             TestHelper.dropTable(connection, "dbz1508");
