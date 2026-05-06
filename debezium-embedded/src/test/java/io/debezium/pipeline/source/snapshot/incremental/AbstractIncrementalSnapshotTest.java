@@ -1118,7 +1118,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     // TODO seems slow try to speedup
-    void testNotification() throws Exception {
+    public void testNotification() throws Exception {
 
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
