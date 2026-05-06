@@ -3452,6 +3452,21 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 In the previous example, the `database.hostname` and `database.port` properties are used to define the connection to the database host.
 However, in more complex Oracle deployments, or in deployments that use Transparent Network Substrate (TNS) names, you can use an alternative method in which you specify a JDBC URL.
 
+[NOTE]
+====
+In enterprise Oracle environments, the Oracle listener service name often differs from the database name specified in `database.dbname`.
+When using `database.hostname` and `database.port`, {prodname} constructs the JDBC URL using `database.dbname` as the service name.
+If the listener is not registered with that name, the connector fails with the following error:
+
+----
+org.apache.kafka.connect.errors.RetriableException: Failed to resolve Oracle database version
+Caused by: java.sql.SQLRecoverableException: ORA-12514: Cannot connect to database.
+Service <database.dbname> is not registered with the listener at host <hostname> port <port>.
+----
+
+In such cases, use `database.url` to specify the full JDBC connection string with the correct service name, as shown in the following example.
+====
+
 The following JSON example shows the same configuration as in the preceding example, except that it uses a JDBC URL to connect to the database.
 
 .Example: {prodname} Oracle connector configuration that uses a JDBC URL to connect to the database
