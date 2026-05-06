@@ -205,8 +205,17 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     }
 
     @Override
+    public KeyedMessageBatchMode getKeyedMessageBatchMode() {
+        return null;
+    }
+
+    @Override
     public String cloudEventsSchemaNamePattern() {
         return cloudEventsSchemaNamePattern;
+    }
+
+    public boolean isSharedChangeEventSinkEnabled() {
+        return false;
     }
 
 }

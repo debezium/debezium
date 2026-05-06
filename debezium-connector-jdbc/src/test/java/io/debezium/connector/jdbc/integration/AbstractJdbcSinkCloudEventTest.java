@@ -52,7 +52,7 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
 
         final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), config);
         consume(cloudEventRecord);
@@ -82,7 +82,7 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), config);
         consume(cloudEventRecord);
 
@@ -114,7 +114,7 @@ public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), cloudEventsSchemaName, config);
         consume(cloudEventRecord);
 

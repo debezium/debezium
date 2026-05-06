@@ -122,7 +122,7 @@ public abstract class AbstractOpenLineageJdbcSinkTest extends AbstractJdbcSinkTe
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
 
@@ -173,7 +173,7 @@ public abstract class AbstractOpenLineageJdbcSinkTest extends AbstractJdbcSinkTe
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
 

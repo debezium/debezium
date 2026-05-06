@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.batch.Batch;
 
 /**
  * Interface for writing batches of records to the database.
@@ -28,7 +29,10 @@ public interface RecordWriter {
      * @param tableDescriptor descriptor information of the table
      * @param records the list of records to write
      */
+
     void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records);
+
+    void write(Batch records);
 
     TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException;
 

@@ -26,6 +26,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.connector.jdbc.AbstractBaseJdbcSinkTest;
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -38,7 +39,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class SinkRecordBuilder {
+public class SinkRecordBuilder extends AbstractBaseJdbcSinkTest {
 
     private SinkRecordBuilder() {
     }
@@ -50,7 +51,7 @@ public class SinkRecordBuilder {
     public static SinkRecordTypeBuilder update(Map<String, Object> props) {
         Map<String, String> strProps = props.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue())));
-        return new SinkRecordTypeBuilder(Type.UPDATE, (new JdbcSinkConnectorConfig(strProps)));
+        return new SinkRecordTypeBuilder(Type.UPDATE, (getConfig(strProps)));
     }
 
     public static SinkRecordTypeBuilder update(JdbcSinkConnectorConfig config) {

@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc.integration.mysql;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
@@ -17,7 +16,6 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.PessimisticLockException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -90,7 +88,7 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
 
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
@@ -107,12 +105,9 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
             fail();
         }
         catch (Exception e) {
-            assertThat(e.getCause().getMessage()).matches(
+            assertExceptionCauseMessage(e,
                     "Exceeded max retries [0-9]* times, failed to flush records for table '" + tableName + "'");
-            // PessimisticLockException exception is retriable in mysql dialect.
-            assertThat(e.getCause().getCause()).isInstanceOf(PessimisticLockException.class);
-            assertThat(e.getCause().getCause().getCause().getMessage()).matches(
-                    "Lock wait timeout exceeded; try restarting transaction");
+            assertExceptionCauseMessage(e, "Lock wait timeout exceeded; try restarting transaction");
         }
         finally {
             connection.close();
@@ -163,7 +158,7 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
 
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
