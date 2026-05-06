@@ -68,7 +68,7 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Create 3 records with duplicate key "1"
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config); // id=1, value=1
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // id=1, value=2 (duplicate!)
@@ -104,7 +104,7 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Create 3 records with duplicate key "1"
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // duplicate!
@@ -140,7 +140,7 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Create 3 records with duplicate key "1"
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config); // Insert id=1
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 1, config); // Update id=1 (duplicate!)
@@ -178,32 +178,45 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "false"); // No merging
         properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"); // UNNEST enabled
 
-        startSinkConnector(properties);
-        assertSinkConnectorIsRunning();
-
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Create 3 records with one duplicate key
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 2, config);
         final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 1, config); // duplicate!
 
-        // UNNEST generates ONE SQL statement with all 3 records:
-        // INSERT INTO t SELECT * FROM UNNEST(ARRAY[1,1,2], ...) ON CONFLICT (id) DO UPDATE ...
-        //
-        // PostgreSQL detects duplicate id=1 within the same statement → ERROR
-        assertThatThrownBy(() -> {
-            // Pass all records in one call to ensure they're in the same batch
-            consume(java.util.List.of(record1, record2, record3));
-            // Trigger flush - this is when the exception is thrown
-            consume(Collections.emptyList());
-        })
-                .hasCauseInstanceOf(org.apache.kafka.connect.errors.ConnectException.class)
-                .hasRootCauseMessage(
-                        "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time\n  Hint: Ensure that no rows proposed for insertion within the same command have duplicate constrained values.");
+        if (config.isSharedChangeEventSinkEnabled()) {
+            // With the shared sink framework, DeduplicatingBuffer deduplicates by key before writing.
+            // record3 (id=1) overwrites record1 (id=1), so only 2 unique records are written — no duplicate key error.
+            properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+            startSinkConnector(properties);
+            assertSinkConnectorIsRunning();
 
-        stopSinkConnector();
+            consume(java.util.List.of(record1, record2, record3));
+
+            final var tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(record1));
+            tableAssert.exists().hasNumberOfRows(2);
+
+            stopSinkConnector();
+        }
+        else {
+            // Without the shared sink framework, UNNEST generates ONE SQL statement with all 3 records:
+            // INSERT INTO t SELECT * FROM UNNEST(ARRAY[1,1,2], ...) ON CONFLICT (id) DO UPDATE ...
+            // PostgreSQL detects duplicate id=1 within the same statement → ERROR
+            startSinkConnector(properties);
+            assertSinkConnectorIsRunning();
+
+            assertThatThrownBy(() -> {
+                consume(java.util.List.of(record1, record2, record3));
+                consume(Collections.emptyList());
+            })
+                    .hasCauseInstanceOf(org.apache.kafka.connect.errors.ConnectException.class)
+                    .hasRootCauseMessage(
+                            "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time\n  Hint: Ensure that no rows proposed for insertion within the same command have duplicate constrained values.");
+
+            stopSinkConnector();
+        }
     }
 }

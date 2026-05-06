@@ -12,7 +12,7 @@ import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 
-class AbstractRecordBufferTest {
+class AbstractRecordBufferTest extends AbstractBaseJdbcSinkTest {
 
     protected DatabaseDialect dialect;
 

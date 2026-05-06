@@ -32,9 +32,9 @@ import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 public class TestInfrastructureHelper {
 
@@ -46,7 +46,6 @@ public class TestInfrastructureHelper {
         POSTGRES,
         MYSQL,
         SQLSERVER,
-        MONGODB,
         ORACLE,
         MARIADB,
         NONE,
@@ -59,16 +58,19 @@ public class TestInfrastructureHelper {
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("^[1-9]\\d*\\.\\d+");
 
-    private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
-            DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
-            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
-            .withNetworkAliases(KAFKA_HOSTNAME)
-            .withNetwork(NETWORK)
-            .withEnv("HOST_NAME", KAFKA_HOSTNAME)
-            .withEnv("CLUSTER_ID", "5Yr1SIgYQz-b-dgRabWx4g")
-            .withEnv("NODE_ID", "1")
-            .withEnv("NODE_ROLE", "combined")
-            .withEnv("KAFKA_CONTROLLER_QUORUM_BOOTSTRAP_SERVERS", KAFKA_HOSTNAME + ":9093");
+    public static StrimziKafkaCluster createKafkaCluster() {
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withContainerCustomizer(container -> {
+                    container.withNetwork(NETWORK)
+                            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)));
+                })
+                .build();
+
+        return kafkaCluster;
+    }
+
+    private static final StrimziKafkaCluster KAFKA_CONTAINER = createKafkaCluster();
 
     private static DebeziumContainer DEBEZIUM_CONTAINER = null;
 
@@ -95,14 +97,6 @@ public class TestInfrastructureHelper {
             .withPassword("mariadbpw")
             .withEnv("MARIADB_ROOT_PASSWORD", "debezium")
             .withNetworkAliases("mariadb");
-
-    private static final MongoDbReplicaSet MONGODB_REPLICA = MongoDbReplicaSet.replicaSet()
-            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
-            .name("rs0")
-            .memberCount(1)
-            .network(NETWORK)
-            .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
-            .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
@@ -135,7 +129,6 @@ public class TestInfrastructureHelper {
         final Startable dbStartable = switch (database) {
             case POSTGRES -> POSTGRES_CONTAINER;
             case MYSQL -> MYSQL_CONTAINER;
-            case MONGODB -> MONGODB_REPLICA;
             case SQLSERVER -> SQL_SERVER_CONTAINER;
             case ORACLE -> ORACLE_CONTAINER;
             case MARIADB -> MARIADB_CONTAINER;
@@ -162,7 +155,7 @@ public class TestInfrastructureHelper {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA,
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER,
                 MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
@@ -189,7 +182,7 @@ public class TestInfrastructureHelper {
                 .until(() -> !TestInfrastructureHelper.getDebeziumContainer().isRunning());
     }
 
-    public static void setupDebeziumContainer(String connectorVersion, String restExtensionClasses, String debeziumContainerImageVersion) {
+    public static void setupDebeziumContainer(String connectorVersion, String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
             waitForDebeziumContainerIsStopped();
@@ -207,13 +200,10 @@ public class TestInfrastructureHelper {
                 .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
-                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withKafka(KAFKA_CONTAINER)
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
-        if (null != restExtensionClasses && !restExtensionClasses.isEmpty()) {
-            DEBEZIUM_CONTAINER.withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses);
-        }
     }
 
     public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
@@ -226,7 +216,7 @@ public class TestInfrastructureHelper {
                 "-N", "-C");
     }
 
-    public static void defaultDebeziumContainer(String debeziumContainerImageVersion) {
+    public static DebeziumContainer defaultDebeziumContainer(String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
             waitForDebeziumContainerIsStopped();
@@ -242,10 +232,15 @@ public class TestInfrastructureHelper {
         DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse(imageName))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withNetwork(NETWORK)
-                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withKafka(KAFKA_CONTAINER)
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
+        return DEBEZIUM_CONTAINER;
+    }
+
+    public static StrimziKafkaCluster getKafkaCluster() {
+        return KAFKA_CONTAINER;
     }
 
     public static DebeziumContainer getDebeziumContainer() {

@@ -365,7 +365,6 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private DebeziumContainer getKafkaConnectContainer(StrimziKafkaCluster kafkaCluster) {
         return DebeziumContainer.nightly()
                 .withKafka(kafkaCluster)
-                .withNetwork(network)
                 .withNetworkAliases("connect")
                 .dependsOn(kafkaCluster);
     }

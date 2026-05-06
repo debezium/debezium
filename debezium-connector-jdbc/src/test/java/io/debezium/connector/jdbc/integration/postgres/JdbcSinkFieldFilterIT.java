@@ -56,7 +56,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
-        final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, new JdbcSinkConnectorConfig(properties));
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, getConfig(properties));
         consume(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
@@ -81,7 +81,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
-        final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, new JdbcSinkConnectorConfig(properties));
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, getConfig(properties));
         consume(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));

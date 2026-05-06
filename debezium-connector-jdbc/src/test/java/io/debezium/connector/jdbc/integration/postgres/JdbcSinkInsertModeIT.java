@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -64,6 +65,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     public JdbcSinkInsertModeIT(Sink sink) {
         super(sink);
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC")); // @TODO FIXME figure out why there is an issue with `timestamptz_col` fields
     }
 
     @WithPostgresExtension("postgis")
@@ -71,7 +73,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6637")
     public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
-
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -105,7 +106,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", Base64.getDecoder().decode("AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes()))
                 .put("srid", 4326);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("geometry", "point", "geography", "p"), List.of(geometrySchema, pointSchema, geographySchema, pointSchema),
                 Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }), config);
@@ -157,7 +158,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord recordA = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
@@ -220,7 +221,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
         final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
@@ -253,7 +254,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
         final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
@@ -272,7 +273,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7920")
     public void testInsertModeInsertInfinityValues(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
-
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -292,7 +292,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         Schema rangeSchema = SchemaBuilder.string().build();
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("timestamp_infinity-", "timestamp_infinity+", "range_with_infinity"),
                 List.of(zonedTimestampSchema, zonedTimestampSchema, rangeSchema),
@@ -314,7 +314,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("dbz#1658")
     public void testInsertModeInsertBatchWithNormalAndInfinityTimestamps(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
-
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -365,7 +364,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("dbz#1658")
     public void testInsertModeInsertBatchWithInfinityAndNormalTimestamps(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
-
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -413,7 +411,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     private static Schema buildGeoTypeSchema(String type) {
-
         SchemaBuilder schemaBuilder = SchemaBuilder.struct()
                 .name("io.debezium.data.geometry." + type)
                 .field("wkb", Schema.BYTES_SCHEMA)
@@ -451,7 +448,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Insert multiple records to trigger batch UNNEST
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 2, config);
@@ -491,7 +488,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Initial insert
         final JdbcKafkaSinkRecord createRecord1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord createRecord2 = factory.createRecord(topicName, (byte) 2, config);
