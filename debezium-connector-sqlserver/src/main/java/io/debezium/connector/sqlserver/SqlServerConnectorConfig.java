@@ -47,8 +47,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
-    public static final String CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME = "change.column.filter.override";
-
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
@@ -378,7 +376,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field INSTANCE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 8))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withImportance(Importance.LOW)
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
@@ -386,7 +384,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field DATABASE_NAMES = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "names")
             .withDisplayName("Databases")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(SqlServerConnectorConfig::validateDatabaseNames)
@@ -403,15 +401,27 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDisplayName("Max transactions per iteration")
             .withDefault(DEFAULT_MAX_TRANSACTIONS_PER_ITERATION)
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
+    public static final String CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME = "change.column.filter.override";
+
+    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.createInternal(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
+            .withDisplayName("CDC column filter override")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "This property can be used to override the default behavior of only including columns that have been enabled for CDC. Must only be used for snapshot migrations, otherwise columns not enabled for CDC will be missing from change events and would result in inconsistent schemas and possible failures.");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -422,7 +432,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
@@ -443,7 +453,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription(
                     "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
                             + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "
@@ -451,16 +461,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                             + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
                             + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                             + "snapshot is taken.");
-
-    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.createInternal(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
-            .withDisplayName("CDC column filter override")
-            .withDefault(false)
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isBoolean)
-            .withDescription(
-                    "This property can be used to override the default behavior of only including columns that have been enabled for CDC. Must only be used for snapshot migrations, otherwise columns not enabled for CDC will be missing from change events and would result in inconsistent schemas and possible failures.");
 
     public static final Field INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE = Field.create("incremental.snapshot.option.recompile")
             .withDisplayName("Recompile SELECT statements")

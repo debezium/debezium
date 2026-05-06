@@ -236,7 +236,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Topic prefix for the connector")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .required();
 
                 Field databaseHost = Field.create("database.hostname")
@@ -245,7 +245,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.LONG)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Database hostname to connect to")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(topicPrefix, databaseHost);
             }
@@ -268,7 +268,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("The adapter to use")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .withDependents("LogMiner", DependentFieldMatcher.exact("log.mining.buffer.type"));
 
                 Field bufferType = Field.create("log.mining.buffer.type")
@@ -277,7 +277,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.LOW)
                         .withDescription("The buffer type")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED));
 
                 // Create ConfigDefinition to resolve matchers (just like real connectors do)
                 ConfigDefinition config = ConfigDefinition.editor()
@@ -306,7 +306,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("A normal property")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 Field internalField = Field.create("internal.secret")
                         .withDisplayName("Internal Secret")
@@ -314,7 +314,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Internal property")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(normalField, internalField);
             }
@@ -342,7 +342,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.SHORT)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Snapshot mode")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
                         .withAllowedValues(snapshotModes);
 
                 Field rangeField = Field.create("max.batch.size")
@@ -351,7 +351,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.SHORT)
                         .withImportance(ConfigDef.Importance.MEDIUM)
                         .withDescription("Maximum batch size")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
                         .withValidation(Field.RangeValidator.between(1, 10000));
 
                 Field minField = Field.create("poll.interval.ms")
@@ -360,7 +360,7 @@ class DebeziumDescriptorSchemaTest {
                         .withWidth(ConfigDef.Width.SHORT)
                         .withImportance(ConfigDef.Importance.LOW)
                         .withDescription("Poll interval in milliseconds")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 1))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
                         .withValidation(Field.RangeValidator.atLeast(0));
 
                 return Field.setOf(enumField, rangeField, minField);
