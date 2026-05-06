@@ -571,6 +571,27 @@ fulfillment.inventory.products
 
 The connector applies similar naming conventions to label its internal database schema history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
 
+[NOTE]
+====
+Oracle returns all schema and table names in uppercase.
+As a result, the {prodname} Oracle connector generates Kafka topic names that contain uppercase characters, for example `fulfillment.INVENTORY.CUSTOMERS`.
+Users who are comfortable with uppercase topic names are not affected.
+However, if your environment requires lowercase topic names, for example due to naming conventions or pre-created topics, the connector fails with the following error:
+
+----
+Task failed to create new topic (name=fulfillment.INVENTORY.CUSTOMERS, numPartitions=1, replicationFactor=1).
+Ensure that the task is authorized to create topics or that the topic exists and restart the task.
+----
+
+To convert topic names to lowercase, apply the `LowerCaseTopic` Single Message Transform (SMT) from the https://github.com/jcustenborder/kafka-connect-transform-common[kafka-connect-transform-common] library:
+
+[source]
+----
+transforms=LowerCaseTopicName
+transforms.LowerCaseTopicName.type=com.github.jcustenborder.kafka.connect.transform.common.LowerCaseTopic
+----
+====
+
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
