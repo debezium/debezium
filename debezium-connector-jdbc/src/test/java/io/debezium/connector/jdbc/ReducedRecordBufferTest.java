@@ -60,13 +60,13 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
     protected JdbcSinkConnectorConfig getJdbcConnectorConfig(PrimaryKeyMode primaryKeyMode, String primaryKeyFields) {
         if (null == primaryKeyFields) {
-            return new JdbcSinkConnectorConfig(
+            return getConfig(
                     Map.of(
                             SinkConnectorConfig.BATCH_SIZE, "5",
                             SinkConnectorConfig.PRIMARY_KEY_MODE, primaryKeyMode.getValue()));
 
         }
-        return new JdbcSinkConnectorConfig(
+        return getConfig(
                 Map.of(
                         SinkConnectorConfig.BATCH_SIZE, "5",
                         SinkConnectorConfig.PRIMARY_KEY_MODE, primaryKeyMode.getValue(),

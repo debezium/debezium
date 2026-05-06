@@ -75,6 +75,11 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     private JdbcChangeEventSink changeEventSink;
     private final Set<TopicPartition> assignedPartitions = new HashSet<>();
+
+    public JdbcChangeEventSink getChangeEventSink() {
+        return changeEventSink;
+    }
+
     private final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
     private Throwable previousPutException;
 
@@ -232,6 +237,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 .collect(Collectors.toMap(
                         partition -> partition,
                         partition -> offsets.getOrDefault(partition, currentOffsets.get(partition))));
+
+        if (changeEventSink != null) {
+            changeEventSink.flush();
+        }
 
         // Flush offsets
         LOGGER.debug("Flushing offsets: {}", flushedOffsets);

@@ -10,10 +10,10 @@ import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
+import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
 import io.debezium.junit.RequiresAssemblyProfile;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
@@ -33,13 +33,11 @@ public class SinkConnectorReplicaSetIT extends AbstractMongoConnectorIT implemen
     @BeforeAll
     static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
+        SinkConnectorIT.sendSourceData();
+        TestInfrastructureHelper.setupDebeziumContainer(io.debezium.connector.mongodb.Module.version(), TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
+        TestInfrastructureHelper.startContainers(TestInfrastructureHelper.DATABASE.DEBEZIUM_ONLY);
         mongo = new NetworkIsolatedMongoDbDatabaseProvider(TestInfrastructureHelper.getNetwork()).dockerReplicaSet();
         mongo.start();
-    }
-
-    @BeforeEach
-    public void beforeEach() {
-        sendSourceData();
     }
 
     @AfterEach

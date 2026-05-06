@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.AbstractShardedMongoConnectorIT;
+import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
 import io.debezium.junit.RequiresAssemblyProfile;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
@@ -34,14 +35,15 @@ public class SinkConnectorShardedClusterIT extends AbstractShardedMongoConnector
     @BeforeAll
     static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
+        SinkConnectorIT.sendSourceData();
+        TestInfrastructureHelper.setupDebeziumContainer(io.debezium.connector.mongodb.Module.version(), TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
+        TestInfrastructureHelper.startContainers(TestInfrastructureHelper.DATABASE.DEBEZIUM_ONLY);
         mongo = new NetworkIsolatedMongoDbDatabaseProvider(TestInfrastructureHelper.getNetwork()).mongoDbShardedCluster();
         mongo.start();
     }
 
     @BeforeEach
     public void beforeEach() {
-        sendSourceData();
-
         var database = shardedDatabase();
         var shardedCluster = (MongoDbShardedCluster) mongo;
         shardedCluster.enableSharding(database);
