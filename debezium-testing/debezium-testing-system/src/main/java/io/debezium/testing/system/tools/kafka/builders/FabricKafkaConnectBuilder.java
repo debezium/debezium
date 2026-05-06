@@ -122,6 +122,14 @@ public class FabricKafkaConnectBuilder extends
         return self();
     }
 
+    public FabricKafkaConnectBuilder withVersion(String version) {
+        builder
+                .editSpec()
+                .withVersion(version)
+                .endSpec();
+        return self();
+    }
+
     public FabricKafkaConnectBuilder withConnectorResources(Boolean enabled) {
         return enabled ? withConnectorResources() : self();
     }
