@@ -3454,9 +3454,9 @@ However, in more complex Oracle deployments, or in deployments that use Transpar
 
 [NOTE]
 ====
-In enterprise Oracle environments, the Oracle listener service name often differs from the database name specified in `database.dbname`.
-When using `database.hostname` and `database.port`, {prodname} constructs the JDBC URL using `database.dbname` as the service name.
-If the listener is not registered with that name, the connector fails with the following error:
+In some Oracle environments, the Oracle listener service name may differ from the database name specified in xref:oracle-property-database-dbname[`database.dbname`].
+When using xref:oracle-property-database-hostname[`database.hostname`] and xref:oracle-property-database-port[`database.port`], the {prodname} Oracle connector constructs the JDBC URL using the provided xref:oracle-property-database-dbname[`database.dbname`] as the service name.
+If the Oracle TNS listener is not registered with that name, the connector fails with the following error:
 
 ----
 org.apache.kafka.connect.errors.RetriableException: Failed to resolve Oracle database version
@@ -3464,7 +3464,8 @@ Caused by: java.sql.SQLRecoverableException: ORA-12514: Cannot connect to databa
 Service <database.dbname> is not registered with the listener at host <hostname> port <port>.
 ----
 
-In such cases, use `database.url` to specify the full JDBC connection string with the correct service name, as shown in the following example.
+This exception can be avoided by specifying the xref:oracle-property-database-url[`database.url`] configuration property with a full JDBC connection string that includes the service name.
+An example of a connection string is shown below.
 ====
 
 The following JSON example shows the same configuration as in the preceding example, except that it uses a JDBC URL to connect to the database.
