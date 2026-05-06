@@ -91,7 +91,7 @@ class DebeziumDescriptorSchemaCreatorTest {
         assertThat(prop.display().label()).isEqualTo("Test Property");
         assertThat(prop.display().description()).isEqualTo("A test property");
         assertThat(prop.display().group()).isEqualTo("Connection");
-        assertThat(prop.display().groupOrder()).isEqualTo(5);
+        assertThat(prop.display().groupOrder()).isEqualTo(0);
         assertThat(prop.display().width()).isEqualTo("medium");
         assertThat(prop.display().importance()).isEqualTo("high");
     }
@@ -356,7 +356,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Some description")
                         .withDefault(42)
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field);
             }
@@ -389,7 +389,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Value used by connector. Default value is foo.")
                         .withDefault("bar")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field);
             }
@@ -421,7 +421,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withType(ConfigDef.Type.STRING)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Plain description")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field);
             }
@@ -469,7 +469,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("First field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 Field field2 = Field.create("field.two")
                         .withDisplayName("Field Two")
@@ -477,7 +477,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.SHORT)
                         .withImportance(ConfigDef.Importance.MEDIUM)
                         .withDescription("Second field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field1, field2);
             }
@@ -499,43 +499,43 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withType(ConfigDef.Type.BOOLEAN)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Boolean field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("int.property")
                                 .withDisplayName("Int")
                                 .withType(ConfigDef.Type.INT)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Int field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("short.property")
                                 .withDisplayName("Short")
                                 .withType(ConfigDef.Type.SHORT)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Short field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("long.property")
                                 .withDisplayName("Long")
                                 .withType(ConfigDef.Type.LONG)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Long field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("double.property")
                                 .withDisplayName("Double")
                                 .withType(ConfigDef.Type.DOUBLE)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Double field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("list.property")
                                 .withDisplayName("List")
                                 .withType(ConfigDef.Type.LIST)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("List field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("string.property")
                                 .withDisplayName("String")
                                 .withType(ConfigDef.Type.STRING)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("String field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)));
             }
         };
     }
@@ -555,7 +555,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("A test property")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field);
             }
@@ -578,28 +578,28 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.SHORT)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Short width field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("medium.width")
                                 .withDisplayName("Medium Width")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Medium width field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("long.width")
                                 .withDisplayName("Long Width")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.LONG)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Long width field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("none.width")
                                 .withDisplayName("None Width")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.NONE)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("None width field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)));
             }
         };
     }
@@ -620,21 +620,21 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("High importance field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("medium.importance")
                                 .withDisplayName("Medium Importance")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.MEDIUM)
                                 .withDescription("Medium importance field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("low.importance")
                                 .withDisplayName("Low Importance")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.LOW)
                                 .withDescription("Low importance field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)));
             }
         };
     }
@@ -655,7 +655,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Required field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                                 .required(),
                         Field.create("optional.field")
                                 .withDisplayName("Optional Field")
@@ -663,7 +663,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.MEDIUM)
                                 .withDescription("Optional field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)));
             }
         };
     }
@@ -688,7 +688,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Enum field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .withAllowedValues(allowedValues);
 
                 return Field.setOf(field);
@@ -711,7 +711,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Range field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .withValidation(Field.RangeValidator.between(1, 100));
 
                 return Field.setOf(field);
@@ -734,7 +734,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Min field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .withValidation(Field.RangeValidator.atLeast(0));
 
                 return Field.setOf(field);
@@ -757,7 +757,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Adapter field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
                         .withDependents("value1", DependentFieldMatcher.exact("dependent.field"));
 
                 Field dependentField = Field.create("dependent.field")
@@ -766,7 +766,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.LOW)
                         .withDescription("Dependent field")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 ConfigDefinition config = ConfigDefinition.editor()
                         .name("Test")
@@ -794,14 +794,14 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Normal field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("internal.field")
                                 .withDisplayName("Internal Field")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Internal field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)));
             }
         };
     }
@@ -822,21 +822,21 @@ class DebeziumDescriptorSchemaCreatorTest {
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Connection field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTION)),
                         Field.create("filters.field")
                                 .withDisplayName("Filters Field")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Filters field")
-                                .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0)),
+                                .withGroup(Field.createGroupEntry(Field.Group.FILTERS)),
                         Field.create("connector.field")
                                 .withDisplayName("Connector Field")
                                 .withType(ConfigDef.Type.STRING)
                                 .withWidth(ConfigDef.Width.MEDIUM)
                                 .withImportance(ConfigDef.Importance.HIGH)
                                 .withDescription("Connector field")
-                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0)));
+                                .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR)));
             }
         };
     }
@@ -877,7 +877,7 @@ class DebeziumDescriptorSchemaCreatorTest {
                         .withWidth(ConfigDef.Width.MEDIUM)
                         .withImportance(ConfigDef.Importance.HIGH)
                         .withDescription("Field without validations")
-                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION));
 
                 return Field.setOf(field);
             }
