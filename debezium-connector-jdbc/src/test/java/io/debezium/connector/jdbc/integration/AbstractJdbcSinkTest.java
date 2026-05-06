@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,12 +27,12 @@ import io.agroal.api.AgroalDataSource;
 import io.agroal.api.configuration.supplier.AgroalDataSourceConfigurationSupplier;
 import io.agroal.api.security.NamePrincipal;
 import io.agroal.api.security.SimplePassword;
+import io.debezium.connector.jdbc.AbstractBaseJdbcSinkTest;
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 
@@ -42,12 +41,11 @@ import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractJdbcSinkTest {
+public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJdbcSinkTest.class);
 
     private final Sink sink;
-    private final RandomTableNameGenerator randomTableNameGenerator = new RandomTableNameGenerator();
     private final CollectionNamingStrategy collectionNamingStrategy = new DefaultCollectionNamingStrategy();
 
     private JdbcSinkConnector sinkConnector;
@@ -73,7 +71,7 @@ public abstract class AbstractJdbcSinkTest {
      * that was started by the TestContainers framework.
      */
     protected Map<String, String> getDefaultSinkConfig() {
-        final Map<String, String> config = new LinkedHashMap<>();
+        final Map<String, String> config = baseSinkConfig();
         // Explicitly use the Jdbc URL from the sink as some databases may need to manipulate this
         // due to how instance vs databases are handled within the container, i.e. SQL Server.
         config.put(JdbcSinkConnectorConfig.CONNECTION_URL, sink.getJdbcUrl());
@@ -82,7 +80,7 @@ public abstract class AbstractJdbcSinkTest {
         return config;
     }
 
-    protected Map<String, String> getConfig(Map<String, String> properties) {
+    protected Map<String, String> mergeWithDefaultConfig(Map<String, String> properties) {
         final Map<String, String> config = getDefaultSinkConfig();
         config.putAll(properties);
         return config;
@@ -190,26 +188,13 @@ public abstract class AbstractJdbcSinkTest {
     protected void consume(List<JdbcKafkaSinkRecord> records) {
         List<SinkRecord> kafkaRecords = records.stream().map(JdbcKafkaSinkRecord::getOriginalKafkaRecord).toList();
         sinkTask.put(kafkaRecords);
-    }
-
-    /**
-     * Returns a random table name that can be used by the test.
-     */
-    protected String randomTableName() {
-        return randomTableNameGenerator.randomName();
+        sinkTask.preCommit(Map.of());
     }
 
     protected String destinationTableName(JdbcKafkaSinkRecord record) {
         // todo: pass the configuration in from the test
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getDefaultSinkConfig());
+        final JdbcSinkConnectorConfig config = getConfig(getDefaultSinkConfig());
         return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(record, config.getCollectionNameFormat()));
-    }
-
-    /**
-     * Returns a constructed topic name based on the prefix, schema, and table names.
-     */
-    protected String topicName(String prefix, String schemaName, String tableName) {
-        return prefix + "." + schemaName + "." + tableName;
     }
 
     protected void assertSinkConnectorIsRunning() {

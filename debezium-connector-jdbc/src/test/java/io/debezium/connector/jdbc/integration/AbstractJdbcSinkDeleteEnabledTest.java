@@ -48,7 +48,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
         consume(factory.deleteRecord(topicName, config));
@@ -75,7 +75,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
         consume(factory.deleteRecord(topicName, config));
@@ -102,7 +102,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName, config);
         consume(createRecord);
         consume(factory.deleteRecordMultipleKeyColumns(topicName, config));
@@ -128,7 +128,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecord(topicName, new JdbcSinkConnectorConfig(properties));
+        final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecord(topicName, getConfig(properties));
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(deleteRecord));
@@ -153,7 +153,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecordMultipleKeyColumns(topicName, new JdbcSinkConnectorConfig(properties));
+        final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecordMultipleKeyColumns(topicName, getConfig(properties));
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(deleteRecord));
@@ -178,7 +178,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -221,7 +221,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
         consume(factory.truncateRecord(topicName, config));
@@ -248,7 +248,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
         consume(factory.truncateRecord(topicName, config));
@@ -280,7 +280,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         JdbcKafkaSinkRecord firstRecord = factory.createRecord(topicName, (byte) 1, config);
         JdbcKafkaSinkRecord truncateRecord = factory.truncateRecord(topicName, config);
         JdbcKafkaSinkRecord secondRecord = factory.createRecord(topicName, (byte) 2, config);
@@ -314,7 +314,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord deleteRecord = factory.deleteRecord(topicName, config);
         List<JdbcKafkaSinkRecord> records = new ArrayList<>();
 

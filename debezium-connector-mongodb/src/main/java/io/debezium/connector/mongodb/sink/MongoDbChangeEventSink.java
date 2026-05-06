@@ -36,10 +36,12 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.sink.AbstractChangeEventSink;
 import io.debezium.sink.DebeziumSinkRecord;
+import io.debezium.sink.batch.Batch;
 import io.debezium.sink.spi.ChangeEventSink;
 
-final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
+final class MongoDbChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
@@ -50,6 +52,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
                            final ErrorReporter errorReporter, ConnectorContext connectorContext) {
+        super(sinkConfig);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
@@ -63,6 +66,11 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
             // just using try-with-resources to ensure they all get closed, even in the case of
             // exceptions
         }
+    }
+
+    @Override
+    protected void writeBatch(Batch batch) {
+        throw new UnsupportedOperationException("MongoDbChangeEventSink does not yet support the shared batch pipeline");
     }
 
     public CollectionId getCollectionId(String collectionName) {

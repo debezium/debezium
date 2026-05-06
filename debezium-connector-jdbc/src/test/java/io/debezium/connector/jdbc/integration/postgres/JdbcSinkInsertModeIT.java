@@ -104,7 +104,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", Base64.getDecoder().decode("AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes()))
                 .put("srid", 4326);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("geometry", "point", "geography", "p"), List.of(geometrySchema, pointSchema, geographySchema, pointSchema),
                 Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }), config);
@@ -156,7 +156,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord recordA = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
@@ -219,7 +219,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
         final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
@@ -252,7 +252,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
         final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
@@ -291,7 +291,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         Schema rangeSchema = SchemaBuilder.string().build();
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("timestamp_infinity-", "timestamp_infinity+", "range_with_infinity"),
                 List.of(zonedTimestampSchema, zonedTimestampSchema, rangeSchema),
@@ -348,7 +348,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Insert multiple records to trigger batch UNNEST
         final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 2, config);
@@ -388,7 +388,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        var config = new JdbcSinkConnectorConfig(properties);
+        var config = getConfig(properties);
         // Initial insert
         final JdbcKafkaSinkRecord createRecord1 = factory.createRecord(topicName, (byte) 1, config);
         final JdbcKafkaSinkRecord createRecord2 = factory.createRecord(topicName, (byte) 2, config);

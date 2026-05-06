@@ -415,6 +415,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final PrimaryKeyMode primaryKeyMode;
     private final Set<String> primaryKeyFields;
     private final FieldNameFilter fieldsFilter;
+    private final boolean isSharedChangeEventSinkEnabled;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -441,6 +442,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         String fieldIncludeList = config.getString(SinkConnectorConfig.FIELD_INCLUDE_LIST_FIELD);
         String fieldExcludeList = config.getString(SinkConnectorConfig.FIELD_EXCLUDE_LIST_FIELD);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
+        this.isSharedChangeEventSinkEnabled = config.getBoolean(ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD);
     }
 
     public void validate() {
@@ -492,12 +494,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
-        return primaryKeyMode;
+        return this.primaryKeyMode;
     }
 
     @Override
     public Set<String> getPrimaryKeyFields() {
-        return primaryKeyFields;
+        return this.primaryKeyFields;
     }
 
     public SchemaEvolutionMode getSchemaEvolutionMode() {
@@ -528,7 +530,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     @Override
     public FieldNameFilter fieldFilter() {
-        return fieldsFilter;
+        return this.fieldsFilter;
     }
 
     public ColumnNamingStrategy getColumnNamingStrategy() {
@@ -630,6 +632,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         final ColumnNamingStrategy namingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         namingStrategy.configure(properties);
         return namingStrategy;
+    }
+
+    public boolean isSharedChangeEventSinkEnabled() {
+        return isSharedChangeEventSinkEnabled;
     }
 
     private static int validateInsertMode(Configuration config, Field field, ValidationOutput problems) {
