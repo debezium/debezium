@@ -948,6 +948,37 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return stopMessageFound.get();
     }
 
+    @Test
+    @FixFor("dbz#1533")
+    public void shouldNotGetStuckOnInvalidAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+        startConnector();
+
+        // Send a snapshot signal with a malformed additional condition.
+        // MongoDB's Document.parse() will throw a JsonParseException inside readChunk()
+        // when it tries to use the condition for the max-key query.
+        // The connector should NOT get stuck and should remain responsive.
+        insertDocuments("dbA", "signals",
+                Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {"
+                        + "\"type\": \"INCREMENTAL\","
+                        + "\"data-collections\": [\"" + fullDataCollectionName() + "\"],"
+                        + "\"additional-conditions\": [{\"data-collection\": \"" + fullDataCollectionName() + "\", \"filter\": \"(THIS IS NOT VALID BSON)\"}]}}"));
+
+        // Wait to ensure the signal is processed
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        // Send a VALID snapshot signal to prove the connector is still functional
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
     @Override
     protected int getMaximumEnqueuedRecordCount() {
         return ROW_COUNT * 3;

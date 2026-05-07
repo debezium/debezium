@@ -341,7 +341,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             emitWindowClose(partition, offsetContext);
         }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+            warnAndSkip(partition, offsetContext,
+                    "Error while executing incremental snapshot for collection '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
         }
         finally {
             postReadChunk(context);
@@ -349,6 +352,18 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 postIncrementalSnapshotCompleted();
             }
         }
+    }
+
+    private void warnAndSkip(MongoDbPartition partition, OffsetContext offsetContext, String formattedReason, Throwable t) {
+        if (t != null) {
+            LOGGER.warn(formattedReason, t);
+        }
+        else {
+            LOGGER.warn(formattedReason);
+        }
+        notificationService.incrementalSnapshotNotificationService()
+                .notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, UNKNOWN_SCHEMA);
+        nextDataCollection(partition, offsetContext);
     }
 
     private void nextDataCollection(MongoDbPartition partition, OffsetContext offsetContext) {
