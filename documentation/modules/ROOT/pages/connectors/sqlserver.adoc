@@ -3152,6 +3152,28 @@ This allows the connector to receive changes from the low-traffic database and a
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
+|[[sqlserver-property-statistics-metrics-enabled]]<<sqlserver-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects statistical metrics for streaming metrics, such as averages and quantiles.
+ +
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+ +
+When set to `false`, the connector does not collect these statistics, and the corresponding JMX metrics return `null` values.
+Disabling statistics collection reduces memory overhead slightly.
+ +
+For more information, see xref:sqlserver-streaming-metrics[Streaming metrics].
+
 |[[sqlserver-property-streaming-delay-ms]]<<sqlserver-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
