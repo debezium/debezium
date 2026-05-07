@@ -73,7 +73,7 @@ You are working on Debezium, a Change Data Capture platform. Use the Maven versi
 - Format code: `./mvnw process-sources`
 - Validate formatting: `./mvn clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check`
 - run single unit test: `./mvn test install -Dtest=<class or method reference of a unit test>`
-- run single unit integration test: `./mvn test install --Dit.test=<class or method reference of an integration test>`
+- run single unit integration test: `./mvn verify install --Dit.test=<class or method reference of an integration test>`
 
 **Core modules:**
 - debezium-bom, debezium-connector-common, debezium-util, debezium-config, debezium-api, debezium-common, debezium-connect-plugins
