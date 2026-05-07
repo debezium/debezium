@@ -2510,6 +2510,10 @@ Specify one of the following values:
 |`65536`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
+|[[informix-property-cdc-max-records]]<<informix-property-cdc-max-records, `+cdc.max.records+`>>
+|`64`
+|Positive integer value that specifies the maximum number of CDC records that the Informix Change Stream Client processes.
+
 |[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
 |`true`
 |Boolean value that specifies whether Informix should stop Full Row Logging of watched tables when streaming is closed.
