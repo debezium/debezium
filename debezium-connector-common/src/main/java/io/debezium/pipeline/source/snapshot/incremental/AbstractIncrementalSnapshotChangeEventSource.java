@@ -346,19 +346,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.trace("Window close emitted");
         }
         catch (SQLException e) {
-            warnAndSkip((TableId) context.currentDataCollectionId().getId(), partition, offsetContext,
+            warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
-                    "SQL error while executing incremental snapshot for table '{}', skipping and continuing streaming");
+                    "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
         }
         catch (Exception e) {
-            if (e.getCause() instanceof SQLException) {
-                warnAndSkip((TableId) context.currentDataCollectionId().getId(), partition, offsetContext,
-                        SQL_EXCEPTION,
-                        "SQL error while executing incremental snapshot for table '{}', skipping and continuing streaming");
-            }
-            else {
-                throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
-            }
+            warnAndSkip(partition, offsetContext,
+                    SQL_EXCEPTION,
+                    "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
+                    e);
         }
         finally {
             postReadChunk(context);
@@ -378,26 +376,33 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 retrieveAndRefreshSchema(currentTableId, partition, offsetContext);
                 currentTable = databaseSchema.tableFor(currentTableId);
                 if (currentTable == null) {
-                    warnAndSkip(currentTableId, partition, offsetContext, UNKNOWN_SCHEMA, "Schema retrieval failed to populate the schema as expected for {}");
+                    warnAndSkip(partition, offsetContext, UNKNOWN_SCHEMA,
+                            "Schema retrieval failed to populate the schema as expected for %s".formatted(currentTableId), null);
                     return true;
                 }
             }
             catch (Exception e) {
-                LOGGER.warn("Failed to retrieve schema for {}", currentTableId, e);
-                warnAndSkip(currentTableId, partition, offsetContext, UNKNOWN_SCHEMA, "Schema retrieval failed due to an exception for {}");
+                warnAndSkip(partition, offsetContext, UNKNOWN_SCHEMA,
+                        "Schema retrieval failed due to an exception for %s".formatted(currentTableId), e);
                 return true;
             }
         }
         currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
         if (chunkQueryBuilder.getQueryColumns(context, currentTable).isEmpty()) {
-            warnAndSkip(currentTableId, partition, offsetContext, NO_PRIMARY_KEY, "Incremental snapshot for table '{}' skipped because the table has no primary keys");
+            warnAndSkip(partition, offsetContext, NO_PRIMARY_KEY,
+                    "Incremental snapshot for table '%s' skipped because the table has no primary keys".formatted(currentTableId), null);
             return true;
         }
         return false;
     }
 
-    private void warnAndSkip(TableId currentTableId, P partition, OffsetContext offsetContext, TableScanCompletionStatus status, String reason) {
-        LOGGER.warn(reason, currentTableId);
+    private void warnAndSkip(P partition, OffsetContext offsetContext, TableScanCompletionStatus status, String formattedReason, Throwable t) {
+        if (t != null) {
+            LOGGER.warn(formattedReason, t);
+        }
+        else {
+            LOGGER.warn(formattedReason);
+        }
         notificationService.incrementalSnapshotNotificationService()
                 .notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, status);
         nextDataCollection(partition, offsetContext);
