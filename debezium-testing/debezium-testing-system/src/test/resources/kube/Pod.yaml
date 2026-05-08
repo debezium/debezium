@@ -26,7 +26,6 @@ spec:
             -DskipTests=true 
             -Dtest.strimzi.version.kafka=3.5.0 
             -Dtest.wait.scale=1 
-            -Dtest.strimzi.kc.build=true 
             -Dtest.ocp.project.debezium=debezium-test 
             -Dimage.as=AS_IMAGE 
             -Dtest.strimzi.operator.channel=stable 

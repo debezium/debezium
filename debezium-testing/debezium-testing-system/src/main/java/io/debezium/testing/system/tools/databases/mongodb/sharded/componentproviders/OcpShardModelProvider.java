@@ -34,9 +34,9 @@ import io.fabric8.kubernetes.api.model.apps.DeploymentStrategyBuilder;
 
 public class OcpShardModelProvider {
 
-    public static Deployment shardDeployment(int shardNum, int replicaNum) {
+    public static Deployment shardDeployment(int shardNum, int replicaNum, String project) {
         String name = getShardNodeName(shardNum, replicaNum);
-        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum, project);
         DeploymentBuilder builder = new DeploymentBuilder()
                 .withKind("Deployment")
                 .withApiVersion("apps/v1")
@@ -99,8 +99,8 @@ public class OcpShardModelProvider {
         return builder.build();
     }
 
-    public static Service shardService(int shardNum, int replicaNum) {
-        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
+    public static Service shardService(int shardNum, int replicaNum, String project) {
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum, project);
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
@@ -124,10 +124,11 @@ public class OcpShardModelProvider {
         return OcpMongoShardedConstants.MONGO_SHARD_DEPLOYMENT_PREFIX + shardNum + "rs";
     }
 
-    private static ObjectMeta getMetaData(int shardNum, int replicaNum) {
+    private static ObjectMeta getMetaData(int shardNum, int replicaNum, String project) {
         String name = getShardNodeName(shardNum, replicaNum);
         return new ObjectMetaBuilder()
                 .withName(name)
+                .withNamespace(project)
                 .withLabels(Map.of("app", "mongo",
                         "deployment", name,
                         "shard", String.valueOf(shardNum),
