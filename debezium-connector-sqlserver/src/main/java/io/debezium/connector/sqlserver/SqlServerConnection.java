@@ -74,7 +74,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String FUNCTION_NAME_PLACEHOLDER = "#function";
     private static final String GET_ALL_CHANGES_FUNCTION_PREFIX = "fn_cdc_get_all_changes_";
     private static final String GET_MAX_LSN = "SELECT #db.sys.fn_cdc_get_max_lsn()";
-    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE tran_id <> 0x00";
+    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00";
     private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
     private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
 
