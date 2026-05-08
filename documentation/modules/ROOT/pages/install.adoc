@@ -66,7 +66,7 @@ endif::[]
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect, with the different {prodname} connectors already pre-installed and ready to go.
-Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
+Our xref:kc-tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
 
 [IMPORTANT]
 ====

@@ -61,7 +61,7 @@ asciidoc:
     link-transformations: 'transformations/index.adoc'
     link-topic-auto-creation: 'configuration/topic-auto-create-config.adoc'
     link-topic-routing: 'transformations/topic-routing.adoc'
-    link-tutorial: 'tutorial.adoc'
+    link-tutorial: 'kc-tutorial.adoc'
     link-vitess-connector: 'connectors/vitess.adoc'
     link-informix-connector: 'connectors/informix.adoc'
     link-spanner-connector: 'connectors/spanner.adoc'

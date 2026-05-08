@@ -1,0 +1,18 @@
+= Tutorials
+
+{prodname} can be deployed in different ways depending on your infrastructure and use case.
+These tutorials help you take your first steps with {prodname} by guiding you through end-to-end setups, from starting the required services to observing change events as data is modified in a source database.
+
+Each tutorial is self-contained and uses Docker to run all necessary components, so you can follow along without installing anything beyond Docker on your machine.
+
+== Available tutorials
+
+[cols="30%a,70%a",options="header"]
+|===
+|Tutorial
+|Description
+
+|xref:kc-tutorial.adoc[Kafka Connect]
+|Deploy {prodname} connectors on Apache Kafka Connect to monitor a MySQL database and stream change events into Kafka topics.
+
+|===

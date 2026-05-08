@@ -1256,7 +1256,7 @@ To mitigate risk in production deployments, deploy only containers that are acti
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
-The {prodname} xref:tutorial.adoc[tutorial] walks you through using these images, and this is a great way to learn about {prodname}.
+The {prodname} xref:kc-tutorial.adoc[tutorial] walks you through using these images, and this is a great way to learn about {prodname}.
 endif::community[]
 
 ifdef::product[]
