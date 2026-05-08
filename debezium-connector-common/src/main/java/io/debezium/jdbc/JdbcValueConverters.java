@@ -105,6 +105,27 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final BigIntUnsignedMode bigIntUnsignedMode;
     protected final BinaryHandlingMode binaryMode;
 
+    // Zero-date sentinel fallbacks bundled into a single immutable {@link ZeroDateFallback}
+    // object. Pre-computed derived representations (epoch days/millis/micros/nanos, ISO
+    // strings, util.Date) are kept here to avoid repeated conversions on every row.
+    // The runtime fallback for {@code TIMESTAMP_WITH_TIMEZONE} flows through
+    // {@link #fallbackTimestampWithTimeZone}, which is recomputed in the constructor using
+    // {@link ZeroDateFallback#forTimestamp()}.
+
+    protected final ZeroDateFallback zeroDateFallback;
+
+    // Derived fallbacks (DATE)
+    protected final int zeroEpochDaysForDate;
+    protected final java.util.Date zeroDateAsUtilDateForDate;
+    protected final String zeroDateIsoStringForDate; // "<date>Z"
+
+    // Derived fallbacks (DATETIME)
+    protected final long zeroEpochMillisForDatetime;
+    protected final long zeroEpochMicrosForDatetime;
+    protected final long zeroEpochNanosForDatetime;
+    protected final java.util.Date zeroDateAsUtilDateForDatetime;
+    protected final String zeroTimestampIsoStringForDatetime; // "<date>T00:00:00Z"
+
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones, and uses adapts time and timestamp values based upon the precision of the database
@@ -117,7 +138,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     /**
      * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
      * information to values that require timezones. This default offset should not be needed when values are highly-correlated
-     * with the expected SQL/JDBC types.
+     * with the expected SQL/JDBC types. Zero-date sentinels default to {@link LocalDate#EPOCH} for backward compatibility.
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link DecimalMode#PRECISE} is to be used
@@ -132,22 +153,63 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode, ZeroDateFallback.defaultEpoch());
+    }
+
+    /**
+     * Extended constructor that accepts per-type zero-date sentinel values bundled in a
+     * {@link ZeroDateFallback}. When a non-nullable temporal column receives a zero date
+     * (typically MySQL/MariaDB {@code 0000-00-00}), the derived epoch representations of the
+     * configured sentinels are emitted instead of the previously hard-coded {@code 1970-01-01}
+     * fallback. Pass {@link ZeroDateFallback#defaultEpoch()} to preserve the historic behavior.
+     */
+    public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode,
+                               ZeroDateFallback zeroDateFallback) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.temporalPrecisionMode = temporalPrecisionMode;
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
         this.binaryMode = binaryMode != null ? binaryMode : BinaryHandlingMode.BYTES;
+        this.zeroDateFallback = zeroDateFallback != null ? zeroDateFallback : ZeroDateFallback.defaultEpoch();
+
+        final LocalDate zeroForDate = this.zeroDateFallback.forDate();
+        final LocalDate zeroForDatetime = this.zeroDateFallback.forDatetime();
+        final LocalDate zeroForTimestamp = this.zeroDateFallback.forTimestamp();
 
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
-                OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
-                defaultOffset,
+                OffsetDateTime.of(zeroForTimestamp, LocalTime.MIDNIGHT, this.defaultOffset),
+                this.defaultOffset,
                 adjuster,
                 null);
         this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
-                OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
-                defaultOffset,
+                OffsetTime.of(LocalTime.MIDNIGHT, this.defaultOffset),
+                this.defaultOffset,
                 adjuster);
+
+        // DATE-derived
+        this.zeroEpochDaysForDate = (int) zeroForDate.toEpochDay();
+        final long zeroDateMillis = zeroForDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        this.zeroDateAsUtilDateForDate = new java.util.Date(zeroDateMillis);
+        this.zeroDateIsoStringForDate = zeroForDate + "Z";
+
+        // DATETIME-derived
+        final long datetimeEpochSeconds = zeroForDatetime.atStartOfDay(ZoneOffset.UTC).toEpochSecond();
+        this.zeroEpochMillisForDatetime = TimeUnit.SECONDS.toMillis(datetimeEpochSeconds);
+        this.zeroEpochMicrosForDatetime = TimeUnit.SECONDS.toMicros(datetimeEpochSeconds);
+        this.zeroEpochNanosForDatetime = TimeUnit.SECONDS.toNanos(datetimeEpochSeconds);
+        this.zeroDateAsUtilDateForDatetime = new java.util.Date(this.zeroEpochMillisForDatetime);
+        this.zeroTimestampIsoStringForDatetime = zeroForDatetime + "T00:00:00Z";
+    }
+
+    /**
+     * Returns the configured zero-date sentinel for the given JDBC column type. Delegates to
+     * {@link ZeroDateFallback#forJdbcType(int)} on the {@link ZeroDateFallback} bound at
+     * construction time.
+     */
+    public LocalDate getZeroDateFallback(int jdbcType) {
+        return zeroDateFallback.forJdbcType(jdbcType);
     }
 
     @Override
@@ -464,8 +526,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroEpochMillisForDatetime, (r) -> {
             try {
                 r.deliver(Timestamp.toEpochMillis(data, adjuster));
             }
@@ -489,8 +551,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroEpochMicrosForDatetime, (r) -> {
             try {
                 r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
             }
@@ -514,8 +576,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroEpochNanosForDatetime, (r) -> {
             try {
                 r.deliver(NanoTimestamp.toEpochNanos(data, adjuster));
             }
@@ -539,8 +601,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroDateAsUtilDateForDatetime, (r) -> {
             try {
                 r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
             }
@@ -668,8 +730,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0, (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroEpochDaysForDate, (r) -> {
             try {
                 r.deliver(Date.toEpochDay(data, adjuster));
             }
@@ -695,7 +757,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the conversion fails and the column does not allow nulls
      */
     protected Object convertDateToUtcIsoString(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, "1970-01-01Z", (r) -> {
+        return convertValue(column, fieldDefn, data, zeroDateIsoStringForDate, (r) -> {
             try {
                 r.deliver(IsoDate.toIsoString(data, adjuster));
             }
@@ -743,7 +805,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted UTC ISO 8601 string representation of the timestamp, or "1970-01-01T00:00:00Z" if necessary
      */
     protected Object convertTimestampToUtcIsoString(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, "1970-01-01T00:00:00Z", (r) -> {
+        return convertValue(column, fieldDefn, data, zeroTimestampIsoStringForDatetime, (r) -> {
             try {
                 r.deliver(IsoTimestamp.toIsoString(data, adjuster));
             }
@@ -770,8 +832,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+        // zero-date sentinel (epoch by default) is the fallback value
+        return convertValue(column, fieldDefn, data, zeroDateAsUtilDateForDate, (r) -> {
             try {
                 int epochDay = Date.toEpochDay(data, adjuster);
                 long epochMillis = TimeUnit.DAYS.toMillis(epochDay);

@@ -52,6 +52,7 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.jdbc.ZeroDateFallback;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
@@ -102,8 +103,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     private final BinlogCharsetRegistry charsetRegistry;
 
     /**
-     * Create a new instance of the value converters that always uses UTC for the default time zone when
-     * converting values without timezone information to values that require timezones.
+     * Create a new instance of the value converters that always uses UTC for the default time zone
+     * when converting values without timezone information to values that require timezones. The
+     * provided {@link ZeroDateFallback} bundles per-type sentinel values used when a non-nullable
+     * DATE/DATETIME/TIMESTAMP column receives a MySQL zero date ({@code 0000-00-00}); pass
+     * {@link ZeroDateFallback#defaultEpoch()} to preserve the historic 1970-01-01 behavior.
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values are treated; can be null if {@link DecimalMode#PRECISE} is used
      * @param temporalPrecisionMode temporal precision mode
@@ -112,6 +116,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
      * @param serviceRegistry the service registry instance, should not be {@code null}
+     * @param zeroDateFallback per-type zero-date sentinel values; pass {@link ZeroDateFallback#defaultEpoch()} for historic behavior
      */
     public BinlogValueConverters(DecimalMode decimalMode,
                                  TemporalPrecisionMode temporalPrecisionMode,
@@ -119,8 +124,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                                  BinaryHandlingMode binaryHandlingMode,
                                  TemporalAdjuster adjuster,
                                  EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                 ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode);
+                                 ServiceRegistry serviceRegistry,
+                                 ZeroDateFallback zeroDateFallback) {
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode, zeroDateFallback);
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
         this.charsetRegistry = serviceRegistry.getService(BinlogCharsetRegistry.class);
     }

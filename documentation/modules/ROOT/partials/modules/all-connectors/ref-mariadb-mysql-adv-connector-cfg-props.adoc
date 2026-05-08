@@ -243,6 +243,76 @@ By default, the connector performs the conversion.
 
 
 
+[id="{context}-property-zero-date-fallback-value"]
+xref:{context}-property-zero-date-fallback-value[`zero.date.fallback.value`]::
+
+Default value::: `1970-01-01`
+
+Description:::
+ISO-8601 date (`yyyy-MM-dd`) that the connector emits as a sentinel when a non-nullable
+`DATE`, `DATETIME`, or `TIMESTAMP` column contains a MySQL zero date (e.g., `0000-00-00`).
+Allowed range: `0001-01-01` to `9999-12-31`.
+Defaults to `1970-01-01` for backward compatibility, which makes a forcibly-converted zero
+date indistinguishable from a genuine epoch event in downstream consumers.
+Choose a value outside your real business range (for example, `1001-01-01`, `1900-01-01`,
+or `9999-12-31`) so downstream systems can clearly identify forcibly-converted zero dates.
++
+The per-type overrides `zero.date.fallback.value.date`, `zero.date.fallback.value.datetime`,
+and `zero.date.fallback.value.timestamp` take precedence over this value when set.
++
+*Downstream sink compatibility:* Note that some sinks impose stricter range constraints on
+the target column type. For example, MySQL `TIMESTAMP` columns only accept values between
+`1970-01-01` and `2038-01-19`, and SQL Server's legacy `datetime` only accepts values from
+`1753-01-01` onward. Choose the sentinel based on the strictest target in your pipeline,
+or use the per-type overrides to apply different sentinels to different column types.
+
+
+
+[id="{context}-property-zero-date-fallback-value-date"]
+xref:{context}-property-zero-date-fallback-value-date[`zero.date.fallback.value.date`]::
+
+Default value::: _(unset; inherits `zero.date.fallback.value`)_
+
+Description:::
+Override of `zero.date.fallback.value` that applies only to MySQL `DATE` columns.
+Set to an ISO-8601 date (`yyyy-MM-dd`) in the range `0001-01-01` to `9999-12-31`,
+or leave unset to inherit the general default. MySQL `DATE` columns themselves support
+`1000-01-01` through `9999-12-31`.
+
+
+
+[id="{context}-property-zero-date-fallback-value-datetime"]
+xref:{context}-property-zero-date-fallback-value-datetime[`zero.date.fallback.value.datetime`]::
+
+Default value::: _(unset; inherits `zero.date.fallback.value`)_
+
+Description:::
+Override of `zero.date.fallback.value` that applies only to MySQL `DATETIME` columns.
+Set to an ISO-8601 date (`yyyy-MM-dd`) in the range `0001-01-01` to `9999-12-31`, or leave
+unset to inherit the general default. MySQL `DATETIME` columns themselves support
+`1000-01-01` through `9999-12-31`, so any value in that range can be expressed natively
+in a downstream MySQL `DATETIME` sink target.
+
+
+
+[id="{context}-property-zero-date-fallback-value-timestamp"]
+xref:{context}-property-zero-date-fallback-value-timestamp[`zero.date.fallback.value.timestamp`]::
+
+Default value::: _(unset; inherits `zero.date.fallback.value`)_
+
+Description:::
+Override of `zero.date.fallback.value` that applies only to MySQL `TIMESTAMP` columns.
+Set to an ISO-8601 date (`yyyy-MM-dd`) in the range `0001-01-01` to `9999-12-31`, or leave
+unset to inherit the general default.
++
+*Important:* MySQL `TIMESTAMP` only supports `1970-01-01` through `2038-01-19`. Any
+sentinel outside that window is emitted to Kafka as configured, but a downstream MySQL
+`TIMESTAMP` sink target rejects values outside that range. If a MySQL `TIMESTAMP` sink is
+in your pipeline, set this override to `1970-01-01` (the default) or migrate the target
+column to `DATETIME` (which accepts `1000-01-01` through `9999-12-31`).
+
+
+
 [id="{context}-property-errors-max-retries"]
 xref:{context}-property-errors-max-retries[`errors.max.retries`]::
 

@@ -18,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.jdbc.ZeroDateFallback;
 import io.debezium.relational.Column;
 import io.debezium.service.spi.ServiceRegistry;
 
@@ -39,8 +40,9 @@ public class MySqlValueConverters extends BinlogValueConverters {
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
-     * to values that require timezones.
-     * <p>
+     * to values that require timezones. The provided {@link ZeroDateFallback} bundles the per-type sentinel values used when a
+     * non-nullable temporal column receives a MySQL zero date; pass {@link ZeroDateFallback#defaultEpoch()} to preserve the
+     * historic 1970-01-01 behavior.
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
@@ -51,6 +53,7 @@ public class MySqlValueConverters extends BinlogValueConverters {
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param eventConvertingFailureHandlingMode how handle when converting failure
      * @param serviceRegistry the service registry, should not be {@code null}
+     * @param zeroDateFallback per-type zero-date sentinel values; pass {@link ZeroDateFallback#defaultEpoch()} for historic behavior
      */
     public MySqlValueConverters(DecimalMode decimalMode,
                                 TemporalPrecisionMode temporalPrecisionMode,
@@ -58,8 +61,10 @@ public class MySqlValueConverters extends BinlogValueConverters {
                                 BinaryHandlingMode binaryMode,
                                 TemporalAdjuster adjuster,
                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
+                                ServiceRegistry serviceRegistry,
+                                ZeroDateFallback zeroDateFallback) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode,
+                serviceRegistry, zeroDateFallback);
     }
 
     @Override

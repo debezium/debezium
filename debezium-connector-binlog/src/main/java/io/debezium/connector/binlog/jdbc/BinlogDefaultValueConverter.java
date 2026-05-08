@@ -10,10 +10,10 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -49,8 +49,11 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
 
     private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
     private static final Pattern EPOCH_EQUIVALENT_DATE = Pattern.compile("\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}");
-    private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
-    private static final String EPOCH_DATE = "1970-01-01";
+    private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
+            .append(DateTimeFormatter.ISO_LOCAL_DATE)
+            .appendLiteral(' ')
+            .append(DateTimeFormatter.ISO_LOCAL_TIME)
+            .toFormatter();
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
@@ -177,7 +180,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             return null;
         }
         if (zero) {
-            value = EPOCH_DATE;
+            return converters.getZeroDateFallback(Types.DATE);
         }
 
         try {
@@ -189,7 +192,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
                 return null;
             }
             else {
-                return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(EPOCH_DATE));
+                return converters.getZeroDateFallback(Types.DATE);
             }
         }
     }
@@ -209,7 +212,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             if (column.isOptional()) {
                 return null;
             }
-            value = EPOCH_TIMESTAMP;
+            return converters.getZeroDateFallback(Types.TIMESTAMP).atStartOfDay();
         }
 
         try {
@@ -221,7 +224,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
                 return null;
             }
             else {
-                return LocalDateTime.from(timestampFormat(column.length()).parse(EPOCH_TIMESTAMP));
+                return converters.getZeroDateFallback(Types.TIMESTAMP).atStartOfDay();
             }
         }
     }
@@ -236,14 +239,16 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
+        final LocalDate timestampSentinel = converters.getZeroDateFallback(Types.TIMESTAMP_WITH_TIMEZONE);
+        final String sentinelAsTimestampLiteral = timestampSentinel.atStartOfDay().format(ISO_LOCAL_DATE_TIME_WITH_SPACE);
         final boolean matches = EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches()
                 || "0".equals(value)
-                || EPOCH_TIMESTAMP.equals(value);
+                || sentinelAsTimestampLiteral.equals(value);
         if (matches) {
             if (column.isOptional()) {
                 return null;
             }
-            return Timestamp.from(Instant.EPOCH);
+            return Timestamp.from(timestampSentinel.atStartOfDay(ZoneOffset.UTC).toInstant());
         }
         value = cleanTimestamp(value);
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
