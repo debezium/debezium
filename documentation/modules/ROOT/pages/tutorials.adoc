@@ -16,3 +16,9 @@ Each tutorial is self-contained and uses Docker to run all necessary components,
 |Deploy {prodname} connectors on Apache Kafka Connect to monitor a MySQL database and stream change events into Kafka topics.
 
 |===
+
+== Example projects
+
+Beyond these tutorials, you can explore the link:https://github.com/debezium/debezium-examples[Debezium Examples] repository on GitHub.
+It contains a collection of demo projects and code samples that showcase different ways to use {prodname} in various scenarios, including end-to-end architectures, integration with other technologies, and advanced configurations.
+These examples are a great resource for learning how to apply {prodname} in real-world use cases and for experimenting with features beyond the scope of the introductory tutorials above.
