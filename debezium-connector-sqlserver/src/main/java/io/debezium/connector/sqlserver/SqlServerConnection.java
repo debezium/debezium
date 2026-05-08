@@ -412,9 +412,9 @@ public class SqlServerConnection extends JdbcConnection {
 
         query = switch (config.getDataQueryMode()) {
             case FUNCTION ->
-                    query.replace(FUNCTION_NAME_PLACEHOLDER, quoteIdentifier(GET_ALL_CHANGES_FUNCTION_PREFIX.concat(changeTable.getCaptureInstance())));
+                query.replace(FUNCTION_NAME_PLACEHOLDER, quoteIdentifier(GET_ALL_CHANGES_FUNCTION_PREFIX.concat(changeTable.getCaptureInstance())));
             case DIRECT ->
-                    query.replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
+                query.replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
         };
 
         if (maxRows > 0) {
