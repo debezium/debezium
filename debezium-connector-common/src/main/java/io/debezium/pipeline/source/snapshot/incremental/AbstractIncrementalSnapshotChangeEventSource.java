@@ -22,6 +22,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,6 +49,7 @@ import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -58,6 +64,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.RetryExecutor;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -86,6 +93,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected ChunkQueryBuilder<T> chunkQueryBuilder;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     protected final NotificationService<P, ? extends OffsetContext> notificationService;
+    protected ParallelIncrementalSnapshotCoordinator<P, T> parallelCoordinator;
+    protected final RetryExecutor retryPolicy;
+    protected final PostProcessorRegistry postProcessorRegistry;
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                         JdbcConnection jdbcConnection,
@@ -104,6 +114,42 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
         this.notificationService = notificationService;
+
+        int threads = config.getSnapshotMaxThreads();
+        if (threads > 1) {
+            try {
+                JdbcConnection testConnection = createSnapshotConnection();
+                testConnection.close();
+
+                this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
+                        threads, () -> createSnapshotConnection());
+
+                LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
+            }
+            catch (UnsupportedOperationException e) {
+                LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by this connector. " +
+                        "Falling back to single-threaded mode. Reason: {}", threads, e.getMessage());
+                this.parallelCoordinator = null;
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to initialize parallel incremental snapshot. " +
+                        "Falling back to single-threaded mode. Error: {}", e.getMessage());
+                this.parallelCoordinator = null;
+            }
+        }
+        else {
+            this.parallelCoordinator = null;
+            LOGGER.info("Incremental snapshot running in single-threaded mode");
+        }
+
+        this.retryPolicy = new RetryExecutor(
+                config.getIncrementalSnapshotRetryMaxAttempts(),
+                config.getIncrementalSnapshotRetryInitialDelayMs(),
+                config.getIncrementalSnapshotRetryMaxDelayMs(),
+                config.getIncrementalSnapshotRetryBackoffMultiplier(),
+                clock);
+
+        this.postProcessorRegistry = config.getServiceRegistry().tryGetService(PostProcessorRegistry.class);
     }
 
     @Override
@@ -152,10 +198,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context == null) {
             return;
         }
-        if (!context.snapshotRunning() || !context.deduplicationNeeded() || window.isEmpty()) {
+        final T dataCollectionId = context.currentDataCollectionId().getId();
+        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
+
+        if (!context.snapshotRunning() || !context.deduplicationNeeded() || currentWindow.isEmpty()) {
             return;
         }
-        window.clear();
+        currentWindow.clear();
         context.revertChunk();
         readChunk(partition, offsetContext);
     }
@@ -167,14 +216,62 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return jdbcConnection.quotedTableIdString(TableId.parse(dataCollectionId));
     }
 
+    protected Map<Struct, Object[]> getWindowForDataCollection(T dataCollectionId) {
+        if (parallelCoordinator != null) {
+            return parallelCoordinator.getWindowBuffer(dataCollectionId);
+        }
+        return window;
+    }
+
+    /**
+     * Returns true if any per-table window buffer (parallel mode) or the
+     * legacy single window (sequential mode) currently holds events. Required
+     * because in parallel mode the legacy {@code window} field is always empty
+     * — chunk reads write into the coordinator's per-table buffers — so a
+     * check on {@code window} alone would skip {@link #deduplicateWindow}
+     * entirely on inbound CDC messages.
+     */
+    protected boolean hasOpenWindow() {
+        return parallelCoordinator != null
+                ? parallelCoordinator.hasAnyBufferedEvents()
+                : !window.isEmpty();
+    }
+
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
-        LOGGER.debug("Sending {} events from window buffer", window.size());
+        if (parallelCoordinator != null) {
+            sendParallelWindowEvents(partition, offsetContext);
+            return;
+        }
+
+        final T dataCollectionId = context.currentDataCollectionId().getId();
+        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
+
+        LOGGER.debug("[{}] Sending {} events from window buffer for table {}",
+                Thread.currentThread().getName(), currentWindow.size(), dataCollectionId);
         offsetContext.incrementalSnapshotEvents();
-        for (Object[] row : window.values()) {
+        for (Object[] row : currentWindow.values()) {
             sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
-        window.clear();
+        currentWindow.clear();
+    }
+
+    private void sendParallelWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
+        final Map<T, Map<Struct, Object[]>> buffers = parallelCoordinator.getAllWindowBuffers();
+
+        offsetContext.incrementalSnapshotEvents();
+        for (Map.Entry<T, Map<Struct, Object[]>> entry : buffers.entrySet()) {
+            final T tableId = entry.getKey();
+            final Map<Struct, Object[]> tableWindow = entry.getValue();
+            if (tableWindow.isEmpty()) {
+                continue;
+            }
+            for (Object[] row : tableWindow.values()) {
+                sendEventForDataCollection(partition, offsetContext, tableId, row);
+            }
+            tableWindow.clear();
+        }
+        offsetContext.postSnapshotCompletion();
     }
 
     protected void sendEvent(P partition, EventDispatcher<P, T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
@@ -182,6 +279,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         offsetContext.event(context.currentDataCollectionId().getId(), clock.currentTimeAsInstant());
         dispatcher.dispatchSnapshotEvent(partition, context.currentDataCollectionId().getId(),
                 getChangeRecordEmitter(partition, context.currentDataCollectionId().getId(), offsetContext, row),
+                dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
+    }
+
+    private void sendEventForDataCollection(P partition, OffsetContext offsetContext, T dataCollectionId, Object[] row) throws InterruptedException {
+        offsetContext.event(dataCollectionId, clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent(partition, dataCollectionId,
+                getChangeRecordEmitter(partition, dataCollectionId, offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
@@ -194,13 +298,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return new SnapshotChangeRecordEmitter<>(partition, offsetContext, row, clock, connectorConfig);
     }
 
+    @SuppressWarnings("unchecked")
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
-        if (context.currentDataCollectionId() == null || !context.currentDataCollectionId().getId().equals(dataCollectionId)) {
-            return;
+        if (parallelCoordinator == null) {
+            if (context.currentDataCollectionId() == null
+                    || !context.currentDataCollectionId().getId().equals(dataCollectionId)) {
+                return;
+            }
         }
         if (key instanceof Struct) {
-            if (window.remove((Struct) key) != null) {
-                LOGGER.info("Removed '{}' from window", maybeRedactSensitiveData(key));
+            final Map<Struct, Object[]> tableWindow = getWindowForDataCollection((T) dataCollectionId);
+            if (tableWindow.remove((Struct) key) != null) {
+                LOGGER.info("[{}] Removed '{}' from window",
+                        Thread.currentThread().getName(), maybeRedactSensitiveData(key));
             }
         }
     }
@@ -214,6 +324,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Update high watermark for the incremental snapshot chunk
      */
     protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception;
+
+    /**
+     * Creates a new dedicated JDBC connection for parallel snapshot worker threads.
+     * Must NOT return the main streaming connection. Override in connectors that
+     * support parallel incremental snapshots.
+     */
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        throw new UnsupportedOperationException(
+                "Parallel snapshot connections not supported by this connector implementation. " +
+                        "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
+    }
 
     @Override
     @SuppressWarnings("unchecked")
@@ -229,21 +350,33 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             postIncrementalSnapshotCompleted();
             return;
         }
-        LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
+
+        LOGGER.info("Incremental snapshot in progress detected. Validating restored state...");
+        if (!validateRestoredContext(context)) {
+            LOGGER.warn("Restored snapshot context validation failed. Resetting snapshot context.");
+            postIncrementalSnapshotCompleted();
+            return;
+        }
+
+        LOGGER.info("Incremental snapshot resuming from: table={}, chunk position={}",
+                context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "start",
+                context.chunkEndPosititon() != null ? java.util.Arrays.toString(context.chunkEndPosititon()) : "start");
+
         try {
             preIncrementalSnapshotStart();
             progressListener.snapshotStarted(partition);
             readChunk(partition, offsetContext);
         }
         catch (InterruptedException e) {
-            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Reading of initial chunk after connector restart was interrupted", e);
         }
-        LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
+        LOGGER.info("Incremental snapshot resumed successfully after restart");
     }
 
     protected void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
 
-        LOGGER.trace("Reading chunk");
+        LOGGER.trace("[{}] Reading chunk", Thread.currentThread().getName());
         checkAndProcessStopFlag(partition, offsetContext);
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
@@ -254,10 +387,56 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Incremental snapshot was paused.");
             return;
         }
+
+        if (parallelCoordinator != null && parallelCoordinator.hasActiveTables()) {
+            readParallelRound(partition, offsetContext);
+            return;
+        }
+
+        JdbcConnection effectiveConnection = jdbcConnection;
+        boolean acquiredPoolConnection = false;
+        boolean createdOnDemandConnection = false;
+
         try {
+            if (parallelCoordinator != null) {
+                JdbcConnection pooled = parallelCoordinator.borrowConnection();
+                if (pooled != null) {
+                    effectiveConnection = pooled;
+                    acquiredPoolConnection = true;
+                    LOGGER.debug("[{}] Acquired worker connection for table '{}' chunk",
+                            Thread.currentThread().getName(),
+                            context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "unknown");
+                }
+                else {
+                    try {
+                        effectiveConnection = createSnapshotConnection();
+                        createdOnDemandConnection = true;
+                        LOGGER.info("[{}] Pool exhausted, created on-demand snapshot connection for table '{}'",
+                                Thread.currentThread().getName(),
+                                context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "unknown");
+                    }
+                    catch (Exception e) {
+                        LOGGER.warn("[{}] Failed to create on-demand snapshot connection, using default: {}",
+                                Thread.currentThread().getName(), e.getMessage());
+                    }
+                }
+            }
+            else {
+                try {
+                    effectiveConnection = createSnapshotConnection();
+                    createdOnDemandConnection = true;
+                }
+                catch (UnsupportedOperationException e) {
+                    LOGGER.trace("createSnapshotConnection not supported, using default connection");
+                }
+                catch (Exception e) {
+                    LOGGER.debug("Could not create snapshot connection, using default: {}", e.getMessage());
+                }
+            }
+
             preReadChunk(context);
             // This commit should be unnecessary and might be removed later
-            jdbcConnection.commit();
+            effectiveConnection.commit();
             context.startNewChunk();
             emitWindowOpen(partition, offsetContext);
             LOGGER.trace("Window open emitted");
@@ -277,47 +456,56 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     currentTable = chunkQueryBuilder.prepareTable(context, refreshTableSchema(currentTable));
                     Object[] maximumKey;
                     try {
-                        maximumKey = jdbcConnection.queryAndMap(
-                                chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()), rs -> {
-                                    if (!rs.next()) {
-                                        return null;
-                                    }
-                                    return keyFromRow(jdbcConnection.rowToArray(currentTable, rs,
-                                            ColumnUtils.toArray(rs, currentTable)));
-                                });
+                        final JdbcConnection connForMaxKey = effectiveConnection;
+                        maximumKey = retryPolicy.executeWithRetry(
+                                () -> connForMaxKey.queryAndMap(
+                                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition()),
+                                        rs -> {
+                                            if (!rs.next()) {
+                                                return null;
+                                            }
+                                            return keyFromRow(connForMaxKey.rowToArray(currentTable, rs,
+                                                    ColumnUtils.toArray(rs, currentTable)));
+                                        }),
+                                "read maximum key for table " + currentTableId);
                         context.maximumKey(maximumKey);
                     }
                     catch (SQLException e) {
-                        LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
+                        LOGGER.error("[{}] Failed to read maximum key for table {} after retries",
+                                Thread.currentThread().getName(), currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                 SQL_EXCEPTION);
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
                     if (context.maximumKey().isEmpty()) {
-                        LOGGER.info(
-                                "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
+                        LOGGER.info("[{}] No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
+                                Thread.currentThread().getName(),
                                 currentTableId);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, EMPTY);
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
+                        LOGGER.info("[{}] Incremental snapshot for table '{}' will end at position {}",
+                                Thread.currentThread().getName(), currentTableId,
                                 maybeRedactSensitiveData(context.maximumKey().orElse(new Object[0])));
                     }
                 }
 
                 try {
-                    if (createDataEventsForTable(partition)) {
+                    if (createDataEventsForTable(partition, effectiveConnection)) {
 
                         if (!context.snapshotRunning()) { // A stop signal has been processed and window cleared.
                             return;
                         }
 
-                        if (window.isEmpty()) {
-                            LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
-                                    currentTableId);
+                        @SuppressWarnings("unchecked")
+                        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection((T) currentTableId);
+
+                        if (currentWindow.isEmpty()) {
+                            LOGGER.info("[{}] No data returned by the query, incremental snapshotting of table '{}' finished",
+                                    Thread.currentThread().getName(), currentTableId);
 
                             notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                     SUCCEEDED);
@@ -361,11 +549,136 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             }
         }
         finally {
+            if (acquiredPoolConnection && effectiveConnection != null) {
+                parallelCoordinator.returnConnection(effectiveConnection);
+            }
+            else if (createdOnDemandConnection && effectiveConnection != null) {
+                try {
+                    effectiveConnection.close();
+                }
+                catch (Exception e) {
+                    LOGGER.debug("Error closing on-demand snapshot connection", e);
+                }
+            }
+
             postReadChunk(context);
             if (!context.snapshotRunning()) {
                 postIncrementalSnapshotCompleted();
             }
         }
+    }
+
+    /**
+     * Reads one chunk per active table in parallel, inside a single DBLog
+     * watermark window. The closeWindow callback drains all per-table buffers
+     * and re-invokes readChunk for the next round, mirroring the upstream
+     * sequential pattern but with N concurrent DB reads per round.
+     *
+     * <p>Memory is bounded to {@code threadCount × chunkSize} regardless of
+     * total table size, matching the upstream sequential guarantee.
+     */
+    private void readParallelRound(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Process completions from the PREVIOUS round: their last-chunk data
+        // has been drained by sendParallelWindowEvents (called from closeWindow
+        // before readChunk re-enters here), so buffers can now be released.
+        for (T tableId : parallelCoordinator.consumeCompletedTables()) {
+            final TableSnapshotWorker<P, T> worker = parallelCoordinator.getActiveWorkers().get(tableId);
+            final long rowsRead = worker != null ? worker.getTotalRowsRead() : 0;
+            LOGGER.info("Parallel snapshot of table '{}' completed ({} rows)", tableId, rowsRead);
+            progressListener.rowsScanned(partition, (TableId) tableId, rowsRead);
+            progressListener.dataCollectionSnapshotCompleted(partition, (TableId) tableId, rowsRead);
+            notificationService.incrementalSnapshotNotificationService()
+                    .notifyTableScanCompleted(context, partition, offsetContext, rowsRead, SUCCEEDED, tableId);
+            parallelCoordinator.markTableComplete(tableId);
+            parallelCoordinator.removeWindowBuffer(tableId);
+            context.nextDataCollection();
+        }
+
+        if (!parallelCoordinator.hasActiveTables()) {
+            return;
+        }
+
+        try {
+            emitWindowOpen(partition, offsetContext);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to open watermark window for parallel round", e);
+        }
+
+        final List<T> completedThisRound = Collections.synchronizedList(new ArrayList<>());
+        final Map<T, TableSnapshotWorker<P, T>> activeWorkers = parallelCoordinator.getActiveWorkers();
+        final int roundSize = Math.min(parallelCoordinator.getThreadCount(), activeWorkers.size());
+
+        DebeziumException primaryFailure = null;
+        try {
+            LOGGER.info("Creating parallel chunk round worker pool with {} worker thread(s)", roundSize);
+            ExecutorService executor = Executors.newFixedThreadPool(roundSize);
+            try {
+                CompletionService<Void> completion = new ExecutorCompletionService<>(executor);
+                int submittedTasks = 0;
+                for (Map.Entry<T, TableSnapshotWorker<P, T>> entry : activeWorkers.entrySet()) {
+                    final T tableId = entry.getKey();
+                    final TableSnapshotWorker<P, T> worker = entry.getValue();
+
+                    completion.submit(() -> {
+                        JdbcConnection conn = parallelCoordinator.borrowConnection();
+                        if (conn == null) {
+                            throw new DebeziumException(
+                                    "Parallel snapshot connection pool exhausted on " + Thread.currentThread().getName());
+                        }
+                        try {
+                            boolean hasMore = worker.readOneChunk(conn);
+                            if (!hasMore) {
+                                completedThisRound.add(tableId);
+                            }
+                        }
+                        finally {
+                            parallelCoordinator.returnConnection(conn);
+                        }
+                        return null;
+                    });
+                    submittedTasks++;
+                }
+
+                try {
+                    for (int i = 0; i < submittedTasks; i++) {
+                        completion.take().get();
+                    }
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    primaryFailure = new DebeziumException("Parallel round interrupted", e);
+                }
+                catch (ExecutionException e) {
+                    primaryFailure = new DebeziumException("Parallel round worker failed", e);
+                }
+            }
+            finally {
+                executor.shutdownNow();
+            }
+        }
+        finally {
+            // Window must always close: a leaked open window blocks any later snapshot signal.
+            try {
+                emitWindowClose(partition, offsetContext);
+            }
+            catch (Exception closeError) {
+                if (primaryFailure != null) {
+                    primaryFailure.addSuppressed(closeError);
+                }
+                else {
+                    primaryFailure = new DebeziumException("Failed to close watermark window for parallel round", closeError);
+                }
+            }
+        }
+
+        if (primaryFailure != null) {
+            throw primaryFailure;
+        }
+
+        // Don't remove workers/buffers yet — sendParallelWindowEvents needs
+        // to drain them first. Store the list for the NEXT round's start.
+        parallelCoordinator.recordCompletedTables(completedThisRound);
     }
 
     private boolean isTableInvalid(P partition, OffsetContext offsetContext) {
@@ -504,6 +817,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
 
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
+
+            if (parallelCoordinator != null) {
+                LOGGER.info("Starting PARALLEL incremental snapshot for {} tables with {} worker threads",
+                        newDataCollectionIds.size(), parallelCoordinator.getThreadCount());
+                parallelCoordinator.initializeTables(newDataCollectionIds,
+                        (dc, buffer) -> new TableSnapshotWorker<>(
+                                new TableSnapshotContext<>(dc),
+                                connectorConfig,
+                                databaseSchema,
+                                chunkQueryBuilder,
+                                buffer,
+                                retryPolicy));
+            }
             readChunk(partition, offsetContext);
         }
     }
@@ -643,6 +969,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * Dispatches the data change events for the records of a single table.
      */
+    private boolean createDataEventsForTable(P partition, JdbcConnection connection) throws SQLException {
+        JdbcConnection originalConnection = this.jdbcConnection;
+        try {
+            this.jdbcConnection = connection;
+            return createDataEventsForTable(partition);
+        }
+        finally {
+            this.jdbcConnection = originalConnection;
+        }
+    }
+
     private boolean createDataEventsForTable(P partition) throws SQLException {
         long exportStart = clock.currentTimeInMillis();
         LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.dataCollectionsToBeSnapshottedCount());
@@ -652,6 +989,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 selectStatement, context.chunkEndPosititon(), maybeRedactSensitiveData(context.maximumKey().get()));
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
+        final T dataCollectionId = context.currentDataCollectionId().getId();
+        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
 
         try (PreparedStatement statement = chunkQueryBuilder.readTableChunkStatement(context, currentTable, selectStatement);
                 ResultSet rs = statement.executeQuery()) {
@@ -671,7 +1010,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     firstRow = row;
                 }
                 final Struct keyStruct = tableSchema.keyFromColumnData(row);
-                window.put(keyStruct, row);
+                currentWindow.put(keyStruct, row);
                 if (logTimer.expired()) {
                     long stop = clock.currentTimeInMillis();
                     LOGGER.debug("\t Exported {} records for table '{}' after {}", rows, currentTable.id(),
@@ -780,15 +1119,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+        LOGGER.trace("[{}] Pre read chunk - checking database connection", Thread.currentThread().getName());
 
-        LOGGER.trace("Pre read chunk");
         try {
-            if (!jdbcConnection.isValid()) {
-                jdbcConnection.connect();
-            }
+            retryPolicy.executeWithRetry(
+                    () -> {
+                        if (!jdbcConnection.isValid()) {
+                            LOGGER.debug("[{}] Database connection not valid, reconnecting...",
+                                    Thread.currentThread().getName());
+                            jdbcConnection.connect();
+                        }
+                        return null;
+                    },
+                    "preReadChunk connection validation");
         }
         catch (SQLException e) {
-            throw new DebeziumException("Database error while checking jdbcConnection in preReadChunk", e);
+            throw new DebeziumException("Database error while checking jdbcConnection in preReadChunk after retries", e);
         }
     }
 
@@ -798,6 +1144,60 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void postIncrementalSnapshotCompleted() {
         // no-op
+    }
+
+    public void shutdown() {
+        if (parallelCoordinator != null) {
+            LOGGER.info("Shutting down parallel incremental snapshot coordinator");
+            parallelCoordinator.shutdown();
+        }
+    }
+
+    protected boolean shouldUseParallelRead() {
+        if (parallelCoordinator == null) {
+            return false;
+        }
+
+        int remainingTables = context.dataCollectionsToBeSnapshottedCount();
+        if (remainingTables < 2) {
+            LOGGER.trace("[{}] Only {} table(s) remaining, using sequential read",
+                    Thread.currentThread().getName(), remainingTables);
+            return false;
+        }
+
+        LOGGER.debug("[{}] Multiple tables available ({} remaining), using parallel read",
+                Thread.currentThread().getName(), remainingTables);
+        return true;
+    }
+
+    /**
+     * Hook for connector-specific validation of a restored incremental snapshot
+     * context after restart. Default implementation reflectively calls a
+     * {@code validateRestoredContext()} method if present and falls back to
+     * checking that at least one table remains to snapshot.
+     */
+    protected boolean validateRestoredContext(IncrementalSnapshotContext<T> context) {
+        try {
+            java.lang.reflect.Method method = context.getClass().getMethod("validateRestoredContext");
+            Boolean result = (Boolean) method.invoke(context);
+            return result != null ? result : true;
+        }
+        catch (NoSuchMethodException e) {
+            LOGGER.debug("No validateRestoredContext() method found in context class {}, using default validation",
+                    context.getClass().getSimpleName());
+        }
+        catch (Exception e) {
+            LOGGER.warn("Error calling validateRestoredContext() on context, assuming valid", e);
+        }
+
+        if (context.dataCollectionsToBeSnapshottedCount() == 0) {
+            LOGGER.warn("No data collections to snapshot in restored context");
+            return false;
+        }
+
+        LOGGER.info("Restored incremental snapshot context validated (default validation). Tables to snapshot: {}",
+                context.dataCollectionsToBeSnapshottedCount());
+        return true;
     }
 
     protected Table refreshTableSchema(Table table) throws SQLException {
