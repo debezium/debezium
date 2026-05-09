@@ -2223,6 +2223,19 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    @FixFor("DBZ-1496")
+    public void shouldHandleCreateTableLikeWithMissingSourceTable() {
+        // Simulates the scenario where the source table's DDL was not stored in schema
+        // history (e.g. because store.only.captured.tables.ddl=true and the source table
+        // was excluded by table filters). On recovery, the source table's schema is missing
+        // and CREATE TABLE ... LIKE should not throw an exception.
+        final String ddl = "CREATE TABLE `target_table` LIKE `unknown_source`;";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(tables.forTable(new TableId(null, null, "target_table"))).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-4786")
     public void shouldParseCreateAndRemoveTwiceOrDoesNotExist() {
         String ddl = "CREATE TABLE customers ( "

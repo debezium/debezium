@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -23,6 +25,8 @@ import io.debezium.relational.TableId;
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class CreateTableParserListener extends TableCommonParserListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CreateTableParserListener.class);
 
     public CreateTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
         super(parser, listeners);
@@ -73,6 +77,10 @@ public class CreateTableParserListener extends TableCommonParserListener {
         if (original != null) {
             parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(), original.attributes());
             parser.signalCreateTable(tableId, ctx);
+        }
+        else {
+            LOG.warn("Source table {} not found for CREATE TABLE {} LIKE, likely excluded by table filters; "
+                    + "the new table will not be tracked until its schema is resolved by a future DDL or snapshot", originalTableId, tableId);
         }
         super.exitCopyCreateTable(ctx);
     }
