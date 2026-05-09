@@ -29,14 +29,14 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     private final BasicCache<String, InfinispanTransaction> transactionCache;
     private final BasicCache<String, LogMinerEvent> eventCache;
-    private final BasicCache<String, Boolean> rollbackCache;
+    private final BasicCache<String, Integer> rollbackCache;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
     public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache,
                                               BasicCache<String, LogMinerEvent> eventCache,
-                                              BasicCache<String, Boolean> rollbackCache) {
+                                              BasicCache<String, Integer> rollbackCache) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
         this.rollbackCache = rollbackCache;
@@ -148,9 +148,15 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
-                rollbackCache.put(eventKey, Boolean.TRUE);
-                return true;
+            if (event != null && event.getRowId() == encodedRowId) {
+                final Integer cachedRollbackId = rollbackCache.get(eventKey);
+                if (cachedRollbackId == null) {
+                    rollbackCache.put(eventKey, rollbackId);
+                    return true;
+                }
+                if (cachedRollbackId == rollbackId) {
+                    return true;
+                }
             }
         }
         return false;

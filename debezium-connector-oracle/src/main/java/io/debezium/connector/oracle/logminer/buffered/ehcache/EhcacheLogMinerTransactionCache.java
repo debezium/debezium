@@ -32,7 +32,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     private final Cache<String, EhcacheTransaction> transactionCache;
     private final Cache<String, LogMinerEvent> eventCache;
-    private final Cache<String, Boolean> rollbackCache;
+    private final Cache<String, Integer> rollbackCache;
     private final EhcacheEvictionListener evictionListener;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
@@ -40,7 +40,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
                                            Cache<String, LogMinerEvent> eventCache,
-                                           Cache<String, Boolean> rollbackCache,
+                                           Cache<String, Integer> rollbackCache,
                                            EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
@@ -160,9 +160,15 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
-                rollbackCache.put(eventKey, Boolean.TRUE);
-                return true;
+            if (event != null && event.getRowId() == encodedRowId) {
+                final Integer cachedRollbackId = rollbackCache.get(eventKey);
+                if (cachedRollbackId == null) {
+                    rollbackCache.put(eventKey, rollbackId);
+                    return true;
+                }
+                if (cachedRollbackId == rollbackId) {
+                    return true;
+                }
             }
         }
         return false;
