@@ -947,7 +947,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @return true if an event was found and undone, false otherwise
      */
     private boolean rollbackTransactionEventWithRowId(Transaction transaction, LogMinerEventRow row) {
-        if (getTransactionCache().rollbackTransactionEventWithRowId(transaction, row.getRowId())) {
+        final int rollbackId = transaction.getNextEventId();
+        if (getTransactionCache().rollbackTransactionEventWithRowId(transaction, rollbackId, row.getRowId())) {
             // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
             // number of times a given transaction is re-mined.
             getMetrics().increasePartialRollbackCount();
