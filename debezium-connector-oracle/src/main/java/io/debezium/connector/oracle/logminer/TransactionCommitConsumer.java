@@ -134,7 +134,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
             acceptDmlEvent(dmlEvent, rolledBack, transactionId, transactionSequence);
         }
         else {
-            acceptManipulationEvent(event);
+            acceptManipulationEvent(event, rolledBack);
         }
     }
 
@@ -171,6 +171,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
 
         if (tryMerge(accumulatorEvent, event)) {
+            rowState.event.setRowId(event.getRowId());
             rowState.rolledBack = rolledBack;
             rowState.transactionSequence = transactionSequence;
         }
@@ -203,24 +204,26 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
     }
 
-    private void acceptManipulationEvent(LogMinerEvent event) {
+    private void acceptManipulationEvent(LogMinerEvent event, boolean rolledBack) {
         if (event instanceof LobWriteEvent || event instanceof LobEraseEvent) {
-            acceptLobManipulationEvent(event);
+            acceptLobManipulationEvent(event, rolledBack);
         }
         else if (event instanceof ExtendedStringWriteEvent) {
-            acceptExtendedStringManipulationEvent(event);
+            acceptExtendedStringManipulationEvent(event, rolledBack);
         }
         else if (event instanceof XmlWriteEvent || event instanceof XmlEndEvent) {
-            acceptXmlManipulationEvent(event);
+            acceptXmlManipulationEvent(event, rolledBack);
         }
     }
 
-    private void acceptLobManipulationEvent(LogMinerEvent event) {
+    private void acceptLobManipulationEvent(LogMinerEvent event, boolean rolledBack) {
         if (!currentLobDetails.isInitialized()) {
             // should only happen when we start streaming in the middle of a LOB transaction (DBZ-4367)
             LOGGER.debug("Got LOB manipulation event without preceding LOB selector; ignoring {} {}.", event.getEventType(), event);
             return;
         }
+
+        updateRowState(currentLobDetails.rowId, event.getRowId(), rolledBack);
 
         if (EventType.LOB_WRITE != event.getEventType()) {
             LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentLobDetails.columnName);
@@ -238,11 +241,13 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
     }
 
-    private void acceptExtendedStringManipulationEvent(LogMinerEvent event) {
+    private void acceptExtendedStringManipulationEvent(LogMinerEvent event, boolean rolledBack) {
         if (!currentExtendedStringDetails.isInitialized()) {
             LOGGER.debug("Got ExtendedString manipulation event without preceding ExtendedString begin; ignoring {} {}.", event.getEventType(), event);
             return;
         }
+
+        updateRowState(currentExtendedStringDetails.rowId, event.getRowId(), rolledBack);
 
         if (EventType.EXTENDED_STRING_WRITE != event.getEventType()) {
             LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentExtendedStringDetails.columnName);
@@ -260,12 +265,14 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
     }
 
-    private void acceptXmlManipulationEvent(LogMinerEvent event) {
+    private void acceptXmlManipulationEvent(LogMinerEvent event, boolean rolledBack) {
         if (!currentXmlDetails.isInitialized()) {
             // should only happen when we start streaming in the middle of an XML transaction (DBZ-4367)
             LOGGER.trace("Got XML manipulation event without preceding XML begin; ignoring {} {}.", event.getEventType(), event);
             return;
         }
+
+        updateRowState(currentXmlDetails.rowId, event.getRowId(), rolledBack);
 
         if (EventType.XML_WRITE != event.getEventType() && EventType.XML_END != event.getEventType()) {
             LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentXmlDetails.columnName);
@@ -287,6 +294,14 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
         catch (DebeziumException exception) {
             LOGGER.warn("\tInvalid XML manipulation event: {} ; ignoring {} {}", exception, event.getEventType(), event);
+        }
+    }
+
+    private void updateRowState(String rowStateId, long rowId, boolean rolledBack) {
+        final RowState rowState = rows.get(rowStateId);
+        if (rowState != null) {
+            rowState.event.setRowId(rowId);
+            rowState.rolledBack = rolledBack;
         }
     }
 

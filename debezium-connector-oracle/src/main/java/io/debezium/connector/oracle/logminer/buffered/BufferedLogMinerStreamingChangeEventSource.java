@@ -366,6 +366,16 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @Override
+    protected void handleInternalEvent(LogMinerEventRow event) {
+        if (!event.isRollbackFlag() && event.getRowId() != null && !event.getRowId().endsWith("AAAAAAAAAAAA")) {
+            final Transaction transaction = getTransactionCache().getTransaction(event.getTransactionId());
+            if (transaction != null) {
+                getTransactionCache().updateLastEventEmptyRowId(transaction, event.getRowId());
+            }
+        }
+    }
+
+    @Override
     protected void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
