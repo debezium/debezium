@@ -471,6 +471,7 @@ public class TypeRegistry {
      * built-in schemas) are loaded, reducing heap usage for databases with many custom types (DBZ-9455).
      */
     private void prime(Set<String> schemaFilter) throws SQLException {
+        LOGGER.trace("Priming type registry with database types");
         final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
 
         if (schemaFilter.isEmpty()) {
@@ -480,7 +481,6 @@ public class TypeRegistry {
             }
         }
         else {
-            LOGGER.info("TypeRegistry schema filter active; pre-loading types from schemas: {}", schemaFilter);
             try (PreparedStatement statement = connection.connection().prepareStatement(SQL_TYPES_SCHEMA_FILTERED)) {
                 final Array schemaArray = connection.connection().createArrayOf("text", schemaFilter.toArray(new String[0]));
                 try {
