@@ -92,6 +92,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
     private static final String CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
     private static final String CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME = "pollinginterval";
+    private static final long DEFAULT_CDC_POLLING_INTERVAL_SECONDS = 5;
     private static final String GET_START_LSN_FOR_LAST_BATCH_SCANNED = "SELECT TOP 1 start_lsn from sys.dm_cdc_log_scan_sessions ORDER BY session_id DESC";
     private static final String START_LSN_INDICATING_EMPTY_BATCH = "00000000:00000000:0000\u0000";
 
@@ -838,7 +839,7 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public Duration getCdcCapturePollingInterval() {
-        AtomicLong cdcCapturePollingInterval = new AtomicLong(5); // default
+        AtomicLong cdcCapturePollingInterval = new AtomicLong(DEFAULT_CDC_POLLING_INTERVAL_SECONDS);
         try {
             call(GET_CDC_JOB_INFO, null, rs -> {
                 while (rs.next()) {
@@ -851,7 +852,13 @@ public class SqlServerConnection extends JdbcConnection {
         catch (SQLException e) {
             LOGGER.warn("Exception caught while calling sys.sp_cdc_help_jobs", e);
         }
-        return Duration.ofSeconds(cdcCapturePollingInterval.get());
+        long interval = cdcCapturePollingInterval.get();
+        if (interval <= 0) {
+            LOGGER.info("CDC capture polling interval is {} (e.g. Azure SQL Database); using default of {} seconds",
+                    interval, DEFAULT_CDC_POLLING_INTERVAL_SECONDS);
+            interval = DEFAULT_CDC_POLLING_INTERVAL_SECONDS;
+        }
+        return Duration.ofSeconds(interval);
     }
 
     public boolean didTransactionEnd() {
