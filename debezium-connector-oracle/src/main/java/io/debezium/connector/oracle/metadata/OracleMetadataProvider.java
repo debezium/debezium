@@ -26,7 +26,7 @@ public class OracleMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                componentMetadataFactory.createComponentMetadata(new OracleConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new OracleConnector(), "Debezium Oracle Connector", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new NumberToZeroScaleConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new RawToStringConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new NumberOneToBooleanConverter(), Module.version()));

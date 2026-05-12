@@ -25,7 +25,7 @@ public class PostgresMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                componentMetadataFactory.createComponentMetadata(new PostgresConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new PostgresConnector(), "Debezium PostgreSQL Connector", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new DecodeLogicalDecodingMessageContent<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TimescaleDb<>(), Module.version()));
     }

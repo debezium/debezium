@@ -13,10 +13,14 @@ public class ComponentMetadataFactory {
     }
 
     public <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component, String version) {
+        return createComponentMetadata(component, null, version);
+    }
+
+    public <T extends ConfigDescriptor> ComponentMetadata createComponentMetadata(T component, String displayName, String version) {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor(component.getClass().getName(), version);
+                return new ComponentDescriptor(component.getClass().getName(), displayName, version);
             }
 
             @Override
