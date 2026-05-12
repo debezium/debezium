@@ -41,7 +41,10 @@ public abstract class BinlogDefaultValueAllZeroTimeIT<C extends SourceConnector>
     @BeforeEach
     void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize(Collections.singletonMap("sessionVariables", "sql_mode=''"));
+        // CI MySQL ships with STRICT_TRANS_TABLES + NO_ZERO_DATE by default, which rejects the
+        // '0000-00-00 00:00:00' DEFAULT used by this fixture. Relax sql_mode so fixture DDL/INSERT
+        // can register zero-date defaults.
+        DATABASE.createAndInitialize(Collections.singletonMap("sessionVariables", "sql_mode='ALLOW_INVALID_DATES'"));
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
@@ -284,6 +287,11 @@ public abstract class BinlogDefaultValueAllZeroTimeIT<C extends SourceConnector>
                 JdbcConnection connection = db.connect();
                 Connection jdbc = connection.connection();
                 Statement statement = jdbc.createStatement()) {
+            // This is a separate JDBC session, so the BeforeEach sessionVariables don't apply.
+            // Explicitly relax sql_mode so CI MySQL's STRICT_TRANS_TABLES + NO_ZERO_DATE doesn't
+            // reject the zero-date DEFAULT INSERT (otherwise the driver throws
+            // MysqlDataTruncation: Incorrect datetime value: '0000-00-00 00:00:00').
+            statement.execute("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'");
             statement.executeUpdate(
                     "INSERT INTO all_zero_date_and_time_table VALUES "
                             + "(DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT)");

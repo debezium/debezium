@@ -245,22 +245,11 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 assertThat(after.getInt64("c3")).isNull(); // epoch millis
 
                 // '0000-00-00 00:00:00.00'
-                String c4 = after.getString("c4"); // timestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-
-                // Timestamp is stored as UTC
-                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
-
-                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
-                assertThat(c4DateTime.getYear()).isEqualTo(1970);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
-                assertThat(c4DateTime.getHour()).isIn(0, 1);
-                assertThat(c4DateTime.getMinute()).isEqualTo(0);
-                assertThat(c4DateTime.getSecond()).isEqualTo(0);
-                assertThat(c4DateTime.getNano()).isEqualTo(0);
+                // DBZ-1912: nullable zero-date TIMESTAMP collapses to null in the streaming
+                // deserialization path (consistent with the snapshot CONVERT_TO_NULL behavior and
+                // with how DATE/DATETIME zero-dates were already handled). Pre-DBZ-1912 the binlog
+                // wire epochSecond=0 surfaced here as the string "1970-01-01T00:00:00Z".
+                assertThat(after.getString("c4")).isNull(); // timestamp
             }
             else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
@@ -422,14 +411,17 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();
-        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
+        // DBZ-1912: zero-date TIMESTAMP collapses to null in the streaming deserialization
+        // path (previously emitted "1970-01-01T00:00:00.00Z").
+        assertThat(rec1.get("c4")).isNull();
         assertThat(rec1.get("nnc1")).isEqualTo(0);
         assertThat(rec1.get("nnc2")).isEqualTo(0L);
         assertThat(rec1.get("nnc3")).isEqualTo(0L);
         assertThat(rec2.get("c1")).isNull();
         assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("c3")).isNull();
-        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
+        // DBZ-1912: zero-date TIMESTAMP collapses to null (see above).
+        assertThat(rec2.get("c4")).isNull();
         assertThat(rec2.get("nnc1")).isEqualTo(0);
         assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("nnc3")).isEqualTo(0L);
@@ -591,22 +583,10 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 assertThat(c3).isNull();
 
                 // '0000-00-00 00:00:00.00'
-                String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-
-                // Timestamp is stored as UTC
-                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
-
-                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
-                assertThat(c4DateTime.getYear()).isEqualTo(1970);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
-                assertThat(c4DateTime.getHour()).isIn(0, 1);
-                assertThat(c4DateTime.getMinute()).isEqualTo(0);
-                assertThat(c4DateTime.getSecond()).isEqualTo(0);
-                assertThat(c4DateTime.getNano()).isEqualTo(0);
+                // DBZ-1912: nullable zero-date TIMESTAMP collapses to null in the streaming
+                // deserialization path (see the matching assertion in
+                // shouldConsumeAllEventsFromDatabaseUsingStreaming above).
+                assertThat(after.getString("c4")).isNull(); // MySQL timestamp, so always ZonedTimestamp
             }
             else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
