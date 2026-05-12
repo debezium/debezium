@@ -2587,7 +2587,7 @@ If you start multiple connectors in a cluster, this property is useful for avoid
 
 |[[informix-property-statistics-metrics-enabled]]<<informix-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
 |`true`
-|Specifies whether the connector collects statistical metrics for streaming metrics, such as averages and quantiles.
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
  +
 When set to `true`, the connector collects the following statistics:
 
@@ -2602,8 +2602,9 @@ NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quant
 
 The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
  +
-When set to `false`, the connector does not collect these statistics, and the corresponding JMX metrics return `null` values.
-Disabling statistics collection reduces memory overhead slightly.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
  +
 For more information, see xref:informix-streaming-metrics[Streaming metrics].
 
