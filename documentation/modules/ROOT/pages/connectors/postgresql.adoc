@@ -2177,13 +2177,15 @@ The default `false` setting causes the custom converter to always return `null` 
 
 ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.
-If you plan *not* to use the native `pgoutput` logical replication stream support, then you must install the logical decoding plug-in into the PostgreSQL server. Afterward, enable a replication slot, and configure a user with sufficient privileges to perform the replication.
+If you plan *not* to use the native `pgoutput` logical replication stream support, then you must install the logical decoding plug-in into the PostgreSQL server.
+Afterward, enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
 If your database is hosted by a service such as link:https://www.heroku.com/postgres[Heroku Postgres] you might be unable to install the plug-in. If so, and if you are using PostgreSQL 10+, you can use the `pgoutput` decoder support to capture changes in your database. If that is not an option, you are unable to use {prodname} with your database.
 endif::community[]
 
 ifdef::product[]
-This release of {prodname} supports only the native `pgoutput` logical replication stream. To set up PostgreSQL so that it uses the `pgoutput` plug-in, you must enable a replication slot, and configure a user with sufficient privileges to perform the replication.
+This release of {prodname} supports only the native `pgoutput` logical replication stream.
+To set up PostgreSQL so that it uses the `pgoutput` plug-in, you must enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
 Details are in the following topics:
 
@@ -2195,7 +2197,6 @@ Details are in the following topics:
 * xref:upgrading-postgresql-databases-that-debezium-captures-from[]
 endif::product[]
 
-ifdef::product[]
 
 // Type: concept
 // ModuleID: configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in
@@ -2228,7 +2229,7 @@ For more information, see the link:https://www.postgresql.org/docs/current/warm-
 ====
 Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector.
 ====
-endif::product[]
+
 
 ifdef::community[]
 [[postgresql-in-the-cloud]]
@@ -2270,7 +2271,7 @@ az postgres server configuration set --resource-group mygroup --server-name myse
 
 az postgres server restart --resource-group mygroup --name myserver
 ```
-ifdef::community[]
+
 [[cloud-sql-for-postgresql]]
 ==== Cloud SQL for PostgreSQL
 
@@ -2291,6 +2292,7 @@ To verify that the value of the setting reflects your changes, run the following
 ----
 SHOW wal_level;
 ----
+endif::community[]
 
 .Creating a replication user
 To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
@@ -2323,16 +2325,18 @@ In the {prodname} connector configuration, set the value of the `plugin.name` pr
       ..
 }
 ----
-endif::community[]
-
+ifdef::community[]
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
 
-It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge]; logical replication is already turned on. The `pgoutput` plugin is available. You will have to create a replication user and provide correct privileges.
+It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge]; logical replication is already turned on.
+The `pgoutput` plugin is available.
+You will have to create a replication user and provide correct privileges.
 
 [IMPORTANT]
 ====
-While using the `pgoutput` plug-in, it is recommended that you configure `filtered` as the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`]. If you use `all_tables`, which is the default value for `publication.autocreate.mode`, and the publication is not found, the connector tries to create one by using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`, but this fails due to lack of permissions.
+While using the `pgoutput` plug-in, it is recommended that you configure `filtered` as the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`].
+If you use `all_tables`, which is the default value for `publication.autocreate.mode`, and the publication is not found, the connector tries to create one by using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`, but this fails due to lack of permissions.
 ====
 
 [[installing-postgresql-output-plugin]]
@@ -2353,7 +2357,8 @@ For simplicity, {prodname} also provides a container image based on the upstream
 
 [WARNING]
 ====
-The {prodname} logical decoding plug-ins have been installed and tested on only Linux machines. For Windows and other operating systems, different installation steps might be required.
+The {prodname} logical decoding plug-ins have been installed and tested on only Linux machines.
+For Windows and other operating systems, different installation steps might be required.
 ====
 
 [[postgresql-differences-between-plugins]]
@@ -2366,9 +2371,12 @@ These differences have been identified:
 
 All up-to-date differences are tracked in a test suite link:https://github.com/debezium/debezium/blob/main/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
+endif::community[]
+
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
 
+ifdef::community[]
 If you are using a xref:postgresql-output-plugin[logical decoding plug-in] other than pgoutput, after installing it, configure the PostgreSQL server as follows:
 
 . To load the plug-in at startup, add the following to the `postgresql.conf` file::
@@ -2388,6 +2396,7 @@ The preceding statement instructs the PostgreSQL server to load the `decoderbufs
 wal_level = logical
 ----
 The preceding statement instructs the PostgreSQL server to use logical decoding with the write-ahead log.
+endif::community[]
 
 Depending on your requirements, you may have to set other PostgreSQL streaming replication parameters when using {prodname}.
 Examples include `max_wal_senders` and `max_replication_slots` for increasing the number of connectors that can access the sending server concurrently, and `wal_keep_size` for limiting the maximum WAL size which a replication slot will retain.
@@ -2397,22 +2406,18 @@ For more information about configuring streaming replication, see the link:https
 Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages. For this reason, it is important to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
 For more information, see the link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication documentation].
 
-When connecting to a Postgres primary (i.e. not a read replica) and the version of Postgres is 17 or later,
-{prodname} will create a replication slot enabled for https://www.postgresql.org/docs/current/logical-replication-failover.html[failover].
-This means {prodname} can continue to read changes from a replica promoted to primary in case of a failure,
-without missing any events.
-This requires the state of the slot to be synchronized from primary to replica server;
-refer to the Postgres documentation for the details.
+When {prodname} connects to a PostgreSQL primary (that is, not a read replica) on PostgreSQL 17 or later, you can configure the connector to that it creates replication slots that are enabled for https://www.postgresql.org/docs/current/logical-replication-failover.html[failover].
+Failover slots permit {prodname} to continue to read changes from a replica that is promoted to primary in case of a failure, without missing any events.
+This requires the state of the slot to be synchronized from primary to replica server.
+For more information about the behavior of failover slots, see the PostgreSQL documentation.
 
-If you are working with `synchronous_commit` set to `off`,
-the recommendation is to set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
-Otherwise, its default value is applied, which adds a latency of about 200 milliseconds.
+If you are working with a `synchronous_commit` setting other than `on`, set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
+IF you do not set an explicit value, {prodname} applies the default value, which adds a latency of about 200 milliseconds.
 
 [TIP]
 ====
 Reading and understanding link:https://www.postgresql.org/docs/current/static/wal-configuration.html[PostgreSQL documentation about the mechanics and configuration of the PostgreSQL write-ahead log] is strongly recommended.
 ====
-endif::community[]
 
 // Type: procedure
 // ModuleID: setting-up-postgresql-permissions-required-by-debezium-connectors
@@ -4561,10 +4566,10 @@ ifdef::community[]
 Some managed PostgreSQL services (for example, AWS RDS and GCP CloudSQL) use disk replication to implement replication to a standby.
 As a result, these services automatically replicate the replication slot so that it is available after a failover.
 ====
-endif::community[]
 
 The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes.
 Only then can you point the connector to the new server and restart the connector.
+endif::community[]
 
 ifdef::product[]
 The new primary must have a replication slot that is configured to use the `pgoutput` plug-in, and must include the database for which you want to capture changes.
