@@ -72,17 +72,14 @@ The values will incorporate any differences between the clocks on the machines w
 |[[connectors-strm-metric-millisecondsbehindsourceminvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceminvalue_{context}, `MilliSecondsBehindSourceMinValue`>>
 |`long`
 |The minimum lag in milliseconds behind the source that has been observed during the connector's runtime.
-Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
 
 |[[connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}, `MilliSecondsBehindSourceMaxValue`>>
 |`long`
 |The maximum lag in milliseconds behind the source that has been observed during the connector's runtime.
-Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
 
 |[[connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}, `MilliSecondsBehindSourceAverageValue`>>
 |`double`
 |The average lag in milliseconds behind the source calculated across all observations during the connector's runtime.
-Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
 
 |[[connectors-strm-metric-millisecondsbehindsourcep50_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep50_{context}, `MilliSecondsBehindSourceP50`>>
 |`double`
