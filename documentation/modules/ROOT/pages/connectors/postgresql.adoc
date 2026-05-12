@@ -2404,7 +2404,7 @@ without missing any events.
 This requires the state of the slot to be synchronized from primary to replica server;
 refer to the Postgres documentation for the details.
 
-If you are working with a `synchronous_commit` setting other than `on`,
+If you are working with `synchronous_commit` set to `off`,
 the recommendation is to set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
 Otherwise, its default value is applied, which adds a latency of about 200 milliseconds.
 
