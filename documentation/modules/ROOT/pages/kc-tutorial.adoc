@@ -1,5 +1,6 @@
 [id="tutorial"]
 = Tutorial
+:page-aliases: tutorial.adoc
 
 :toc:
 :toc-placement: macro
