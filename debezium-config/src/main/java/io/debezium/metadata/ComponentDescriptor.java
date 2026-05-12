@@ -46,15 +46,18 @@ public class ComponentDescriptor {
 
     private ComponentDescriptor(String id, String displayName, String className, String version, String type) {
         this.id = id;
-        this.displayName = displayName;
+        this.displayName = displayName != null ? displayName : DisplayNameResolver.resolve(className, type);
         this.className = className;
         this.version = version;
         this.type = type;
     }
 
     public ComponentDescriptor(String className, String version) {
-        this(className, getDisplayNameForConnectorClass(className), className, version,
-                determineComponentType(className));
+        this(className, null, className, version, determineComponentType(className));
+    }
+
+    public ComponentDescriptor(String className, String displayName, String version) {
+        this(className, displayName, className, version, determineComponentType(className));
     }
 
     public String getId() {
@@ -143,18 +146,6 @@ public class ComponentDescriptor {
             LOGGER.debug("Could not load interface class {}", interfaceClassName);
             return false;
         }
-    }
-
-    public static String getDisplayNameForConnectorClass(String className) {
-        return switch (className) {
-            case "io.debezium.connector.mongodb.MongoDbConnector" -> "Debezium MongoDB Connector";
-            case "io.debezium.connector.mysql.MySqlConnector" -> "Debezium MySQL Connector";
-            case "io.debezium.connector.oracle.OracleConnector" -> "Debezium Oracle Connector";
-            case "io.debezium.connector.postgresql.PostgresConnector" -> "Debezium PostgreSQL Connector";
-            case "io.debezium.connector.sqlserver.SqlServerConnector" -> "Debezium SQLServer Connector";
-            case "io.debezium.connector.mariadb.MariaDbConnector" -> "Debezium MariaDB Connector";
-            default -> className;
-        };
     }
 
     @Override
