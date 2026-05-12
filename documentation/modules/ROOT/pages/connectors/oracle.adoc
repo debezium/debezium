@@ -2567,10 +2567,13 @@ The {prodname} connector for Oracle does not support the Oracle VECTOR data type
 
 [id="oracle-json-types"]
 === JSON types
+
+The {prodname} Oracle connector can capture changes to tables that include `JSON` column types when using the LogMiner adapter with the `ENABLE_GOLDENGATE_REPLICATION` database feature enabled.
+
 ifdef::community[]
 [NOTE]
 ====
-Support for `JSON` is currently in an incubating state.
+Oracle connector support for `JSON` is currently in an incubating state.
 Depending on the feedback that we receive, the exact semantics, configuration options, and so forth might change in future revisions.
 Please let us know if you encounter any problems with using these data types.
 ====
@@ -2578,7 +2581,7 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-Use of the `JSON` with the {prodname} Oracle connector is a Technology Preview feature only.
+The ability of the {prodname} Oracle connector to process `JSON` data is a Technology Preview feature only.
 Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
 Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
 For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
@@ -2587,12 +2590,11 @@ endif::product[]
 
 [IMPORTANT]
 ====
-The ability to capture changes for a table that includes a `JSON` column type is limited to the Oracle LogMiner adapter, and requires that `ENABLE_GOLDENGATE_REPLICATION` database feature be enabled.
-Oracle's support for `JSON` data types is a premium feature that is only available through a GoldenGate license.
+The ability to capture changes from tables that include `JSON` columns is limited to the Oracle LogMiner adapter, and requires that the `ENABLE_GOLDENGATE_REPLICATION` database feature be enabled.
+Oracle support for `JSON` data types is a premium feature that is only available through a GoldenGate license.
 
-The ability to capture `JSON` data types using the Oracle XStream adapter is currently unsupported.
-This is due to an Oracle OCI driver limitation that does not currently allow the driver to read metadata for tables that contain a `JSON` column type.
-The limitation is present in all Oracle 21.x and 23.x drivers tested through 23.26.1.
+Because the Oracle OCI driver cannot  read metadata for tables that contain a `JSON` column type, connectors configured to use the Oracle XStream adapter the connector cannot capture `JSON` data.
+This limitation applies to all Oracle 21.x and 23.x drivers tested through version 23.26.1.
 ====
 
 The following table describes how the connector maps JSON data types.
