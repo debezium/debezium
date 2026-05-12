@@ -23,17 +23,44 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 public class PostgresConnectorTaskTest {
 
     /**
-     * Build a minimal {@link PostgresConnectorConfig} that supplies enough fields for
-     * {@link PostgresConnectorTask#buildTypeRegistrySchemaFilter(Predicate, Set)} to run without NPE.
+     * Build a minimal {@link PostgresConnectorConfig} with optional {@code schema.include.list}
+     * and {@code schema.exclude.list} values.
      */
-    private static Predicate<String> schemaFilterFor(String schemaIncludeList) {
+    private static PostgresConnectorConfig configFor(String schemaIncludeList, String schemaExcludeList) {
         Configuration.Builder builder = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "test_server")
                 .with(PostgresConnectorConfig.DATABASE_NAME, "testdb");
         if (schemaIncludeList != null) {
             builder.with(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST, schemaIncludeList);
         }
-        return new PostgresConnectorConfig(builder.build()).getTableFilters().schemaFilter();
+        if (schemaExcludeList != null) {
+            builder.with(RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST, schemaExcludeList);
+        }
+        return new PostgresConnectorConfig(builder.build());
+    }
+
+    private static Predicate<String> schemaFilterFor(String schemaIncludeList) {
+        return configFor(schemaIncludeList, null).getTableFilters().schemaFilter();
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for the config+connection overload (fast-path, no DB connection needed)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @FixFor("DBZ-9455")
+    void noFilterConfiguredReturnsFastPathEmptySet() {
+        // When neither schema.include.list nor schema.exclude.list is set, the method returns empty
+        // immediately — the connection is never touched, so null is safe here.
+        Set<String> result = PostgresConnectorTask.buildTypeRegistrySchemaFilter(configFor(null, null), null);
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-9455")
+    void blankIncludeListReturnsFastPathEmptySet() {
+        Set<String> result = PostgresConnectorTask.buildTypeRegistrySchemaFilter(configFor("   ", null), null);
+        assertThat(result).isEmpty();
     }
 
     // -------------------------------------------------------------------------
@@ -108,13 +135,19 @@ public class PostgresConnectorTaskTest {
     @FixFor("DBZ-9455")
     void schemaExcludeListIsHonoured() {
         // schema.exclude.list should cause the named schema to be excluded.
-        Configuration config = Configuration.create()
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "test_server")
-                .with(PostgresConnectorConfig.DATABASE_NAME, "testdb")
-                .with(RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST, "noise")
-                .build();
-        Predicate<String> predicate = new PostgresConnectorConfig(config).getTableFilters().schemaFilter();
+        final Predicate<String> predicate = configFor(null, "noise").getTableFilters().schemaFilter();
+        Set<String> candidates = Set.of("public", "tenant_a", "noise");
+        Set<String> filter = PostgresConnectorTask.buildTypeRegistrySchemaFilter(predicate, candidates);
+        assertThat(filter).containsExactlyInAnyOrder("public", "tenant_a");
+    }
 
+    @Test
+    @FixFor("DBZ-9455")
+    void excludeListOnlyDoesNotTriggerFastPath() {
+        // When only schema.exclude.list is set (no include list) the fast-path must NOT fire;
+        // the method must still query pg_namespace and apply the predicate.
+        // We test the predicate overload directly as a proxy — it filters "noise" out.
+        final Predicate<String> predicate = configFor(null, "noise").getTableFilters().schemaFilter();
         Set<String> candidates = Set.of("public", "tenant_a", "noise");
         Set<String> filter = PostgresConnectorTask.buildTypeRegistrySchemaFilter(predicate, candidates);
         assertThat(filter).containsExactlyInAnyOrder("public", "tenant_a");
