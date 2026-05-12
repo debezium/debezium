@@ -2398,26 +2398,80 @@ wal_level = logical
 The preceding statement instructs the PostgreSQL server to use logical decoding with the write-ahead log.
 endif::community[]
 
-Depending on your requirements, you may have to set other PostgreSQL streaming replication parameters when using {prodname}.
-Examples include `max_wal_senders` and `max_replication_slots` for increasing the number of connectors that can access the sending server concurrently, and `wal_keep_size` for limiting the maximum WAL size which a replication slot will retain.
-For more information about configuring streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
+Depending on your requirements, you can set other PostgreSQL streaming replication parameters to customize performance in a {prodname} environment.
+For example, you can increase the number of connectors that can access the sending server concurrently by setting the `max_wal_senders` and `max_replication_slots` parameters.
+Or you can set `wal_keep_size` to limit the maximum WAL size of a replication slot.
+For more information about configuring PostgreSQL streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
 
 {prodname} uses PostgreSQL's logical decoding, which uses replication slots.
-Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages. For this reason, it is important to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
+Logical decoding extracts data changes from the PostgreSQL write-ahead log (WAL) and converts them to a format that {prodname} can consume.
+Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages.
+For this reason, it is important to closely monitor replication slots to avoid excess disk consumption and conditions such as catalog bloat that can result if a replication slot is unused for too long.
 For more information, see the link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication documentation].
 
-When {prodname} connects to a PostgreSQL primary (that is, not a read replica) on PostgreSQL 17 or later, you can configure the connector to that it creates replication slots that are enabled for https://www.postgresql.org/docs/current/logical-replication-failover.html[failover].
-Failover slots permit {prodname} to continue to read changes from a replica that is promoted to primary in case of a failure, without missing any events.
-This requires the state of the slot to be synchronized from primary to replica server.
-For more information about the behavior of failover slots, see the PostgreSQL documentation.
-
-If you are working with a `synchronous_commit` setting other than `on`, set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
-IF you do not set an explicit value, {prodname} applies the default value, which adds a latency of about 200 milliseconds.
+To minimize the latency of change events when the PostgreSQL `synchronous_commit` parameter is set to values other than `on`, set the `wal_writer_delay` for the cluster to a value such as 10 milliseconds
+If the property does not specify an explicit value, {prodname} applies the default value of 200 milliseconds, which increase latency.
 
 [TIP]
 ====
 Reading and understanding link:https://www.postgresql.org/docs/current/static/wal-configuration.html[PostgreSQL documentation about the mechanics and configuration of the PostgreSQL write-ahead log] is strongly recommended.
 ====
+
+// Type: procedure
+// ModuleID: debezium-postgresql-connector-enabling-failover-slots
+[id="enabling-postgresql-failover-slots"]
+= Enabling failover slots for the PostgreSQL connector
+
+When {prodname} connects to a PostgreSQL primary server that runs PostgreSQL 17 or later, you can configure the connector to create replication slots that support failover.
+Failover-enabled replication slots enable {prodname} to continue reading changes from a new primary server after a failover event, without losing events.
+
+.Prerequisites
+
+* {prodname} connects to a primary server that runs PostgreSQL 17 or later.
+* You have administrative access to configure PostgreSQL server parameters.
+* You have configured the {prodname} connector properties.
+
+.Procedure
+
+. In the {prodname} connector configuration, set the xref:postgresql-property-slot-failover[`slot.failover`] property to `true`.
++
+This setting enables the connector to create failover-enabled replication slots.
+
+. On the PostgreSQL primary server, configure the `synchronized_standby_slots` parameter to include the name of the replication slot that the connector uses.
++
+The primary server uses this parameter to synchronize the replication slot state with standby servers.
++
+For example, if your replication slot is named `debezium`, add the following configuration to the `postgresql.conf` file:
++
+[source,properties]
+----
+synchronized_standby_slots = 'debezium'
+----
+
+. Restart the PostgreSQL server to apply the configuration changes.
+
+. Verify that the failover slot is created and synchronized.
++
+You can query the `pg_replication_slots` view to confirm that the slot exists and that the `failover` column is set to `true`:
++
+[source,sql]
+----
+SELECT slot_name, failover, synced
+FROM pg_replication_slots
+WHERE slot_name = 'debezium';
+----
+
+.Results
+
+When the `slot.failover` property is enabled and the slot is listed in `synchronized_standby_slots`, if the primary server fails and a standby replica is promoted to primary, {prodname} continues to read changes from the specified failover slot on the new primary.
+
+.Additional resources
+
+* link:https://www.postgresql.org/docs/current/logical-replication-failover.html[PostgreSQL failover slot behavior (PostgreSQL documentation)^].
+* link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication slots (PostgreSQL documentation)^].
+* xref:postgresql-property-slot-failover[`slot.failover` connector property]
+* xref:postgresql-cluster-failures-recovering-from-failures-pg17-cluster[Recovering from failures in a PostgreSQL 17 cluster].
+
 
 // Type: procedure
 // ModuleID: setting-up-postgresql-permissions-required-by-debezium-connectors
