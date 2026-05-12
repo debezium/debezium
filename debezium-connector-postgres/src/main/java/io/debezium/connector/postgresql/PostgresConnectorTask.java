@@ -534,13 +534,23 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
      * {@code pg_catalog.pg_namespace} and applying the connector's
      * {@code schema.include.list} / {@code schema.exclude.list} predicate.
      * System schemas are excluded because {@link TypeRegistry} always includes them unconditionally.
+     * <p>
+     * When neither list is configured the method returns an empty set immediately, which causes
+     * {@link TypeRegistry} to use its cheaper unfiltered SQL path.
      *
      * @param config     the connector configuration (provides the schema filter predicate)
      * @param connection an open {@link PostgresConnection} used to query {@code pg_catalog.pg_namespace}
-     * @return a possibly-empty set of schema names to pre-load types from
+     * @return a possibly-empty set of schema names to pre-load types from; empty means "all schemas"
      */
     @VisibleForTesting
     static Set<String> buildTypeRegistrySchemaFilter(PostgresConnectorConfig config, PostgresConnection connection) {
+        final String includeList = config.schemaIncludeList();
+        final String excludeList = config.schemaExcludeList();
+        if ((includeList == null || includeList.isBlank()) && (excludeList == null || excludeList.isBlank())) {
+            // No filter configured — TypeRegistry will load all schemas via the cheaper unfiltered SQL path.
+            return Collections.emptySet();
+        }
+
         final Set<String> allSchemas = new HashSet<>();
         try {
             connection.query(
@@ -569,12 +579,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
      */
     @VisibleForTesting
     static Set<String> buildTypeRegistrySchemaFilter(Predicate<String> schemaFilter, Set<String> candidateSchemas) {
-        final Set<String> result = new HashSet<>();
-        for (String name : candidateSchemas) {
-            if (schemaFilter.test(name)) {
-                result.add(name);
-            }
-        }
+        final Set<String> result = candidateSchemas.stream()
+                .filter(schemaFilter)
+                .collect(Collectors.toSet());
         if (!result.isEmpty()) {
             LOGGER.info("TypeRegistry will pre-load types from schemas: {}", result);
         }
