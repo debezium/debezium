@@ -2211,7 +2211,7 @@ endif::product[]
 
 // Type: concept
 // ModuleID: configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in
-// Title: Configuring a replication slot for the {prodname} `pgoutput` plug-in
+// Title: Configure a replication slot for the {prodname} `pgoutput` plug-in
 === Configuring replication slot
 
 PostgreSQL's logical decoding uses replication slots. To configure a replication slot, specify the following in the `postgresql.conf` file:
@@ -2306,9 +2306,6 @@ SHOW wal_level;
 ----
 endif::community[]
 
-// Type: procedure
-
-ifdef::community[]
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
 
@@ -2746,7 +2743,8 @@ Again, regularly emitting events solves the problem.
 ====
 endif::community[]
 
-
+// Type: procedure
+// Title: Set up multiple connectors for a single database server
 [[postgresql-deploying-multiple-connectors]]
 === Setting up multiple connectors for same database server
 
@@ -2760,7 +2758,7 @@ See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] 
 
 // Type: procedure
 // ModuleID: upgrading-postgresql-databases-that-debezium-captures-from
-// Title: Upgrading PostgreSQL databases that {prodname} captures from
+// Title: Upgrade PostgreSQL databases that {prodname} captures from
 [id="upgrading-postgresql"]
 === Upgrading PostgreSQL
 
