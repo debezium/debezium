@@ -2373,6 +2373,8 @@ All up-to-date differences are tracked in a test suite link:https://github.com/d
 
 endif::community[]
 
+// Type: assembly
+// Title: Configure the PostgreSQL server for {prodname}
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
 
@@ -2398,16 +2400,19 @@ wal_level = logical
 The preceding statement instructs the PostgreSQL server to use logical decoding with the write-ahead log.
 endif::community[]
 
+// Type: concept
+// Title: PostgreSQL replication parameters and performance considerations
+[id="debezium-postgresql-connector-replication-parameters-and-performance-considerations"]
+==== Replication parameters and performance considerations
+
 Depending on your requirements, you can set other PostgreSQL streaming replication parameters to customize performance in a {prodname} environment.
 For example, you can increase the number of connectors that can access the sending server concurrently by setting the `max_wal_senders` and `max_replication_slots` parameters.
 Or you can set `wal_keep_size` to limit the maximum WAL size of a replication slot.
-For more information about configuring PostgreSQL streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
 
 {prodname} uses PostgreSQL's logical decoding, which uses replication slots.
 Logical decoding extracts data changes from the PostgreSQL write-ahead log (WAL) and converts them to a format that {prodname} can consume.
 Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages.
 For this reason, it is important to closely monitor replication slots to avoid excess disk consumption and conditions such as catalog bloat that can result if a replication slot is unused for too long.
-For more information, see the link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication documentation].
 
 To minimize the latency of change events when the PostgreSQL `synchronous_commit` parameter is set to values other than `on`, set the `wal_writer_delay` for the cluster to a value such as 10 milliseconds
 If the property does not specify an explicit value, {prodname} applies the default value of 200 milliseconds, which increase latency.
@@ -2417,10 +2422,15 @@ If the property does not specify an explicit value, {prodname} applies the defau
 Reading and understanding link:https://www.postgresql.org/docs/current/static/wal-configuration.html[PostgreSQL documentation about the mechanics and configuration of the PostgreSQL write-ahead log] is strongly recommended.
 ====
 
+.Additional resources
+* link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[Configuring PostgreSQL streaming replication (PostgreSQL documentation)^].
+* link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication (PostgreSQL documentation)^].
+
+
 // Type: procedure
 // ModuleID: debezium-postgresql-connector-enabling-failover-slots
 [id="enabling-postgresql-failover-slots"]
-= Enabling failover slots for the PostgreSQL connector
+==== Enable failover slots for the PostgreSQL connector
 
 When {prodname} connects to a PostgreSQL primary server that runs PostgreSQL 17 or later, you can configure the connector to create replication slots that support failover.
 Failover-enabled replication slots enable {prodname} to continue reading changes from a new primary server after a failover event, without losing events.
@@ -2475,9 +2485,9 @@ When the `slot.failover` property is enabled and the slot is listed in `synchron
 
 // Type: procedure
 // ModuleID: setting-up-postgresql-permissions-required-by-debezium-connectors
-// Title: Setting up PostgreSQL permissions for the {prodname} connector
+// Title: Set up PostgreSQL permissions for the {prodname} connector
 [[postgresql-permissions]]
-=== Setting up permissions
+==== Setting up permissions
 
 Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
@@ -2501,7 +2511,7 @@ CREATE ROLE __<name>__ REPLICATION LOGIN;
 
 // Type: procedure
 // ModuleID: setting-privileges-to-permit-debezium-user-to-create-postgresql-publications
-// Title: Setting privileges to enable {prodname} to create PostgreSQL publications
+// Title: Set privileges to enable {prodname} to create PostgreSQL publications
 [[postgresql-replication-user-privileges]]
 === Setting privileges to enable {prodname} to create PostgreSQL publications when you use `pgoutput`
 
@@ -2563,6 +2573,7 @@ For {prodname} to specify the capture configuration, the value of xref:postgresq
 
 // Type: procedure
 // ModuleID: configuring-postgresql-to-allow-replication-with-the-connector-host
+// Title: Configure PostgreSQL to permit replication with the {prodname} host
 [[postgresql-host-replication-permissions]]
 === Configuring PostgreSQL to allow replication with the {prodname} connector host
 
