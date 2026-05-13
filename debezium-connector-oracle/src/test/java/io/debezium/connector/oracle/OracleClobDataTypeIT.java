@@ -2702,6 +2702,42 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-1917")
+    public void shouldRollbackExactlyOneOperation() throws Exception {
+        TestHelper.dropTable(connection, "DBZ1917");
+        try {
+            connection.execute("CREATE TABLE DBZ1917(id numeric(9,0), DATA CLOB)");
+            TestHelper.streamTable(connection, "DBZ1917");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1917")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute(
+                    "INSERT INTO DBZ1917(id,data) VALUES (1,'insert 1')",
+                    "SAVEPOINT s1",
+                    "UPDATE DBZ1917 SET data = 'update 1' WHERE id = 1",
+                    "ROLLBACK TO SAVEPOINT s1",
+                    "INSERT INTO DBZ1917 (id,data) VALUES (2,'insert 2')");
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(1);
+            SourceRecord insert1 = tableRecords.get(0);
+            assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo("insert 1");
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ1917");
+        }
+    }
+
     private String createRandomStringWithAlphaNumeric(int length) {
         return RandomStringUtils.randomAlphabetic(length);
     }
