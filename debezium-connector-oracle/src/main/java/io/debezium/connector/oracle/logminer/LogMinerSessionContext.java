@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class LogMinerSessionContext implements AutoCloseable {
     private final boolean useContinuousMining;
     private final LogMiningStrategy strategy;
     private final String dictionaryFilePath;
+    private final LogMinerPlatformStrategy platformStrategy;
 
     private boolean sessionStarted = false;
     private Duration lastSessionStartTime = Duration.ZERO;
@@ -40,10 +42,16 @@ public class LogMinerSessionContext implements AutoCloseable {
     private Scn currentSessionEndScn = Scn.NULL;
 
     public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
+        this(connection, useContinuousMining, strategy, dictionaryFilePath, new StandardLogMinerPlatformStrategy());
+    }
+
+    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy,
+                                  String dictionaryFilePath, LogMinerPlatformStrategy platformStrategy) {
         this.connection = connection;
         this.useContinuousMining = useContinuousMining;
         this.strategy = strategy;
         this.dictionaryFilePath = dictionaryFilePath;
+        this.platformStrategy = Objects.requireNonNull(platformStrategy, "Platform strategy must not be null");
     }
 
     @Override
@@ -99,8 +107,7 @@ public class LogMinerSessionContext implements AutoCloseable {
             Objects.requireNonNull(logFile.getFileName());
 
             LOGGER.debug("  Adding log file: {}", logFile);
-            connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
-                    logFile.getFileName() + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
+            platformStrategy.addLogFile(connection, logFile.getFileName());
         }
     }
 
@@ -110,7 +117,20 @@ public class LogMinerSessionContext implements AutoCloseable {
      * @throws SQLException if a database exception occurred
      */
     public void removeAllLogFilesFromSession() throws SQLException {
-        connection.removeAllLogFilesFromLogMinerSession();
+        removeAllLogFilesFromSession(connection);
+    }
+
+    /**
+     * Removes all log files from the mining session using the provided connection.
+     *
+     * @param connection the Oracle database connection
+     * @throws SQLException if a database exception occurred
+     */
+    public void removeAllLogFilesFromSession(OracleConnection connection) throws SQLException {
+        final Set<String> fileNames = StandardLogMinerPlatformStrategy.getRegisteredLogFileNames(connection);
+        for (String fileName : fileNames) {
+            platformStrategy.removeLogFile(connection, fileName);
+        }
     }
 
     /**
@@ -127,22 +147,13 @@ public class LogMinerSessionContext implements AutoCloseable {
         Objects.requireNonNull(endScn, "The end SCN must be provided, but can be Scn.NULL");
 
         try {
-            final StringBuilder query = new StringBuilder(64);
-            query.append("BEGIN sys.dbms_logmnr.start_logmnr(");
-            if (!startScn.isNull()) {
-                query.append("startScn => '").append(startScn).append("', ");
-            }
-            if (!endScn.isNull()) {
-                query.append("endScn => '").append(endScn).append("', ");
-            }
-            query.append("options => ").append(String.join(" + ", getMiningOptions(committedDataOnly)));
-            if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
-                query.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
-            }
-            query.append("); END;");
+            final String miningOptions = String.join(" + ", getMiningOptions(committedDataOnly));
+            final String dictFilePath = (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE)
+                    ? dictionaryFilePath
+                    : null;
 
-            Instant startTime = Instant.now();
-            connection.executeWithoutCommitting(query.toString());
+            final Instant startTime = Instant.now();
+            platformStrategy.startSession(connection, startScn, endScn, miningOptions, dictFilePath);
             lastSessionStartTime = Duration.between(startTime, Instant.now());
             sessionStarted = true;
 
@@ -172,7 +183,7 @@ public class LogMinerSessionContext implements AutoCloseable {
             currentSessionStartScn = Scn.NULL;
             currentSessionEndScn = Scn.NULL;
 
-            connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
+            platformStrategy.endSession(connection);
             sessionStarted = false;
         }
         catch (SQLException e) {
@@ -192,7 +203,7 @@ public class LogMinerSessionContext implements AutoCloseable {
      */
     public void writeDataDictionaryToRedoLogs() throws SQLException {
         LOGGER.trace("Building data dictionary");
-        connection.executeWithoutCommitting("BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;");
+        platformStrategy.writeDataDictionaryToRedoLogs(connection);
     }
 
     private List<String> getMiningOptions(boolean committedDataOnly) {
@@ -216,6 +227,8 @@ public class LogMinerSessionContext implements AutoCloseable {
         }
 
         miningOptions.add("DBMS_LOGMNR.NO_ROWID_IN_STMT");
+
+        platformStrategy.addMiningOptionConstants(miningOptions);
 
         return miningOptions;
     }
