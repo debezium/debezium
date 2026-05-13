@@ -2192,16 +2192,21 @@ If your database is hosted by a service such as link:https://www.heroku.com/post
 endif::community[]
 
 ifdef::product[]
-This release of {prodname} supports only the native `pgoutput` logical replication stream.
-To set up PostgreSQL so that it uses the `pgoutput` plug-in, you must enable a replication slot, and configure a user with sufficient privileges to perform the replication.
+To set up PostgreSQL so that the {prodname} connector can capture change events, you must configure the database to use the `pgoutput` logical replication plug-in, enable a replication slot, configure user permissions, and set up network access for replication.
 
 Details are in the following topics:
 
 * xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[]
+* xref:debezium-postgresql-connector-specify-the-plugin-name[]
+* xref:debezium-postgresql-connector-create-a-replication-user[]
+* xref:postgresql-server-configuration[]
+* xref:enabling-postgresql-failover-slots[]
 * xref:setting-up-postgresql-permissions-required-by-debezium-connectors[]
 * xref:setting-privileges-to-permit-debezium-user-to-create-postgresql-publications[]
 * xref:configuring-postgresql-to-allow-replication-with-the-connector-host[]
+* xref:supported-postgresql-topologies[]
 * xref:configuring-postgresql-to-manage-debezium-wal-disk-space-consumption[]
+* xref:postgresql-deploying-multiple-connectors[]
 * xref:upgrading-postgresql-databases-that-debezium-captures-from[]
 endif::product[]
 
