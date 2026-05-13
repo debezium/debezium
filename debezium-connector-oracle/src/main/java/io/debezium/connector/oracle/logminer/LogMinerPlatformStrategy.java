@@ -5,10 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.sql.SQLException;
 import java.util.List;
 
-import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.Scn;
 
 /**
@@ -20,59 +18,53 @@ import io.debezium.connector.oracle.Scn;
  * PL/SQL packages via {@code rdsadmin} for LogMiner operations.
  *
  * <p>Implementations of this interface encapsulate the platform-specific SQL/PL/SQL calls
- * so the rest of the connector can remain platform-agnostic.
+ * so the rest of the connector can remain platform-agnostic. Strategy methods return SQL
+ * strings rather than executing them directly, allowing the caller to control execution.
  *
  * @author Chris Cranford
  */
 public interface LogMinerPlatformStrategy {
 
     /**
-     * Add a log file to the current LogMiner session.
+     * Get the SQL to add a log file to the current LogMiner session.
      *
-     * @param connection the Oracle database connection
      * @param fileName the fully qualified log file name
-     * @throws SQLException if a database exception occurs
+     * @return the SQL string to execute
      */
-    void addLogFile(OracleConnection connection, String fileName) throws SQLException;
+    String getAddLogFileSql(String fileName);
 
     /**
-     * Start a LogMiner mining session.
+     * Get the SQL to start a LogMiner mining session.
      *
-     * @param connection the Oracle database connection
      * @param startScn the starting system change number, may be {@link Scn#NULL}
      * @param endScn the ending system change number, may be {@link Scn#NULL}
      * @param miningOptions the comma-separated mining options string
      * @param dictionaryFilePath the dictionary file path, may be {@code null}
-     * @throws SQLException if a database exception occurs
+     * @return the SQL string to execute
      */
-    void startSession(OracleConnection connection, Scn startScn, Scn endScn, String miningOptions,
-                      String dictionaryFilePath)
-            throws SQLException;
+    String getStartSessionSql(Scn startScn, Scn endScn, String miningOptions, String dictionaryFilePath);
 
     /**
-     * End the current LogMiner mining session.
+     * Get the SQL to end the current LogMiner mining session.
      *
-     * @param connection the Oracle database connection
-     * @throws SQLException if a database exception occurs
+     * @return the SQL string to execute
      */
-    void endSession(OracleConnection connection) throws SQLException;
+    String getEndSessionSql();
 
     /**
-     * Write the data dictionary to the Oracle transaction redo logs.
+     * Get the SQL to write the data dictionary to the Oracle transaction redo logs.
      *
-     * @param connection the Oracle database connection
-     * @throws SQLException if a database exception occurs
+     * @return the SQL string to execute
      */
-    void writeDataDictionaryToRedoLogs(OracleConnection connection) throws SQLException;
+    String getWriteDataDictionaryToRedoLogsSql();
 
     /**
-     * Remove a specific log file from the current LogMiner session.
+     * Get the SQL to remove a specific log file from the current LogMiner session.
      *
-     * @param connection the Oracle database connection
      * @param fileName the fully qualified log file name
-     * @throws SQLException if a database exception occurs
+     * @return the SQL string to execute
      */
-    void removeLogFile(OracleConnection connection, String fileName) throws SQLException;
+    String getRemoveLogFileSql(String fileName);
 
     /**
      * Determine whether direct access to the CDB root container is supported.

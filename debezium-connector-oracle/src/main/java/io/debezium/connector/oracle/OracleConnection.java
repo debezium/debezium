@@ -38,11 +38,11 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
-import io.debezium.connector.oracle.OracleConnectorConfig.DeploymentPlatform;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningPlatform;
 import io.debezium.connector.oracle.logminer.LogMinerPlatformStrategy;
-import io.debezium.connector.oracle.logminer.RdsLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.logminer.SqlUtils;
-import io.debezium.connector.oracle.logminer.StandardLogMinerPlatformStrategy;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
+import io.debezium.connector.oracle.logminer.platforms.RdsLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -100,17 +100,17 @@ public class OracleConnection extends JdbcConnection {
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit,
-                resolvePlatformStrategy(connectorConfig.getDeploymentPlatform()));
+                resolvePlatformStrategy(connectorConfig.getLogMiningPlatform()));
     }
 
     public OracleConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig, boolean autoCommit) {
         this(jdbcConfig, connectorConfig.getQueryFetchSize(), autoCommit,
-                resolvePlatformStrategy(connectorConfig.getDeploymentPlatform()));
+                resolvePlatformStrategy(connectorConfig.getLogMiningPlatform()));
     }
 
     @VisibleForTesting
     public OracleConnection(JdbcConfiguration config, boolean autoCommit) {
-        this(config, 10, autoCommit, new StandardLogMinerPlatformStrategy());
+        this(config, 10, autoCommit, new DefaultLogMinerPlatformStrategy());
     }
 
     private OracleConnection(JdbcConfiguration config, int queryFetchSize, boolean autoCommit,
@@ -120,7 +120,7 @@ public class OracleConnection extends JdbcConnection {
 
     @VisibleForTesting
     public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean autoCommit) {
-        this(config, connectionFactory, 10, autoCommit, new StandardLogMinerPlatformStrategy());
+        this(config, connectionFactory, 10, autoCommit, new DefaultLogMinerPlatformStrategy());
     }
 
     private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize,
@@ -131,11 +131,11 @@ public class OracleConnection extends JdbcConnection {
         this.platformStrategy = platformStrategy;
     }
 
-    private static LogMinerPlatformStrategy resolvePlatformStrategy(DeploymentPlatform platform) {
-        if (platform == DeploymentPlatform.RDS) {
+    private static LogMinerPlatformStrategy resolvePlatformStrategy(LogMiningPlatform platform) {
+        if (platform == LogMiningPlatform.RDS) {
             return new RdsLogMinerPlatformStrategy();
         }
-        return new StandardLogMinerPlatformStrategy();
+        return new DefaultLogMinerPlatformStrategy();
     }
 
     private static Operations initialOperations(boolean autoCommit) {
@@ -849,10 +849,14 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void removeAllLogFilesFromLogMinerSession() throws SQLException {
-        final Set<String> fileNames = StandardLogMinerPlatformStrategy.getRegisteredLogFileNames(this);
+        final Set<String> fileNames = DefaultLogMinerPlatformStrategy.getRegisteredLogFileNames(this);
 
         for (String fileName : fileNames) {
-            platformStrategy.removeLogFile(this, fileName);
+            LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
+            final String sql = platformStrategy.getRemoveLogFileSql(fileName);
+            try (CallableStatement statement = connection(false).prepareCall(sql)) {
+                statement.execute();
+            }
         }
     }
 
