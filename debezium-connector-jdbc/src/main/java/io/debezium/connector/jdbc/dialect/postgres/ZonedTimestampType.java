@@ -27,12 +27,7 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-
-        if (POSITIVE_INFINITY.equals(value) || NEGATIVE_INFINITY.equals(value)) {
-            return "cast(? as timestamptz)";
-        }
-
-        return super.getQueryBinding(column, schema, value);
+        return "cast(? as timestamptz)";
     }
 
     @Override
