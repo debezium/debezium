@@ -673,7 +673,7 @@ Details follow in these sections:
 * <<postgresql-tombstone-events, Tombstone events>>
 endif::product[]
 
-// Type: continue
+// Type: concept
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -688,7 +688,8 @@ If a table does not have a primary key, the connector does not emit `UPDATE` or 
 * `FULL` - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-create-events]]
 === _create_ events
 
@@ -967,7 +968,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 |===
 
-// Type: continue
+
+// Type: reference
 [[postgresql-update-events]]
 === _update_ events
 
@@ -1056,7 +1058,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
 ====
 
-// Type: continue
+
+// Type: reference
 [[postgresql-primary-key-updates]]
 === Primary key updates
 
@@ -1067,7 +1070,8 @@ as a primary key change. For a primary key change, in place of sending an `UPDAT
 
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-delete-events]]
 === _delete_ events
 
@@ -1155,12 +1159,14 @@ For a consumer to be able to process a _delete_ event generated for a table that
 
 PostgreSQL connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-tombstone-events]]
 .Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, the PostgreSQL connector follows a _delete_ event with a special _tombstone_ event that has the same key but a `null` value.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-truncate-events]]
 === _truncate_ events
 
@@ -1239,7 +1245,7 @@ Ordering is guaranteed only for topics that use a single partition.
 
 If you do not want the connector to capture _truncate_ events, use the xref:postgresql-property-skipped-operations[`skipped.operations`] option to filter them out.
 
-// Type: continue
+// Type: reference
 [[postgresql-message-events]]
 === _message_ events
 
