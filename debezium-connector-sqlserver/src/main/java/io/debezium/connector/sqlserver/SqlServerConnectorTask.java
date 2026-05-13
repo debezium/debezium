@@ -94,7 +94,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
-                connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
+                connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode(),
+                connectorConfig.getUnavailableValuePlaceholder());
 
         MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
                 () -> new SqlServerConnection(connectorConfig,
