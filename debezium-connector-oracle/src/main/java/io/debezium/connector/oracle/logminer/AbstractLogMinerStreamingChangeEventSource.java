@@ -152,7 +152,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
         this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
-                connectorConfig.getLogMiningPathToDictionary());
+                connectorConfig.getLogMiningPathToDictionary(), jdbcConnection.getPlatformStrategy());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();

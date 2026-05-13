@@ -81,6 +81,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
+    public static final Field DEPLOYMENT_PLATFORM = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "deployment.platform")
+            .withDisplayName("Deployment platform")
+            .withEnum(DeploymentPlatform.class, DeploymentPlatform.STANDARD)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
+            .withDescription("The deployment platform of the Oracle database. "
+                    + "Options include: "
+                    + "'standard': (the default) for on-premise or self-managed Oracle deployments; "
+                    + "'rds': for AWS RDS Oracle deployments using CDB architecture, "
+                    + "where access to CDB$ROOT is restricted and rdsadmin PL/SQL packages are used for LogMiner operations");
+
     /**
      * @deprecated to be removed in Debezium 4.0
      */
@@ -746,6 +758,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     DATABASE_NAME,
                     QUERY_TIMEOUT_MS,
                     PDB_NAME,
+                    DEPLOYMENT_PLATFORM,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
@@ -837,6 +850,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final String databaseName;
     private final String pdbName;
+    private final DeploymentPlatform deploymentPlatform;
     private final String xstreamOutboundServerName;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -910,6 +924,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
         this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
+        this.deploymentPlatform = DeploymentPlatform.parse(config.getString(DEPLOYMENT_PLATFORM));
         this.xstreamOutboundServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
@@ -1001,6 +1016,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public String getCatalogName() {
         return pdbName != null ? pdbName : databaseName;
+    }
+
+    /**
+     * @return the deployment platform for this Oracle connector instance
+     */
+    public DeploymentPlatform getDeploymentPlatform() {
+        return deploymentPlatform;
     }
 
     public String getXStreamOutboundServerName() {
@@ -1638,6 +1660,52 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             for (LogMiningQueryFilterMode mode : LogMiningQueryFilterMode.values()) {
                 if (mode.getValue().equalsIgnoreCase(value)) {
                     return mode;
+                }
+            }
+            return null;
+        }
+    }
+
+    public enum DeploymentPlatform implements EnumeratedValue {
+
+        /**
+         * Standard on-premise or self-managed Oracle deployment.
+         * Uses standard Oracle {@code SYS.DBMS_LOGMNR} packages and V$ views.
+         */
+        STANDARD("standard"),
+
+        /**
+         * AWS RDS Oracle deployment with CDB architecture.
+         * Uses {@code rdsadmin.rdsadmin_util} PL/SQL packages for LogMiner operations and
+         * does not permit direct access to CDB$ROOT.
+         */
+        RDS("rds");
+
+        private final String value;
+
+        DeploymentPlatform(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DeploymentPlatform parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (DeploymentPlatform platform : DeploymentPlatform.values()) {
+                if (platform.getValue().equalsIgnoreCase(value)) {
+                    return platform;
                 }
             }
             return null;
