@@ -2232,39 +2232,6 @@ For more information, see the link:https://www.postgresql.org/docs/current/warm-
 Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector.
 ====
 
-//Type: procedure
-[id="debezium-postgresql-connector-creating-a-replication-user"]
-=== Creating a replication user
-To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
-
-To create a user with the `REPLICATION` attribute::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
-----
-
-To set the `REPLICATION` attribute on an existing user::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-ALTER USER existing_user WITH REPLICATION;
-----
-
-.Specifying the {prodname} `plugin.name`
-
-In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
-
-----
-{
-      ..
-      "plugin.name": "pgoutput",
-      ..
-      ..
-}
-----
 
 
 ifdef::community[]
@@ -2379,6 +2346,71 @@ These differences have been identified:
 All up-to-date differences are tracked in a test suite link:https://github.com/debezium/debezium/blob/main/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
 endif::community[]
+
+// Type: procedure
+[id="debezium-postgresql-connector-specify-the-plugin-name"]
+=== Specify the {prodname} `plugin.name`
+
+ifdef::community[]
+In environments that require the connector to use the `pgoutput` logical decoding plug-in, such as Google Cloud SQL for PostgreSQL or PostgreSQL on Amazon RDS, you must explicitly set the value of the connector's `plugin.name` property to `pgoutput`.
+endif::community[]
+ifdef::product[]
+For the connector to capture change events from a PostgreSQL database, you must configure it to use the `pgpoutput` logical decoding plug-in.
+Setting this property is required, even though the connector does not support use of alternate decoding plug-ins.
+endif::product[]
+
+.Procedure
+
+* In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
++
+ifdef::community[]
+[source,json]
+----
+{
+      ..
+      "plugin.name": "pgoutput",
+      ..
+      ..
+}
+----
+endif::community[]
+ifdef::product[]
+[source,yaml]
+----
+spec:
+  ..
+  config:
+    ..
+    plugin.name: pgoutput
+    ..
+----
+endif::product[]
+
+
+//Type: procedure
+[id="debezium-postgresql-connector-create-a-replication-user"]
+=== Create a replication user
+
+To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+
+.Procedure
+
+* Complete one of the following steps:
++
+Create a user with the `REPLICATION` attribute::
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
+----
+
+Set the `REPLICATION` attribute for an existing user::
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+ALTER USER existing_user WITH REPLICATION;
+----
+
 
 // Type: assembly
 // Title: Configure the PostgreSQL server for {prodname}
@@ -3228,7 +3260,8 @@ ifdef::community[]
 Supported values are `decoderbufs`, and `pgoutput`.
 endif::community[]
 ifdef::product[]
-The only supported value is `pgoutput`. You must explicitly set `plugin.name` to `pgoutput`.
+The only supported value is `pgoutput`.
+You must explicitly set `plugin.name` to `pgoutput`.
 endif::product[]
 
 |[[postgresql-property-slot-name]]<<postgresql-property-slot-name, `+slot.name+`>>
