@@ -64,8 +64,8 @@ import io.debezium.util.Testing;
  */
 public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, D extends BinlogDefaultValueConverter, P extends AntlrDdlParser<?, ?>> {
 
-    private P parser;
-    private Tables tables;
+    protected P parser;
+    protected Tables tables;
     private SimpleDdlParserListener listener;
     private V converters;
     private TableSchemaBuilder tableSchemaBuilder;
@@ -352,11 +352,11 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         parser.parse("CREATE SCHEMA IF NOT EXISTS `database1` CHARACTER SET='windows-1250'", tables);
         parser.parse("CREATE TABLE IF NOT EXISTS `database1`.`table1` (\n"
                 + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
-                + "`x1` VARCHAR NOT NULL\n"
+                + "`x1` VARCHAR(255) NOT NULL\n"
                 + ") CHARACTER SET = DEFAULT;", tables);
         parser.parse("CREATE TABLE IF NOT EXISTS `database2`.`table2` (\n"
                 + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
-                + "`x1` VARCHAR NOT NULL\n"
+                + "`x1` VARCHAR(255) NOT NULL\n"
                 + ") CHARACTER SET = DEFAULT;", tables);
         assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(2);
@@ -392,7 +392,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @Test
     @FixFor("DBZ-4193")
-    public void shouldAllowAggregateWindowedFunction() {
+    void shouldAllowAggregateWindowedFunction() {
         String selectSql = "SELECT e.id,\n"
                 + "SUM(e.bin_volume) AS bin_volume,\n"
                 + "SUM(e.bin_volume) OVER(PARTITION BY id, e.bin_volume ORDER BY id) AS bin_volume_o,\n"
@@ -1235,7 +1235,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    void shouldParseMySql56InitializationStatements() {
+    public void shouldParseMySql56InitializationStatements() {
         parser.parse(readLines(1, "ddl/mysql-test-init-5.6.ddl"), tables);
         assertThat(tables.size()).isEqualTo(85); // 1 table
         int truncateTableStatements = 8;
@@ -1244,7 +1244,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    void shouldParseMySql57InitializationStatements() {
+    public void shouldParseMySql57InitializationStatements() {
         parser.parse(readLines(1, "ddl/mysql-test-init-5.7.ddl"), tables);
         assertThat(tables.size()).isEqualTo(123);
         int truncateTableStatements = 4;
@@ -1880,7 +1880,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + " c1 varchar(255) default null," + System.lineSeparator()
                 + " c2 varchar(255) not null," + System.lineSeparator()
                 + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
-                + " primary key ('id')" + System.lineSeparator()
+                + " primary key (`id`)" + System.lineSeparator()
                 + ") engine=InnoDB auto_increment=1006 default charset=latin1;" + System.lineSeparator();
         parser.parse(ddl, tables);
         assertVariable("character_set_server", "utf8");
@@ -1901,7 +1901,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + " c1 varchar(255) default null," + System.lineSeparator()
                 + " c2 varchar(255) not null," + System.lineSeparator()
                 + " c3 varchar(255) charset latin2 not null," + System.lineSeparator()
-                + " primary key ('id')" + System.lineSeparator()
+                + " primary key (`id`)" + System.lineSeparator()
                 + ") engine=InnoDB auto_increment=1006;" + System.lineSeparator();
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -2144,7 +2144,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @Test
     void shouldParseDefiner() {
-        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin -- anything end;";
+        String function = "FUNCTION fnA( a int, b int ) RETURNS tinyint(1) begin\n  -- anything\nend;";
         String ddl = "CREATE DEFINER='mysqluser'@'%' " + function;
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // no tables
@@ -3006,7 +3006,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    void parseTableWithPageChecksum() {
+    public void parseTableWithPageChecksum() {
         String ddl = "CREATE TABLE t (id INT NOT NULL, PRIMARY KEY (`id`)) PAGE_CHECKSUM=1;" +
                 "ALTER TABLE t PAGE_CHECKSUM=0;";
         parser.parse(ddl, tables);

@@ -339,6 +339,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 }
                 eventSource.getXsOut().setProcessedLowWatermark(
                         message.position.getRawPosition(),
+                        message.position.getRawPosition(),
                         XStreamOut.DEFAULT_MODE);
             }
             else if (message.scn != null) {
@@ -346,6 +347,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     LOGGER.debug("Recording position with SCN {}", message.scn);
                 }
                 eventSource.getXsOut().setProcessedLowWatermark(
+                        message.scn,
                         message.scn,
                         XStreamOut.DEFAULT_MODE);
             }

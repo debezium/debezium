@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.4", "9.1" ]
+        version-mysql-server: [ "8.0", "8.4", "9.7" ]
         # Always exclude mysql-ci-gtids and mysql-ci-ssl profiles for all versions except most recent
         exclude:
           - profile: "mysql-ci-gtids"

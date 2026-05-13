@@ -21,8 +21,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +28,6 @@ import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.ImagePullPolicy;
 import org.testcontainers.lifecycle.Startable;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -38,6 +35,7 @@ import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 import io.debezium.testing.testcontainers.util.PortResolver;
 import io.debezium.testing.testcontainers.util.RandomPortResolver;
+import io.debezium.util.Strings;
 
 /**
  * A MongoDB replica set.
@@ -372,23 +370,15 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     }
 
     public Optional<MongoDbContainer> tryPrimary() {
-        return stream(getStatus().path("members"))
-                .filter(memberStatus -> "PRIMARY".equals(memberStatus.path("stateStr").textValue()))
-                .findFirst()
-                .flatMap(this::findMember);
-    }
-
-    private Optional<MongoDbContainer> findMember(JsonNode memberStatus) {
-        var name = memberStatus.path("name").textValue();
+        var hello = members.get(0).eval("rs.hello()");
+        var primaryAddress = hello.path("primary").textValue();
+        if (Strings.isNullOrEmpty(primaryAddress)) {
+            return Optional.empty();
+        }
         return members.stream()
-                .filter(node -> node.getNamedAddress().toString().equals(name) || // Match by name or possibly IP
-                        node.getClientAddress().toString().equals(name))
+                .filter(node -> node.getNamedAddress().toString().equals(primaryAddress)
+                        || node.getClientAddress().toString().equals(primaryAddress))
                 .findFirst();
-    }
-
-    private JsonNode getStatus() {
-        var arbitraryNode = members.get(0);
-        return arbitraryNode.eval("rs.status()");
     }
 
     public List<String> getHostNames() {
@@ -408,10 +398,6 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 ", members=" + members +
                 ", started=" + started +
                 '}';
-    }
-
-    private static <T> Stream<T> stream(Iterable<T> iterable) {
-        return StreamSupport.stream(iterable.spliterator(), false);
     }
 
 }

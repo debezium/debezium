@@ -125,7 +125,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
-    @FixFor("DBZ-1683")
+    @FixFor("debezium/dbz#1683")
     void shouldNotLogTooManyUnknownTypeResolutionsOnStartup() throws Exception {
         TestHelper.create().dropReplicationSlot("test1");
         LogInterceptor interceptor = new LogInterceptor(TypeRegistry.class);

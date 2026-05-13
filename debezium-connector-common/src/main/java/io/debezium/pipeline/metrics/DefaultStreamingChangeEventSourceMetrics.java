@@ -39,7 +39,7 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
                                                                                      EventMetadataProvider metadataProvider,
                                                                                      CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
-        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
         if (taskContext.getConfig().skipMessagesWithoutChange()) {
@@ -51,12 +51,24 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
                                                                                      EventMetadataProvider metadataProvider, Map<String, String> tags,
                                                                                      CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
-        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
         if (taskContext.getConfig().skipMessagesWithoutChange()) {
             streamingMeter.enableUnchangedEventsMetric();
         }
+    }
+
+    @Override
+    public synchronized void register() {
+        super.register();
+        streamingMeter.start();
+    }
+
+    @Override
+    public synchronized void unregister() {
+        super.unregister();
+        streamingMeter.stop();
     }
 
     @Override
@@ -81,6 +93,36 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     @Override
     public long getMilliSecondsBehindSource() {
         return streamingMeter.getMilliSecondsBehindSource();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceMinValue() {
+        return streamingMeter.getMilliSecondsBehindSourceMinValue();
+    }
+
+    @Override
+    public Long getMilliSecondsBehindSourceMaxValue() {
+        return streamingMeter.getMilliSecondsBehindSourceMaxValue();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceAverageValue() {
+        return streamingMeter.getMilliSecondsBehindSourceAverageValue();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP50() {
+        return streamingMeter.getMilliSecondsBehindSourceP50();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP95() {
+        return streamingMeter.getMilliSecondsBehindSourceP95();
+    }
+
+    @Override
+    public Double getMilliSecondsBehindSourceP99() {
+        return streamingMeter.getMilliSecondsBehindSourceP99();
     }
 
     @Override

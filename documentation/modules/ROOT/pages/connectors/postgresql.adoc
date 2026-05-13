@@ -2404,7 +2404,7 @@ without missing any events.
 This requires the state of the slot to be synchronized from primary to replica server;
 refer to the Postgres documentation for the details.
 
-If you are working with a `synchronous_commit` setting other than `on`,
+If you are working with `synchronous_commit` set to `off`,
 the recommendation is to set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
 Otherwise, its default value is applied, which adds a latency of about 200 milliseconds.
 
@@ -4555,16 +4555,16 @@ Synchronization of replica slots is not automatic.
 When you use {prodname} with PostgreSQL 17 or later, you can configure replication slots on a primary server for automatic failover, so that {prodname} does not miss any change events.
 When a replication slot is configured for failover, PostgreSQL automatically synchronizes the replication slot from the primary to the replica, enabling {prodname} to continue reading from the slot after the replica is promoted and becomes the new primary.
 
+ifdef::community[]
 [NOTE]
 ====
 Some managed PostgreSQL services (for example, AWS RDS and GCP CloudSQL) use disk replication to implement replication to a standby.
 As a result, these services automatically replicate the replication slot so that it is available after a failover.
 ====
+endif::community[]
 
-ifdef::community[]
 The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes.
 Only then can you point the connector to the new server and restart the connector.
-endif::community[]
 
 ifdef::product[]
 The new primary must have a replication slot that is configured to use the `pgoutput` plug-in, and must include the database for which you want to capture changes.

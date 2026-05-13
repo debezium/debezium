@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -618,6 +619,75 @@ public class SqlServerConnectionIT {
                     .isInstanceOf(SQLException.class)
                     .hasMessage("The query has timed out.");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1877")
+    void reconnectShouldRebuildConnectionWithAutoCommitDisabled() throws SQLException {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            assertThat(connection.connection().getAutoCommit()).isFalse();
+
+            connection.reconnect();
+
+            assertThat(connection.connection().getAutoCommit()).isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1877")
+    void reconnectShouldRecoverAfterServerKillsSession() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            connection.connect();
+
+            Connection before = connection.connection();
+            int spid = currentSpid(connection);
+            try (SqlServerConnection admin = TestHelper.adminConnection()) {
+                admin.connect();
+                admin.execute("KILL " + spid);
+            }
+
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !connection.isValid());
+
+            connection.reconnect();
+
+            assertThat(connection.isValid()).isTrue();
+            assertThat(connection.connection()).isNotSameAs(before);
+            assertThat(connection.connection().getAutoCommit()).isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1877")
+    void isValidShouldDistinguishKilledFromHealthyConnections() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection data = TestHelper.testConnection();
+                SqlServerConnection metadata = TestHelper.testConnection()) {
+            data.connect();
+            metadata.connect();
+
+            int dataSpid = currentSpid(data);
+            try (SqlServerConnection admin = TestHelper.adminConnection()) {
+                admin.connect();
+                admin.execute("KILL " + dataSpid);
+            }
+
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !data.isValid());
+            assertThat(metadata.isValid()).isTrue();
+
+            data.reconnect();
+
+            assertThat(data.isValid()).isTrue();
+            assertThat(metadata.isValid()).isTrue();
+        }
+    }
+
+    private static int currentSpid(SqlServerConnection connection) throws SQLException {
+        return connection.queryAndMap("SELECT @@SPID", rs -> {
+            rs.next();
+            return rs.getInt(1);
+        });
     }
 
     private long toMillis(OffsetDateTime datetime) {

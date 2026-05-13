@@ -689,10 +689,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
         int tryCount = 0;
+        final boolean isReplicationSlotBehindOffsetStore = offset.compareTo(defaultStartingPos) > 0;
         while (true) {
             try {
-                if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
-                    validateSlotIsInExpectedState(walPosition);
+                if (connectorConfig.slotSeekToKnownOffsetOnStart() && isReplicationSlotBehindOffsetStore) {
+                    advanceReplicationSlot(walPosition);
                 }
                 return createReplicationStream(lsn, walPosition);
             }
@@ -718,7 +719,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 (offset.compareTo(defaultStartingPos) < 0 && connectorConfig.offsetSeekToSlotOnStart());
     }
 
-    protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
+    protected void advanceReplicationSlot(WalPositionLocator walPosition) throws SQLException {
         Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
         if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
             return;

@@ -1,6 +1,7 @@
 CREATE TABLE connector_test.business_order (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `code` varchar(32) NOT NULL COMMENT 'order code',
+  `merchant_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `order_code_index` (`code`) COMMENT 'order index',
   KEY `merchant_id_index` (`merchant_id`)
@@ -8,8 +9,10 @@ CREATE TABLE connector_test.business_order (
 
 CREATE TABLE connector_test.business_order_detail (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
   `return_product_num` int(11) DEFAULT NULL COMMENT 'return product',
   `actual_price` decimal(10,2) DEFAULT '0.00' COMMENT 'actual price',
+  `unit_price` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2572662 DEFAULT CHARSET=utf8 COMMENT='order detail';
 
@@ -28,6 +31,7 @@ SELECT
 FROM business_order bo
 LEFT JOIN business_order_detail bod on bo.id=bod.order_id
 ;
+END;
 
 
 

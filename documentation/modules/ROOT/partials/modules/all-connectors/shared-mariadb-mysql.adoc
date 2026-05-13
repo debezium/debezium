@@ -65,12 +65,12 @@ include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-multi-pr
 A {prodname} {connector-name} connector can use these multi-primary {connector-name} replicas as sources, and can fail over to different multi-primary {connector-name} replicas as long as the new replica is caught up to the old replica.
 That is, the new replica has all transactions that were seen on the first replica.
 This works even if the connector is using only a subset of databases and/or tables, because the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary {connector-name} replica and find the correct position in the binlog.
-
+ifdef::community[]
 Hosted::
 The {prodname} {connector-name} connector can use hosted database options such as Amazon RDS and Amazon Aurora.
 +
 Because these hosted options do not permit the use of global read locks, the connector uses table-level locks when it creates a consistent snapshot.
-
+endif::community[]
 end::supported-topos[]
 
 
@@ -2315,9 +2315,10 @@ This {connector-name} user must have appropriate permissions on all databases fo
 ----
 +
 For a description of the required permissions, see xref:permissions-explained-{context}-connector[].
+ifdef::community[]
 +
 IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that does not allow a global read lock, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK TABLES` permissions to the user that you create. See xref:{context}-snapshots[snapshots] for more details.
-
+endif::community[]
 . Finalize the user's permissions:
 +
 [source,SQL,subs="+attributes"]
@@ -2401,10 +2402,10 @@ binlog_expire_logs_seconds  = 864000
 . Confirm your changes by checking the binlog status once more:
 +
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
-
+ifdef::community[]
 . If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
 If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
-
+endif::community[]
 end::enabling-binlog[]
 
 

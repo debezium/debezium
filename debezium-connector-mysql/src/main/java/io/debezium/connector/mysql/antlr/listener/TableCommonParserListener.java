@@ -36,51 +36,45 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
+    public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
         parser.runIfNotNull(() -> {
-            MySqlParser.FullColumnNameContext fullColumnNameContext = ctx.fullColumnName();
-            List<MySqlParser.DottedIdContext> dottedIdContextList = fullColumnNameContext.dottedId();
-            MySqlParser.UidContext uidContext = fullColumnNameContext.uid();
-            if (!dottedIdContextList.isEmpty()) {
-                uidContext = dottedIdContextList.get(dottedIdContextList.size() - 1).uid();
-            }
-
-            String columnName = parser.removeRepeatedBacktick(parser.parseName(uidContext));
+            String columnName = parser.removeRepeatedBacktick(parser.parseName(ctx.columnName().identifier()));
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
+                // Manually invoke enterColumnDefinition since the parse tree walker has already
+                // started dispatching this event before we added this listener to the list
+                columnDefinitionListener.enterColumnDefinition(ctx);
             }
             else {
                 columnDefinitionListener.setColumnEditor(columnEditor);
             }
         }, tableEditor);
-        super.enterColumnDeclaration(ctx);
+        super.enterColumnDefinition(ctx);
     }
 
     @Override
-    public void exitColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
-        parser.runIfNotNull(() -> {
-            tableEditor.addColumn(columnDefinitionListener.getColumn());
-        }, tableEditor, columnDefinitionListener);
-        super.exitColumnDeclaration(ctx);
+    public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+        // Column is added to table in ColumnDefinitionParserListener.exitColumnDefinition()
+        // after all properties have been set
+        super.exitColumnDefinition(ctx);
     }
 
     @Override
-    public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
+    public void enterTableConstraintDef(MySqlParser.TableConstraintDefContext ctx) {
         parser.runIfNotNull(() -> {
-            parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-        }, tableEditor);
-        super.enterPrimaryKeyTableConstraint(ctx);
-    }
-
-    @Override
-    public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
-                parser.parseUniqueIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+            // Check if it's a PRIMARY KEY constraint
+            if (ctx.type != null && ctx.type.getType() == MySqlParser.PRIMARY_SYMBOL && ctx.keyListWithExpression() != null) {
+                parser.parsePrimaryIndexColumnNames(ctx.keyListWithExpression(), tableEditor);
+            }
+            // Check if it's a UNIQUE KEY constraint
+            else if (ctx.type != null && ctx.type.getType() == MySqlParser.UNIQUE_SYMBOL && ctx.keyListWithExpression() != null) {
+                if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.keyListWithExpression(), tableEditor)) {
+                    parser.parseUniqueIndexColumnNames(ctx.keyListWithExpression(), tableEditor);
+                }
             }
         }, tableEditor);
-        super.enterUniqueKeyTableConstraint(ctx);
+        super.enterTableConstraintDef(ctx);
     }
 }

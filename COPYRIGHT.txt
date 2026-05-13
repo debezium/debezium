@@ -276,6 +276,7 @@ Jiri Kulhanek
 Jon Bruno
 Jona J
 Jonas Thelemann
+JonathonO
 Jono Morris
 Jordan Pittier
 Juan Fiallo
@@ -480,6 +481,7 @@ Ming Luo
 Minh Son Nguyen
 Minjae Lee
 Mohamed Pudukulathan
+Mohammad Akhil
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
 Mostafa Ghadimi

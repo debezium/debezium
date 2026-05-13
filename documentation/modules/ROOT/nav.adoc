@@ -1,5 +1,6 @@
 * Getting Started
-** xref:tutorial.adoc[Tutorial]
+** xref:tutorials.adoc[Tutorials]
+*** xref:kc-tutorial.adoc[Kafka Connect]
 ** xref:install.adoc[Installation]
 *** xref:postgres-plugins.adoc[PostgreSQL Decoding Plugins]
 ** xref:architecture.adoc[Architecture]

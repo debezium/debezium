@@ -11,7 +11,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_INFORMI
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
-import java.time.Duration;
 
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -149,9 +148,6 @@ public abstract class InformixTests extends ConnectorTest {
     @Order(90)
     public void shouldExtractNewRecordState(SqlDatabaseController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
-
-        // FIXME: Remove when https://github.com/debezium/dbz/issues/1704 is resolved
-        Thread.sleep(Duration.ofMinutes(3));
 
         connectorConfig = connectorConfig.addJdbcUnwrapSMT();
         connectController.deployConnector(connectorConfig);

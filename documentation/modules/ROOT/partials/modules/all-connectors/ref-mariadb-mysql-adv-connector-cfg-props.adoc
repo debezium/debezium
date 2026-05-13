@@ -228,6 +228,27 @@ The password for the trust store file.
 Used to check the integrity of the truststore, and unlock the truststore.
 
 
+[id="{context}-property-ddl-parser-type"]
+xref:{context}-property-ddl-parser-type[`ddl.parser.type`]::
+
+Default value::: `default`
+
+Description:::
+Specifies which ANTLR grammar to use for parsing MySQL DDL statements.
++
+Set one of the following options:
+
+`default`:::: (Default) Uses the Oracle MySQL grammar, which is actively maintained and supports MySQL 8.0+ features.
+This grammar is based on the official MySQL grammar specification and is recommended for production use.
+
+`legacy`:::: Uses the Positive Technologies (PT) MySQL grammar.
+This option is provided for backward compatibility with existing deployments.
+The PT grammar may not support all MySQL 8.0+ features.
++
+In most cases, you should use the `default` grammar.
+Use the `legacy` grammar only if you encounter compatibility issues with existing DDL statements during migration.
+
+
 [id="{context}-property-enable-time-adjuster"]
 xref:{context}-property-enable-time-adjuster[`enable.time.adjuster`]::
 

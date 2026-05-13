@@ -1244,6 +1244,42 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         });
     }
 
+    @Test
+    @FixFor("dbz#1533")
+    public void shouldNotGetStuckOnInvalidSurrogateKey() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        // Send a snapshot signal with an INVALID surrogate key that doesn't exist in the table.
+        // This should be handled gracefully - the table should be skipped with a warning
+        // and the connector should NOT get stuck in a restart loop.
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "\"totally_invalid_column_name\"", tableDataCollectionId());
+
+        // Wait to ensure the signal is processed
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        // Send a VALID snapshot signal to prove the connector is still functional
+        sendAdHocSnapshotSignal();
+
+        // Insert a streaming change to verify connector is still processing events
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                    tableName(),
+                    connection.quoteIdentifier(pkFieldName()),
+                    ROW_COUNT + 1,
+                    ROW_COUNT));
+        }
+
+        // The valid signal should complete and the streaming insert should also be captured
+        final int expectedRecordCount = ROW_COUNT + 1;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
     private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             connection.query("SELECT count(id) from " + signalTableName() + " where type='snapshot-window-close'", consumer);

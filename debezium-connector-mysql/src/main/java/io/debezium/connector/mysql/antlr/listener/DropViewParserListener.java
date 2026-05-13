@@ -26,7 +26,7 @@ public class DropViewParserListener extends MySqlParserBaseListener {
     @Override
     public void enterDropView(MySqlParser.DropViewContext ctx) {
         if (!parser.skipViews()) {
-            ctx.fullId().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
+            ctx.viewRefList().viewRef().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
                 parser.databaseTables().removeTable(tableId);
                 parser.signalDropView(tableId, ctx);
             });

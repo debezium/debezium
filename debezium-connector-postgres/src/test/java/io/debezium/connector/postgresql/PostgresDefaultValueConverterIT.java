@@ -250,6 +250,59 @@ public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnecto
         assertThat(after.get("data")).isEqualTo(Map.of("__debezium_unavailable_value", "__debezium_unavailable_value"));
     }
 
+    @Test
+    @FixFor("debezium/dbz#1334")
+    public void shouldHandleQuotedEnumTypeDefaultValues() throws Exception {
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TYPE s1.\"Status\" AS ENUM ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED');",
+                "CREATE TABLE s1.rtang_test2 (",
+                "    id int primary key,",
+                "    status s1.\"Status\" NOT NULL DEFAULT 'DRAFT'",
+                ");");
+        TestHelper.execute("INSERT INTO s1.rtang_test2 (id) VALUES (1);");
+
+        final var config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        var records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableRecords = records.recordsForTopic("test_server.s1.rtang_test2");
+
+        assertThat(tableRecords).hasSize(1);
+
+        var record = tableRecords.get(0);
+        var after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+
+        // Verify the default value was captured
+        assertThat(after.get("status")).isEqualTo("DRAFT");
+
+        // Verify the schema includes the default value
+        var statusFieldSchema = after.schema().field("status").schema();
+        assertThat(statusFieldSchema.defaultValue()).isEqualTo("DRAFT");
+
+        TestHelper.execute("INSERT INTO s1.rtang_test2 (id) VALUES (2);");
+
+        records = consumeRecordsByTopic(1);
+        tableRecords = records.recordsForTopic("test_server.s1.rtang_test2");
+
+        assertThat(tableRecords).hasSize(1);
+
+        record = tableRecords.get(0);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+
+        // Verify the default value was captured
+        assertThat(after.get("status")).isEqualTo("DRAFT");
+
+        // Verify the schema includes the default value
+        statusFieldSchema = after.schema().field("status").schema();
+        assertThat(statusFieldSchema.defaultValue()).isEqualTo("DRAFT");
+
+    }
+
     private void createTableAndInsertData() {
         final String dml = "INSERT INTO s1.a (pk) VALUES (1);";
         final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;" +

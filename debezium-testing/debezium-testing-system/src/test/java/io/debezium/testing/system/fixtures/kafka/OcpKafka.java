@@ -28,6 +28,7 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
 import io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder;
 import io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder;
+import io.debezium.util.Strings;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -100,6 +101,12 @@ public class OcpKafka extends TestFixture {
                 .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS)
                 .withBuild(artifactServerController)
                 .withPullSecret(operatorController.getPullSecret());
+
+        String kafkaVersion = ConfigProperties.VERSION_KAFKA;
+        if (!Strings.isNullOrEmpty(kafkaVersion)) {
+            builder.withVersion(kafkaVersion);
+        }
+
         if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
             OcpMongoCertGenerator.generateMongoTestCerts(ocp);
             builder.withMongoCerts();
