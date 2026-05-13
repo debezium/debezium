@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +21,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
 
 /**
  * A context class that provides centralized control over an Oracle LogMiner session.
@@ -42,7 +44,7 @@ public class LogMinerSessionContext implements AutoCloseable {
     private Scn currentSessionEndScn = Scn.NULL;
 
     public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
-        this(connection, useContinuousMining, strategy, dictionaryFilePath, new StandardLogMinerPlatformStrategy());
+        this(connection, useContinuousMining, strategy, dictionaryFilePath, new DefaultLogMinerPlatformStrategy());
     }
 
     public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy,
@@ -107,7 +109,7 @@ public class LogMinerSessionContext implements AutoCloseable {
             Objects.requireNonNull(logFile.getFileName());
 
             LOGGER.debug("  Adding log file: {}", logFile);
-            platformStrategy.addLogFile(connection, logFile.getFileName());
+            connection.executeWithoutCommitting(platformStrategy.getAddLogFileSql(logFile.getFileName()));
         }
     }
 
@@ -127,9 +129,13 @@ public class LogMinerSessionContext implements AutoCloseable {
      * @throws SQLException if a database exception occurred
      */
     public void removeAllLogFilesFromSession(OracleConnection connection) throws SQLException {
-        final Set<String> fileNames = StandardLogMinerPlatformStrategy.getRegisteredLogFileNames(connection);
+        final Set<String> fileNames = DefaultLogMinerPlatformStrategy.getRegisteredLogFileNames(connection);
         for (String fileName : fileNames) {
-            platformStrategy.removeLogFile(connection, fileName);
+            LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
+            final String sql = platformStrategy.getRemoveLogFileSql(fileName);
+            try (CallableStatement statement = connection.connection(false).prepareCall(sql)) {
+                statement.execute();
+            }
         }
     }
 
@@ -153,7 +159,7 @@ public class LogMinerSessionContext implements AutoCloseable {
                     : null;
 
             final Instant startTime = Instant.now();
-            platformStrategy.startSession(connection, startScn, endScn, miningOptions, dictFilePath);
+            connection.executeWithoutCommitting(platformStrategy.getStartSessionSql(startScn, endScn, miningOptions, dictFilePath));
             lastSessionStartTime = Duration.between(startTime, Instant.now());
             sessionStarted = true;
 
@@ -183,7 +189,7 @@ public class LogMinerSessionContext implements AutoCloseable {
             currentSessionStartScn = Scn.NULL;
             currentSessionEndScn = Scn.NULL;
 
-            platformStrategy.endSession(connection);
+            connection.executeWithoutCommitting(platformStrategy.getEndSessionSql());
             sessionStarted = false;
         }
         catch (SQLException e) {
@@ -203,7 +209,7 @@ public class LogMinerSessionContext implements AutoCloseable {
      */
     public void writeDataDictionaryToRedoLogs() throws SQLException {
         LOGGER.trace("Building data dictionary");
-        platformStrategy.writeDataDictionaryToRedoLogs(connection);
+        connection.executeWithoutCommitting(platformStrategy.getWriteDataDictionaryToRedoLogsSql());
     }
 
     private List<String> getMiningOptions(boolean committedDataOnly) {

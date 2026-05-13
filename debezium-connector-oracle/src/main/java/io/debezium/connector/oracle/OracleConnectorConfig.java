@@ -81,15 +81,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field DEPLOYMENT_PLATFORM = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "deployment.platform")
-            .withDisplayName("Deployment platform")
-            .withEnum(DeploymentPlatform.class, DeploymentPlatform.STANDARD)
+    public static final Field LOG_MINING_PLATFORM = Field.create("log.mining.platform")
+            .withDisplayName("Log mining platform")
+            .withEnum(LogMiningPlatform.class, LogMiningPlatform.DEFAULT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
-            .withDescription("The deployment platform of the Oracle database. "
+            .withDescription("The platform on which the Oracle database is deployed. "
                     + "Options include: "
-                    + "'standard': (the default) for on-premise or self-managed Oracle deployments; "
+                    + "'default': for on-premise or self-managed Oracle deployments; "
                     + "'rds': for AWS RDS Oracle deployments using CDB architecture, "
                     + "where access to CDB$ROOT is restricted and rdsadmin PL/SQL packages are used for LogMiner operations");
 
@@ -758,7 +758,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     DATABASE_NAME,
                     QUERY_TIMEOUT_MS,
                     PDB_NAME,
-                    DEPLOYMENT_PLATFORM,
+                    LOG_MINING_PLATFORM,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
@@ -850,7 +850,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final String databaseName;
     private final String pdbName;
-    private final DeploymentPlatform deploymentPlatform;
+    private final LogMiningPlatform logMiningPlatform;
     private final String xstreamOutboundServerName;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -924,7 +924,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
         this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
-        this.deploymentPlatform = DeploymentPlatform.parse(config.getString(DEPLOYMENT_PLATFORM));
+        this.logMiningPlatform = LogMiningPlatform.parse(config.getString(LOG_MINING_PLATFORM));
         this.xstreamOutboundServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
@@ -1019,10 +1019,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return the deployment platform for this Oracle connector instance
+     * @return the log mining platform for this Oracle connector instance
      */
-    public DeploymentPlatform getDeploymentPlatform() {
-        return deploymentPlatform;
+    public LogMiningPlatform getLogMiningPlatform() {
+        return logMiningPlatform;
     }
 
     public String getXStreamOutboundServerName() {
@@ -1666,13 +1666,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
-    public enum DeploymentPlatform implements EnumeratedValue {
+    public enum LogMiningPlatform implements EnumeratedValue {
 
         /**
-         * Standard on-premise or self-managed Oracle deployment.
+         * Default on-premise or self-managed Oracle deployment.
          * Uses standard Oracle {@code SYS.DBMS_LOGMNR} packages and V$ views.
          */
-        STANDARD("standard"),
+        DEFAULT("default"),
 
         /**
          * AWS RDS Oracle deployment with CDB architecture.
@@ -1683,7 +1683,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private final String value;
 
-        DeploymentPlatform(String value) {
+        LogMiningPlatform(String value) {
             this.value = value;
         }
 
@@ -1698,12 +1698,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
-        public static DeploymentPlatform parse(String value) {
+        public static LogMiningPlatform parse(String value) {
             if (value == null) {
                 return null;
             }
             value = value.trim();
-            for (DeploymentPlatform platform : DeploymentPlatform.values()) {
+            for (LogMiningPlatform platform : LogMiningPlatform.values()) {
                 if (platform.getValue().equalsIgnoreCase(value)) {
                     return platform;
                 }
