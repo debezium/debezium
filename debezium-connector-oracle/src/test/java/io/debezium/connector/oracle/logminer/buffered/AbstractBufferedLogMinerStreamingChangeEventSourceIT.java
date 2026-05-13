@@ -22,6 +22,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -285,6 +287,45 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         }
         finally {
             TestHelper.dropTable(connection, "dbz1553");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1914")
+    public void shouldRollbackToSavepointIdempotently() throws Exception {
+        TestHelper.dropTable(connection, "dbz1914");
+        try {
+            connection.execute("CREATE TABLE dbz1914 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1914");
+
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1914")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            OracleMetricsHelper.waitForOffsetScnAfter(Scn.NULL);
+
+            Scn offsetScn = Scn.valueOf(OracleMetricsHelper.getOffsetScn().toString());
+            connection.executeWithoutCommitting(
+                    "INSERT INTO dbz1914(id,data) VALUES (1,'insert 1')",
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1914 SET data = 'update 1' WHERE id = 1",
+                    "ROLLBACK TO SAVEPOINT s1");
+            OracleMetricsHelper.waitForOffsetScnAfter(offsetScn);
+            connection.executeWithoutCommitting("INSERT INTO dbz1914 (id,data) VALUES (2,'insert 2')");
+            connection.commit();
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1914");
+            assertThat(tableRecords).hasSize(1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("insert 1");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1914");
         }
     }
 }
