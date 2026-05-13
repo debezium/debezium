@@ -2232,6 +2232,40 @@ For more information, see the link:https://www.postgresql.org/docs/current/warm-
 Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector.
 ====
 
+//Type: procedure
+[id="debezium-postgresql-connector-creating-a-replication-user"]
+=== Creating a replication user
+To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+
+To create a user with the `REPLICATION` attribute::
+
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
+----
+
+To set the `REPLICATION` attribute on an existing user::
+
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+ALTER USER existing_user WITH REPLICATION;
+----
+
+.Specifying the {prodname} `plugin.name`
+
+In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
+
+----
+{
+      ..
+      "plugin.name": "pgoutput",
+      ..
+      ..
+}
+----
+
 
 ifdef::community[]
 [[postgresql-in-the-cloud]]
@@ -2296,37 +2330,8 @@ SHOW wal_level;
 ----
 endif::community[]
 
-.Creating a replication user
-To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+// Type: procedure
 
-To create a user with the `REPLICATION` attribute::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
-----
-
-To set the `REPLICATION` attribute on an existing user::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-ALTER USER existing_user WITH REPLICATION;
-----
-
-.Specifying the {prodname} `plugin.name`
-
-In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
-
-----
-{
-      ..
-      "plugin.name": "pgoutput",
-      ..
-      ..
-}
-----
 ifdef::community[]
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
@@ -2611,10 +2616,10 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 |Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
 
 |===
-
++
 [NOTE]
 ====
-For more information about network masks, see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[the PostgreSQL documentation].
+For more information about network masks (netmasks), see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[Network address types (PostgreSQL documentation)].
 ====
 
 
