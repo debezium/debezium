@@ -86,7 +86,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withEnum(LogMiningPlatform.class, LogMiningPlatform.DEFAULT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 14))
             .withDescription("The platform on which the Oracle database is deployed. "
                     + "Options include: "
                     + "'default': for on-premise or self-managed Oracle deployments; "
