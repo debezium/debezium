@@ -910,33 +910,11 @@
             </properties>
         </profile>
         <profile>
-            <id>oracle-23</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
-                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
-            </properties>
-        </profile>
-        <profile>
-            <id>oracle-26</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
-                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
-            </properties>
-        </profile>
-        <profile>
             <id>oracle-free</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
-                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
                 <oracle.image.name>container-registry.oracle.com/database/free</oracle.image.name>
                 <oracle.image.version>23.26.0.0</oracle.image.version>
             </properties>
