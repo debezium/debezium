@@ -2745,18 +2745,41 @@ Again, regularly emitting events solves the problem.
 ====
 endif::community[]
 
-// Type: procedure
-// Title: Set up multiple connectors for a single database server
+// Type: concept
+// Title: Replication slot configuration when multiple connectors capture from a database server
 [[postgresql-deploying-multiple-connectors]]
-=== Setting up multiple connectors for same database server
+=== Setting up multiple connectors for the same database server
 
-{prodname} uses replication slots to stream changes from a database. These replication slots maintain the current position in form of a LSN (Log Sequence Number) which is pointer to a location in the WAL being consumed by the Debezium connector. This helps PostgreSQL keep the WAL available until it is processed by {prodname}. A single replication slot can exist only for a single consumer or process - as different consumer might have different state and may need data from different position.
+When you deploy multiple {prodname} connectors to capture changes from the same PostgreSQL database server, each connector requires a unique replication slot and publication.
+This configuration prevents data loss and ensures that each connector independently tracks its position in the database transaction log.
 
-Since a replication slot can only be used by a single connector, it is essential to create a unique replication slot for each Debezium connector. Although when a connector is not active, Postgres may allow other connector to consume the replication slot - which could be dangerous as it may lead to data loss as a slot will emit each change just once [link:https://www.postgresql.org/docs/10/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[See More]].
+{prodname} uses replication slots to stream changes from a database.
+Replication slots use a Log Sequence Number (LSN) as a persistent pointer to track the last position in the Write-Ahead Log (WAL) that the connector has processed.
+This tracking mechanism enables PostgreSQL to retain WAL segments until {prodname} processes them.
 
-In addition to replication slot, {prodname} uses publication to stream events when using the `pgoutput` plugin. Similar to replication slot, publication is at database level and is defined for a set of tables. Thus, you'll need a unique publication for each connector, unless the connectors work on same set of tables. For more information about the options for enabling {prodname} to create publications, see xref:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]
+Because each replication slot maintains a single LSN pointer, it can track only one consumer's position in the WAL.
+When multiple connectors attempt to share a replication slot, they compete for the same position marker, resulting in unpredictable behavior and potential data loss.
 
-See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] and xref:{link-postgresql-connector}#postgresql-property-publication-name[`publication.name`] on how to set a unique replication slot name and publication name for each connector.
+[WARNING]
+====
+If you permit multiple connectors to capture from a replication slot, you risk data loss, because a replication slot can emit each change only once.
+When multiple connectors share a slot, PostgreSQL delivers each change event to only one of the competing consumers.
+The other connectors never receive those events, resulting in incomplete data capture.
+PostgreSQL provides no warnings when this misconfiguration occurs, making the data loss silent and difficult to detect.
+====
+
+In addition to replication slots, when the {prodname} connector uses the `pgoutput` plugin, it uses publications to stream events.
+Publications exist at the database level and define the set of tables from which the connector captures changes.
+Like replication slots, publications should be unique to each connector to ensure proper isolation and independent configuration.
+
+While multiple connectors can technically share a publication if they capture changes from the same set of tables, this configuration still requires unique replication slots for each connector.
+Sharing publications is appropriate only when you intentionally want multiple connectors to monitor identical table sets, such as when distributing processing load across multiple pipelines.
+
+. Additional resources
+* https://www.postgresql.org/docs/18/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[PostgreSQL replication slot details and resource implications. (PostgreSQL documentation)^].
+* xref:postgresql-publication-autocreate-mode[Description of the `publication.autocreate.mode` property for specifying how {prodname} creates publication to control table inclusion].
+* xref:postgresql-property-slot-name[Description of the `slot.name` property for specifying a unique replication slot name for each connector].
+* xref:postgresql-property-publication-name[Description of the `publication.name` property for specifying a unique publication name for each connector].
 
 // Type: procedure
 // ModuleID: upgrading-postgresql-databases-that-debezium-captures-from
