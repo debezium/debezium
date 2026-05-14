@@ -144,7 +144,7 @@ public class OracleConnection extends JdbcConnection {
 
     public void setSessionToPdb(String pdbName) {
         if (!platformStrategy.isCdbRootAccessible()) {
-            LOGGER.debug("Skipping PDB session switch on RDS deployment; operating within PDB context.");
+            LOGGER.trace("Skipping PDB session switch on RDS deployment; operating within PDB context.");
             return;
         }
         setContainerAs(pdbName);
@@ -152,7 +152,7 @@ public class OracleConnection extends JdbcConnection {
 
     public void resetSessionToCdb() {
         if (!platformStrategy.isCdbRootAccessible()) {
-            LOGGER.debug("Skipping CDB root session switch on RDS deployment; CDB$ROOT access is not permitted.");
+            LOGGER.trace("Skipping CDB root session switch on RDS deployment; CDB$ROOT access is not permitted.");
             return;
         }
         setContainerAs("cdb$root");
