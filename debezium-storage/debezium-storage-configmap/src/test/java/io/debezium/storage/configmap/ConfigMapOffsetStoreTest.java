@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.embedded.EmbeddedWorkerConfig;
+import io.debezium.config.EmbeddedWorkerConfig;
 import io.fabric8.kubeapitest.junit.EnableKubeAPIServer;
 import io.fabric8.kubeapitest.junit.KubeConfig;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
