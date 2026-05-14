@@ -100,6 +100,14 @@ public interface LogMinerPlatformStrategy {
     String getRedoThreadStateQuery();
 
     /**
+     * Get the SQL query to retrieve the list of log file names currently registered
+     * in the LogMiner session.
+     *
+     * @return the SQL query string
+     */
+    String getRegisteredLogFilesQuery();
+
+    /**
      * Get the list of mining option constants for a given strategy and configuration.
      *
      * @param options the list of options to populate
