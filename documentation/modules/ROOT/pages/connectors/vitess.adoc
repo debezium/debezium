@@ -1817,7 +1817,6 @@ That is, the connector streams all `insert`, `update`, and `delete` operations.
 |[[vitess-property-statistics-metrics-enabled]]<<vitess-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
 |`true`
 |Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
- +
 When set to `true`, the connector collects the following statistics:
 
 * Minimum value
@@ -1830,11 +1829,9 @@ When set to `true`, the connector collects the following statistics:
 NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
 
 The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
- +
 When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
 The connector continues to collect minimum, maximum, and average values.
 Disabling quantile collection reduces memory overhead slightly.
- +
 For more information, see xref:vitess-streaming-metrics[Streaming metrics].
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
