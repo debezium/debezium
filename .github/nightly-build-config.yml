@@ -18,7 +18,7 @@ artifact-size:
   # Format: repository-name: percentage
   repository-thresholds:
     debezium-connector-cassandra: 95
-    debezium: 85
+    debezium: 90
 
 # Notification Configuration
 notifications:
