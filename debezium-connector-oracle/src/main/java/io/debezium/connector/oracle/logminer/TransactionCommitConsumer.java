@@ -170,7 +170,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
             return;
         }
 
-        if (tryMerge(accumulatorEvent, event)) {
+        if (tryMerge(accumulatorEvent, event, rolledBack)) {
             rowState.event.setRowId(event.getRowId());
             rowState.rolledBack = rolledBack;
             rowState.transactionSequence = transactionSequence;
@@ -350,11 +350,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
         dispatchChangeEvent(event, rowState.rolledBack, rowState.transactionId, rowState.transactionSequence);
     }
 
-    private boolean tryMerge(DmlEvent prev, DmlEvent next) {
+    private boolean tryMerge(DmlEvent prev, DmlEvent next, boolean rolledBack) {
         if (prev == null) { // first event for this row.
             return false;
         }
-        if (prev.getRowId() != RowIdCodec.EMPTY_ROW_ID) {
+        if (prev.getRowId() != RowIdCodec.EMPTY_ROW_ID && rolledBack) {
             return false;
         }
 
