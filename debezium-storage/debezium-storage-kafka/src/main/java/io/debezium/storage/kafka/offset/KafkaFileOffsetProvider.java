@@ -10,12 +10,14 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EmbeddedWorkerConfig;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
@@ -46,6 +48,10 @@ public class KafkaFileOffsetProvider implements OffsetStoreProvider {
 
         // Create Kafka Connect FileOffsetBackingStore and wrap it
         FileOffsetBackingStore kafkaStore = new FileOffsetBackingStore(converter);
+        if (config != null && !config.isEmpty()) {
+            WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
+            kafkaStore.configure(workerConfig);
+        }
         return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
