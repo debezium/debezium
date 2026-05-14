@@ -11,6 +11,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 
 /**
@@ -32,6 +33,13 @@ public class EmbeddedWorkerConfig extends WorkerConfig {
 
     public EmbeddedWorkerConfig(Map<String, String> props) {
         super(CONFIG, addRequiredWorkerConfig(props));
+    }
+
+    /**
+     * Creates Debezium {@link Configuration} from the original values of this worker config.
+     */
+    public Configuration asDebeziumConfig() {
+        return Configuration.from(this.originalsStrings());
     }
 
     /**
