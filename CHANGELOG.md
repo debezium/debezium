@@ -3,6 +3,50 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.5.1.Final
+May 14th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.1.Final)
+
+### New features since 3.5.0.Final
+
+* Support for Informix JDBC driver v15 [debezium/dbz#1622](https://github.com/debezium/dbz/issues/1622)
+* Cache parsed schemas to avoid per-event SchemaBuilder/Struct rebuild [debezium/dbz#1712](https://github.com/debezium/dbz/issues/1712)
+
+
+### Breaking changes since 3.5.0.Final
+
+None
+
+
+### Fixes since 3.5.0.Final
+
+* Null Value in Header Converter isn't handled by ConverterBuilder [DBZ-8072] [debezium/dbz#1298](https://github.com/debezium/dbz/issues/1298)
+* Invalid incremental snapshot leave Connectors stuck; stop-snapshot ineffective and requires manual offset modification [debezium/dbz#1533](https://github.com/debezium/dbz/issues/1533)
+* Missleading error message when loss of database connectivity happens with mysql >= 8.4.X [debezium/dbz#1561](https://github.com/debezium/dbz/issues/1561)
+* Oracle column reselection does not quote all key columns - fails with ORA-00904 [debezium/dbz#1750](https://github.com/debezium/dbz/issues/1750)
+* XStream does not decode all XML encodings [debezium/dbz#1775](https://github.com/debezium/dbz/issues/1775)
+* Debezium server 3.5 start failed, Caused by: java.lang.ClassNotFoundException: io.debezium.config.Configuration [debezium/dbz#1779](https://github.com/debezium/dbz/issues/1779)
+* Redis Sink hangs when using Redis Cluster [debezium/dbz#1793](https://github.com/debezium/dbz/issues/1793)
+* Oracle RAC: LogFileNotFoundException due to archive log dedup ignoring redo thread [debezium/dbz#1801](https://github.com/debezium/dbz/issues/1801)
+* Compatibility issues with Informix Changestream Client v1.1.4 [debezium/dbz#1802](https://github.com/debezium/dbz/issues/1802)
+* Compatibility issues with Informix JDBC Driver v15.0.1.1 [debezium/dbz#1803](https://github.com/debezium/dbz/issues/1803)
+* PostgreSQL timestamp infinity overflows in time.precision.mode=nanoseconds and becomes negative NanoTimestamp [debezium/dbz#1833](https://github.com/debezium/dbz/issues/1833)
+* ByLogicalTableRouter materializes schema defaults for nullable fields, clobbering real NULL values [debezium/dbz#1848](https://github.com/debezium/dbz/issues/1848)
+* Postgres connector fails to restart with trust_greater_lsn after non-captured table updates [debezium/dbz#1863](https://github.com/debezium/dbz/issues/1863)
+* Debezium Sql Server connector stuck after connection idle-killed during schema history recovery [debezium/dbz#1877](https://github.com/debezium/dbz/issues/1877)
+* Dead documentation links in Quarkus extension [debezium/dbz#1883](https://github.com/debezium/dbz/issues/1883)
+* vitess connector: Bug fix for copy completed sequence event & null last pk [debezium/dbz#1887](https://github.com/debezium/dbz/issues/1887)
+* CockroachDB connector pom.xml uses wrong Java target property -- produces Java 21 bytecode instead of Java 17 [debezium/dbz#1922](https://github.com/debezium/dbz/issues/1922)
+* SQL Server:  IllegalArgumentException when CDC capture pollinginterval is 0 [debezium/dbz#1923](https://github.com/debezium/dbz/issues/1923)
+
+
+### Other changes since 3.5.0.Final
+
+* Improve Incremental Snapshot docs with database requirement [debezium/dbz#1773](https://github.com/debezium/dbz/issues/1773)
+* Row archival tests fail for Oracle XStream [debezium/dbz#1774](https://github.com/debezium/dbz/issues/1774)
+* JDBC SQL Server tests have started to timeout [debezium/dbz#1852](https://github.com/debezium/dbz/issues/1852)
+
+
+
 ## 3.5.0.Final
 March 31st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.0.Final)
 

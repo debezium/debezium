@@ -72,6 +72,7 @@ artiship
 Arthur Le Ray
 Artur Albov
 Artur Gukasian
+Arya Dharmadhikari
 Ashhar Hasan
 Ashique Ansari
 Ashmeet Lamba
@@ -440,6 +441,7 @@ Martin Tosney
 Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
+Matei Alexandru Gatin
 Mateusz Michalik
 Mateusz Tworek
 Mathijs van den Worm
@@ -599,6 +601,7 @@ Scofield Xu
 Sara Fonseca
 Sean C. Sullivan
 Sean Rooney
+Sean Stewart
 Sean Wu
 Sebastiaan Knijnenburg
 Sebastian Bruckner
@@ -699,6 +702,7 @@ Wang-Yu-Chao
 WenChao Ke
 Wei Wu
 WenZe Hu
+Will Sehorn
 William Pursell
 Willie Cheong
 Willie Zhu
