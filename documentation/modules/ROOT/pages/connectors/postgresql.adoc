@@ -2752,7 +2752,7 @@ When you deploy multiple {prodname} connectors to capture changes from the same 
 This configuration prevents data loss and ensures that each connector independently tracks its position in the database transaction log.
 
 {prodname} uses replication slots to stream changes from a database.
-Replication slots use a Log Sequence Number (LSN) as a persistent pointer to track the last position in the Write-Ahead Log (WAL) that the connector has processed.
+Replication slots use a log sequence number (LSN) as a persistent pointer to track the last position in the write-ahead Log (WAL) that the connector has processed.
 This tracking mechanism enables PostgreSQL to retain WAL segments until {prodname} processes them.
 
 Because each replication slot maintains a single LSN pointer, it can track only one consumer's position in the WAL.
@@ -2788,7 +2788,7 @@ Sharing publications is appropriate only when you intentionally want multiple co
 When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and to ensure that {prodname} continues to operate.
 In general, {prodname} is resilient to interruptions caused by network failures and other outages.
 For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
-The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for a log sequence number (LSN) with the same value.
+The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for an LSN with the same value.
 
 For the connector to start and to capture change events from a PostgreSQL database, a replication slot must be present.
 However, as part of the PostgreSQL upgrade process, replication slots are removed, and the original slots are not restored after the upgrade completes.
