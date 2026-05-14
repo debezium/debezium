@@ -54,6 +54,9 @@
         <!-- Azure Identity -->
         <version.azure.identity>1.15.4</version.azure.identity>
 
+        <!-- Chronicle Queue -->
+        <version.chronicle.queue>2026.2</version.chronicle.queue>
+
         <!-- k8s Config Map Storage -->
         <version.kubernetes.client>7.6.1</version.kubernetes.client>
 
@@ -542,6 +545,13 @@
 
 
             <!--Storages -->
+            <!-- Chronicle Queue Storage -->
+            <dependency>
+                <groupId>net.openhft</groupId>
+                <artifactId>chronicle-queue</artifactId>
+                <version>${version.chronicle.queue}</version>
+            </dependency>
+
             <!-- Redis Storage -->
             <dependency>
                 <groupId>redis.clients</groupId>
@@ -831,6 +841,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-tests</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-chronicle-queue</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

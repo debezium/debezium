@@ -125,7 +125,12 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-chronicle-queue</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
@@ -389,7 +394,8 @@
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
-                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
+                    <!-- adds-opens needed for ChronicleQueue -->
+                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>

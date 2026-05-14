@@ -12,7 +12,12 @@ import io.debezium.spi.common.Configurable;
  *
  * @param <T> the type of event stored in the queue
  */
-public interface QueueProvider<T> extends Configurable {
+public interface QueueProvider<T> extends Configurable, AutoCloseable {
+
+    /**
+     * @return the name of the queue provider
+     */
+    String name();
 
     /**
      * Adds an event to the queue.
@@ -36,4 +41,8 @@ public interface QueueProvider<T> extends Configurable {
      * @return the queue size
      */
     int size();
+
+    @Override
+    default void close() {
+    }
 }

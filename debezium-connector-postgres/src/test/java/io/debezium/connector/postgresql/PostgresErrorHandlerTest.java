@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -25,7 +24,13 @@ public class PostgresErrorHandlerTest {
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE)).build(), null);
+            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(createDefaultQueueProvider(CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE)).build(), null);
+
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
+    }
 
     @Test
     void classifiedPSQLExceptionIsRetryable() {

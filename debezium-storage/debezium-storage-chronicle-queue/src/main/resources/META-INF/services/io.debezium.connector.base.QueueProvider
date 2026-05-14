@@ -1,0 +1,2 @@
+io.debezium.storage.chroniclequeue.ChronicleQueueProvider
+io.debezium.storage.chroniclequeue.HybridChronicleQueueProvider
