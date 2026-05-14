@@ -2306,7 +2306,6 @@ To verify that the value of the setting reflects your changes, run the following
 ----
 SHOW wal_level;
 ----
-endif::community[]
 
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
