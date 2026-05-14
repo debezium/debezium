@@ -26,7 +26,7 @@ import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.ydb.YdbTestEnvironment;
 
 /**
- * Integration test for {@link YdbSchemaHistory}. Boots YDB via docker-compose in
+ * Integration test for {@link YdbSchemaHistory}. Boots YDB via Testcontainers in
  * {@code @BeforeAll}.
  */
 class YdbSchemaHistoryIT {
@@ -104,12 +104,40 @@ class YdbSchemaHistoryIT {
 
         YdbSchemaHistory second = newStarted();
         try {
-            // If seq_no didn't carry over, this would collide on PK (connector_name, seq_no).
+            // If seq_no didn't carry over, this would collide on PK (connector_name, db_name, seq_no).
             second.record(source, position, "db", "schema", "CREATE TABLE t2 (id INT)", null, Instant.now());
             assertTrue(second.exists());
         }
         finally {
             second.stop();
+        }
+    }
+
+    @Test
+    @DisplayName("records for different databases use independent seq_no spaces (multi-task safe)")
+    public void perDbSeqIsIndependent() {
+        Map<String, Object> source = Collections.singletonMap("server", "test");
+        Map<String, Object> position = Collections.singletonMap("ts", System.currentTimeMillis());
+
+        YdbSchemaHistory history = newStarted();
+        try {
+            // Each (connector, db) has its own seq_no space; collisions across dbs are impossible.
+            history.record(source, position, "db_a", "schema", "CREATE TABLE a1 (id INT)", null, Instant.now());
+            history.record(source, position, "db_b", "schema", "CREATE TABLE b1 (id INT)", null, Instant.now());
+            history.record(source, position, "db_a", "schema", "CREATE TABLE a2 (id INT)", null, Instant.now());
+            history.record(source, position, "db_b", "schema", "CREATE TABLE b2 (id INT)", null, Instant.now());
+            assertTrue(history.exists());
+        }
+        finally {
+            history.stop();
+        }
+
+        YdbSchemaHistory reader = newStarted();
+        try {
+            assertTrue(reader.exists(), "fresh instance should see records for all databases");
+        }
+        finally {
+            reader.stop();
         }
     }
 

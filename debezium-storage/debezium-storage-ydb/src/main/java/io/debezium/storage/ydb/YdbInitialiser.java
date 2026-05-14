@@ -33,10 +33,11 @@ public final class YdbInitialiser {
 
     private static final String SCHEMA_HISTORY_TABLE_DDL = "CREATE TABLE IF NOT EXISTS `%s` ("
             + "connector_name Utf8, "
+            + "db_name Utf8, "
             + "seq_no Uint64, "
             + "record_json Utf8, "
             + "created_at Timestamp, "
-            + "PRIMARY KEY (connector_name, seq_no))";
+            + "PRIMARY KEY (connector_name, db_name, seq_no))";
 
     private YdbInitialiser() {
     }

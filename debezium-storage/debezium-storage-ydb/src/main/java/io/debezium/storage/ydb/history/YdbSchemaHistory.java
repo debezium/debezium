@@ -6,8 +6,9 @@
 package io.debezium.storage.ydb.history;
 
 import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -37,13 +38,18 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
 /**
- * {@link SchemaHistory} backed by the {@code dbz_schema_history} table. The table and its
- * parent directories are created on start via {@link YdbInitialiser#createSchemaHistoryTable} (idempotent).
- * Records are appended with a monotonically growing {@code seq_no} (per connector); recovery
- * is a single {@code ORDER BY seq_no ASC} scan.
+ * {@link SchemaHistory} backed by the {@code dbz_schema_history} table with PK
+ * {@code (connector_name, db_name, seq_no)}. Keying by {@code db_name} (taken from the
+ * record's {@code databaseName} field) lets a multi-task source connector (e.g. SQL Server
+ * multi-partition mode) write history concurrently without coordination: each database is
+ * always served by a single task, so the per-{@code (connector, db)} sequence has a single
+ * writer. Recovery streams all rows for the connector ordered by {@code (db_name, seq_no)};
+ * cross-database ordering is not required because DDL for a given schema always originates
+ * from one task.
  *
- * <p>By design only one source instance writes per connector_name (one PG slot reader),
- * so the in-memory {@link AtomicLong} sequence is safe.
+ * <p>Records that carry no database (server-level DDL) are keyed under the empty string
+ * fallback. Tables and parent directories are created on start by
+ * {@link YdbInitialiser#createSchemaHistoryTable} (idempotent).
  */
 @ThreadSafe
 @Incubating
@@ -52,24 +58,30 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
     private static final Logger LOGGER = LoggerFactory.getLogger(YdbSchemaHistory.class);
 
     private static final String UPSERT_RECORD_SQL = "DECLARE $connector AS Utf8;\n"
+            + "DECLARE $db AS Utf8;\n"
             + "DECLARE $seq AS Uint64;\n"
             + "DECLARE $rec AS Utf8;\n"
             + "DECLARE $now AS Timestamp;\n"
-            + "UPSERT INTO `%s` (connector_name, seq_no, record_json, created_at) "
-            + "VALUES ($connector, $seq, $rec, $now);";
+            + "UPSERT INTO `%s` (connector_name, db_name, seq_no, record_json, created_at) "
+            + "VALUES ($connector, $db, $seq, $rec, $now);";
 
     private static final String SELECT_ALL_SQL = "DECLARE $connector AS Utf8;\n"
-            + "SELECT seq_no, record_json FROM `%s` "
-            + "WHERE connector_name = $connector ORDER BY seq_no ASC;";
+            + "SELECT db_name, seq_no, record_json FROM `%s` "
+            + "WHERE connector_name = $connector ORDER BY db_name, seq_no ASC;";
 
-    private static final String SELECT_MAX_SEQ_SQL = "DECLARE $connector AS Utf8;\n"
+    private static final String SELECT_MAX_SEQ_PER_DB_SQL = "DECLARE $connector AS Utf8;\n"
+            + "DECLARE $db AS Utf8;\n"
             + "SELECT MAX(seq_no) AS max_seq FROM `%s` "
-            + "WHERE connector_name = $connector;";
+            + "WHERE connector_name = $connector AND db_name = $db;";
+
+    private static final String SELECT_EXISTS_SQL = "DECLARE $connector AS Utf8;\n"
+            + "SELECT 1 FROM `%s` WHERE connector_name = $connector LIMIT 1;";
 
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final AtomicBoolean running = new AtomicBoolean();
-    private final AtomicLong nextSeq = new AtomicLong();
+    /** Next seq_no per db_name. Populated lazily on first write per db. */
+    private final ConcurrentMap<String, Long> nextSeqByDb = new ConcurrentHashMap<>();
 
     private YdbSchemaHistoryConfig config;
     private GrpcTransport transport;
@@ -78,7 +90,8 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
 
     private String upsertSql;
     private String selectAllSql;
-    private String selectMaxSeqSql;
+    private String selectMaxSeqPerDbSql;
+    private String selectExistsSql;
 
     @Override
     public void configure(Configuration config,
@@ -100,12 +113,12 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
         this.retryCtx = SessionRetryContext.create(queryClient).build();
         this.upsertSql = String.format(UPSERT_RECORD_SQL, config.getTableName());
         this.selectAllSql = String.format(SELECT_ALL_SQL, config.getTableName());
-        this.selectMaxSeqSql = String.format(SELECT_MAX_SEQ_SQL, config.getTableName());
+        this.selectMaxSeqPerDbSql = String.format(SELECT_MAX_SEQ_PER_DB_SQL, config.getTableName());
+        this.selectExistsSql = String.format(SELECT_EXISTS_SQL, config.getTableName());
 
         YdbInitialiser.createSchemaHistoryTable(transport, queryClient, config.getDatabase(), config.getTableName());
-        nextSeq.set(loadMaxSeq() + 1);
-        LOGGER.info("Started YdbSchemaHistory (table={}, connector={}, nextSeq={})",
-                config.getTableName(), config.getConnectorName(), nextSeq.get());
+        LOGGER.info("Started YdbSchemaHistory (table={}, connector={})",
+                config.getTableName(), config.getConnectorName());
     }
 
     @Override
@@ -113,11 +126,16 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
         if (record == null) {
             return;
         }
+        String dbName = extractDbName(record);
         try {
             String serialized = writer.write(record.document());
-            long seq = nextSeq.getAndIncrement();
+            long seq = nextSeqByDb.compute(dbName, (db, current) -> {
+                long base = current != null ? current : loadMaxSeq(db) + 1;
+                return base + 1;
+            }) - 1;
             Params p = Params.of(
                     "$connector", PrimitiveValue.newText(config.getConnectorName()),
+                    "$db", PrimitiveValue.newText(dbName),
                     "$seq", PrimitiveValue.newUint64(seq),
                     "$rec", PrimitiveValue.newText(serialized),
                     "$now", PrimitiveValue.newTimestamp(Instant.now()));
@@ -140,6 +158,7 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
                 transport.close();
                 transport = null;
             }
+            nextSeqByDb.clear();
         }
         super.stop();
     }
@@ -164,9 +183,11 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
         }
     }
 
-    private long loadMaxSeq() {
-        Params p = Params.of("$connector", PrimitiveValue.newText(config.getConnectorName()));
-        QueryReader result = retryCtx.supplyResult(session -> QueryReader.readFrom(session.createQuery(selectMaxSeqSql, TxMode.SNAPSHOT_RO, p)))
+    private long loadMaxSeq(String dbName) {
+        Params p = Params.of(
+                "$connector", PrimitiveValue.newText(config.getConnectorName()),
+                "$db", PrimitiveValue.newText(dbName));
+        QueryReader result = retryCtx.supplyResult(session -> QueryReader.readFrom(session.createQuery(selectMaxSeqPerDbSql, TxMode.SNAPSHOT_RO, p)))
                 .join().getValue();
         if (result.getResultSetCount() == 0) {
             return -1L;
@@ -176,13 +197,12 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
             return -1L;
         }
         var col = rs.getColumn(rs.getColumnIndex("max_seq"));
-        // MAX() over zero rows returns NULL; treat as "no records yet".
-        try {
-            return col.getUint64();
-        }
-        catch (Exception ignore) {
-            return -1L;
-        }
+        return col.isOptionalItemPresent() ? col.getOptionalItem().getUint64() : -1L;
+    }
+
+    private static String extractDbName(HistoryRecord record) {
+        String db = record.document().getString(HistoryRecord.Fields.DATABASE_NAME);
+        return db == null ? "" : db;
     }
 
     @Override
@@ -195,7 +215,13 @@ public final class YdbSchemaHistory extends AbstractSchemaHistory {
         if (!running.get()) {
             return false;
         }
-        return loadMaxSeq() >= 0;
+        Params p = Params.of("$connector", PrimitiveValue.newText(config.getConnectorName()));
+        QueryReader result = retryCtx.supplyResult(session -> QueryReader.readFrom(session.createQuery(selectExistsSql, TxMode.SNAPSHOT_RO, p)))
+                .join().getValue();
+        if (result.getResultSetCount() == 0) {
+            return false;
+        }
+        return result.getResultSet(0).next();
     }
 
     @Override
