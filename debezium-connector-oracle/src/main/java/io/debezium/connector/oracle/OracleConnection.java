@@ -849,7 +849,13 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void removeAllLogFilesFromLogMinerSession() throws SQLException {
-        final Set<String> fileNames = DefaultLogMinerPlatformStrategy.getRegisteredLogFileNames(this);
+        final Set<String> fileNames = queryAndMap(platformStrategy.getRegisteredLogFilesQuery(), rs -> {
+            final var results = new HashSet<String>();
+            while (rs.next()) {
+                results.add(rs.getString(1));
+            }
+            return results;
+        });
 
         for (String fileName : fileNames) {
             LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);

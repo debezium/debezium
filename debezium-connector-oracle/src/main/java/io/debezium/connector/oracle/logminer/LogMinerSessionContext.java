@@ -5,14 +5,12 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,24 +117,7 @@ public class LogMinerSessionContext implements AutoCloseable {
      * @throws SQLException if a database exception occurred
      */
     public void removeAllLogFilesFromSession() throws SQLException {
-        removeAllLogFilesFromSession(connection);
-    }
-
-    /**
-     * Removes all log files from the mining session using the provided connection.
-     *
-     * @param connection the Oracle database connection
-     * @throws SQLException if a database exception occurred
-     */
-    public void removeAllLogFilesFromSession(OracleConnection connection) throws SQLException {
-        final Set<String> fileNames = DefaultLogMinerPlatformStrategy.getRegisteredLogFileNames(connection);
-        for (String fileName : fileNames) {
-            LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
-            final String sql = platformStrategy.getRemoveLogFileSql(fileName);
-            try (CallableStatement statement = connection.connection(false).prepareCall(sql)) {
-                statement.execute();
-            }
-        }
+        connection.removeAllLogFilesFromLogMinerSession();
     }
 
     /**

@@ -88,4 +88,9 @@ public class RdsLogMinerPlatformStrategy implements LogMinerPlatformStrategy {
     public String getRedoThreadStateQuery() {
         return "SELECT * FROM V$THREAD";
     }
+
+    @Override
+    public String getRegisteredLogFilesQuery() {
+        return "SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS";
+    }
 }

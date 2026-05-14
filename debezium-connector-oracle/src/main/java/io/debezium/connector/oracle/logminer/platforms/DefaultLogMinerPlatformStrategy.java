@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.platforms;
 
-import java.sql.SQLException;
-import java.util.Set;
-
-import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerPlatformStrategy;
 
@@ -81,20 +77,8 @@ public class DefaultLogMinerPlatformStrategy implements LogMinerPlatformStrategy
         return "SELECT * FROM V$THREAD";
     }
 
-    /**
-     * Get the set of log file names currently registered in the LogMiner session.
-     *
-     * @param connection the Oracle database connection
-     * @return set of log file names
-     * @throws SQLException if a database exception occurs
-     */
-    public static Set<String> getRegisteredLogFileNames(OracleConnection connection) throws SQLException {
-        return connection.queryAndMap("SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS", rs -> {
-            final var results = new java.util.HashSet<String>();
-            while (rs.next()) {
-                results.add(rs.getString(1));
-            }
-            return results;
-        });
+    @Override
+    public String getRegisteredLogFilesQuery() {
+        return "SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS";
     }
 }
