@@ -33,17 +33,11 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
-import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.runtime.rest.entities.ConfigInfo;
-import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -88,7 +82,7 @@ import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
 import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.Reflections;
+import io.debezium.util.KafkaConnectUtil;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
@@ -111,7 +105,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final Optional<DebeziumEngine.ConnectorCallback> connectorCallback;
     private final Converter offsetKeyConverter;
     private final Converter offsetValueConverter;
-    private final WorkerConfig workerConfig;
+    private final Configuration workerConfig;
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final EngineSourceConnector connector;
     private final Transformations transformations;
@@ -175,7 +169,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             this.completionCallback.handle(false, "Failed to start connector with invalid configuration (see logs for actual errors)", e);
             throw e;
         }
-        workerConfig = new EmbeddedWorkerConfig(this.config.asMap(AsyncEngineConfig.ALL_FIELDS));
+        workerConfig = (new EmbeddedWorkerConfig(this.config.asMap(AsyncEngineConfig.ALL_FIELDS))).asDebeziumConfig();
 
         // Instantiate remaining required objects.
         try {
@@ -376,7 +370,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         try {
             final String engineName = config.getString(AsyncEngineConfig.ENGINE_NAME);
             final String connectorClassName = config.getString(AsyncEngineConfig.CONNECTOR_CLASS);
-            final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
+            final Map<String, String> connectorConfig = KafkaConnectUtil.validateAndGetConnectorConfig(workerConfig, connector.connectConnector(), connectorClassName);
 
             LOGGER.debug("Initializing offset store, offset reader and writer");
             final OffsetStore offsetStore = createAndStartOffsetStore(connectorConfig); // TODO pass only Debezium config instead of connectorConfig (Kafka config map)
@@ -797,32 +791,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                             requestedState, expectedState, state.get()));
         }
         LOGGER.info("Engine state has changed from '{}' to '{}'", expectedState, requestedState);
-    }
-
-    /**
-     * Validates provided configuration of the Kafka Connect connector and returns its configuration if it's a valid config.
-     *
-     * @param connector Kafka Connect {@link SourceConnector}.
-     * @param connectorClassName Class name of Kafka Connect {@link SourceConnector}.
-     * @return {@link Map<String, String>} with connector configuration.
-     */
-    private Map<String, String> validateAndGetConnectorConfig(final SourceConnector connector, final String connectorClassName) {
-        LOGGER.debug("Validating provided connector configuration.");
-        final Map<String, String> connectorConfig = workerConfig.originalsStrings();
-        final Config validatedConnectorConfig = connector.validate(connectorConfig);
-        final ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
-                connector.config().groups());
-        if (configInfos.errorCount() > 0) {
-            // TODO Remove the reflection when minimum Kafka version is 4.2. Reflection is necessary to keep
-            // with older Kafka versions
-            @SuppressWarnings("unchecked")
-            final String errors = ((List<ConfigInfo>) Reflections.invokeMethodWithFallbackName(configInfos, "configs", "values", List.class)).stream()
-                    .flatMap(v -> v.configValue().errors().stream())
-                    .collect(Collectors.joining(" "));
-            throw new DebeziumException("Connector configuration is not valid. " + errors);
-        }
-        LOGGER.debug("Connector configuration is valid.");
-        return connectorConfig;
     }
 
     /**
