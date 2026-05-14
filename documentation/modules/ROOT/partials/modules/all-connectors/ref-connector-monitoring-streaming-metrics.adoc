@@ -71,11 +71,11 @@ The values will incorporate any differences between the clocks on the machines w
 
 |[[connectors-strm-metric-millisecondsbehindsourceminvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceminvalue_{context}, `MilliSecondsBehindSourceMinValue`>>
 |`long`
-|The minimum lag in milliseconds behind the source that has been observed during the connector's runtime.
+|The minimum lag in milliseconds behind the source that is observed during the connector's runtime.
 
 |[[connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}, `MilliSecondsBehindSourceMaxValue`>>
 |`long`
-|The maximum lag in milliseconds behind the source that has been observed during the connector's runtime.
+|The maximum lag in milliseconds behind the source that is observed during the connector's runtime.
 
 |[[connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}, `MilliSecondsBehindSourceAverageValue`>>
 |`double`
@@ -84,7 +84,7 @@ The values will incorporate any differences between the clocks on the machines w
 |[[connectors-strm-metric-millisecondsbehindsourcep50_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep50_{context}, `MilliSecondsBehindSourceP50`>>
 |`double`
 |The 50th percentile (median) of the lag in milliseconds behind the source.
-This metric provides a more robust measure of typical lag than the average, as it is less affected by outliers.
+This metric provides a more robust measure of typical lag than the average, as it is less affected by outlier values.
 Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
 
 |[[connectors-strm-metric-millisecondsbehindsourcep95_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep95_{context}, `MilliSecondsBehindSourceP95`>>
