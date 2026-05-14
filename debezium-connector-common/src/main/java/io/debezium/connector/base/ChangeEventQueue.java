@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.pipeline.Sizeable;
 import io.debezium.time.Temporals;
@@ -169,8 +170,12 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
 
         public ChangeEventQueue<T> build() {
-            QueueProvider<T> effectiveQueueProvider = (queueProvider != null) ? queueProvider : new DefaultQueueProvider<>(maxQueueSize);
-            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, effectiveQueueProvider);
+            if (queueProvider == null) {
+                final DefaultQueueProvider<T> defaultProvider = new DefaultQueueProvider<>();
+                defaultProvider.configure(java.util.Map.of(CommonConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(maxQueueSize)));
+                queueProvider = defaultProvider;
+            }
+            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, queueProvider);
         }
     }
 
@@ -366,5 +371,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     public boolean isBuffered() {
         return buffering;
+    }
+
+    public void close() {
+        try {
+            queue.close();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to close queue provider", e);
+        }
     }
 }
