@@ -2772,7 +2772,7 @@ Like replication slots, publications should be unique to each connector to ensur
 While multiple connectors can technically share a publication if they capture changes from the same set of tables, this configuration still requires unique replication slots for each connector.
 Sharing publications is appropriate only when you intentionally want multiple connectors to monitor identical table sets, such as when distributing processing load across multiple pipelines.
 
-. Additional resources
+.Additional resources
 * https://www.postgresql.org/docs/18/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[PostgreSQL replication slot details and resource implications. (PostgreSQL documentation)^].
 * xref:postgresql-publication-autocreate-mode[Description of the `publication.autocreate.mode` property for specifying how {prodname} creates publication to control table inclusion].
 * xref:postgresql-property-slot-name[Description of the `slot.name` property for specifying a unique replication slot name for each connector].
