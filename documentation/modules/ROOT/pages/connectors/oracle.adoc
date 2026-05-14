@@ -573,10 +573,11 @@ The connector applies similar naming conventions to label its internal database 
 
 [NOTE]
 ====
-Oracle returns all schema and table names in uppercase.
+Oracle is case-insensitive for schema and table names by default, storing them in uppercase when created unless quoted.
 As a result, the {prodname} Oracle connector generates Kafka topic names that contain uppercase characters, for example `fulfillment.INVENTORY.CUSTOMERS`.
 Users who are comfortable with uppercase topic names are not affected.
-However, if your environment requires lowercase topic names, for example due to naming conventions or pre-created topics, the connector fails with the following error:
+If schemas or tables are created with quotes, Oracle preserves the case as specified, and the connector uses those mixed or lowercase names in the topic name accordingly.
+If your environment relies on pre-created topics that fit a specific convention, but the Oracle schema or table is created without quotes, the connector may fail with the following error:
 
 ----
 Task failed to create new topic (name=fulfillment.INVENTORY.CUSTOMERS, numPartitions=1, replicationFactor=1).
