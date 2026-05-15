@@ -271,35 +271,13 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .connector(
-                    CONNECTION_URL_FIELD,
-                    CONNECTION_USER_FIELD,
-                    CONNECTION_PASSWORD_FIELD,
-                    CONNECTION_POOL_MIN_SIZE_FIELD,
-                    CONNECTION_POOL_MAX_SIZE_FIELD,
-                    CONNECTION_POOL_TIMEOUT_FIELD,
-                    INSERT_MODE_FIELD,
-                    DELETE_ENABLED_FIELD,
-                    TRUNCATE_ENABLED_FIELD,
-                    COLLECTION_NAME_FORMAT_FIELD,
-                    PRIMARY_KEY_MODE_FIELD,
-                    PRIMARY_KEY_FIELDS_FIELD,
-                    SCHEMA_EVOLUTION_FIELD,
-                    QUOTE_IDENTIFIERS_FIELD,
-                    COLLECTION_NAMING_STRATEGY_FIELD,
-                    COLUMN_NAMING_STRATEGY_FIELD,
-                    COLLECTION_TABLE_FORMAT_FIELD,
-                    USE_TIME_ZONE_FIELD,
-                    POSTGRES_POSTGIS_SCHEMA_FIELD,
-                    POSTGRES_UNNEST_INSERT_FIELD,
-                    SQLSERVER_IDENTITY_INSERT_FIELD,
-                    BATCH_SIZE_FIELD,
-                    FIELD_INCLUDE_LIST_FIELD,
-                    FIELD_EXCLUDE_LIST_FIELD,
-                    FLUSH_MAX_RETRIES_FIELD,
-                    FLUSH_RETRY_DELAY_MS_FIELD,
-                    CONNECTION_RESTART_ON_ERRORS_FIELD,
-                    CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
+            .group(Field.Group.CONNECTION, CONNECTION_URL_FIELD, CONNECTION_USER_FIELD, CONNECTION_PASSWORD_FIELD, CONNECTION_POOL_MIN_SIZE_FIELD,
+                    CONNECTION_POOL_MAX_SIZE_FIELD, CONNECTION_POOL_TIMEOUT_FIELD)
+            .group(Field.Group.CONNECTOR, INSERT_MODE_FIELD, DELETE_ENABLED_FIELD, TRUNCATE_ENABLED_FIELD, COLLECTION_NAME_FORMAT_FIELD, PRIMARY_KEY_MODE_FIELD,
+                    PRIMARY_KEY_FIELDS_FIELD, SCHEMA_EVOLUTION_FIELD, QUOTE_IDENTIFIERS_FIELD, COLLECTION_NAMING_STRATEGY_FIELD, COLUMN_NAMING_STRATEGY_FIELD,
+                    COLLECTION_TABLE_FORMAT_FIELD, USE_TIME_ZONE_FIELD, POSTGRES_POSTGIS_SCHEMA_FIELD, POSTGRES_UNNEST_INSERT_FIELD, SQLSERVER_IDENTITY_INSERT_FIELD,
+                    BATCH_SIZE_FIELD, FIELD_INCLUDE_LIST_FIELD, FIELD_EXCLUDE_LIST_FIELD, FLUSH_MAX_RETRIES_FIELD, FLUSH_RETRY_DELAY_MS_FIELD,
+                    CONNECTION_RESTART_ON_ERRORS_FIELD, CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
             .create();
 
     /**

@@ -1570,59 +1570,18 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Postgres")
             .excluding(CommonConnectorConfig.SKIPPED_OPERATIONS)
-            .type(
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    DATABASE_NAME,
-                    QUERY_TIMEOUT_MS,
-                    PLUGIN_NAME,
-                    SLOT_NAME,
-                    PUBLICATION_NAME,
-                    PUBLICATION_AUTOCREATE_MODE,
-                    REPLICA_IDENTITY_AUTOSET_VALUES,
-                    DROP_SLOT_ON_STOP,
-                    CREATE_FAIL_OVER_SLOT,
-                    STREAM_PARAMS,
-                    ON_CONNECT_STATEMENTS,
-                    SSL_MODE,
-                    SSL_CLIENT_CERT,
-                    SSL_CLIENT_KEY_PASSWORD,
-                    SSL_ROOT_CERT,
-                    SSL_CLIENT_KEY,
-                    MAX_RETRIES,
-                    RETRY_DELAY_MS,
-                    SSL_SOCKET_FACTORY,
-                    STATUS_UPDATE_INTERVAL_MS,
-                    LSN_FLUSH_TIMEOUT_MS,
-                    LSN_FLUSH_TIMEOUT_ACTION,
-                    TCP_KEEPALIVE,
-                    XMIN_FETCH_INTERVAL,
-                    // Use this connector's implementation rather than common connector's flavor
-                    SKIPPED_OPERATIONS,
-                    LSN_FLUSH_MODE,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB) // Deprecated, for backward compatibility
-            .events(
-                    INCLUDE_UNKNOWN_DATATYPES,
-                    SOURCE_INFO_STRUCT_MAKER)
-            .connector(
-                    SNAPSHOT_MODE,
-                    SNAPSHOT_ISOLATION_MODE,
-                    SNAPSHOT_QUERY_MODE,
-                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
-                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
-                    SNAPSHOT_LOCKING_MODE,
-                    HSTORE_HANDLING_MODE,
-                    BINARY_HANDLING_MODE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE,
-                    INTERVAL_HANDLING_MODE,
-                    SCHEMA_REFRESH_MODE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    UNAVAILABLE_VALUE_PLACEHOLDER,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST,
-                    PUBLISH_VIA_PARTITION_ROOT)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS)
+            .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, TCP_KEEPALIVE)
+            .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_SOCKET_FACTORY)
+            .group(Field.Group.CONNECTION_ADVANCED_REPLICATION, PLUGIN_NAME, SLOT_NAME, PUBLICATION_NAME, PUBLICATION_AUTOCREATE_MODE, REPLICA_IDENTITY_AUTOSET_VALUES,
+                    DROP_SLOT_ON_STOP, CREATE_FAIL_OVER_SLOT, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, STATUS_UPDATE_INTERVAL_MS, LSN_FLUSH_TIMEOUT_MS,
+                    LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL)
+            .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,
+                    LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, PUBLISH_VIA_PARTITION_ROOT, LSN_FLUSH_MODE,
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)
+            .group(Field.Group.CONNECTOR_ADVANCED, SCHEMA_REFRESH_MODE, INCLUDE_UNKNOWN_DATATYPES, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
