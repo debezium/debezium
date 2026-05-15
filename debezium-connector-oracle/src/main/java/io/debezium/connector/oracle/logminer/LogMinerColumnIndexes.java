@@ -122,11 +122,11 @@ public final class LogMinerColumnIndexes {
     public static LogMinerColumnIndexes fromConfig(OracleConnectorConfig config) {
         return new LogMinerColumnIndexes(
                 config.getCatalogName(),
-                config.isLogMiningBufferTrackUsername(),
+                false,
                 config.isLogMiningBufferTrackRsId(),
-                config.isLogMiningBufferTrackClientId(),
-                config.isLogMiningBufferTrackStartTimestamp(),
-                config.isLogMiningBufferTrackCommitTimestamp());
+                false,
+                false,
+                false);
     }
 
     /**

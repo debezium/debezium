@@ -1018,34 +1018,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
-            .type(
-                    TOPIC_PREFIX,
-                    CONNECTION_STRING,
-                    ALLOW_OFFSET_INVALIDATION,
-                    USER,
-                    PASSWORD,
-                    AUTH_SOURCE,
-                    CONNECT_TIMEOUT_MS,
-                    HEARTBEAT_FREQUENCY_MS,
-                    SOCKET_TIMEOUT_MS,
-                    SERVER_SELECTION_TIMEOUT_MS,
-                    MONGODB_POLL_INTERVAL_MS,
-                    SSL_ENABLED,
-                    SSL_ALLOW_INVALID_HOSTNAMES,
+            .group(Field.Group.CONNECTION, TOPIC_PREFIX, CONNECTION_STRING, ALLOW_OFFSET_INVALIDATION, USER, PASSWORD, AUTH_SOURCE, CONNECT_TIMEOUT_MS,
+                    HEARTBEAT_FREQUENCY_MS, SOCKET_TIMEOUT_MS, SERVER_SELECTION_TIMEOUT_MS, MONGODB_POLL_INTERVAL_MS, SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
-            .events(
-                    DATABASE_INCLUDE_LIST,
-                    DATABASE_EXCLUDE_LIST,
-                    COLLECTION_INCLUDE_LIST,
-                    COLLECTION_EXCLUDE_LIST,
-                    FIELD_EXCLUDE_LIST,
-                    FIELD_RENAMES,
-                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION,
-                    SOURCE_INFO_STRUCT_MAKER)
-            .connector(
-                    SNAPSHOT_MODE,
-                    CAPTURE_MODE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE)
+            .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
+            .group(Field.Group.CONNECTOR, SNAPSHOT_MODE, CAPTURE_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**

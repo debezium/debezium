@@ -494,31 +494,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
-            .type(
-                    DATABASE_NAMES,
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    QUERY_TIMEOUT_MS,
-                    INSTANCE)
-            .connector(
-                    SNAPSHOT_MODE,
-                    SNAPSHOT_ISOLATION_MODE,
-                    MAX_TRANSACTIONS_PER_ITERATION,
-                    BINARY_HANDLING_MODE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE,
-                    INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    QUERY_FETCH_SIZE,
-                    DATA_QUERY_MODE,
-                    STREAMING_FETCH_SIZE)
-            .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     CommonConnectorConfig.QUERY_FETCH_SIZE)
+            .group(Field.Group.CONNECTION, DATABASE_NAMES, HOSTNAME, PORT, USER, PASSWORD, QUERY_TIMEOUT_MS, INSTANCE)
+            .group(Field.Group.CONNECTOR, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, DATA_QUERY_MODE, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_ADVANCED, MAX_TRANSACTIONS_PER_ITERATION, QUERY_FETCH_SIZE, STREAMING_FETCH_SIZE)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
 
     /**

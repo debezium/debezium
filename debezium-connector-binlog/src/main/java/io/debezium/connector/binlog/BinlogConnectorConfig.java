@@ -626,48 +626,17 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
-            .type(
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    QUERY_TIMEOUT_MS,
-                    ON_CONNECT_STATEMENTS,
-                    SERVER_ID,
-                    SERVER_ID_OFFSET,
-                    SSL_KEYSTORE,
-                    SSL_KEYSTORE_PASSWORD,
-                    SSL_TRUSTSTORE,
-                    SSL_TRUSTSTORE_PASSWORD)
-            .connector(
-                    CONNECTION_TIMEOUT_MS,
-                    KEEP_ALIVE,
-                    KEEP_ALIVE_INTERVAL_MS,
-                    USE_NONGRACEFUL_DISCONNECT,
-                    BINLOG_NET_WRITE_TIMEOUT,
-                    BINLOG_NET_READ_TIMEOUT,
-                    SNAPSHOT_MODE,
-                    SNAPSHOT_QUERY_MODE,
-                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
-                    BIGINT_UNSIGNED_HANDLING_MODE,
-                    TIME_PRECISION_MODE,
-                    ENABLE_TIME_ADJUSTER,
-                    SCHEMA_NAME_ADJUSTMENT_MODE,
-                    ROW_COUNT_FOR_STREAMING_RESULT_SETS,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, QUERY_TIMEOUT_MS, SERVER_ID)
+            .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, SERVER_ID_OFFSET, CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
+                    USE_NONGRACEFUL_DISCONNECT, BINLOG_NET_WRITE_TIMEOUT, BINLOG_NET_READ_TIMEOUT)
+            .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD)
+            .group(Field.Group.CONNECTOR, BIGINT_UNSIGNED_HANDLING_MODE, TIME_PRECISION_MODE, ENABLE_TIME_ADJUSTER, SCHEMA_NAME_ADJUSTMENT_MODE, GTID_SOURCE_INCLUDES,
+                    GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
+            .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
-            .events(
-                    INCLUDE_SQL_QUERY,
-                    TABLES_IGNORE_BUILTIN,
-                    DATABASE_INCLUDE_LIST,
-                    DATABASE_EXCLUDE_LIST,
-                    BUFFER_SIZE_FOR_BINLOG_READER,
-                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                    INCONSISTENT_SCHEMA_HANDLING_MODE,
-                    GTID_SOURCE_INCLUDES,
-                    GTID_SOURCE_EXCLUDES,
-                    GTID_SOURCE_FILTER_DML_EVENTS,
-                    IGNORE_GTID_ON_RECOVERY)
+            .group(Field.Group.FILTERS, TABLES_IGNORE_BUILTIN, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
+            .group(Field.Group.ADVANCED, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE)
             .create();
 
     private final Configuration config;

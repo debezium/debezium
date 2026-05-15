@@ -79,7 +79,7 @@ public class FieldTest {
                 .connector(authType, username, password, sslProtocol)
                 .create();
 
-        Field resolvedAuthType = configDef.connector().stream()
+        Field resolvedAuthType = configDef.all().stream()
                 .filter(f -> f.name().equals("auth_type"))
                 .findFirst()
                 .orElseThrow();
@@ -114,7 +114,7 @@ public class FieldTest {
                 .create();
 
         // Get resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = configDef.all().stream()
                 .filter(f -> f.name().equals("connector_adapter"))
                 .findFirst()
                 .orElseThrow();
@@ -184,7 +184,7 @@ public class FieldTest {
                 .connector(adapter, bufferType)
                 .create();
 
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = configDef.all().stream()
                 .filter(f -> f.name().equals("connection.adapter"))
                 .findFirst()
                 .orElseThrow();

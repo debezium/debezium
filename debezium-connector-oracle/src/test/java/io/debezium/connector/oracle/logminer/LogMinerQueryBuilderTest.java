@@ -238,20 +238,8 @@ public class LogMinerQueryBuilderTest {
         columns.add("SEQUENCE#");
 
         // Optional added at the end
-        if (config.isLogMiningBufferTrackStartTimestamp()) {
-            columns.add("START_TIMESTAMP");
-        }
-        if (config.isLogMiningBufferTrackCommitTimestamp()) {
-            columns.add("COMMIT_TIMESTAMP");
-        }
         if (config.isLogMiningBufferTrackRsId()) {
             columns.add("RS_ID");
-        }
-        if (config.isLogMiningBufferTrackUsername()) {
-            columns.add("USERNAME");
-        }
-        if (config.isLogMiningBufferTrackClientId()) {
-            columns.add("CLIENT_ID");
         }
 
         return String.join(", ", columns) + " ";

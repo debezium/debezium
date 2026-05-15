@@ -935,10 +935,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_TRACK_RS_ID,
-                    LOG_MINING_BUFFER_TRACK_CLIENT_ID,
-                    LOG_MINING_BUFFER_TRACK_USERNAME,
-                    LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP,
-                    LOG_MINING_BUFFER_TRACK_START_TIMESTAMP,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
@@ -991,8 +987,30 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_HASH_AREA_SIZE,
                     LOG_MINING_SORT_AREA_SIZE,
                     LOG_MINING_LOG_COUNT_MIN)
-            .events(SOURCE_INFO_STRUCT_MAKER,
-                    SIGNAL_DATA_COLLECTION)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS, PDB_NAME, XSTREAM_SERVER_NAME)
+            .group(Field.Group.CONNECTION, RAC_NODES, URL)
+            .group(Field.Group.CONNECTION_ADVANCED, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, ARCHIVE_LOG_HOURS, LOG_MINING_TRANSACTION_RETENTION_MS,
+                    LOG_MINING_BATCH_SIZE_DEFAULT, LOG_MINING_BATCH_SIZE_MIN, LOG_MINING_BATCH_SIZE_MAX, LOG_MINING_BATCH_SIZE_INCREMENT,
+                    LOG_MINING_SLEEP_TIME_DEFAULT_MS, LOG_MINING_SLEEP_TIME_MIN_MS, LOG_MINING_SLEEP_TIME_MAX_MS, LOG_MINING_SLEEP_TIME_INCREMENT_MS,
+                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE, LOB_ENABLED, LOG_MINING_USERNAME_INCLUDE_LIST, LOG_MINING_USERNAME_EXCLUDE_LIST, ARCHIVE_DESTINATION_NAME,
+                    LOG_MINING_BUFFER_TYPE, LOG_MINING_BUFFER_TRACK_RS_ID, LOG_MINING_BUFFER_DROP_ON_STOP, LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
+                    LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS, LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
+                    LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS, LOG_MINING_LOG_QUERY_MAX_RETRIES, LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
+                    LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS, LOG_MINING_SESSION_MAX_MS, LOG_MINING_WINDOW_MAX_MS, LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
+                    LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
+                    LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST, LOG_MINING_INCLUDE_REDO_SQL, OLR_SOURCE, OLR_HOST, OLR_PORT, LOG_MINING_CONTINUOUS_MINE,
+                    LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG,
+                    LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
+                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START, LOG_MINING_PATH_DICTIONARY, LOG_MINING_READONLY_HOSTNAME, LOG_MINING_USE_CTE_QUERY,
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN)
+            .group(Field.Group.CONNECTOR, INTERVAL_HANDLING_MODE, UNAVAILABLE_VALUE_PLACEHOLDER, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
+                    LEGACY_DECIMAL_HANDLING_STRATEGY)
+            .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, OBJECT_ID_CACHE_SIZE)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ENHANCEMENT_TOKEN, SNAPSHOT_LOCKING_MODE, SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
+            .group(Field.Group.CONNECTOR, SOURCE_INFO_STRUCT_MAKER, SIGNAL_DATA_COLLECTION)
             .create();
 
     /**
@@ -1214,7 +1232,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return Optional.ofNullable(snapshotLockingMode);
     }
 
-    @Override
     public int getQueryFetchSize() {
         return queryFetchSize;
     }
@@ -2078,34 +2095,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferTrackRsId() {
         return logMiningBufferTrackRsId;
-    }
-
-    /**
-     * @return determines whether {@code CLIENT_ID} column values are buffered and tracked
-     */
-    public boolean isLogMiningBufferTrackClientId() {
-        return logMiningBufferTrackClientId;
-    }
-
-    /**
-     * @return determines whether {@code USERNAME} column values are buffered and tracked
-     */
-    public boolean isLogMiningBufferTrackUsername() {
-        return logMiningBufferTrackUsername;
-    }
-
-    /**
-     * @return determines whether {@code COMMIT_TIMESTAMP} column values are buffered and tracked
-     */
-    public boolean isLogMiningBufferTrackCommitTimestamp() {
-        return logMiningBufferTrackCommitTimestamp;
-    }
-
-    /**
-     * @return determines whether {@code START_TIMESTAMP} column values are buffered and tracked
-     */
-    public boolean isLogMiningBufferTrackStartTimestamp() {
-        return logMiningBufferTrackStartTimestamp;
     }
 
     /**

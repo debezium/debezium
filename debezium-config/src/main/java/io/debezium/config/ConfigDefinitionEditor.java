@@ -7,7 +7,9 @@ package io.debezium.config;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Editor for creating {@link ConfigDefinition}s.
@@ -17,20 +19,26 @@ import java.util.List;
 public class ConfigDefinitionEditor {
 
     private String connectorName;
-    private List<Field> type = new ArrayList<>();
-    private List<Field> connector = new ArrayList<>();
-    private List<Field> history = new ArrayList<>();
-    private List<Field> events = new ArrayList<>();
+    private Map<Field.Group, List<Field>> fieldsByGroup = new LinkedHashMap<>();
 
     ConfigDefinitionEditor() {
     }
 
     ConfigDefinitionEditor(ConfigDefinition template) {
         connectorName = template.connectorName();
-        type.addAll(template.type());
-        connector.addAll(template.connector());
-        history.addAll(template.history());
-        events.addAll(template.events());
+        // Copy fields from template's type, connector, history, events into the new group-based structure
+        for (Field field : template.type()) {
+            addToGroup(field);
+        }
+        for (Field field : template.connector()) {
+            addToGroup(field);
+        }
+        for (Field field : template.history()) {
+            addToGroup(field);
+        }
+        for (Field field : template.events()) {
+            addToGroup(field);
+        }
     }
 
     public ConfigDefinitionEditor name(String name) {
@@ -38,23 +46,88 @@ public class ConfigDefinitionEditor {
         return this;
     }
 
-    public ConfigDefinitionEditor type(Field... fields) {
-        type.addAll(Arrays.asList(fields));
+    /**
+     * Adds fields to the specified group, appending them to the end of the group's list.
+     * This is the most common operation for adding fields.
+     *
+     * @param group the field group
+     * @param fields the fields to add
+     * @return this editor for method chaining
+     */
+    public ConfigDefinitionEditor group(Field.Group group, Field... fields) {
+        List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
+        for (Field field : fields) {
+            if (!groupFields.contains(field)) {
+                groupFields.add(field);
+            }
+        }
         return this;
     }
 
-    public ConfigDefinitionEditor connector(Field... fields) {
-        connector.addAll(Arrays.asList(fields));
+    /**
+     * Adds fields to the specified group, inserting them after the specified anchor field.
+     *
+     * @param group the field group
+     * @param anchor the field after which to insert
+     * @param fields the fields to insert
+     * @return this editor for method chaining
+     */
+    public ConfigDefinitionEditor groupAfter(Field.Group group, Field anchor, Field... fields) {
+        List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
+        int anchorIndex = groupFields.indexOf(anchor);
+        if (anchorIndex == -1) {
+            // Anchor not found, append to end
+            return group(group, fields);
+        }
+        int insertIndex = anchorIndex + 1;
+        for (int i = 0; i < fields.length; i++) {
+            Field field = fields[i];
+            if (!groupFields.contains(field)) {
+                groupFields.add(insertIndex + i, field);
+            }
+        }
         return this;
     }
 
-    public ConfigDefinitionEditor history(Field... fields) {
-        history.addAll(Arrays.asList(fields));
+    /**
+     * Adds fields to the specified group, inserting them before the specified anchor field.
+     *
+     * @param group the field group
+     * @param anchor the field before which to insert
+     * @param fields the fields to insert
+     * @return this editor for method chaining
+     */
+    public ConfigDefinitionEditor groupBefore(Field.Group group, Field anchor, Field... fields) {
+        List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
+        int anchorIndex = groupFields.indexOf(anchor);
+        if (anchorIndex == -1) {
+            // Anchor not found, append to end
+            return group(group, fields);
+        }
+        for (int i = 0; i < fields.length; i++) {
+            Field field = fields[fields.length - 1 - i];
+            if (!groupFields.contains(field)) {
+                groupFields.add(anchorIndex, field);
+            }
+        }
         return this;
     }
 
-    public ConfigDefinitionEditor events(Field... fields) {
-        events.addAll(Arrays.asList(fields));
+    /**
+     * Adds fields to the specified group, inserting them at the beginning of the group's list.
+     *
+     * @param group the field group
+     * @param fields the fields to insert
+     * @return this editor for method chaining
+     */
+    public ConfigDefinitionEditor groupFirst(Field.Group group, Field... fields) {
+        List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
+        for (int i = 0; i < fields.length; i++) {
+            Field field = fields[fields.length - 1 - i];
+            if (!groupFields.contains(field)) {
+                groupFields.add(0, field);
+            }
+        }
         return this;
     }
 
@@ -62,32 +135,73 @@ public class ConfigDefinitionEditor {
      * Removes the given fields from this configuration editor.
      */
     public ConfigDefinitionEditor excluding(Field... fields) {
-        type.removeAll(Arrays.asList(fields));
-        connector.removeAll(Arrays.asList(fields));
-        history.removeAll(Arrays.asList(fields));
-        events.removeAll(Arrays.asList(fields));
+        List<Field> fieldsToRemove = Arrays.asList(fields);
+        for (List<Field> groupFields : fieldsByGroup.values()) {
+            groupFields.removeAll(fieldsToRemove);
+        }
         return this;
     }
 
     public ConfigDefinition create() {
-
         java.util.Set<String> allFieldNames = new java.util.LinkedHashSet<>();
-        type.forEach(f -> allFieldNames.add(f.name()));
-        connector.forEach(f -> allFieldNames.add(f.name()));
-        history.forEach(f -> allFieldNames.add(f.name()));
-        events.forEach(f -> allFieldNames.add(f.name()));
+        for (List<Field> groupFields : fieldsByGroup.values()) {
+            groupFields.forEach(f -> allFieldNames.add(f.name()));
+        }
 
-        List<Field> resolvedType = resolvePatterns(type, allFieldNames);
-        List<Field> resolvedConnector = resolvePatterns(connector, allFieldNames);
-        List<Field> resolvedHistory = resolvePatterns(history, allFieldNames);
-        List<Field> resolvedEvents = resolvePatterns(events, allFieldNames);
+        Map<Field.Group, List<Field>> resolvedFieldsByGroup = new LinkedHashMap<>();
+        for (Map.Entry<Field.Group, List<Field>> entry : fieldsByGroup.entrySet()) {
+            resolvedFieldsByGroup.put(entry.getKey(), resolvePatterns(entry.getValue(), allFieldNames));
+        }
 
-        return new ConfigDefinition(connectorName, resolvedType, resolvedConnector, resolvedHistory, resolvedEvents);
+        return new ConfigDefinition(connectorName, resolvedFieldsByGroup);
     }
 
     private List<Field> resolvePatterns(List<Field> fields, java.util.Set<String> allFieldNames) {
         return fields.stream()
                 .map(field -> field.resolvePatterns(allFieldNames))
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    private void addToGroup(Field field) {
+        if (field.group() != null) {
+            Field.Group group = field.group().getGroup();
+            List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
+            if (!groupFields.contains(field)) {
+                groupFields.add(field);
+            }
+        }
+    }
+
+    // Legacy methods for backward compatibility during transition
+    @Deprecated
+    public ConfigDefinitionEditor type(Field... fields) {
+        for (Field field : fields) {
+            addToGroup(field);
+        }
+        return this;
+    }
+
+    @Deprecated
+    public ConfigDefinitionEditor connector(Field... fields) {
+        for (Field field : fields) {
+            addToGroup(field);
+        }
+        return this;
+    }
+
+    @Deprecated
+    public ConfigDefinitionEditor history(Field... fields) {
+        for (Field field : fields) {
+            addToGroup(field);
+        }
+        return this;
+    }
+
+    @Deprecated
+    public ConfigDefinitionEditor events(Field... fields) {
+        for (Field field : fields) {
+            addToGroup(field);
+        }
+        return this;
     }
 }
