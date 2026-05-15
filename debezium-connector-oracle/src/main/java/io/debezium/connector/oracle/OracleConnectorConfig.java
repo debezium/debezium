@@ -999,6 +999,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return pdbName;
     }
 
+    /**
+     * Returns {@code true} when the connector is configured against a pluggable database
+     * (CDB+PDB), i.e. {@link #getPdbName()} is set. Useful at call sites that need to
+     * conditionally switch a session to the PDB before issuing user-table queries.
+     */
+    public boolean isUsingPluggableDatabase() {
+        return !Strings.isNullOrBlank(pdbName);
+    }
+
     public String getCatalogName() {
         return pdbName != null ? pdbName : databaseName;
     }
