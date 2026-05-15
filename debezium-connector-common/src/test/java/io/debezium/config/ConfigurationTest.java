@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
@@ -532,7 +533,7 @@ public class ConfigurationTest {
                 .create();
 
         // Get the resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connector.adapter"))
                 .findFirst()
                 .orElseThrow();

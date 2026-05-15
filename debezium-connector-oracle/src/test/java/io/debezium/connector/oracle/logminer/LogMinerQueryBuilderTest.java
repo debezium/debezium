@@ -237,7 +237,7 @@ public class LogMinerQueryBuilderTest {
         columns.add("COMMIT_SCN");
         columns.add("SEQUENCE#");
 
-        // Optional added at the end
+        // Optional added at the end, order must match AbstractLogMinerQueryBuilder.buildColumnList()
         if (config.isLogMiningBufferTrackStartTimestamp()) {
             columns.add("START_TIMESTAMP");
         }

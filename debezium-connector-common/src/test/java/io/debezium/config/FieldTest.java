@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.junit.jupiter.api.Test;
@@ -79,7 +80,7 @@ public class FieldTest {
                 .connector(authType, username, password, sslProtocol)
                 .create();
 
-        Field resolvedAuthType = configDef.connector().stream()
+        Field resolvedAuthType = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("auth_type"))
                 .findFirst()
                 .orElseThrow();
@@ -114,7 +115,7 @@ public class FieldTest {
                 .create();
 
         // Get resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connector_adapter"))
                 .findFirst()
                 .orElseThrow();
@@ -184,7 +185,7 @@ public class FieldTest {
                 .connector(adapter, bufferType)
                 .create();
 
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connection.adapter"))
                 .findFirst()
                 .orElseThrow();
