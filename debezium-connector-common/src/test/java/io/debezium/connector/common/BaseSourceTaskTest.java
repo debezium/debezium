@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,6 +27,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
+import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,18 +39,20 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.util.LoggingContext;
+import io.debezium.util.LoggingContext.RootLoggingContext;
 
-public class BaseSourceTaskTest {
+class BaseSourceTaskTest {
 
     private final MyBaseSourceTask baseSourceTask = new MyBaseSourceTask();
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
     }
 
     @Test
-    public void verifyTaskStartsAndStops() throws InterruptedException {
+    void verifyTaskStartsAndStops() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
         assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
@@ -63,7 +67,7 @@ public class BaseSourceTaskTest {
     }
 
     @Test
-    public void verifyStartAndStopWithoutPolling() {
+    void verifyStartAndStopWithoutPolling() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         baseSourceTask.start(new HashMap<>());
         assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
@@ -75,7 +79,7 @@ public class BaseSourceTaskTest {
     }
 
     @Test
-    public void verifyContainsChangeDataMessages() {
+    void verifyContainsChangeDataMessages() {
         assertFalse(baseSourceTask.containsChangeDataMessages(null));
         assertFalse(baseSourceTask.containsChangeDataMessages(List.of()));
 
@@ -90,7 +94,7 @@ public class BaseSourceTaskTest {
     }
 
     @Test
-    public void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
+    void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
         assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
@@ -107,7 +111,7 @@ public class BaseSourceTaskTest {
     }
 
     @Test
-    public void verifyTaskRestartsSuccessfully() throws InterruptedException {
+    void verifyTaskRestartsSuccessfully() throws InterruptedException {
         MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
             @Override
             protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
@@ -144,7 +148,7 @@ public class BaseSourceTaskTest {
     }
 
     @Test
-    public void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
+    void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
         baseSourceTask.start(new HashMap<>());
         assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
@@ -154,6 +158,28 @@ public class BaseSourceTaskTest {
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
+    }
+
+    @Test
+    void verifyRootLoggingMdcContext() throws InterruptedException {
+        org.apache.kafka.connect.util.LoggingContext.clear();
+        final var connectorTaskId = new ConnectorTaskId("foo-connector", 0);
+        final var taskConfig = Map.of(CommonConnectorConfig.TOPIC_PREFIX.name(), "foo");
+        final var expectedStartRootLogging = Map.of(
+                org.apache.kafka.connect.util.LoggingContext.CONNECTOR_CONTEXT, "[foo-connector|task-0] ");
+        final var expectedRootLogging = Map.of(
+                org.apache.kafka.connect.util.LoggingContext.CONNECTOR_CONTEXT, "[foo-connector|task-0] ",
+                LoggingContext.CONNECTOR_NAME, "foo",
+                LoggingContext.CONNECTOR_CONTEXT, "lifecycle",
+                LoggingContext.CONNECTOR_TYPE, "");
+        try (var kafkaLoggingContext = org.apache.kafka.connect.util.LoggingContext.forTask(connectorTaskId)) {
+            baseSourceTask.start(taskConfig);
+            baseSourceTask.poll();
+            baseSourceTask.stop();
+
+            assertThat(baseSourceTask.startRootLoggingContext).isEqualTo(expectedStartRootLogging);
+            assertThat(baseSourceTask.pollRootLoggingContext).isEqualTo(expectedRootLogging);
+        }
     }
 
     private static void pollAndIgnoreRetryException(BaseSourceTask<Partition, OffsetContext> baseSourceTask) throws InterruptedException {
@@ -175,10 +201,12 @@ public class BaseSourceTaskTest {
         }
     }
 
-    public static class MyBaseSourceTask extends BaseSourceTask<Partition, OffsetContext> {
+    static class MyBaseSourceTask extends BaseSourceTask<Partition, OffsetContext> {
         final List<SourceRecord> records = new ArrayList<>();
         final AtomicInteger startCount = new AtomicInteger();
         final AtomicInteger stopCount = new AtomicInteger();
+        final Map<String, String> startRootLoggingContext = new HashMap<>();
+        final Map<String, String> pollRootLoggingContext = new HashMap<>();
 
         @SuppressWarnings("unchecked")
         final ChangeEventSourceCoordinator<Partition, OffsetContext> coordinator = mock(ChangeEventSourceCoordinator.class);
@@ -191,6 +219,7 @@ public class BaseSourceTaskTest {
         @Override
         protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
             startCount.incrementAndGet();
+            startRootLoggingContext.putAll(RootLoggingContext.valueCopy());
             return coordinator;
         }
 
@@ -201,6 +230,7 @@ public class BaseSourceTaskTest {
 
         @Override
         protected List<SourceRecord> doPoll() {
+            pollRootLoggingContext.putAll(RootLoggingContext.valueCopy());
             return records;
         }
 

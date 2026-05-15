@@ -11,6 +11,7 @@ import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.apache.kafka.connect.util.ConnectorTaskId;
 
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -30,6 +31,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext, Sourc
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final io.debezium.util.Clock clock;
     private final Transformations transformations;
+    private final ConnectorTaskId connectorTaskId;
 
     public EngineSourceTaskContext(
                                    final Map<String, String> config,
@@ -37,13 +39,15 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext, Sourc
                                    final OffsetStorageWriter offsetWriter,
                                    final OffsetCommitPolicy offsetCommitPolicy,
                                    final io.debezium.util.Clock clock,
-                                   final Transformations transformations) {
+                                   final Transformations transformations,
+                                   final ConnectorTaskId connectorTaskId) {
         this.config = config;
         this.offsetReader = offsetReader;
         this.offsetWriter = offsetWriter;
         this.offsetCommitPolicy = offsetCommitPolicy;
         this.clock = clock;
         this.transformations = transformations;
+        this.connectorTaskId = connectorTaskId;
     }
 
     @Override
@@ -86,5 +90,10 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext, Sourc
     public PluginMetrics pluginMetrics() {
         // we don't support metrics yet
         return null;
+    }
+
+    @Override
+    public ConnectorTaskId connectorTaskId() {
+        return connectorTaskId;
     }
 }

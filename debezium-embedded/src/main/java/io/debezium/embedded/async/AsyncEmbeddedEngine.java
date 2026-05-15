@@ -54,6 +54,8 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.apache.kafka.connect.util.ConnectorTaskId;
+import org.apache.kafka.connect.util.LoggingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -413,15 +415,18 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(this.classLoader);
         try {
+            int taskId = 0;
             for (Map<String, String> taskConfig : taskConfigs) {
                 final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
+                final ConnectorTaskId connectorTaskId = new ConnectorTaskId(config.getString(ConnectorConfig.NAME_CONFIG), ++taskId);
                 final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
                         taskConfig,
                         connector.context().offsetStorageReader(),
                         connector.context().offsetStorageWriter(),
                         offsetCommitPolicy,
                         clock,
-                        transformations);
+                        transformations,
+                        connectorTaskId);
                 task.initialize(taskContext); // Initialize Kafka Connect source task
                 tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
             }
@@ -445,7 +450,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
         for (EngineSourceTask task : tasks) {
             taskCompletionService.submit(() -> {
-                try {
+                LoggingContext.clear();
+                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
                     Thread.currentThread().setContextClassLoader(this.classLoader);
                     task.connectTask().start(task.context().config());
                 }
@@ -1242,7 +1248,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         public Void doCall() throws Exception {
             while (engineState.get() == State.POLLING_TASKS) {
                 LOGGER.trace("Thread {} running task {} starts polling for records.", Thread.currentThread().getName(), task.connectTask());
-                final List<SourceRecord> changeRecords = task.connectTask().poll(); // blocks until there are values ...
+                LoggingContext.clear();
+                final List<SourceRecord> changeRecords;
+                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                    changeRecords = task.connectTask().poll(); // blocks until there are values ...
+                }
                 LOGGER.trace("Thread {} polled {} records.", Thread.currentThread().getName(), changeRecords == null ? "no" : changeRecords.size());
                 if (changeRecords != null && !changeRecords.isEmpty()) {
                     try {
