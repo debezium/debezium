@@ -2707,7 +2707,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     public void shouldRollbackExactlyOneOperation() throws Exception {
         TestHelper.dropTable(connection, "DBZ1917");
         try {
-            connection.execute("CREATE TABLE DBZ1917(id numeric(9,0), DATA CLOB)");
+            connection.execute("CREATE TABLE DBZ1917(id numeric(9,0), DATA CLOB, DATA2 CLOB)");
             TestHelper.streamTable(connection, "DBZ1917");
 
             Configuration config = TestHelper.defaultConfig()
@@ -2723,13 +2723,15 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
                     "SAVEPOINT s1",
                     "UPDATE DBZ1917 SET data = 'update 1' WHERE id = 1",
                     "ROLLBACK TO SAVEPOINT s1",
+                    "UPDATE DBZ1917 SET data2 = 'update 2' WHERE id = 1",
                     "INSERT INTO DBZ1917 (id,data) VALUES (2,'insert 2')");
 
-            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ1917"));
-            assertThat(tableRecords).hasSize(1);
-            SourceRecord insert1 = tableRecords.get(0);
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(2);
+            SourceRecord insert1 = tableRecords.get(1);
             assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
-            assertThat(getAfterField(insert1, "DATA")).isEqualTo("insert 1");
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(insert1, "DATA2")).isEqualTo("update 2");
 
             stopConnector();
         }

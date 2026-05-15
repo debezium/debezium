@@ -170,7 +170,10 @@ public class TransactionCommitConsumer implements AutoCloseable {
             return;
         }
 
-        if (tryMerge(accumulatorEvent, event, rolledBack)) {
+        if (rowState != null
+                && !rowState.rolledBack
+                && !(accumulatorEvent.getRowId() != RowIdCodec.EMPTY_ROW_ID && rolledBack)
+                && tryMerge(accumulatorEvent, event)) {
             rowState.event.setRowId(event.getRowId());
             rowState.rolledBack = rolledBack;
             rowState.transactionSequence = transactionSequence;
@@ -350,14 +353,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         dispatchChangeEvent(event, rowState.rolledBack, rowState.transactionId, rowState.transactionSequence);
     }
 
-    private boolean tryMerge(DmlEvent prev, DmlEvent next, boolean rolledBack) {
-        if (prev == null) { // first event for this row.
-            return false;
-        }
-        if (prev.getRowId() != RowIdCodec.EMPTY_ROW_ID && rolledBack) {
-            return false;
-        }
-
+    private boolean tryMerge(DmlEvent prev, DmlEvent next) {
         // we can only merge into INSERT, UPDATE and SEL_LOB_LOCATOR
         // we can only merge from UPDATE and SEL_LOB_LOCATOR
         // merges _from_ SEL_LOB_LOCATOR are basically noops.
