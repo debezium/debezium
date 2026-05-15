@@ -116,7 +116,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         columns.add("COMMIT_SCN");
         columns.add("SEQUENCE#");
 
-        // NOTE: Optional columns should be added here
+        // NOTE: Optional columns should be added here, order must match LogMinerColumnIndexes
         if (connectorConfig.isLogMiningBufferTrackStartTimestamp()) {
             columns.add("START_TIMESTAMP");
         }
