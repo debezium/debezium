@@ -10,7 +10,7 @@ discover:
 # Required HW
 provision:
   hardware:
-    memory: ">= 32 GiB"
+    memory: ">= 64 GiB"
     cpu:
       processors: ">= 16"
 
@@ -36,7 +36,7 @@ execute:
   summary: Run oracle connector functional tests
   provision:
     hardware:
-      memory: ">= 32 GiB"
+      memory: ">= 64 GiB"
       cpu:
         processors: ">= 16"
   discover+:
