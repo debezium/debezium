@@ -195,9 +195,10 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             if (startupTimeout != null) {
                 mongoDbContainer.withStartupTimeout(startupTimeout);
             }
+            // This environment variable is necessary for 6.19+ host Linux machine ref: https://jira.mongodb.org/browse/SERVER-121912
+            mongoDbContainer.withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
             members.add(mongoDbContainer);
         }
-
         logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
