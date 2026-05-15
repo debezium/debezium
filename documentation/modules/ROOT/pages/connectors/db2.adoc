@@ -2131,6 +2131,34 @@ In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effe
 .Additional resources
 * For more information about capture agent parameters, see the Db2 documentation.
 
+=== Db2 Change Table Pruning
+
+As the capture agent functions by creating sql records that represent changes in the captured tables and Debezium produces
+these as Kafka events, it is necessary to have a pruning process of the change capture tables.  In default deployments, this
+is controlled by the DB2 *Apply* agent (responsible for reading the change tables and representing them elsewhere, like Debezium),
+updating a set of prune tables that notify the *Capture* agent that the records have been reflected to the target system(s)
+and the data can be removed from the change tables, otherwise they will grow and become unmanagable or exhaust resourced.
+
+If the *Apply* agent is not needed as Debezium is handling that role, a use case that solutions often encounter, the *Apply* agent
+can be stopped - it need not use resources, but the *prune* function must be fulfilled in its absence, and the database must be
+configured such that the prune thread is able to use the tables that communicate what can be pruned.
+
+This is a summary of what needs to be in place for the prune to work in this way.  Please review the IBM documentation
+regarding the IBMSNAP control tables as official documentation for the version in use.
+
+DB2 tables - The table must exist on the IBMSNAP_REGISTER table, with its change tables properly defined and a non-null
+CD_SYNCHPOINT_OLD column.  It also needs to be present on the IBMSNAP_PRUNCNTL table, with the exact same values for the table,
+schema, with the change capture tables as well and a unique MAP_ID.  Finally, it must be present on the IBMSNAP_PRUNE_SET,
+with matching values for the APPLY_QUAL, SET_NAME, and a unique TARGET_SERVER value.  If all of these are in place, the prune
+thread will run on an interval defined by IBMSNAP_CAPPARAMS's PRUNE_INTERVAL in seconds.  If there are addititional records
+on the IBMSNAP_PRUNE_SET table for the same APPLY_QUAL and SET_NAME, but with a different TARGET_SERVER, the prune will not
+be effective, as the Capture agent will not prune the change table unless all TARGET_SERVER values have advanced in their
+SYNCHPOINT such that the older records may be removed.
+[NOTE]
+====
+Specific guidance about how to configure Db2 capture agent parameters is beyond the scope of this documentation.
+====
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-db2-connectors
 // Title: Deployment of {prodname} Db2 connectors
