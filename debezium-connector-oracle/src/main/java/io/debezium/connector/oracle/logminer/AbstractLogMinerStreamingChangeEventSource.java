@@ -301,6 +301,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return !Strings.isNullOrBlank(connectorConfig.getPdbName());
     }
 
+    /**
+     * @deprecated to be removed in Debezium 3.7
+     */
+    @Deprecated
     protected boolean isUsingCatalogInRedoStrategy() {
         return OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(connectorConfig.getLogMiningStrategy());
     }

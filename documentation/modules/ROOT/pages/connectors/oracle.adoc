@@ -1034,6 +1034,12 @@ However, before you choose a log mining strategy, it's important to consider the
 
 ==== Writing the data dictionary to redo logs
 
+[WARNING]
+====
+The `redo_log_catalog` mining strategy is deprecated, and is scheduled for removal in a future {prodname} release.
+Consider migrating to the `hybrid` strategy, which provides equivalent schema tracking reliability with better performance and lower overhead.
+====
+
 The `redo_log_catalog` mining strategy instructs the database to flush a copy of the data dictionary to the redo logs immediately after each redo log switch.
 This is the most reliable strategy for tracking schema changes that are interwoven with data changes, because Oracle LogMiner has a way to interpolate between the starting and ending data dictionary states across a series of change vectors.
 
@@ -1080,7 +1086,7 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 [IMPORTANT]
 ====
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
-If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
+If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` (deprecated) strategies can be used.
 ====
 
 ifdef::community[]
@@ -4373,8 +4379,10 @@ endif::community[]
 |Specifies the mining strategy that controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
 Set one of the following options:
 
-`redo_log_catalog`:: Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
+`redo_log_catalog`:: *(Deprecated)* Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
 This also enables tracking DDL changes against captured tables, so if the schema changes frequently this is the ideal choice.
+This strategy is deprecated and scheduled for removal in a future {prodname} release.
+Consider using the `hybrid` strategy instead.
 
 `online_catalog`:: Uses the database's current data dictionary to resolve object ids and does not write any extra information to the online redo logs.
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
@@ -6106,6 +6114,7 @@ The second option, `redo_log_catalog`, writes the Oracle data dictionary to the 
 This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
 This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
 This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
+Note that this strategy is now deprecated; the `hybrid` strategy provides equivalent reliability with better performance.
 +
 The final option, `hybrid`, combines the strengths of the above two strategies with none of their weaknesses.
 This strategy harnesses the performance of the `online_catalog` with the resilience in schema tracking of the `redo_log_catalog` while also avoiding the overhead and performance costs with the higher than normal archive log generation.
