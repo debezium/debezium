@@ -173,6 +173,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         if (rowState != null
                 && !rowState.rolledBack
                 && !(accumulatorEvent.getRowId() != RowIdCodec.EMPTY_ROW_ID && rolledBack)
+                && !(accumulatorEvent.getRowId() != RowIdCodec.EMPTY_ROW_ID && event.getRowId() == RowIdCodec.EMPTY_ROW_ID)
                 && tryMerge(accumulatorEvent, event)) {
             rowState.event.setRowId(event.getRowId());
             rowState.rolledBack = rolledBack;

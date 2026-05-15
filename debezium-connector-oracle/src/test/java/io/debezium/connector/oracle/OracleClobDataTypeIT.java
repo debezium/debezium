@@ -2721,17 +2721,25 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
             connection.execute(
                     "INSERT INTO DBZ1917(id,data) VALUES (1,'insert 1')",
                     "SAVEPOINT s1",
-                    "UPDATE DBZ1917 SET data = 'update 1' WHERE id = 1",
+                    "UPDATE DBZ1917 SET data2 = 'update 1' WHERE id = 1",
                     "ROLLBACK TO SAVEPOINT s1",
-                    "UPDATE DBZ1917 SET data2 = 'update 2' WHERE id = 1",
+
+                    "UPDATE DBZ1917 SET data = 'update 2' WHERE id = 1",
+                    "SAVEPOINT s2",
+                    "UPDATE DBZ1917 SET data = 'update 3' WHERE id = 1",
+                    "ROLLBACK TO SAVEPOINT s2",
+
+                    "SAVEPOINT s3",
+                    "UPDATE DBZ1917 SET data2 = 'update 4' WHERE id = 1",
+                    "ROLLBACK TO SAVEPOINT s3",
                     "INSERT INTO DBZ1917 (id,data) VALUES (2,'insert 2')");
 
             List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
             assertThat(tableRecords).hasSize(2);
             SourceRecord insert1 = tableRecords.get(1);
             assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
-            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(insert1, "DATA2")).isEqualTo("update 2");
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo("update 2");
+            assertThat(getAfterField(insert1, "DATA2")).isEqualTo(getUnavailableValuePlaceholder(config));
 
             stopConnector();
         }
