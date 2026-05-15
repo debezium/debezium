@@ -3,6 +3,73 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.0.Alpha2
+May 15th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Alpha2)
+
+### New features since 3.6.0.Alpha1
+
+* Quantile metrics [DBZ-9570] [debezium/dbz#1417](https://github.com/debezium/dbz/issues/1417)
+* Passing labels to debeziumserver Custom resource in Debezium Management Platform [debezium/dbz#1768](https://github.com/debezium/dbz/issues/1768)
+* Update google cloud BOM to 26.79.0 [debezium/dbz#1822](https://github.com/debezium/dbz/issues/1822)
+* Debezium Platform should permit to specify Debezium Server image to be used in the CRD [debezium/dbz#1826](https://github.com/debezium/dbz/issues/1826)
+* Add internal property to toggle SQLServer CDC column filters [debezium/dbz#1830](https://github.com/debezium/dbz/issues/1830)
+* Add JDBC Sink Support for Debezium Server [debezium/dbz#1842](https://github.com/debezium/dbz/issues/1842)
+
+
+### Breaking changes since 3.6.0.Alpha1
+
+* Remove the `never` option from `snapshot.mode` for MySQL connectors [debezium/dbz#1832](https://github.com/debezium/dbz/issues/1832)
+
+
+### Fixes since 3.6.0.Alpha1
+
+* [Postgres] Debezium default values with escaped enum types do not show up [DBZ-8699] [debezium/dbz#1334](https://github.com/debezium/dbz/issues/1334)
+* Invalid incremental snapshot leave Connectors stuck; stop-snapshot ineffective and requires manual offset modification [debezium/dbz#1533](https://github.com/debezium/dbz/issues/1533)
+* Missleading error message when loss of database connectivity happens with mysql >= 8.4.X [debezium/dbz#1561](https://github.com/debezium/dbz/issues/1561)
+* flush_lsn may not advance with lsn.flush.mode=connector_and_driver when only unmonitored tables are updated [debezium/dbz#1605](https://github.com/debezium/dbz/issues/1605)
+* MongoDB conditional incremental snapshot state lost on interruption [debezium/dbz#1807](https://github.com/debezium/dbz/issues/1807)
+* PipelineMapper Does Not Handle SQL Server-Specific 'database.names' Property [debezium/dbz#1828](https://github.com/debezium/dbz/issues/1828)
+* PostgreSQL timestamp infinity overflows in time.precision.mode=nanoseconds and becomes negative NanoTimestamp [debezium/dbz#1833](https://github.com/debezium/dbz/issues/1833)
+* Stage UI does not render correctly mutlitple booleans in connection values [debezium/dbz#1838](https://github.com/debezium/dbz/issues/1838)
+* Connection edit flow in platform UI in resulting in failure for properties with dot(.) in name. [debezium/dbz#1844](https://github.com/debezium/dbz/issues/1844)
+* Destination edit is failing due to required field are missing from the payload [debezium/dbz#1845](https://github.com/debezium/dbz/issues/1845)
+* ByLogicalTableRouter materializes schema defaults for nullable fields, clobbering real NULL values [debezium/dbz#1848](https://github.com/debezium/dbz/issues/1848)
+* PipelineMapperTest fails for an unmocked dependency [debezium/dbz#1853](https://github.com/debezium/dbz/issues/1853)
+* Quarkus Extension  `partition` in `BatchEvent` can be `null` [debezium/dbz#1854](https://github.com/debezium/dbz/issues/1854)
+* Postgres connector fails to restart with trust_greater_lsn after non-captured table updates [debezium/dbz#1863](https://github.com/debezium/dbz/issues/1863)
+* HybridMiningStrategyIT fails after updating to Kafka 4.2 [debezium/dbz#1874](https://github.com/debezium/dbz/issues/1874)
+* Debezium Sql Server connector stuck after connection idle-killed during schema history recovery [debezium/dbz#1877](https://github.com/debezium/dbz/issues/1877)
+* Dead documentation links in Quarkus extension [debezium/dbz#1883](https://github.com/debezium/dbz/issues/1883)
+* vitess connector: Bug fix for copy completed sequence event & null last pk [debezium/dbz#1887](https://github.com/debezium/dbz/issues/1887)
+* OracleConnectorIT#shouldFailWhenConverterThrowsExceptionForValue fails randomly [debezium/dbz#1893](https://github.com/debezium/dbz/issues/1893)
+* Disable the Signalling setup in case of no connection is selected in the sourcec dropdown [debezium/dbz#1908](https://github.com/debezium/dbz/issues/1908)
+* Stage UI not working well on Safari [debezium/dbz#1911](https://github.com/debezium/dbz/issues/1911)
+* CockroachDB connector pom.xml uses wrong Java target property -- produces Java 21 bytecode instead of Java 17 [debezium/dbz#1922](https://github.com/debezium/dbz/issues/1922)
+* SQL Server:  IllegalArgumentException when CDC capture pollinginterval is 0 [debezium/dbz#1923](https://github.com/debezium/dbz/issues/1923)
+
+
+### Other changes since 3.6.0.Alpha1
+
+* Migrate to ANTLR Oracle MySQL Grammar [DBZ-8701] [debezium/dbz#1216](https://github.com/debezium/dbz/issues/1216)
+* Upgrade to Kafka 4.2.0 [debezium/dbz#1651](https://github.com/debezium/dbz/issues/1651)
+* MySqlChunkedSnapshotIT - shouldSnapshotMultipleTablesChunkedWithVaryingRowCounts flaky [debezium/dbz#1760](https://github.com/debezium/dbz/issues/1760)
+* Add more supporting TRL unit test and e2e test for the updated source connection flow [debezium/dbz#1814](https://github.com/debezium/dbz/issues/1814)
+* Move MongoDB image in `debezium-testing-testcontainers` to quay registry [debezium/dbz#1846](https://github.com/debezium/dbz/issues/1846)
+* JDBC SQL Server tests have started to timeout [debezium/dbz#1852](https://github.com/debezium/dbz/issues/1852)
+* Duplicate dependency in debezium-embedded module [debezium/dbz#1855](https://github.com/debezium/dbz/issues/1855)
+* Document OCI JDBC driver requirement and libaio dependency for XStream adapter [debezium/dbz#1856](https://github.com/debezium/dbz/issues/1856)
+* Update Pulsar Client to 4.2.1 [debezium/dbz#1865](https://github.com/debezium/dbz/issues/1865)
+* Document ORA-26913 RAC instance pinning issue for XStream adapter [debezium/dbz#1880](https://github.com/debezium/dbz/issues/1880)
+* Add summary report to test [debezium/dbz#1881](https://github.com/debezium/dbz/issues/1881)
+* Log test class/test name on each invocation [debezium/dbz#1882](https://github.com/debezium/dbz/issues/1882)
+* [Oracle] Add database.service.name configuration property [debezium/dbz#1885](https://github.com/debezium/dbz/issues/1885)
+* [Informix] Refactor CDC/TransactionEngine [debezium/dbz#1889](https://github.com/debezium/dbz/issues/1889)
+* Update connect cluster version to the same version as kafka cluster [debezium/dbz#1890](https://github.com/debezium/dbz/issues/1890)
+* Update Kafka Connect logger to log4j2 format [debezium/dbz#1891](https://github.com/debezium/dbz/issues/1891)
+* Fix intermittent failure in TransactionMetadataIT: add waitForStreamingRunning before CDC operations [debezium/dbz#1935](https://github.com/debezium/dbz/issues/1935)
+
+
+
 ## 3.6.0.Alpha1
 April 22nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Alpha1)
 
