@@ -5,12 +5,19 @@
  */
 package io.debezium.util;
 
+import static java.util.Collections.unmodifiableMap;
+import static java.util.stream.Collectors.toUnmodifiableSet;
+
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.MDC;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.pipeline.spi.Partition;
 
 /**
@@ -20,7 +27,7 @@ import io.debezium.pipeline.spi.Partition;
  * @author Randall Hauch
  * @since 0.2
  */
-public class LoggingContext {
+public final class LoggingContext {
 
     /**
      * The key for the connector type MDC property.
@@ -50,18 +57,43 @@ public class LoggingContext {
      * A snapshot of an MDC context that can be {@link #restore()}.
      */
     public static final class PreviousContext {
-        private static final Map<String, String> EMPTY_CONTEXT = Collections.emptyMap();
+        private static final PreviousContext EMPTY_CONTEXT = new PreviousContext(Collections.emptyMap(), Collections.emptySet());
         private final Map<String, String> context;
+        private final Set<String> rootContextKeys;
 
-        protected PreviousContext() {
-            Map<String, String> context = MDC.getCopyOfContextMap();
-            this.context = context != null ? context : EMPTY_CONTEXT;
+        private PreviousContext(final Map<String, String> context, final Set<String> rootContextKeys) {
+            this.context = context;
+            this.rootContextKeys = rootContextKeys;
+        }
+
+        /**
+         * Loads snapshot of previous MDC context including copy of root context keys that needs to be removed on {@link PreviousContext#restore()}.
+         *
+         * @return {@link PreviousContext}
+         */
+        protected static PreviousContext load() {
+            final var rootContext = RootLoggingContext.value();
+            final var currentContext = MDC.getCopyOfContextMap();
+            if (isNullOrEmpty(rootContext) && isNullOrEmpty(currentContext)) {
+                return EMPTY_CONTEXT;
+            }
+            if (isNullOrEmpty(rootContext)) {
+                return new PreviousContext(unmodifiableMap(currentContext), Collections.emptySet());
+            }
+            if (isNullOrEmpty(currentContext)) {
+                return new PreviousContext(Collections.emptyMap(), rootContext.keySet());
+            }
+            final var rootContextKeys = rootContext.keySet().stream()
+                    .filter(key -> !currentContext.containsKey(key))
+                    .collect(toUnmodifiableSet());
+            return new PreviousContext(unmodifiableMap(currentContext), rootContextKeys);
         }
 
         /**
          * Restore this logging context.
          */
         public void restore() {
+            rootContextKeys.forEach(MDC::remove);
             MDC.setContextMap(context);
         }
     }
@@ -95,7 +127,8 @@ public class LoggingContext {
         Objects.requireNonNull(connectorName, "The MDC value for the connector name may not be null");
         Objects.requireNonNull(contextName, "The MDC value for the connector context may not be null");
 
-        PreviousContext previous = new PreviousContext();
+        PreviousContext previous = PreviousContext.load();
+        Optional.ofNullable(RootLoggingContext.value()).ifPresent(MDC::setContextMap);
         if (taskId != null) {
             MDC.put(TASK_ID, taskId);
         }
@@ -128,7 +161,7 @@ public class LoggingContext {
         Objects.requireNonNull(contextName, "The MDC value for the connector context may not be null");
         Objects.requireNonNull(operation, "The operation may not be null");
 
-        PreviousContext previous = new PreviousContext();
+        PreviousContext previous = PreviousContext.load();
         try {
             forConnector(connectorType, connectorName, contextName);
             operation.run();
@@ -138,4 +171,79 @@ public class LoggingContext {
         }
     }
 
+    /**
+     * Initialise root MDC context with current MDC tags.
+     */
+    public static RootLoggingContext initRootContext() {
+        return RootLoggingContext.init();
+    }
+
+    private static <K, V> boolean isNullOrEmpty(final Map<K, V> map) {
+        return map == null || map.isEmpty();
+    }
+
+    public static final class RootLoggingContext implements AutoCloseable {
+        /**
+         * Holder of root logging context.
+         */
+        private static final InheritableThreadLocal<Map<String, String>> CONTEXT_HOLDER = new InheritableThreadLocal<>();
+
+        private static final RootLoggingContext EMPTY = new RootLoggingContext(Collections.emptySet());
+
+        /**
+         * Set of keys added to root context in this instance.
+         */
+        private final Set<String> contextKeys;
+
+        private RootLoggingContext(final Set<String> contextKeys) {
+            this.contextKeys = contextKeys;
+        }
+
+        /**
+         * Initialise root logging context.
+         *
+         * @return {@link RootLoggingContext}
+         */
+        private static RootLoggingContext init() {
+            final var context = MDC.getCopyOfContextMap();
+            if (isNullOrEmpty(context)) {
+                return EMPTY;
+            }
+            final var currentRootContext = value();
+            if (currentRootContext == null) {
+                CONTEXT_HOLDER.set(context);
+                return new RootLoggingContext(context.keySet());
+            }
+            final var patchedRootContext = new HashMap<>(currentRootContext);
+            patchedRootContext.putAll(context);
+            CONTEXT_HOLDER.set(patchedRootContext);
+            return new RootLoggingContext(context.keySet().stream().filter(it -> !currentRootContext.containsKey(it)).collect(toUnmodifiableSet()));
+        }
+
+        private static Map<String, String> value() {
+            return CONTEXT_HOLDER.get();
+        }
+
+        @VisibleForTesting
+        public static Map<String, String> valueCopy() {
+            return Optional.ofNullable(value()).map(Map::copyOf).orElse(Collections.emptyMap());
+        }
+
+        @Override
+        public void close() {
+            if (contextKeys.isEmpty()) {
+                return;
+            }
+            final var currentRootContext = value();
+            if (currentRootContext != null) {
+                final var newContext = new HashMap<>(currentRootContext);
+                contextKeys.forEach(newContext::remove);
+                if (newContext.isEmpty()) {
+                    CONTEXT_HOLDER.remove();
+                    return;
+                }
+                CONTEXT_HOLDER.set(newContext);
+            }
+        }
+    }
 }
