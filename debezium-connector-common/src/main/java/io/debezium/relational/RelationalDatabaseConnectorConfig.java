@@ -536,32 +536,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "A value of `disabled` (the default) will disable ordering by row count.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
-            .type(
-                    CommonConnectorConfig.TOPIC_PREFIX)
-            .connector(
-                    DECIMAL_HANDLING_MODE,
-                    TIME_PRECISION_MODE,
-                    SNAPSHOT_LOCK_TIMEOUT_MS)
-            .events(
-                    COLUMN_INCLUDE_LIST,
-                    COLUMN_EXCLUDE_LIST,
-                    TABLE_INCLUDE_LIST,
-                    TABLE_EXCLUDE_LIST,
-                    TABLE_IGNORE_BUILTIN,
-                    SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST,
-                    MSG_KEY_COLUMNS,
-                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                    MASK_COLUMN_WITH_HASH,
-                    MASK_COLUMN,
-                    TRUNCATE_COLUMN,
-                    INCLUDE_SCHEMA_CHANGES,
-                    INCLUDE_SCHEMA_COMMENTS,
-                    PROPAGATE_COLUMN_SOURCE_TYPE,
-                    PROPAGATE_DATATYPE_SOURCE_TYPE,
-                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
-                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT,
-                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS)
+            .group(Field.Group.FILTERS, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, TABLE_IGNORE_BUILTIN, COLUMN_EXCLUDE_LIST, COLUMN_INCLUDE_LIST, SCHEMA_INCLUDE_LIST,
+                    SCHEMA_EXCLUDE_LIST, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
+            .group(Field.Group.CONNECTOR, DECIMAL_HANDLING_MODE, TIME_PRECISION_MODE, INCLUDE_SCHEMA_CHANGES, INCLUDE_SCHEMA_COMMENTS)
+            .group(Field.Group.CONNECTOR_ADVANCED, MSG_KEY_COLUMNS, MASK_COLUMN_WITH_HASH, MASK_COLUMN, TRUNCATE_COLUMN, PROPAGATE_COLUMN_SOURCE_TYPE,
+                    PROPAGATE_DATATYPE_SOURCE_TYPE)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCK_TIMEOUT_MS, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
+                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT)
+            .group(Field.Group.ADVANCED_HEARTBEAT, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     private final RelationalTableFilters tableFilters;
