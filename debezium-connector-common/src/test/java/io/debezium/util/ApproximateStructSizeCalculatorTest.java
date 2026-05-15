@@ -39,4 +39,32 @@ public class ApproximateStructSizeCalculatorTest {
         actual = ApproximateStructSizeCalculator.getApproximateRecordSize(sourceRecord);
         assertEquals(actual, 115);
     }
+
+    @Test
+    public void testGetApproximateRecordSizeWithNullSourcePartitionAndOffset() {
+        Schema valueSchema = SchemaBuilder.struct().build();
+
+        // baseline with empty source partition and offset
+        SourceRecord baseline = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "dummy",
+                valueSchema, new Struct(valueSchema));
+        long expected = ApproximateStructSizeCalculator.getApproximateRecordSize(baseline);
+
+        // test null source partition
+        SourceRecord withNullPartition = new SourceRecord(null, Collections.emptyMap(), "dummy",
+                valueSchema, new Struct(valueSchema));
+        long actual = ApproximateStructSizeCalculator.getApproximateRecordSize(withNullPartition);
+        assertEquals(actual, expected);
+
+        // test null source offset
+        SourceRecord withNullOffset = new SourceRecord(Collections.emptyMap(), null, "dummy",
+                valueSchema, new Struct(valueSchema));
+        actual = ApproximateStructSizeCalculator.getApproximateRecordSize(withNullOffset);
+        assertEquals(actual, expected);
+
+        // test both null
+        SourceRecord withNulls = new SourceRecord(null, null, "dummy",
+                valueSchema, new Struct(valueSchema));
+        actual = ApproximateStructSizeCalculator.getApproximateRecordSize(withNulls);
+        assertEquals(actual, expected);
+    }
 }
