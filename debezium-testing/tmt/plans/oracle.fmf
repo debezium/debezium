@@ -13,6 +13,8 @@ provision:
     memory: ">= 64 GiB"
     cpu:
       processors: ">= 16"
+    disk:
+      - size: ">= 250 GiB"
 
 # Install required packages and scripts for running debezium suite
 prepare:
@@ -39,6 +41,8 @@ execute:
       memory: ">= 64 GiB"
       cpu:
         processors: ">= 16"
+      disk:
+        - size: ">= 250 GiB"
   discover+:
     test:
       - oracle
