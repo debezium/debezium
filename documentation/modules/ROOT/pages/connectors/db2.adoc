@@ -3398,9 +3398,8 @@ One second is not allowed as this can result in an infinite loop.  Recommended n
 
 |[[db2-property-update-capture-table-prune-ind]]<<db2-property-update-capture-table-prune-ind, `update.capture.table.prune.ind`>>
 |false (disabled)
-|A switch to control if the connector instance is responsible for updating the prune table (usually " +
-"done by IBM DB2 Apply agent) which will cause the IBM Capture agent to prune read data from the change tables." +
-" default false.")
+|A switch to control if the connector instance is responsible for updating the prune table (usually
+done by IBM DB2 Apply agent) which will cause the IBM Capture agent to prune read data from the change tables.
 If true, related configuration must be specified.
 
 |[[db2-property-update-capture-table-prune-set-name]]<<db2-property-update-capture-table-prune-set-name, update.capture.table.prune.set.name>>
