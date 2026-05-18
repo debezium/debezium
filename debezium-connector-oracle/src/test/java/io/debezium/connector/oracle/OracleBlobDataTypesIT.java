@@ -2224,6 +2224,58 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-1917")
+    public void shouldRollbackExactlyOneOperation() throws Exception {
+        TestHelper.dropTable(connection, "DBZ1917");
+        try {
+            connection.execute("CREATE TABLE DBZ1917(id numeric(9,0), DATA BLOB, DATA2 BLOB)");
+            TestHelper.streamTable(connection, "DBZ1917");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1917")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final Blob insert1Blob = createBlob("insert 1".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("INSERT INTO DBZ1917(id,data) VALUES (1,?)", ps -> ps.setBlob(1, insert1Blob), null);
+            final Blob update1Blob = createBlob("update 1".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s1");
+            connection.prepareQuery("UPDATE DBZ1917 SET data2 = ? WHERE id = 1", ps -> ps.setBlob(1, update1Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s1");
+
+            final Blob update2Blob = createBlob("update 2".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("UPDATE DBZ1917 SET data = ? WHERE id = 1", ps -> ps.setBlob(1, update2Blob), null);
+            final Blob update3Blob = createBlob("update 2".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s2");
+            connection.prepareQuery("UPDATE DBZ1917 SET data = ? WHERE id = 1", ps -> ps.setBlob(1, update3Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s2");
+
+            final Blob update4Blob = createBlob("update 1".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s3");
+            connection.prepareQuery("UPDATE DBZ1917 SET data2 = ? WHERE id = 1", ps -> ps.setBlob(1, update4Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s3");
+            final Blob insert2Blob = createBlob("insert 2".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("INSERT INTO DBZ1917 (id,data) VALUES (2,?)", ps -> ps.setBlob(1, insert2Blob), null);
+            connection.commit();
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(2);
+            SourceRecord insert1 = tableRecords.get(1);
+            assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getByteBufferFromBlob(update2Blob));
+            assertThat(getAfterField(insert1, "DATA2")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ1917");
+        }
+    }
+
     private static byte[] part(byte[] buffer, int start, int length) {
         return Arrays.copyOfRange(buffer, start, length);
     }
