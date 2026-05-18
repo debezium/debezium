@@ -52,7 +52,9 @@ public class KafkaFileOffsetProvider implements OffsetStoreProvider {
             WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
             kafkaStore.configure(workerConfig);
         }
-        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore,
+                KafkaOffsetStoreConverter.jsonConverter(true),
+                KafkaOffsetStoreConverter.jsonConverter(false));
     }
 
     @Override
