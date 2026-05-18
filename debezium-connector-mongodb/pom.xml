@@ -187,9 +187,6 @@
         -->
         <docker.skip>false</docker.skip>
         <docker.exposeContainerInfo>docker.container</docker.exposeContainerInfo>
-        <!-- Apicurio container properties -->
-        <apicurio.port>8080</apicurio.port>
-        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <!-- Mongo configuration -->
         <!-- See MongoDbPlatform enum for possible options -->
         <mongodb.platform>mongodb_docker</mongodb.platform>
@@ -214,8 +211,11 @@
                     <!--autoPull>always</autoPull-->
                     <images>
                         <image>
-                            <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
+                                <env>
+                                    <QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>${apicurio.image.audit.level}</QUARKUS_LOG_CATEGORY__IO_APICURIO_REGISTRY_LOGGING_AUDIT__LEVEL>
+                                </env>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
                                     <port>${apicurio.port}:8080</port>
@@ -226,7 +226,7 @@
                                     <color>blue</color>
                                 </log>
                                 <wait>
-                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <log>${apicurio.image.log}</log>
                                     <time>${apicurio.init.timeout}</time>
                                 </wait>
                             </run>
@@ -435,7 +435,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>quay.io/apicurio/apicurio-registry:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
