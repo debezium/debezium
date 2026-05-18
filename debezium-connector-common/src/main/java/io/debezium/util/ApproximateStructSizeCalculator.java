@@ -29,6 +29,9 @@ public class ApproximateStructSizeCalculator {
         // assuming 100 bytes per entry of partition / offset / header
         final Map<String, ?> sourcePartition = changeEvent.sourcePartition();
         final Map<String, ?> sourceOffset = changeEvent.sourceOffset();
+        // The Spanner connector's RemoveFinishedPartitionOperation emits finished-partition
+        // heartbeat records with a null source offset, violating Kafka's SourceRecord
+        // contract (non-null maps, possibly empty). Guard against NPE here.
         long value = (sourcePartition == null ? 0 : sourcePartition.size()) * 100L
                 + (sourceOffset == null ? 0 : sourceOffset.size()) * 100L
                 + changeEvent.headers().size() * 100L;
