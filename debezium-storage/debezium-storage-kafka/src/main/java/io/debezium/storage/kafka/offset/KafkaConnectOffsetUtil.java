@@ -29,24 +29,24 @@ public class KafkaConnectOffsetUtil {
      */
     public static OffsetStore createKafkaOffsetStoreWithAdapter(ClassLoader classLoader, String offsetStoreClassName, Map<String, String> connectorConfig)
             throws Exception {
-        final org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore;
 
         // Kafka 3.5 no longer provides offset stores with non-parametric constructors
         if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaMemoryOffsetProvider()).create(null)).getDelegate();
+            return (new KafkaMemoryOffsetProvider()).create(null);
         }
         else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null)).getDelegate();
+            return (new KafkaFileOffsetProvider()).create(Configuration.from(connectorConfig));
         }
         else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
-            kafkaStore = ((KafkaConnectOffsetStoreAdapter) (new KafkaOffsetStoreProvider()).create(Configuration.from(connectorConfig))).getDelegate();
+            return (new KafkaOffsetStoreProvider()).create(Configuration.from(connectorConfig));
         }
         else {
             final Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-            kafkaStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+            final org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+            return new KafkaConnectOffsetStoreAdapter(kafkaStore,
+                    KafkaOffsetStoreConverter.jsonConverter(true),
+                    KafkaOffsetStoreConverter.jsonConverter(false));
         }
-
-        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
     }
 
 }

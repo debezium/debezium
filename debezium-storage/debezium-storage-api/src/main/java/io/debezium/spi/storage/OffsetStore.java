@@ -90,6 +90,26 @@ public interface OffsetStore {
     Future<Void> set(Map<ByteBuffer, ByteBuffer> values, OffsetStore.Callback<Void> callback);
 
     /**
+     * Create an {@link OffsetStorageReader} for the given namespace.
+     *
+     * @param namespace the namespace (typically the engine name)
+     * @return an offset storage reader
+     */
+    default OffsetStorageReader createReader(String namespace) {
+        throw new UnsupportedOperationException("createReader not implemented by " + getClass().getName());
+    }
+
+    /**
+     * Create an {@link OffsetStorageWriter} for the given namespace.
+     *
+     * @param namespace the namespace (typically the engine name)
+     * @return an offset storage writer
+     */
+    default OffsetStorageWriter createWriter(String namespace) {
+        throw new UnsupportedOperationException("createWriter not implemented by " + getClass().getName());
+    }
+
+    /**
      * Callback interface for asynchronous operations in offset storage.
      *
      * @param <T> The type of the result

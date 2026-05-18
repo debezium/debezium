@@ -19,8 +19,12 @@ import org.apache.kafka.connect.storage.Converter;
 public class KafkaOffsetStoreConverter {
 
     public static Converter jsonConverter() {
+        return jsonConverter(true);
+    }
+
+    public static Converter jsonConverter(boolean isKey) {
         final JsonConverter converter = new JsonConverter();
-        converter.configure(Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false"), true);
+        converter.configure(Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false"), isKey);
         return converter;
     }
 }

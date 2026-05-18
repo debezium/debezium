@@ -48,7 +48,9 @@ public class KafkaMemoryOffsetProvider implements OffsetStoreProvider {
                 return null;
             }
         };
-        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore,
+                KafkaOffsetStoreConverter.jsonConverter(true),
+                KafkaOffsetStoreConverter.jsonConverter(false));
     }
 
     @Override

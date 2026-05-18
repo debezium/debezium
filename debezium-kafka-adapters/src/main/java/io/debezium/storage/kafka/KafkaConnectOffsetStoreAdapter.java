@@ -11,9 +11,12 @@ import java.util.Map;
 import java.util.concurrent.Future;
 
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.storage.Converter;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EmbeddedWorkerConfig;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 
 /**
@@ -26,9 +29,18 @@ import io.debezium.spi.storage.OffsetStore;
 public class KafkaConnectOffsetStoreAdapter implements OffsetStore, KafkaConnectStorageAdapter.OffsetBackingStore {
 
     private final org.apache.kafka.connect.storage.OffsetBackingStore delegate;
+    private final Converter offsetKeyConverter;
+    private final Converter offsetValueConverter;
 
     public KafkaConnectOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore) {
+        this(kafkaStore, null, null);
+    }
+
+    public KafkaConnectOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore,
+                                          Converter offsetKeyConverter, Converter offsetValueConverter) {
         this.delegate = kafkaStore;
+        this.offsetKeyConverter = offsetKeyConverter;
+        this.offsetValueConverter = offsetValueConverter;
     }
 
     @Override
@@ -61,6 +73,16 @@ public class KafkaConnectOffsetStoreAdapter implements OffsetStore, KafkaConnect
         // Convert Debezium Callback to Kafka Callback
         org.apache.kafka.connect.util.Callback<Void> kafkaCallback = callback != null ? callback::onCompletion : null;
         return delegate.set(values, kafkaCallback);
+    }
+
+    @Override
+    public OffsetStorageReader createReader(String namespace) {
+        return new KafkaConnectOffsetStorageReaderAdapter(this, namespace, offsetKeyConverter, offsetValueConverter);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new KafkaConnectOffsetStorageWriterAdapter(this, namespace, offsetKeyConverter, offsetValueConverter);
     }
 
     @Override

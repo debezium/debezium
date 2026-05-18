@@ -78,7 +78,9 @@ public class KafkaOffsetStoreProvider implements OffsetStoreProvider {
 
         // Create Kafka Connect KafkaOffsetBackingStore and wrap it
         org.apache.kafka.connect.storage.KafkaOffsetBackingStore kafkaStore = new KafkaOffsetBackingStore(sharedAdmin, () -> clientId, converter);
-        return new KafkaConnectOffsetStoreAdapter(kafkaStore);
+        return new KafkaConnectOffsetStoreAdapter(kafkaStore,
+                KafkaOffsetStoreConverter.jsonConverter(true),
+                KafkaOffsetStoreConverter.jsonConverter(false));
     }
 
     @Override
