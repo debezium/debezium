@@ -10,7 +10,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,17 +35,13 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.apache.kafka.connect.util.LoggingContext;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +73,6 @@ import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
-import io.debezium.storage.kafka.KafkaConnectOffsetStorageReaderAdapter;
-import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
 import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
@@ -104,8 +97,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final ChangeConsumer<R> handler;
     private final CompletionCallback completionCallback;
     private final Optional<ConnectorCallback> connectorCallback;
-    private final Converter offsetKeyConverter;
-    private final Converter offsetValueConverter;
     private final Configuration workerConfig;
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final EngineSourceConnector connector;
@@ -181,8 +172,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             this.offsetCommitPolicy = offsetCommitPolicy == null
                     ? Instantiator.getInstanceWithProperties(this.config.getString(AsyncEngineConfig.OFFSET_COMMIT_POLICY), config, this.classLoader)
                     : offsetCommitPolicy;
-            offsetKeyConverter = Instantiator.getInstance(JsonConverter.class.getName(), this.classLoader);
-            offsetValueConverter = Instantiator.getInstance(JsonConverter.class.getName(), this.classLoader);
             transformations = new Transformations(Configuration.from(config));
 
             final Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) this.classLoader
@@ -194,11 +183,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             this.completionCallback.handle(false, "Failed to instantiate required class", t);
             throw new DebeziumException(t);
         }
-
-        // Disable schema for default JSON converters used for offset store.
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        offsetKeyConverter.configure(internalConverterConfig, true);
-        offsetValueConverter.configure(internalConverterConfig, false);
         this.watcher = () -> () -> State.POLLING_TASKS.equals(state.get());
     }
 
@@ -380,10 +364,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
             LOGGER.debug("Initializing offset store, offset reader and writer");
             final OffsetStore offsetStore = createAndStartOffsetStore(connectorConfig); // TODO pass only Debezium config instead of connectorConfig (Kafka config map)
-            final OffsetStorageReader offsetReader = new KafkaConnectOffsetStorageReaderAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
-                    offsetKeyConverter, offsetValueConverter);
-            final OffsetStorageWriter offsetWriter = new KafkaConnectOffsetStorageWriterAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
-                    offsetKeyConverter, offsetValueConverter);
+            final OffsetStorageReader offsetReader = offsetStore.createReader(engineName);
+            final OffsetStorageWriter offsetWriter = offsetStore.createWriter(engineName);
 
             LOGGER.debug("Initializing Connect connector itself");
             connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
