@@ -1577,6 +1577,83 @@ By default the same name is used.
 
 |===
 
+==== Apache Fluss
+
+https://fluss.apache.org/[Apache Fluss] is a streaming storage built for real-time analytics, providing unified streaming and batch processing capabilities with high performance, low latency, and strong consistency guarantees.
+{prodname} Server can publish change events to Apache Fluss, supporting both primary key tables for upsert/delete operations and log tables for append-only streaming.
+
+[NOTE]
+====
+Apache Fluss requires connectors to be configured with schemas enabled. Schemaless change events are not supported.
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[fluss-type]]<<fluss-type, `debezium.sink.type`>>
+|
+|Must be set to `fluss`.
+
+|[[fluss-bootstrap-servers]]<<fluss-bootstrap-servers, `debezium.sink.fluss.bootstrap.servers`>>
+|
+|Comma-separated list of Fluss coordinator server addresses in `host:port` format.
+
+|[[fluss-default-database]]<<fluss-default-database, `debezium.sink.fluss.default.database`>>
+|
+|Default Fluss database used when resolving table paths from event destinations.
+
+|[[fluss-primary-key-mode]]<<fluss-primary-key-mode, `debezium.sink.fluss.primary.key.mode`>>
+|`auto`
+|Determines the write mode selection based on primary key presence. Valid values:
+
+`auto`:: Automatically selects between append and upsert mode based on whether the table has a primary key.
+`upsert`:: Requires tables to have a primary key and performs insert/update/delete operations.
+`append`:: Writes all records in append-only mode, regardless of primary key existence.
+
+|[[fluss-table-auto-create]]<<fluss-table-auto-create, `debezium.sink.fluss.table.auto.create`>>
+|`false`
+|When `true`, automatically creates Fluss tables if they do not exist, deriving the schema from the Debezium event schema.
+
+|[[fluss-retries-max]]<<fluss-retries-max, `debezium.sink.fluss.retries.max`>>
+|`5`
+|Maximum number of retry attempts on transient write failures.
+
+|[[fluss-retries-interval-ms]]<<fluss-retries-interval-ms, `debezium.sink.fluss.retries.interval.ms`>>
+|`1000`
+|The initial retry interval in milliseconds.
+
+|[[fluss-retries-max-interval-ms]]<<fluss-retries-max-interval-ms, `debezium.sink.fluss.retries.max.interval.ms`>>
+|`60000`
+|The maximum retry interval in milliseconds.
+
+|[[fluss-retries-backoff-multiplier]]<<fluss-retries-backoff-multiplier, `debezium.sink.fluss.retries.backoff.multiplier`>>
+|`2.0`
+|Multiplier applied to retry intervals during exponential backoff.
+
+|===
+
+===== Injection points
+
+The Fluss sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[fluss-ext-stream-name-mapper]]<<fluss-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Fluss table name.
+By default the same name is used.
+
+|===
+
+
 ==== Apache Kafka
 
 https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
