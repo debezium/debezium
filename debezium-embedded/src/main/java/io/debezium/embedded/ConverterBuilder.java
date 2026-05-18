@@ -17,12 +17,13 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
-import org.apache.kafka.connect.storage.HeaderConverter;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.converter.kafka.KafkaConnectHeaderConverterAdapter;
 import io.debezium.engine.Header;
+import io.debezium.engine.converter.HeaderConverter;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Binary;
 import io.debezium.engine.format.CloudEvents;
@@ -104,7 +105,7 @@ public class ConverterBuilder<R> {
 
                 if (headerConverter != null) {
                     for (org.apache.kafka.connect.header.Header header : record.headers()) {
-                        byte[] rawHeader = headerConverter.fromConnectHeader(topicName, header.key(), header.schema(), header.value());
+                        byte[] rawHeader = headerConverter.fromHeader(topicName, header.key(), header.schema(), header.value());
                         if (rawHeader != null) {
                             recordHeaders.add(header.key(), rawHeader);
                         }
@@ -185,9 +186,7 @@ public class ConverterBuilder<R> {
         else {
             throw new DebeziumException("Header Converter '" + format.getSimpleName() + "' is not supported");
         }
-        final HeaderConverter converter = converterConfig.getInstance(FIELD_CLASS, HeaderConverter.class);
-        converter.configure(converterConfig.asMap());
-        return converter;
+        return new KafkaConnectHeaderConverterAdapter(converterConfig, FIELD_CLASS);
     }
 
     private Converter createConverter(Class<? extends SerializationFormat<?>> format, boolean key) {
