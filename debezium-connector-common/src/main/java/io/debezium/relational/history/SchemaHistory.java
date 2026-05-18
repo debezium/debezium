@@ -131,6 +131,16 @@ public interface SchemaHistory {
             .withDescription("The unique identifier of the Debezium connector")
             .withNoValidation();
 
+    Field MEMORY_OPTIMIZATION = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "memory.optimization")
+            .withDisplayName("Enable memory optimization for schema history")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls whether Debezium deduplicates identical schema objects (tables, columns, attributes) "
+                    + "in memory using an interner. When enabled, this can significantly reduce heap usage for connectors "
+                    + "that track many tables with similar structures. When disabled (the default), no deduplication is performed.")
+            .withDefault(false);
+
     // Temporary preference for DDL over logical schema due to DBZ-32
     Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
             .withDisplayName("Prefer DDL for schema recovery")

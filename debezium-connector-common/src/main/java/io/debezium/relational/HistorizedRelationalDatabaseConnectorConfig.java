@@ -23,6 +23,7 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
+import io.debezium.util.Interner;
 
 /**
  * Configuration options shared across the relational CDC connectors which use a persistent database schema history.
@@ -64,12 +65,15 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL;
 
+    public static final Field MEMORY_OPTIMIZATION = SchemaHistory.MEMORY_OPTIMIZATION;
+
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
                     SCHEMA_HISTORY,
                     SKIP_UNPARSEABLE_DDL_STATEMENTS,
                     STORE_ONLY_CAPTURED_TABLES_DDL,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    STORE_ONLY_CAPTURED_DATABASES_DDL,
+                    MEMORY_OPTIMIZATION)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -110,6 +114,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         this.skipUnparseableDDL = config.getBoolean(SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyCapturedTablesDdl = config.getBoolean(STORE_ONLY_CAPTURED_TABLES_DDL);
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
+        Interner.setEnabled(config.getBoolean(MEMORY_OPTIMIZATION));
     }
 
     /**
