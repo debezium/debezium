@@ -38,4 +38,13 @@ public interface KafkaConnectStorageAdapter {
          */
         org.apache.kafka.connect.storage.OffsetBackingStore getDelegate();
     }
+
+    interface HeaderConverter {
+        /**
+         * Get the underlying Kafka HeaderConverter.
+         *
+         * @return the wrapped Kafka header converter
+         */
+        org.apache.kafka.connect.storage.HeaderConverter getDelegate();
+    }
 }
