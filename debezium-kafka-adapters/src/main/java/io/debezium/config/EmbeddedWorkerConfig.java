@@ -28,10 +28,10 @@ public class EmbeddedWorkerConfig extends WorkerConfig {
     static {
         ConfigDef config = baseConfigDef();
         // we cannot use EmbeddedEngineConfig fields here as it would result into circular artifact dependency.
-        Field.group(config, "file", Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG));
-        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG));
-        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG));
-        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG));
+        Field.group(config, "file", Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG).withDefault(""));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG).withDefault(""));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG).withType(ConfigDef.Type.INT));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG).withType(ConfigDef.Type.SHORT));
         CONFIG = config;
     }
 
