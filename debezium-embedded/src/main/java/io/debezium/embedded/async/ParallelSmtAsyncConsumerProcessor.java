@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -72,7 +73,8 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
                                                                Consumer<SourceRecord> consumer,
                                                                DebeziumEngine.Shutdown<R> shutdown, Runnable workflow,
                                                                Transformations transformations,
-                                                               Watcher watcher) {
+                                                               Watcher watcher,
+                                                               Map<String, String> configuration) {
         if (shutdown == null) {
             return new ParallelSmtAsyncConsumerProcessor(committer,
                     record -> new ProcessingCallables.TransformAndConsumeRecord(record,
@@ -84,8 +86,8 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
                 record -> new ProcessingCallables.TransformAndConsumeRecord(record,
                         transformations,
                         new ShutdownConsumer<>(
-                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
-                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
+                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
                                 transformedRecord -> {
                                     if (transformedRecord != null && watcher.engine().isConsuming()) {
                                         consumer.accept(transformedRecord);

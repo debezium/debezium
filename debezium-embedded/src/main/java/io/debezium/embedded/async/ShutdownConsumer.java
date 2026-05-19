@@ -5,10 +5,7 @@
  */
 package io.debezium.embedded.async;
 
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
-
-import io.debezium.engine.DebeziumEngine;
 
 public class ShutdownConsumer<R> implements Consumer<R> {
 
@@ -31,15 +28,4 @@ public class ShutdownConsumer<R> implements Consumer<R> {
         after.evaluate(record);
     }
 
-    public static <R> BiFunction<Consumer<R>, DebeziumEngine.RecordCommitter, Consumer<R>> create(DebeziumEngine.Shutdown<R> shutdown, Runnable workflow) {
-        return (consumer, committer) -> {
-            if (shutdown == null) {
-                return consumer;
-            }
-            return new ShutdownConsumer<>(
-                    DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
-                    DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
-                    consumer);
-        };
-    }
 }
