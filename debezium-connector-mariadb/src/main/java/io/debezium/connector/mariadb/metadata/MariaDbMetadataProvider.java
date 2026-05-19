@@ -25,7 +25,7 @@ public class MariaDbMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                componentMetadataFactory.createComponentMetadata(new MariaDbConnector(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new MariaDbConnector(), "Debezium MariaDB Connector", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TinyIntOneToBooleanConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()));
     }
