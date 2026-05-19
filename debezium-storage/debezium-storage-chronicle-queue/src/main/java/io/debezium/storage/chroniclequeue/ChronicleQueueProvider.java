@@ -47,6 +47,9 @@ public class ChronicleQueueProvider implements QueueProvider<DataChangeEvent> {
         this.size.set(0);
 
         LOGGER.info("Chronicle Queue provider initialized at path: {}", chronicleQueueHelper.getQueuePath());
+        if (chronicleQueueHelper.isTemporaryPath()) {
+            LOGGER.warn("The queue path is temporary and will be removed on shutdown.");
+        }
     }
 
     @Override
