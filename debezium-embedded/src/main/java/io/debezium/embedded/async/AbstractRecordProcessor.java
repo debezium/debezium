@@ -38,11 +38,11 @@ public abstract class AbstractRecordProcessor<R> implements RecordProcessor<R> {
 
         class ObservableProcessor<R> implements BatchProcessor<R> {
             private final Logger LOGGER = LoggerFactory.getLogger(ObservableProcessor.class);
-            private final DebeziumEngine.Watcher watcher;
+            private final Watcher watcher;
             private final DebeziumEngine.RecordCommitter<R> committer;
             private final DebeziumEngine.ChangeConsumer<R> userHandler;
 
-            public ObservableProcessor(DebeziumEngine.Watcher watcher,
+            public ObservableProcessor(Watcher watcher,
                                        DebeziumEngine.RecordCommitter<R> committer,
                                        DebeziumEngine.ChangeConsumer<R> userHandler) {
                 this.watcher = watcher;
@@ -83,10 +83,10 @@ public abstract class AbstractRecordProcessor<R> implements RecordProcessor<R> {
         void process(R record) throws InterruptedException;
 
         class ObservableSingleProcessor<R> implements SingleProcessor<R> {
-            private final DebeziumEngine.Watcher watcher;
+            private final Watcher watcher;
             private final Consumer<R> consumer;
 
-            public ObservableSingleProcessor(DebeziumEngine.Watcher watcher, Consumer<R> consumer) {
+            public ObservableSingleProcessor(Watcher watcher, Consumer<R> consumer) {
                 this.watcher = watcher;
                 this.consumer = consumer;
             }

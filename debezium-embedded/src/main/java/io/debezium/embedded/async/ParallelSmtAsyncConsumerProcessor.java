@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.DebeziumEngine.Watcher;
 import io.debezium.engine.StopEngineException;
 
 /**
