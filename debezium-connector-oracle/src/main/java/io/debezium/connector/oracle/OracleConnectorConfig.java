@@ -162,7 +162,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 8))
             .withValidation(OracleConnectorConfig::validateLogMiningStrategy)
-            .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");
+            .withDescription("Defines the mining strategy and LogMiner session characteristics: " +
+                    "'redo_log_catalog' writes the data dictionary to the redo logs, is deprecated and will be removed in 3.7, " +
+                    "'online_catalog' uses the existing data dictionary and operates faster than 'redo_log_catalog' but requires schema changes in lock-step, " +
+                    "'hybrid' uses the existing data dictionary, operates faster than 'redo_log_catalog', and supports interleaved schema changes.");
 
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.createInternal("snapshot.enhance.predicate.scn")
             .withDisplayName("A string to replace on snapshot predicate enhancement")
@@ -1524,8 +1527,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This strategy uses LogMiner with data dictionary in REDO LOG files.
          * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
          * This option does not use CONTINUOUS_MINE option
-         * This is default value
+         *
+         * @deprecated to be removed in Debezium 3.7, use {@link #HYBRID} or {@link #ONLINE_CATALOG} instead
          */
+        @Deprecated
         CATALOG_IN_REDO("redo_log_catalog"),
 
         /**
@@ -2329,18 +2334,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningStrategy(Configuration config, Field field, ValidationOutput problems) {
-        if (isLogMiner(config) && config.getBoolean(LOB_ENABLED)) {
-            // When LOB is enabled, the combination is not valid with the hybrid strategy.
-            // This is because we currently are not capable of decoding all LOB-based operations in
-            // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
-            // This is an ongoing, work-in-progress strategy.
+        if (isLogMiner(config)) {
             final String strategy = config.getString(LOG_MINING_STRATEGY);
-            if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
-                problems.accept(LOG_MINING_STRATEGY, strategy,
-                        String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
-                                "Please use a different '%s' or do not enable '%s'.",
-                                LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
-                return 1;
+            if (LogMiningStrategy.CATALOG_IN_REDO.equals(LogMiningStrategy.parse(strategy))) {
+                LOGGER.warn("The '{}' mining strategy '{}' is deprecated and will be removed in a future version. " +
+                        "Please consider using the '{}' or '{}' strategy instead.",
+                        LOG_MINING_STRATEGY.name(), strategy,
+                        LogMiningStrategy.HYBRID.getValue(), LogMiningStrategy.ONLINE_CATALOG.getValue());
+            }
+            if (config.getBoolean(LOB_ENABLED)) {
+                // When LOB is enabled, the combination is not valid with the hybrid strategy.
+                // This is because we currently are not capable of decoding all LOB-based operations in
+                // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
+                // This is an ongoing, work-in-progress strategy.
+                if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
+                    problems.accept(LOG_MINING_STRATEGY, strategy,
+                            String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
+                                    "Please use a different '%s' or do not enable '%s'.",
+                                    LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
+                    return 1;
+                }
             }
         }
         return 0;
