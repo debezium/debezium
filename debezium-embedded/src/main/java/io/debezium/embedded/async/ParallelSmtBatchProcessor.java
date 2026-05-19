@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.embedded.async.AbstractRecordProcessor.BatchProcessor.ObservableProcessor;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.DebeziumEngine.Watcher;
 
 /**
  * {@link RecordProcessor} which runs transformations of the records in parallel and then pass the whole batch to the user-provided handler.
