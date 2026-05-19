@@ -84,6 +84,6 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
                 new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
                         (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
                         (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
-                        (Consumer<SourceRecord>) consumer)));
+                        (Consumer<SourceRecord>) consumer, watcher)));
     }
 }

@@ -94,6 +94,6 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
                                     if (transformedRecord != null && watcher.engine().isConsuming()) {
                                         consumer.accept(transformedRecord);
                                     }
-                                })));
+                                }, watcher)));
     }
 }

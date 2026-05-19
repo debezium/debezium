@@ -86,6 +86,6 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
                 new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
                         DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
                         DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
-                        consumer)));
+                        consumer, watcher)));
     }
 }

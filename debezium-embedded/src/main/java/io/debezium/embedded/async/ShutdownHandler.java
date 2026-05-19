@@ -9,8 +9,7 @@ import io.debezium.common.annotation.Incubating;
 
 /**
  * Internal handler responsible for evaluating records against shutdown conditions
- * and triggering engine shutdown when conditions are met. This is an implementation
- * detail of the {@link DebeziumEngine.ShutdownBuilder} API.
+ * and triggering engine shutdown when conditions are met.
  *
  * <p>A shutdown handler wraps a {@link io.debezium.engine.DebeziumEngine.ShutdownStrategy}
  * and is inserted into the record processing pipeline to evaluate each record as it
@@ -21,8 +20,6 @@ import io.debezium.common.annotation.Incubating;
  * @see DefaultShutdownHandler
  * @see ShutdownChangeConsumer
  * @see ShutdownConsumer
- * @see io.debezium.engine.DebeziumEngine.ShutdownBuilder
- * @see io.debezium.engine.DebeziumEngine.ShutdownStrategy
  * @since 3.6.0
  */
 @Incubating

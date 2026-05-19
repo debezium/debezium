@@ -12,19 +12,23 @@ public class ShutdownConsumer<R> implements Consumer<R> {
     private final ShutdownHandler<R> before;
     private final ShutdownHandler<R> after;
     private final Consumer<R> consumer;
+    private final Watcher watcher;
 
     public ShutdownConsumer(ShutdownHandler<R> before,
                             ShutdownHandler<R> after,
-                            Consumer<R> consumer) {
+                            Consumer<R> consumer, Watcher watcher) {
         this.before = before;
         this.after = after;
         this.consumer = consumer;
+        this.watcher = watcher;
     }
 
     @Override
     public void accept(R record) {
         before.evaluate(record);
-        consumer.accept(record);
+        if (watcher.engine().isConsuming()) {
+            consumer.accept(record);
+        }
         after.evaluate(record);
     }
 
