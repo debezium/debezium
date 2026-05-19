@@ -22,6 +22,7 @@ public class SqlServerMetadataProvider implements ComponentMetadataProvider {
 
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
-        return List.of(componentMetadataFactory.createComponentMetadata(new SqlServerConnector(), "Debezium SQLServer Connector", Module.version()));
+        return List.of(componentMetadataFactory.createComponentMetadata(new SqlServerConnector(), "Debezium SQLServer Connector", "Debezium SQLServer Connector",
+                Module.version()));
     }
 }

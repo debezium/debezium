@@ -26,7 +26,7 @@ public class MongoDbMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                componentMetadataFactory.createComponentMetadata(new MongoDbConnector(), "Debezium MongoDB Connector", Module.version()),
+                componentMetadataFactory.createComponentMetadata(new MongoDbConnector(), "Debezium MongoDB Connector", "Debezium MongoDB Connector", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new MongoDbSinkConnector(), io.debezium.connector.mongodb.sink.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewDocumentState<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new MongoEventRouter<>(), Module.version()));

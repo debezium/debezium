@@ -40,24 +40,30 @@ public class ComponentDescriptor {
 
     private final String id;
     private final String displayName;
+    private final String description;
     private final String className;
     private final String version;
     private final String type;
 
-    private ComponentDescriptor(String id, String displayName, String className, String version, String type) {
+    private ComponentDescriptor(String id, String displayName, String description, String className, String version, String type) {
         this.id = id;
         this.displayName = displayName != null ? displayName : DisplayNameResolver.resolve(className, type);
+        this.description = description;
         this.className = className;
         this.version = version;
         this.type = type;
     }
 
     public ComponentDescriptor(String className, String version) {
-        this(className, null, className, version, determineComponentType(className));
+        this(className, null, null, className, version, determineComponentType(className));
     }
 
     public ComponentDescriptor(String className, String displayName, String version) {
-        this(className, displayName, className, version, determineComponentType(className));
+        this(className, displayName, null, className, version, determineComponentType(className));
+    }
+
+    public ComponentDescriptor(String className, String displayName, String description, String version) {
+        this(className, displayName, description, className, version, determineComponentType(className));
     }
 
     public String getId() {
@@ -66,6 +72,10 @@ public class ComponentDescriptor {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getClassName() {
