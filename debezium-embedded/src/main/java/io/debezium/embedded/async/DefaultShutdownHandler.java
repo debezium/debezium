@@ -9,12 +9,14 @@ import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ShutdownStrategy;
 
+import java.util.Optional;
+
 public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
-    private final ShutdownStrategy<R> shutdownStrategy;
+    private final ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy;
     private final Runnable shutdown;
     private final DebeziumEngine.RecordCommitter committer;
 
-    private DefaultShutdownHandler(ShutdownStrategy<R> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer) {
+    private DefaultShutdownHandler(ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer) {
         this.shutdownStrategy = shutdownStrategy;
         this.shutdown = shutdown;
         this.committer = committer;
@@ -22,7 +24,7 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
 
     @Override
     public void evaluate(R record) {
-        if (shutdownStrategy.test(record)) {
+        if (shutdownStrategy.test(createContext(record))) {
             try {
                 if (record instanceof EmbeddedEngineChangeEvent<?, ?, ?>) {
                     committer.markProcessed(((EmbeddedEngineChangeEvent<?, ?, ?>) record).sourceRecord());
@@ -36,7 +38,21 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
         }
     }
 
-    public static <R> ShutdownHandler<R> create(ShutdownStrategy<R> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer) {
+    private DebeziumEngine.ShutdownContext<R> createContext(R record) {
+        return new DebeziumEngine.ShutdownContext<>() {
+            @Override
+            public Optional<String> configuration(String key) {
+                return Optional.empty();
+            }
+
+            @Override
+            public R record() {
+                return record;
+            }
+        };
+    }
+
+    public static <R> ShutdownHandler<R> create(ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer) {
         if (shutdownStrategy == null) {
             return ignore -> {
             };

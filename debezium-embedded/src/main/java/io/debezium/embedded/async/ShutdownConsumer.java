@@ -31,7 +31,7 @@ public class ShutdownConsumer<R> implements Consumer<R> {
         after.evaluate(record);
     }
 
-    public static <R> BiFunction<Consumer<R>, DebeziumEngine.RecordCommitter, Consumer<R>> create(DebeziumShutdown<R> shutdown, Runnable workflow) {
+    public static <R> BiFunction<Consumer<R>, DebeziumEngine.RecordCommitter, Consumer<R>> create(DebeziumEngine.Shutdown<R> shutdown, Runnable workflow) {
         return (consumer, committer) -> {
             if (shutdown == null) {
                 return consumer;

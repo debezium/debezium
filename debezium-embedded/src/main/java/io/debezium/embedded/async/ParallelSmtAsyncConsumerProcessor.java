@@ -70,7 +70,7 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
 
     public static <R> ParallelSmtAsyncConsumerProcessor create(DebeziumEngine.RecordCommitter<SourceRecord> committer,
                                                                Consumer<SourceRecord> consumer,
-                                                               DebeziumShutdown<R> shutdown, Runnable workflow,
+                                                               DebeziumEngine.Shutdown<R> shutdown, Runnable workflow,
                                                                Transformations transformations,
                                                                Watcher watcher) {
         if (shutdown == null) {
