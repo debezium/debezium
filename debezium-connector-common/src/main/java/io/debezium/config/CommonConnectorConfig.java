@@ -651,7 +651,7 @@ public abstract class CommonConnectorConfig {
     public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(CommonConnectorConfig::validateTopicName)
@@ -664,7 +664,7 @@ public abstract class CommonConnectorConfig {
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 18))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_RETRIABLE_RESTART_WAIT)
@@ -675,7 +675,7 @@ public abstract class CommonConnectorConfig {
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(true)
@@ -688,7 +688,7 @@ public abstract class CommonConnectorConfig {
     public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
             .withDisplayName("Change event buffer size")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 15))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to "
@@ -699,7 +699,7 @@ public abstract class CommonConnectorConfig {
     public static final Field MAX_BATCH_SIZE = Field.create("max.batch.size")
             .withDisplayName("Change event batch size")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 14))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Maximum size of each batch of source records. Defaults to " + DEFAULT_MAX_BATCH_SIZE + ".")
@@ -709,7 +709,7 @@ public abstract class CommonConnectorConfig {
     public static final Field POLL_INTERVAL_MS = Field.create("poll.interval.ms")
             .withDisplayName("Poll interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 17))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to 500 ms.")
@@ -719,7 +719,7 @@ public abstract class CommonConnectorConfig {
     public static final Field MAX_QUEUE_SIZE_IN_BYTES = Field.create("max.queue.size.in.bytes")
             .withDisplayName("Change event buffer size in bytes")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 16))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("Maximum size of the queue in bytes for change events read from the database log but not yet recorded or forwarded. Defaults to "
@@ -730,7 +730,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
             .withDisplayName("Snapshot Delay (milliseconds)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("A delay period before a snapshot will begin, given in milliseconds. Defaults to 0 ms.")
@@ -740,7 +740,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_FETCH_SIZE = Field.create("snapshot.fetch.size")
             .withDisplayName("Snapshot fetch size")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot.")
@@ -770,7 +770,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex)
@@ -780,7 +780,7 @@ public abstract class CommonConnectorConfig {
     public static final Field PROVIDE_TRANSACTION_METADATA = Field.create("provide.transaction.metadata")
             .withDisplayName("Store transaction metadata information in a dedicated topic.")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 17))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Enables transaction metadata extraction together with event counting")
@@ -797,7 +797,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field EVENT_PROCESSING_FAILURE_HANDLING_MODE = Field.create("event.processing.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 12))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -809,7 +809,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CUSTOM_CONVERTERS = Field.create("converters")
             .withDisplayName("List of prefixes defining custom values converters.")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 10))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Optional list of custom converters that would be used instead of default ones. "
@@ -818,7 +818,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CUSTOM_POST_PROCESSORS = Field.create("post.processors")
             .withDisplayName("List of change event post processors.")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Optional list of post processors. "
@@ -827,7 +827,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SKIPPED_OPERATIONS = Field.create("skipped.operations")
             .withDisplayName("Skipped Operations")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 11))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
@@ -842,7 +842,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SKIP_MESSAGES_WITHOUT_CHANGE = Field.create("skip.messages.without.change")
             .withDisplayName("Enable skipping messages without change")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -853,7 +853,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
             .withDisplayName("Binary Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.BYTES)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
@@ -865,7 +865,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.NONE)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
@@ -876,7 +876,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field FIELD_NAME_ADJUSTMENT_MODE = Field.create("field.name.adjustment.mode")
             .withDisplayName("Field Name Adjustment")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(FieldNameAdjustmentMode.class, FieldNameAdjustmentMode.NONE)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
@@ -888,7 +888,7 @@ public abstract class CommonConnectorConfig {
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
             .withDisplayName("Query fetch size")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size.")
@@ -898,7 +898,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_MAX_THREADS = Field.create("snapshot.max.threads")
             .withDisplayName("Snapshot maximum threads")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(1)
@@ -908,7 +908,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_MAX_THREADS_MULTIPLIER = Field.create("snapshot.max.threads.multiplier")
             .withDisplayName("Snapshot maximum thread multiplier")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 8))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(1)
@@ -921,7 +921,7 @@ public abstract class CommonConnectorConfig {
     public static final Field LEGACY_SNAPSHOT_MAX_THREADS = Field.createInternal("legacy.snapshot.max.threads")
             .withDisplayName("Enforces using a single thread per table regardless of table size")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 9))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
@@ -931,7 +931,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 20))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.LIST)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -942,7 +942,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -952,7 +952,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field SIGNAL_ENABLED_CHANNELS = Field.create("signal.enabled.channels")
             .withDisplayName("Enabled channels names")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 22))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
@@ -961,7 +961,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 23))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -972,7 +972,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CUSTOM_RETRIABLE_EXCEPTION = Field.createInternal("custom.retriable.exception")
             .withDisplayName("Regular expression to match the exception message.")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 999))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Provide a temporary workaround for an error that should be retriable."
@@ -997,7 +997,7 @@ public abstract class CommonConnectorConfig {
     public static final Field MAX_RETRIES_ON_ERROR = Field.create(ERRORS_MAX_RETRIES)
             .withDisplayName("The maximum number of retries")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 24))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_MAX_RETRIES)
@@ -1008,7 +1008,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CUSTOM_METRIC_TAGS = Field.create("custom.metric.tags")
             .withDisplayName("Customize metric tags")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 25))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withValidation(Field::isListOfMap)
@@ -1028,7 +1028,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_MODE_CUSTOM_NAME = Field.create("snapshot.mode.custom.name")
             .withDisplayName("Snapshot Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 12))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
@@ -1044,7 +1044,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field EVENT_CONVERTING_FAILURE_HANDLING_MODE = Field.create("event.converting.failure.handling.mode")
             .withDisplayName("Event converting failure handling mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 26))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withEnum(EventConvertingFailureHandlingMode.class, EventConvertingFailureHandlingMode.WARN)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -1056,7 +1056,7 @@ public abstract class CommonConnectorConfig {
     public static final Field STREAMING_DELAY_MS = Field.create("streaming.delay.ms")
             .withDisplayName("Streaming Delay (milliseconds)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 27))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("A delay period after the snapshot is completed and the streaming begins, given in milliseconds. Defaults to 0 ms.")
@@ -1066,7 +1066,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
             .withDisplayName("Snapshot Locking Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
@@ -1085,13 +1085,13 @@ public abstract class CommonConnectorConfig {
             .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription("Controls query used during the snapshot");
 
     public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
             .withDisplayName("Snapshot Query Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 16))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
@@ -1109,7 +1109,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Snapshot mode property based snapshot data")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 17))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1120,7 +1120,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Snapshot mode property based snapshot schema")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 18))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1131,7 +1131,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Snapshot mode property based start stream")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 19))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1142,7 +1142,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Snapshot mode property based snapshot on schema error")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 20))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1153,7 +1153,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Snapshot mode property based snapshot on data error")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 21))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1164,7 +1164,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Enable/Disable log position check")
             .withType(Type.BOOLEAN)
             .withDefault(true)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 30))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1174,7 +1174,7 @@ public abstract class CommonConnectorConfig {
             .withDisplayName("Enable/Disable advance metrics")
             .withType(Type.BOOLEAN)
             .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 31))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .optional()
@@ -1183,7 +1183,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CONNECTION_VALIDATION_TIMEOUT_MS = Field.create("connection.validation.timeout.ms")
             .withDisplayName("Connection validation timeout (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
@@ -1193,7 +1193,7 @@ public abstract class CommonConnectorConfig {
     public static final Field EXECUTOR_SHUTDOWN_TIMEOUT_MS = Field.create("executor.shutdown.timeout.ms")
             .withDisplayName("Executor shutdown timeout (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 19))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDefault(DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis())
@@ -1213,7 +1213,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_ENABLED = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED)
             .withDisplayName("Enables OpenLineage integration")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 40))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1235,7 +1235,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)
             .withDisplayName("Path to OpenLineage file configuration")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 41))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1255,7 +1255,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE)
             .withDisplayName("Namespace used for Debezium job")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 42))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1274,7 +1274,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION)
             .withDisplayName("Description used for Debezium job")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 43))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1300,7 +1300,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_JOB_TAGS = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS)
             .withDisplayName("Debezium job tags")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 44))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.LIST)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1327,7 +1327,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_JOB_OWNERS = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
             .withDisplayName("Debezium job owners")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 45))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(ConfigDef.Type.LIST)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1354,7 +1354,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER)
             .withDisplayName("Kafka bootstrap server used in Kafka Connect deployment")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 47))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1382,7 +1382,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field CUSTOM_SANITIZE_PATTERN = Field.create(Configuration.CUSTOM_SANITIZE_PATTERN_KEY)
             .withDisplayName("Custom pattern for masking sensitive configuration")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 48))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1430,7 +1430,7 @@ public abstract class CommonConnectorConfig {
      */
     public static Field EXTENDED_HEADERS_ENABLED = Field.create(ConfigurationNames.EXTENDED_HEADERS_ENABLED)
             .withDisplayName("Enable/Disable extended headers")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 46))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withDefault(true)
@@ -1442,7 +1442,7 @@ public abstract class CommonConnectorConfig {
     public static final Field GUARDRAIL_COLLECTIONS_MAX = Field.create("guardrail.collections.max")
             .withDisplayName("Maximum number of collections or tables")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 33))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The maximum number of collections or tables that can be captured by the connector. " +
@@ -1453,7 +1453,7 @@ public abstract class CommonConnectorConfig {
 
     public static final Field GUARDRAIL_COLLECTIONS_LIMIT_ACTION = Field.create("guardrail.collections.limit.action")
             .withDisplayName("Guardrail collections limit action")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 34))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
             .withEnum(GuardrailCollectionsLimitAction.class, GuardrailCollectionsLimitAction.WARN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1472,61 +1472,26 @@ public abstract class CommonConnectorConfig {
                     "By default collecting statistics is enabled.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .connector(
-                    EVENT_PROCESSING_FAILURE_HANDLING_MODE,
-                    MAX_BATCH_SIZE,
-                    MAX_QUEUE_SIZE,
-                    POLL_INTERVAL_MS,
-                    MAX_QUEUE_SIZE_IN_BYTES,
-                    PROVIDE_TRANSACTION_METADATA,
-                    SKIPPED_OPERATIONS,
-                    SNAPSHOT_DELAY_MS,
-                    STREAMING_DELAY_MS,
-                    SNAPSHOT_MODE_TABLES,
-                    SNAPSHOT_FETCH_SIZE,
-                    SNAPSHOT_MAX_THREADS,
-                    SNAPSHOT_MAX_THREADS_MULTIPLIER,
-                    LEGACY_SNAPSHOT_MAX_THREADS,
-                    SNAPSHOT_MODE_CUSTOM_NAME,
-                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA,
-                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
-                    SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM,
-                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
-                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR,
-                    RETRIABLE_RESTART_WAIT,
-                    QUERY_FETCH_SIZE,
-                    MAX_RETRIES_ON_ERROR,
-                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
-                    LOG_POSITION_CHECK_ENABLED,
-                    ADVANCED_METRICS_ENABLE,
-                    CONNECTION_VALIDATION_TIMEOUT_MS,
-                    EXECUTOR_SHUTDOWN_TIMEOUT_MS,
-                    OPEN_LINEAGE_INTEGRATION_ENABLED,
-                    OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
-                    OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
-                    OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
-                    OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
-                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
-                    OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER,
-                    EXTENDED_HEADERS_ENABLED,
-                    GUARDRAIL_COLLECTIONS_MAX,
-                    GUARDRAIL_COLLECTIONS_LIMIT_ACTION,
-                    CUSTOM_SANITIZE_PATTERN,
-                    STATISTICS_METRICS_ENABLED)
-            .events(
-                    CUSTOM_CONVERTERS,
-                    CUSTOM_POST_PROCESSORS,
-                    TOMBSTONES_ON_DELETE,
-                    Heartbeat.HEARTBEAT_INTERVAL,
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                    SIGNAL_DATA_COLLECTION,
-                    SIGNAL_POLL_INTERVAL_MS,
-                    SIGNAL_ENABLED_CHANNELS,
-                    TOPIC_NAMING_STRATEGY,
-                    NOTIFICATION_ENABLED_CHANNELS,
-                    SinkNotificationChannel.NOTIFICATION_TOPIC,
-                    TRANSACTION_METADATA_FACTORY,
-                    CUSTOM_METRIC_TAGS)
+            .group(Field.Group.CONNECTION, TOPIC_PREFIX)
+            .group(Field.Group.CONNECTION_ADVANCED, SKIP_MESSAGES_WITHOUT_CHANGE)
+            .group(Field.Group.CONNECTOR, TOMBSTONES_ON_DELETE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, FIELD_NAME_ADJUSTMENT_MODE,
+                    EVENT_CONVERTING_FAILURE_HANDLING_MODE)
+            .group(Field.Group.CONNECTOR_ADVANCED, PROVIDE_TRANSACTION_METADATA, CUSTOM_CONVERTERS, CUSTOM_POST_PROCESSORS,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    SIGNAL_DATA_COLLECTION, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS, TRANSACTION_METADATA_FACTORY)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE_TABLES,
+                    SNAPSHOT_MODE_CUSTOM_NAME, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR, SNAPSHOT_MAX_THREADS, SNAPSHOT_MAX_THREADS_MULTIPLIER, LEGACY_SNAPSHOT_MAX_THREADS,
+                    STREAMING_DELAY_MS, QUERY_FETCH_SIZE, INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY)
+            .group(Field.Group.ADVANCED, RETRIABLE_RESTART_WAIT, MAX_QUEUE_SIZE, MAX_BATCH_SIZE, POLL_INTERVAL_MS, MAX_QUEUE_SIZE_IN_BYTES,
+                    EVENT_PROCESSING_FAILURE_HANDLING_MODE, SKIPPED_OPERATIONS, MAX_RETRIES_ON_ERROR, LOG_POSITION_CHECK_ENABLED, ADVANCED_METRICS_ENABLE,
+                    CONNECTION_VALIDATION_TIMEOUT_MS, EXECUTOR_SHUTDOWN_TIMEOUT_MS, OPEN_LINEAGE_INTEGRATION_ENABLED, OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
+                    OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
+                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, EXTENDED_HEADERS_ENABLED, GUARDRAIL_COLLECTIONS_MAX,
+                    GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN)
+            .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
+            .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS)
             .create();
 
     private final Configuration config;
@@ -1537,7 +1502,7 @@ public abstract class CommonConnectorConfig {
     private final Duration pollInterval;
     protected final String logicalName;
     private final String heartbeatTopicsPrefix;
-    private Duration heartbeatInterval;
+    private final Duration heartbeatInterval;
     private final Duration snapshotDelay;
     private final Duration streamingDelay;
     private final Duration retriableRestartWait;
@@ -1738,10 +1703,6 @@ public abstract class CommonConnectorConfig {
 
     public Duration getHeartbeatInterval() {
         return heartbeatInterval;
-    }
-
-    protected void setHeartbeatInterval(int heartbeatIntervalMs) {
-        this.heartbeatInterval = Duration.ofMillis(heartbeatIntervalMs);
     }
 
     public Duration getSnapshotDelay() {

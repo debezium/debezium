@@ -532,7 +532,7 @@ public class ConfigurationTest {
                 .create();
 
         // Get the resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = configDef.all().stream()
                 .filter(f -> f.name().equals("connector.adapter"))
                 .findFirst()
                 .orElseThrow();

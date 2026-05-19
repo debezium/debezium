@@ -117,20 +117,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         columns.add("SEQUENCE#");
 
         // NOTE: Optional columns should be added here
-        if (connectorConfig.isLogMiningBufferTrackStartTimestamp()) {
-            columns.add("START_TIMESTAMP");
-        }
-        if (connectorConfig.isLogMiningBufferTrackCommitTimestamp()) {
-            columns.add("COMMIT_TIMESTAMP");
-        }
         if (connectorConfig.isLogMiningBufferTrackRsId()) {
             columns.add("RS_ID");
-        }
-        if (connectorConfig.isLogMiningBufferTrackUsername()) {
-            columns.add("USERNAME");
-        }
-        if (connectorConfig.isLogMiningBufferTrackClientId()) {
-            columns.add("CLIENT_ID");
         }
 
         return String.join(", ", columns) + " ";
