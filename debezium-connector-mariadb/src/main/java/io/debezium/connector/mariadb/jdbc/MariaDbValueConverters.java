@@ -20,6 +20,7 @@ import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.data.Uuid;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.jdbc.ZeroDateFallback;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.service.spi.ServiceRegistry;
@@ -42,8 +43,10 @@ import io.debezium.service.spi.ServiceRegistry;
 public class MariaDbValueConverters extends BinlogValueConverters {
 
     /**
-     * Create a new instance of the value converters that always uses UTC for the default time zone when
-     * converting values without timezone information to values that require timezones.
+     * Create a new instance of the value converters that always uses UTC for the default time zone when converting values
+     * without timezone information to values that require timezones. The provided {@link ZeroDateFallback} bundles the per-type
+     * sentinel values used when a non-nullable temporal column receives a MariaDB zero date; pass
+     * {@link ZeroDateFallback#defaultEpoch()} to preserve the historic 1970-01-01 behavior.
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values are treated; can be null if {@link DecimalMode#PRECISE} is used
      * @param temporalPrecisionMode temporal precision mode
@@ -52,6 +55,7 @@ public class MariaDbValueConverters extends BinlogValueConverters {
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
      * @param serviceRegistry the service registry, should not be {@code null}
+     * @param zeroDateFallback per-type zero-date sentinel values; pass {@link ZeroDateFallback#defaultEpoch()} for historic behavior
      */
     public MariaDbValueConverters(DecimalMode decimalMode,
                                   TemporalPrecisionMode temporalPrecisionMode,
@@ -59,8 +63,10 @@ public class MariaDbValueConverters extends BinlogValueConverters {
                                   BinaryHandlingMode binaryHandlingMode,
                                   TemporalAdjuster adjuster,
                                   EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                  ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
+                                  ServiceRegistry serviceRegistry,
+                                  ZeroDateFallback zeroDateFallback) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode,
+                serviceRegistry, zeroDateFallback);
     }
 
     @Override

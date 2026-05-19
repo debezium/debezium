@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.binlog;
 
+import java.sql.Types;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -23,6 +26,7 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.jdbc.ZeroDateFallback;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -551,6 +555,67 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "false - delegates the implicit conversion to the database; "
                     + "true - (the default) Debezium makes the conversion");
 
+    /**
+     * Default value used as the lower-bound for the validator of zero-date fallback values.
+     * Java {@link LocalDate} can express dates well before this, but downstream serialization
+     * and JDBC interop typically assume the proleptic Gregorian range starting at year 1.
+     */
+    private static final LocalDate ZERO_DATE_FALLBACK_MIN = LocalDate.of(1, 1, 1);
+
+    /**
+     * Upper bound: matches the maximum date representable in MySQL DATE / DATETIME and most
+     * downstream data stores (e.g., StarRocks, Iceberg, SQL Server datetime2, Oracle).
+     */
+    private static final LocalDate ZERO_DATE_FALLBACK_MAX = LocalDate.of(9999, 12, 31);
+
+    public static final Field ZERO_DATE_FALLBACK_VALUE = Field.create("zero.date.fallback.value")
+            .withDisplayName("Zero-date fallback value (general default)")
+            .withType(ConfigDef.Type.STRING)
+            .withDefault("1970-01-01")
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 28))
+            .withValidation(BinlogConnectorConfig::validateZeroDateFallbackValue)
+            .withDescription("ISO-8601 date (yyyy-MM-dd) sentinel value used when a non-nullable "
+                    + "DATE/DATETIME/TIMESTAMP column contains a zero value (e.g., '0000-00-00'). "
+                    + "Defaults to '1970-01-01' for backward compatibility. Allowed range: "
+                    + "0001-01-01 to 9999-12-31. Per-type overrides "
+                    + "(zero.date.fallback.value.date / .datetime / .timestamp) take precedence "
+                    + "over this value when set.");
+
+    public static final Field ZERO_DATE_FALLBACK_VALUE_DATE = Field.create("zero.date.fallback.value.date")
+            .withDisplayName("Zero-date fallback value for DATE columns")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 29))
+            .withValidation(BinlogConnectorConfig::validateOptionalZeroDateFallbackValue)
+            .withDescription("Override of zero.date.fallback.value for DATE columns only. "
+                    + "If unset, falls back to zero.date.fallback.value.");
+
+    public static final Field ZERO_DATE_FALLBACK_VALUE_DATETIME = Field.create("zero.date.fallback.value.datetime")
+            .withDisplayName("Zero-date fallback value for DATETIME columns")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 30))
+            .withValidation(BinlogConnectorConfig::validateOptionalZeroDateFallbackValue)
+            .withDescription("Override of zero.date.fallback.value for DATETIME columns only. "
+                    + "MySQL DATETIME range is 1000-01-01 to 9999-12-31. "
+                    + "If unset, falls back to zero.date.fallback.value.");
+
+    public static final Field ZERO_DATE_FALLBACK_VALUE_TIMESTAMP = Field.create("zero.date.fallback.value.timestamp")
+            .withDisplayName("Zero-date fallback value for TIMESTAMP columns")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 31))
+            .withValidation(BinlogConnectorConfig::validateOptionalZeroDateFallbackValue)
+            .withDescription("Override of zero.date.fallback.value for TIMESTAMP columns only. "
+                    + "Note: MySQL TIMESTAMP only supports 1970-01-01 to 2038-01-19; downstream "
+                    + "MySQL TIMESTAMP sinks reject values outside that range. "
+                    + "If unset, falls back to zero.date.fallback.value.");
+
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -652,6 +717,10 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     BIGINT_UNSIGNED_HANDLING_MODE,
                     TIME_PRECISION_MODE,
                     ENABLE_TIME_ADJUSTER,
+                    ZERO_DATE_FALLBACK_VALUE,
+                    ZERO_DATE_FALLBACK_VALUE_DATE,
+                    ZERO_DATE_FALLBACK_VALUE_DATETIME,
+                    ZERO_DATE_FALLBACK_VALUE_TIMESTAMP,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
@@ -678,6 +747,14 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
     private final boolean ignoreGtidOnRecovery;
+    /**
+     * Per-type zero-date sentinel values resolved from the four {@code zero.date.fallback.value*}
+     * properties. Each slot has the type-specific override applied (when set) or the general
+     * default ({@link #ZERO_DATE_FALLBACK_VALUE}) inherited.
+     */
+    private final ZeroDateFallback zeroDateFallback;
+    /** General default sentinel — surfaced for non-temporal JDBC types and as the inherited base for unset overrides. */
+    private final LocalDate zeroDateFallbackGeneralDefault;
 
     /**
      * Create a binlog-based connector configuration.
@@ -704,6 +781,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
         this.ignoreGtidOnRecovery = config.getBoolean(IGNORE_GTID_ON_RECOVERY);
+
+        this.zeroDateFallbackGeneralDefault = LocalDate.parse(config.getString(ZERO_DATE_FALLBACK_VALUE));
+        this.zeroDateFallback = new ZeroDateFallback(
+                resolvePerTypeOverride(config.getString(ZERO_DATE_FALLBACK_VALUE_DATE), zeroDateFallbackGeneralDefault),
+                resolvePerTypeOverride(config.getString(ZERO_DATE_FALLBACK_VALUE_DATETIME), zeroDateFallbackGeneralDefault),
+                resolvePerTypeOverride(config.getString(ZERO_DATE_FALLBACK_VALUE_TIMESTAMP), zeroDateFallbackGeneralDefault));
+    }
+
+    private static LocalDate resolvePerTypeOverride(String raw, LocalDate generalDefault) {
+        return (raw == null || raw.isBlank()) ? generalDefault : LocalDate.parse(raw);
     }
 
     @Override
@@ -747,6 +834,38 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public BigIntUnsignedHandlingMode getBigIntUnsignedHandlingMode() {
         return bigIntUnsignedHandlingMode;
+    }
+
+    /**
+     * Returns the resolved per-type zero-date sentinel values, ready to be passed to the binlog
+     * value converters. Per-type overrides (when set) have already been merged with the general
+     * default; the returned object is never {@code null}.
+     */
+    public ZeroDateFallback getZeroDateFallback() {
+        return zeroDateFallback;
+    }
+
+    /**
+     * Returns the configured zero-date fallback value for the given JDBC column type, applying
+     * cascading lookup: type-specific override (if set) → general default (always set).
+     *
+     * @param jdbcType one of {@link Types#DATE}, {@link Types#TIMESTAMP} (MySQL DATETIME), or
+     *                 {@link Types#TIMESTAMP_WITH_TIMEZONE} (MySQL TIMESTAMP). Other JDBC types
+     *                 receive the general default.
+     * @return the {@link LocalDate} sentinel that should replace zero dates for non-nullable
+     *         columns of the specified type; never {@code null}.
+     */
+    public LocalDate getZeroDateFallback(int jdbcType) {
+        switch (jdbcType) {
+            case Types.DATE:
+                return zeroDateFallback.forDate();
+            case Types.TIMESTAMP:
+                return zeroDateFallback.forDatetime();
+            case Types.TIMESTAMP_WITH_TIMEZONE:
+                return zeroDateFallback.forTimestamp();
+            default:
+                return zeroDateFallbackGeneralDefault;
+        }
     }
 
     /**
@@ -924,6 +1043,48 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                 problems.accept(TIME_PRECISION_MODE, timePrecisionMode, "The 'adaptive' time.precision.mode is no longer supported");
                 return 1;
             }
+        }
+        return 0;
+    }
+
+    /**
+     * Validate the (mandatory) general zero-date fallback value: must be a non-empty ISO-8601
+     * date in the range {@link #ZERO_DATE_FALLBACK_MIN}..{@link #ZERO_DATE_FALLBACK_MAX}.
+     */
+    private static int validateZeroDateFallbackValue(Configuration config, Field field, ValidationOutput problems) {
+        return validateZeroDateFallbackString(config.getString(field), field, problems, /* requireNonEmpty */ true);
+    }
+
+    /**
+     * Validate an optional per-type zero-date fallback override. Empty/unset is permitted (general
+     * default is inherited); when present the value must be ISO-8601 in the supported range.
+     */
+    private static int validateOptionalZeroDateFallbackValue(Configuration config, Field field, ValidationOutput problems) {
+        return validateZeroDateFallbackString(config.getString(field), field, problems, /* requireNonEmpty */ false);
+    }
+
+    private static int validateZeroDateFallbackString(String raw, Field field, ValidationOutput problems, boolean requireNonEmpty) {
+        if (raw == null || raw.isBlank()) {
+            if (requireNonEmpty) {
+                problems.accept(field, raw, field.name() + " must not be empty");
+                return 1;
+            }
+            return 0;
+        }
+        final LocalDate parsed;
+        try {
+            parsed = LocalDate.parse(raw);
+        }
+        catch (DateTimeParseException e) {
+            problems.accept(field, raw,
+                    field.name() + " must be an ISO-8601 date (yyyy-MM-dd); got '" + raw + "'");
+            return 1;
+        }
+        if (parsed.isBefore(ZERO_DATE_FALLBACK_MIN) || parsed.isAfter(ZERO_DATE_FALLBACK_MAX)) {
+            problems.accept(field, raw,
+                    field.name() + " must be between " + ZERO_DATE_FALLBACK_MIN
+                            + " and " + ZERO_DATE_FALLBACK_MAX + "; got '" + raw + "'");
+            return 1;
         }
         return 0;
     }

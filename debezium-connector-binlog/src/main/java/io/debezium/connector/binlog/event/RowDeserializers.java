@@ -473,6 +473,9 @@ public class RowDeserializers {
      */
     protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = inputStream.readLong(4);
+        if (epochSecond == 0) {
+            return null; // 0000-00-00 00:00:00 — MySQL TIMESTAMP min is 1970-01-01 00:00:01 UTC
+        }
         int nanoSeconds = 0; // no fractional seconds
         return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneOffset.UTC);
     }
@@ -490,6 +493,9 @@ public class RowDeserializers {
     protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
+        if (epochSecond == 0 && nanoSeconds == 0) {
+            return null; // 0000-00-00 00:00:00.000000 — outside legal MySQL TIMESTAMP range
+        }
         return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneOffset.UTC);
     }
 
