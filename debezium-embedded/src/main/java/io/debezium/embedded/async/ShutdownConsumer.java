@@ -7,6 +7,20 @@ package io.debezium.embedded.async;
 
 import java.util.function.Consumer;
 
+/**
+ * A {@link Consumer} decorator that brackets a user-supplied consumer with shutdown evaluation.
+ *
+ * <p>For each record, the {@code before} handler is evaluated first. If the engine is still
+ * consuming (checked via {@link Watcher}), the record is forwarded to the wrapped consumer.
+ * The {@code after} handler is evaluated last, regardless of whether the consumer ran.
+ *
+ * <p>Either handler may be a no-op (see {@link DefaultShutdownHandler#create}) when no strategy
+ * is configured for that position.
+ *
+ * @param <R> the record type produced by the engine
+ * @see ShutdownHandler
+ * @see Watcher
+ */
 public class ShutdownConsumer<R> implements Consumer<R> {
 
     private final ShutdownHandler<R> before;
@@ -14,6 +28,14 @@ public class ShutdownConsumer<R> implements Consumer<R> {
     private final Consumer<R> consumer;
     private final Watcher watcher;
 
+    /**
+     * Creates a new {@code ShutdownConsumer}.
+     *
+     * @param before   the handler evaluated before the consumer; never null
+     * @param after    the handler evaluated after the consumer; never null
+     * @param consumer the user-supplied record consumer; never null
+     * @param watcher  provides access to the engine's current consumption state; never null
+     */
     public ShutdownConsumer(ShutdownHandler<R> before,
                             ShutdownHandler<R> after,
                             Consumer<R> consumer, Watcher watcher) {

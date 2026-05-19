@@ -9,12 +9,35 @@ import java.util.List;
 
 import io.debezium.engine.DebeziumEngine;
 
+/**
+ * A {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} decorator that brackets batch processing
+ * with shutdown evaluation.
+ *
+ * <p>For each batch, the {@code before} handler is evaluated for every record first, then the wrapped
+ * consumer processes the whole batch, and finally the {@code after} handler is evaluated for every record.
+ * Unlike {@link ShutdownConsumer}, all records in the batch are always forwarded to the consumer regardless
+ * of the engine's consumption state, because batch boundaries are managed by the committer.
+ *
+ * <p>Either handler may be a no-op (see {@link DefaultShutdownHandler#create}) when no strategy is
+ * configured for that position.
+ *
+ * @param <R> the record type produced by the engine
+ * @see ShutdownHandler
+ * @see io.debezium.engine.DebeziumEngine.ChangeConsumer
+ */
 public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<R> {
 
     private final ShutdownHandler<R> before;
     private final ShutdownHandler<R> after;
     private final DebeziumEngine.ChangeConsumer<R> consumer;
 
+    /**
+     * Creates a new {@code ShutdownChangeConsumer}.
+     *
+     * @param before   the handler evaluated for each record before the batch is processed; never null
+     * @param after    the handler evaluated for each record after the batch is processed; never null
+     * @param consumer the user-supplied batch consumer; never null
+     */
     public ShutdownChangeConsumer(ShutdownHandler<R> before,
                                   ShutdownHandler<R> after,
                                   DebeziumEngine.ChangeConsumer<R> consumer) {

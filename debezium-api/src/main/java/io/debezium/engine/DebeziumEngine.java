@@ -7,7 +7,12 @@ package io.debezium.engine;
 
 import java.io.Closeable;
 import java.time.Clock;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -196,6 +201,16 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         }
     }
 
+    /**
+     * A strategy that determines whether the engine should stop processing after evaluating a given context.
+     * The strategy is expressed as a {@link Predicate}: returning {@code true} signals that the shutdown
+     * condition has been met and the engine should initiate its stop sequence.
+     *
+     *
+     * @param <R> the type of context passed to the predicate; typically {@link Shutdown.ShutdownContext}
+     * @see Shutdown
+     * @see Shutdown.ShutdownContext
+     */
     @Incubating
     interface ShutdownStrategy<R> extends Predicate<R> {
     }
@@ -225,18 +240,67 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         void signal(Signal signal);
     }
 
+    /**
+     * Defines the shutdown behaviour of the engine by pairing two optional {@link ShutdownStrategy strategies}:
+     * one evaluated <em>before</em> a record is handed to the consumer and one evaluated <em>after</em>.
+     *
+     * <p>When either strategy's {@link ShutdownStrategy#test(Object)} returns {@code true}, the engine
+     * initiates its stop sequence. Each record passed to the engine is wrapped in a {@link ShutdownContext}
+     * that gives the strategy access to the record itself and to the engine's connector configuration.
+     *
+     * <p>Use {@code io.debezium.embedded.async.DebeziumShutdown.Builder} to construct instances.
+     *
+     * @param <R> the record type produced by the engine
+     * @see ShutdownStrategy
+     * @see ShutdownContext
+     * @see Builder#shutdown(Shutdown)
+     */
     @Incubating
     interface Shutdown<R> {
 
+        /**
+         * Returns the strategy to be evaluated <em>before</em> each record is handed to the consumer.
+         *
+         * <p>When this strategy signals shutdown, the current record is <em>not</em> forwarded to the
+         * consumer. May return {@code null} to indicate that no pre-consumer shutdown check is required.
+         *
+         * @return the pre-consumer shutdown strategy, or {@code null} if none
+         */
         ShutdownStrategy<ShutdownContext<R>> before();
 
+        /**
+         * Returns the strategy to be evaluated <em>after</em> each record has been processed by the consumer.
+         *
+         * <p>When this strategy signals shutdown, the engine starts its stop sequence after the consumer
+         * has finished handling the triggering record. May return {@code null} to indicate that no
+         * post-consumer shutdown check is required.
+         *
+         * @return the post-consumer shutdown strategy, or {@code null} if none
+         */
         ShutdownStrategy<ShutdownContext<R>> after();
 
+        /**
+         * Provides the contextual information available to a {@link ShutdownStrategy} when it evaluates
+         * whether the engine should stop.
+         *
+         * @param <R> the record type produced by the engine
+         */
         @Incubating
         interface ShutdownContext<R> {
 
+            /**
+             * Returns the value of the named connector configuration property.
+             *
+             * @param key the configuration property name; never null
+             * @return an {@link Optional} containing the property value, or empty if the key is not present
+             */
             Optional<String> configuration(String key);
 
+            /**
+             * Returns the record that triggered this shutdown evaluation.
+             *
+             * @return the current record; never null
+             */
             R record();
         }
     }
@@ -264,6 +328,17 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          */
         Builder<R> notifying(ChangeConsumer<R> handler);
 
+        /**
+         * Configure an optional {@link Shutdown} policy that allows the engine to stop automatically
+         * based on record-level conditions, without requiring an external {@link DebeziumEngine#close()} call.
+         *
+         * <p>The policy is evaluated for every record: the {@link Shutdown#before() before} strategy
+         * is tested before the record reaches the consumer, and the {@link Shutdown#after() after}
+         * strategy is tested after the consumer has processed it.
+         *
+         *
+         * @param shutdown the shutdown policy; may be null to disable record-driven shutdown
+         */
         default Builder<R> shutdown(Shutdown<R> shutdown) {
             return null;
         }
