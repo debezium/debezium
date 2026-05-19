@@ -31,8 +31,9 @@ public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<
         records.forEach(after::evaluate);
     }
 
-    public static <R> BiFunction<DebeziumEngine.ChangeConsumer<R>, DebeziumEngine.RecordCommitter, DebeziumEngine.ChangeConsumer<R>> create(DebeziumShutdown<R> shutdown,
-                                                                                                                                            Runnable runner) {
+    public static <R> BiFunction<DebeziumEngine.ChangeConsumer<R>, DebeziumEngine.RecordCommitter, DebeziumEngine.ChangeConsumer<R>> create(
+            DebeziumEngine.Shutdown<R> shutdown,
+            Runnable runner) {
         return (consumer, committer) -> {
             if (shutdown == null) {
                 return consumer;
