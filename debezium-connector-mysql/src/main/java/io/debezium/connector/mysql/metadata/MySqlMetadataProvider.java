@@ -26,7 +26,7 @@ public class MySqlMetadataProvider implements ComponentMetadataProvider {
     @Override
     public List<ComponentMetadata> getConnectorMetadata() {
         return List.of(
-                componentMetadataFactory.createComponentMetadata(new MySqlConnector(), "Debezium MySQL Connector", Module.version()),
+                componentMetadataFactory.createComponentMetadata(new MySqlConnector(), "Debezium MySQL Connector", "Debezium MySQL Connector", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ReadToInsertEvent<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TinyIntOneToBooleanConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()));
