@@ -91,6 +91,6 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
                                     if (transformedRecord != null && watcher.engine().isConsuming()) {
                                         consumer.accept(transformedRecord);
                                     }
-                                })));
+                                }, watcher)));
     }
 }
