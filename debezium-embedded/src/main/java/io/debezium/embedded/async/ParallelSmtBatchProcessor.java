@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -54,7 +55,8 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
                                                        final DebeziumEngine.ChangeConsumer<R> userHandler,
                                                        Watcher watcher,
                                                        DebeziumEngine.Shutdown<R> shutdown,
-                                                       Runnable runner) {
+                                                       Runnable runner,
+                                                       Map<String, String> configuration) {
 
         if (shutdown == null) {
             return new ParallelSmtBatchProcessor(new BatchProcessor.DirectProcessor(committer, userHandler));
@@ -65,8 +67,8 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
                         watcher,
                         committer,
                         new ShutdownChangeConsumer<>(
-                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), runner, committer),
-                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), runner, committer),
+                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
+                                (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
                                 (DebeziumEngine.ChangeConsumer<SourceRecord>) userHandler)));
     }
 }

@@ -611,7 +611,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     handler,
                     watcher,
                     shutdown,
-                    shutdownWorkflow());
+                    shutdownWorkflow(),
+                    config.asMap());
         }
         if (ParallelSmtAndConvertBatchProcessor.class.getName().equals(processorClassName)) {
             return ParallelSmtAndConvertBatchProcessor.create(new ConvertingRecordCommitter(task),
@@ -619,14 +620,16 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     handler,
                     watcher,
                     shutdown,
-                    shutdownWorkflow());
+                    shutdownWorkflow(),
+                    config.asMap());
         }
         if (ParallelSmtConsumerProcessor.class.getName().equals(processorClassName)) {
             return ParallelSmtConsumerProcessor.create(new SourceRecordCommitter(task),
                     consumer,
                     watcher,
                     shutdown,
-                    shutdownWorkflow());
+                    shutdownWorkflow(),
+                    config.asMap());
         }
         if (ParallelSmtAndConvertConsumerProcessor.class.getName().equals(processorClassName)) {
             return ParallelSmtAndConvertConsumerProcessor.create(new SourceRecordCommitter(task),
@@ -634,7 +637,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     recordConverter,
                     watcher,
                     shutdown,
-                    shutdownWorkflow());
+                    shutdownWorkflow(),
+                    config.asMap());
         }
         if (ParallelSmtAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
             return ParallelSmtAsyncConsumerProcessor.create(new SourceRecordCommitter(task),
@@ -642,7 +646,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     shutdown,
                     shutdownWorkflow(),
                     transformations,
-                    watcher);
+                    watcher,
+                    config.asMap());
         }
         if (ParallelSmtAndConvertAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
             return ParallelSmtAndConvertAsyncConsumerProcessor.create(new SourceRecordCommitter(task),
@@ -651,7 +656,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     watcher,
                     shutdown,
                     shutdownWorkflow(),
-                    transformations);
+                    transformations,
+                    config.asMap());
         }
 
         throw new IllegalStateException("Unable to create RecordProcessor instance, this should never happen.");

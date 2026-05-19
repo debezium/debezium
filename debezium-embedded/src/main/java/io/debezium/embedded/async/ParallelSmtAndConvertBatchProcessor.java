@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
@@ -59,7 +60,7 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
                                                                     DebeziumEngine.ChangeConsumer<R> userHandler,
                                                                     DebeziumEngine.Watcher watcher,
                                                                     DebeziumEngine.Shutdown<R> shutdown,
-                                                                    Runnable runner) {
+                                                                    Runnable runner, Map<String, String> configuration) {
         if (shutdown == null) {
             return new ParallelSmtAndConvertBatchProcessor<>(convertor, new BatchProcessor.DirectProcessor<>(committer, userHandler));
         }
@@ -68,8 +69,8 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
                 convertor,
                 new BatchProcessor.ObservableProcessor<>(watcher, committer,
                         new ShutdownChangeConsumer<>(
-                                DefaultShutdownHandler.create(shutdown.before(), runner, committer),
-                                DefaultShutdownHandler.create(shutdown.after(), runner, committer),
+                                DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
+                                DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
                                 userHandler)));
 
     }

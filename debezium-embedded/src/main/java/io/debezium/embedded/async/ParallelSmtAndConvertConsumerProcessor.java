@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -74,7 +75,7 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
                                                                        Function<SourceRecord, R> convertor,
                                                                        Watcher watcher,
                                                                        DebeziumEngine.Shutdown<R> shutdown,
-                                                                       Runnable workflow) {
+                                                                       Runnable workflow, Map<String, String> configuration) {
 
         if (shutdown == null) {
             return new ParallelSmtAndConvertConsumerProcessor<>(committer, convertor,
@@ -84,8 +85,8 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         return new ParallelSmtAndConvertConsumerProcessor<>(committer,
                 convertor,
                 new SingleProcessor.ObservableSingleProcessor<>(watcher, new ShutdownConsumer<>(
-                        DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
-                        DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                        DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
+                        DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
                         consumer)));
     }
 }
