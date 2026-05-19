@@ -24,6 +24,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Array;
 import io.debezium.document.ArrayReader;
 import io.debezium.document.ArrayWriter;
@@ -63,7 +64,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         Properties config = new Properties();
         config.put(ConnectorConfig.NAME_CONFIG, "simple-connector-1");
         config.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, SimpleSourceConnector.class.getName());
-        config.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        config.put(CommonConnectorConfig.TASKS_MAX.name(), "1");
         config.put(SimpleSourceConnector.BATCH_COUNT, Integer.toString(numBatches));
         config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, Integer.toString(numRecordsPerBatch));
         config.put(SimpleSourceConnector.TOPIC_NAME, TOPIC_NAME);
