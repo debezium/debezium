@@ -2450,6 +2450,53 @@ _This data type is not supported when using Oracle XStream._
 
 The {prodname} connector for Oracle does not support the Oracle VECTOR data type.
 
+[id="oracle-json-types"]
+=== JSON types
+
+A {prodname} Oracle connector that uses the LogMiner adapter can capture changes from tables that include `JSON` column types.
+To enable capture of JSON types, the database initialization parameter `ENABLE_GOLDENGATE_REPLICATION` must be  set to `TRUE` to permit GoldenGate services to capture and apply changes across the entire instance.
+
+ifdef::community[]
+[NOTE]
+====
+Oracle connector support for `JSON` is currently in an incubating state.
+Depending on the feedback that we receive, the exact semantics, configuration options, and so forth might change in future revisions.
+Please let us know if you encounter any problems with using these data types.
+====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+The ability of the {prodname} Oracle connector to process `JSON` data is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
+
+[IMPORTANT]
+====
+Oracle support for `JSON` data types is a premium feature that is only available through a GoldenGate license.
+
+Because the Oracle OCI driver cannot read metadata for tables that contain a `JSON` column type, connectors configured to use the Oracle XStream adapter the connector cannot capture `JSON` data.
+This limitation applies to all Oracle 21.x and 23.x drivers tested through version 23.26.1.
+====
+
+The following table describes how the connector maps JSON data types.
+
+.Mappings for Oracle JSON data types
+[cols="20%a,15%a,55%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`JSON`
+|`STRING`
+|`io.debezium.data.Json`
+
+|===
+
 [id="oracle-xml-types"]
 === XML types
 ifdef::community[]
