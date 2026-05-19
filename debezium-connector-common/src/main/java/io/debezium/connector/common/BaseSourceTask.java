@@ -239,7 +239,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
         stateLock.lock();
 
-        try {
+        try (final var rootLoggingContext = LoggingContext.initRootContext()) {
             setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
@@ -347,7 +347,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
 
-        try {
+        try (final var rootLoggingContext = LoggingContext.initRootContext()) {
             // in we fail to start, return empty list and try to start next poll() method call
             if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
@@ -490,7 +490,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public final void stop() {
-        try {
+        try (final var rootLoggerContext = LoggingContext.initRootContext()) {
             performCommit();
         }
         catch (Exception e) {
@@ -567,7 +567,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         boolean locked = stateLock.tryLock();
 
         if (locked) {
-            try {
+            try (final var rootLoggingContext = LoggingContext.initRootContext()) {
                 if (coordinator != null) {
                     Iterator<Map<String, ?>> iterator = lastOffsets.keySet().iterator();
                     while (iterator.hasNext()) {
