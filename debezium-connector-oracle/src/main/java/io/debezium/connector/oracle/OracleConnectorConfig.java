@@ -81,6 +81,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
+    public static final Field LOG_MINING_PLATFORM = Field.create("log.mining.platform")
+            .withDisplayName("Log mining platform")
+            .withEnum(LogMiningPlatform.class, LogMiningPlatform.DEFAULT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 14))
+            .withDescription("The platform on which the Oracle database is deployed. "
+                    + "Options include: "
+                    + "'default': for on-premise or self-managed Oracle deployments; "
+                    + "'rds': for AWS RDS Oracle deployments using CDB architecture, "
+                    + "where access to CDB$ROOT is restricted and rdsadmin PL/SQL packages are used for LogMiner operations");
+
     /**
      * @deprecated to be removed in Debezium 4.0
      */
@@ -795,6 +807,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     DATABASE_NAME,
                     QUERY_TIMEOUT_MS,
                     PDB_NAME,
+                    LOG_MINING_PLATFORM,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
@@ -890,6 +903,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final String databaseName;
     private final String pdbName;
+    private final LogMiningPlatform logMiningPlatform;
     private final String xstreamOutboundServerName;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -967,6 +981,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
         this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
+        this.logMiningPlatform = LogMiningPlatform.parse(config.getString(LOG_MINING_PLATFORM));
         this.xstreamOutboundServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
@@ -1062,6 +1077,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public String getCatalogName() {
         return pdbName != null ? pdbName : databaseName;
+    }
+
+    /**
+     * @return the log mining platform for this Oracle connector instance
+     */
+    public LogMiningPlatform getLogMiningPlatform() {
+        return logMiningPlatform;
     }
 
     public String getXStreamOutboundServerName() {
@@ -1699,6 +1721,52 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             for (LogMiningQueryFilterMode mode : LogMiningQueryFilterMode.values()) {
                 if (mode.getValue().equalsIgnoreCase(value)) {
                     return mode;
+                }
+            }
+            return null;
+        }
+    }
+
+    public enum LogMiningPlatform implements EnumeratedValue {
+
+        /**
+         * Default on-premise or self-managed Oracle deployment.
+         * Uses standard Oracle {@code SYS.DBMS_LOGMNR} packages and V$ views.
+         */
+        DEFAULT("default"),
+
+        /**
+         * AWS RDS Oracle deployment with CDB architecture.
+         * Uses {@code rdsadmin.rdsadmin_util} PL/SQL packages for LogMiner operations and
+         * does not permit direct access to CDB$ROOT.
+         */
+        RDS("rds");
+
+        private final String value;
+
+        LogMiningPlatform(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogMiningPlatform parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogMiningPlatform platform : LogMiningPlatform.values()) {
+                if (platform.getValue().equalsIgnoreCase(value)) {
+                    return platform;
                 }
             }
             return null;
