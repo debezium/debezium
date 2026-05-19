@@ -175,7 +175,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         return new EhcacheLogMinerTransactionCache(
                 getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
                 getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
-                getCache(ROLLBACKS_CACHE_NAME, String.class, Boolean.class, evictionListener),
+                getCache(ROLLBACKS_CACHE_NAME, String.class, Integer.class, evictionListener),
                 evictionListener);
     }
 
