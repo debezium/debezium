@@ -58,7 +58,7 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
     public static <R> ParallelSmtAndConvertBatchProcessor<R> create(DebeziumEngine.RecordCommitter<R> committer,
                                                                     Function<SourceRecord, R> convertor,
                                                                     DebeziumEngine.ChangeConsumer<R> userHandler,
-                                                                    DebeziumEngine.Watcher watcher,
+                                                                    Watcher watcher,
                                                                     DebeziumEngine.Shutdown<R> shutdown,
                                                                     Runnable runner, Map<String, String> configuration) {
         if (shutdown == null) {

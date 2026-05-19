@@ -225,41 +225,6 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         void signal(Signal signal);
     }
 
-    /**
-     * Provides runtime observability into the state of a {@link DebeziumEngine}.
-     * This interface allows internal components to monitor whether the engine is
-     * actively processing records.
-     *
-     * @since 3.6.0
-     */
-    @Incubating
-    interface Watcher {
-
-        /**
-         * Provides access to engine-level state monitoring.
-         *
-         * @return the engine watcher; never null
-         */
-        EngineWatcher engine();
-
-        /**
-         * Monitors the consumption state of the engine.
-         */
-        interface EngineWatcher {
-
-            /**
-             * Checks whether the engine is currently in the consuming/polling state,
-             * actively reading and processing records from the source.
-             *
-             * @return {@code true} if the engine is actively consuming records from the
-             *         source database; {@code false} if the engine is in any other state
-             *         (initializing, starting tasks, stopping, stopped, etc.)
-             */
-            boolean isConsuming();
-        }
-
-    }
-
     @Incubating
     interface Shutdown<R> {
 

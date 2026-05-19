@@ -13,12 +13,12 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ShutdownStrategy;
 
 public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
-    private final ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy;
+    private final ShutdownStrategy<DebeziumEngine.Shutdown.ShutdownContext<R>> shutdownStrategy;
     private final Runnable shutdown;
     private final DebeziumEngine.RecordCommitter committer;
     private final Map<String, String> configuration;
 
-    private DefaultShutdownHandler(ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer,
+    private DefaultShutdownHandler(ShutdownStrategy<DebeziumEngine.Shutdown.ShutdownContext<R>> shutdownStrategy, Runnable shutdown, DebeziumEngine.RecordCommitter committer,
                                    Map<String, String> configuration) {
         this.shutdownStrategy = shutdownStrategy;
         this.shutdown = shutdown;
@@ -42,8 +42,8 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
         }
     }
 
-    private DebeziumEngine.ShutdownContext<R> createContext(R record) {
-        return new DebeziumEngine.ShutdownContext<>() {
+    private DebeziumEngine.Shutdown.ShutdownContext<R> createContext(R record) {
+        return new DebeziumEngine.Shutdown.ShutdownContext<>() {
             @Override
             public Optional<String> configuration(String key) {
                 return Optional.ofNullable(configuration.get(key));
@@ -56,7 +56,7 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
         };
     }
 
-    public static <R> ShutdownHandler<R> create(ShutdownStrategy<DebeziumEngine.ShutdownContext<R>> shutdownStrategy, Runnable shutdown,
+    public static <R> ShutdownHandler<R> create(ShutdownStrategy<DebeziumEngine.Shutdown.ShutdownContext<R>> shutdownStrategy, Runnable shutdown,
                                                 DebeziumEngine.RecordCommitter committer,
                                                 Map<String, String> configuration) {
         if (shutdownStrategy == null) {
