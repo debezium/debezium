@@ -71,7 +71,7 @@ public abstract class CommonConnectorConfig {
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
     public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
     public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
-    public static final String DEFAULT_QUEUE_PROVIDER_TYPE = "default";
+    public static final String DEFAULT_QUEUE_PROVIDER_TYPE = "memory";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
     public static final String CONNECTOR_CLASS = "connector.class";

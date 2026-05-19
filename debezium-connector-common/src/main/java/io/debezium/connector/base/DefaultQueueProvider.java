@@ -24,7 +24,7 @@ public class DefaultQueueProvider<T extends Sizeable> implements QueueProvider<T
 
     @Override
     public String name() {
-        return "default";
+        return "memory";
     }
 
     @Override
