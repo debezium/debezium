@@ -424,15 +424,15 @@ public class OracleConnection extends JdbcConnection {
 
         try {
             Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames);
-            return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
+            return firstAvailableScn.filter(isLessThanOrEqualTo(storedOffset)).isPresent();
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
         }
     }
 
-    private static Predicate<Scn> isLessThan(Scn storedOffset) {
-        return scn -> scn.compareTo(storedOffset) < 0;
+    private static Predicate<Scn> isLessThanOrEqualTo(Scn storedOffset) {
+        return scn -> scn.compareTo(storedOffset) <= 0;
     }
 
     @Override
