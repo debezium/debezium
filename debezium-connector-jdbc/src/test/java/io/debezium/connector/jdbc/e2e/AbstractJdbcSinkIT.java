@@ -33,6 +33,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.jdbc.AbstractBaseJdbcSinkTest;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorTask;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
@@ -45,7 +46,7 @@ import io.debezium.testing.testcontainers.ConnectorConfiguration;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractJdbcSinkIT {
+public abstract class AbstractJdbcSinkIT extends AbstractBaseJdbcSinkTest {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractJdbcSinkIT.class);
 
@@ -89,7 +90,7 @@ public abstract class AbstractJdbcSinkIT {
         final Map<String, String> configMap = new HashMap<>();
         sinkProperties.forEach((k, v) -> configMap.put((String) k, (String) v));
 
-        currentSinkConfig = new JdbcSinkConnectorConfig(configMap);
+        currentSinkConfig = getConfig(configMap);
 
         // Initialize sink task with a mock context
         sinkTask.initialize(new JdbcSinkTaskTestContext(configMap));

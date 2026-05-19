@@ -186,6 +186,16 @@ public interface SinkConnectorConfig {
             .withDefault(".*CloudEvents\\.Envelope$")
             .withDescription("Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.");
 
+    String ENABLE_SHARED_CHANGE_EVENT_SINK = "enable.sces";
+    Field ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD = Field.createInternal(ENABLE_SHARED_CHANGE_EVENT_SINK)
+            .withDisplayName("Specifies whether to enable the new shared sink connector framework (sces) logic.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 0))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Enables usage of the new shared sink connector framework logic.");
+
     String getCollectionNameFormat();
 
     PrimaryKeyMode getPrimaryKeyMode();

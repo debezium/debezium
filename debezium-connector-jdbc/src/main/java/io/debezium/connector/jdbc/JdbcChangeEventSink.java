@@ -31,7 +31,9 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.sink.AbstractChangeEventSink;
 import io.debezium.sink.DebeziumSinkRecord;
+import io.debezium.sink.batch.Batch;
 import io.debezium.sink.spi.ChangeEventSink;
 import io.debezium.util.Stopwatch;
 
@@ -40,7 +42,7 @@ import io.debezium.util.Stopwatch;
  *
  * @author Chris Cranford
  */
-public class JdbcChangeEventSink implements ChangeEventSink {
+public class JdbcChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class);
     private static final Logger SCHEMA_CHANGE_LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class.getName() + ".SchemaChange");
@@ -55,6 +57,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
                                ConnectorContext connectorContext) {
+        super(config);
         this.config = config;
         this.dialect = dialect;
         this.session = session;
@@ -65,7 +68,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
 
+    @Override
+    protected DebeziumSinkRecord createSinkRecord(SinkRecord kafkaSinkRecord) {
+        return new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
+    }
+
     public void execute(Collection<SinkRecord> records) {
+        if (config.isSharedChangeEventSinkEnabled()) {
+            var batch = put(records);
+            if (batch != null && !batch.isEmpty()) {
+                writeBatch(batch);
+            }
+            return;
+        }
+
         final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
         final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
@@ -253,7 +269,30 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     @Override
+    protected void writeBatch(Batch batch) {
+        recordWriter.write(batch);
+
+        batch.stream()
+                .map(batchRecord -> batchRecord.collectionId())
+                .distinct()
+                .forEach(collectionId -> {
+                    try {
+                        TableDescriptor table = session.doReturningWork(conn -> dialect.readTable(conn, collectionId));
+                        if (table != null) {
+                            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
+                        }
+                    }
+                    catch (Exception e) {
+                        LOGGER.debug("Could not emit OpenLineage event for collection '{}'", collectionId, e);
+                    }
+                });
+    }
+
+    @Override
     public void close() {
+        if (config.isSharedChangeEventSinkEnabled()) {
+            flush();
+        }
         if (session != null && session.isOpen()) {
             LOGGER.info("Closing session.");
             session.close();
@@ -265,13 +304,5 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     public CollectionId getCollectionId(String collectionName) {
         return dialect.getCollectionId(collectionName);
-    }
-
-    public CollectionId getCollectionIdFromRecord(DebeziumSinkRecord record) {
-        String tableName = this.config.getCollectionNamingStrategy().resolveCollectionName(record, config.getCollectionNameFormat());
-        if (tableName == null) {
-            return null;
-        }
-        return getCollectionId(tableName);
     }
 }

@@ -19,6 +19,7 @@ jobs:
       matrix:
         # Runs JDBC sink tests based on specific target platforms concurrently
         test-tags: [ "it-mysql,e2e-mysql", "it-postgresql,e2e-postgresql", "it-sqlserver,e2e-sqlserver" ]
+        sink-framework: [ "false", "true" ]
     name: JDBC - ${{ matrix.test-tags }}
     runs-on: ubuntu-latest
 
@@ -26,8 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Build JDBC - ${{ matrix.test-tags }}
+      - name: Build JDBC - ${{ matrix.test-tags }} - ${{ matrix.sink-framework == 'true' && 'Shared Sink Framework' || 'Legacy Mode' }}
         uses: ./.github/actions/build-debezium-jdbc
         with:
           maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
           tags: ${{ matrix.test-tags }}
+          sink-framework: ${{ matrix.sink-framework }}

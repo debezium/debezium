@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Arrays;
@@ -58,7 +57,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
         consume(factory.createRecordNoKey(topicName, config));
@@ -84,7 +83,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, config));
@@ -113,7 +112,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 2, config));
@@ -140,7 +139,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 2, config));
@@ -165,7 +164,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         try {
             consume(factory.createRecordNoKey(topicName, config));
             // consume again because the exception will be thrown next put call
@@ -173,9 +172,8 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
             fail();
         }
         catch (Exception e) {
-            assertThat(e.getCause().getCause().getMessage()).matches(
-                    "Cannot write to table [a-zA-Z0-9_]* with no key fields defined\\.");
-            assertThat(e.getCause().getMessage()).doesNotContain("Exceeded max retries");
+            assertExceptionCauseMessage(e, "Cannot write to table [a-zA-Z0-9_]* with no key fields defined\\.");
+            assertNoExceptionCauseMessage(e, "Exceeded max retries");
         }
         finally {
             stopSinkConnector();
@@ -195,7 +193,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1, config));
@@ -224,7 +222,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1, config));
@@ -251,7 +249,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, (byte) 1, config);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1, config));
@@ -277,7 +275,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordNoKey(topicName, config);
         consume(createRecord);
 
@@ -303,7 +301,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -332,7 +330,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -359,7 +357,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
         consume(createRecord);
 
@@ -386,7 +384,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        JdbcSinkConnectorConfig config = getConfig(properties);
         final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(topicName,
                 (byte) 1,
                 List.of("optional_with_default_null_value"),
