@@ -65,6 +65,9 @@ public class HybridChronicleQueueProvider implements QueueProvider<DataChangeEve
 
         LOGGER.info("Hybrid Chronicle Queue provider initialized at path: {} (in-memory capacity: {})",
                 chronicleQueueHelper.getQueuePath(), maxQueueSize);
+        if (chronicleQueueHelper.isTemporaryPath()) {
+            LOGGER.warn("The queue path is temporary and will be removed on shutdown.");
+        }
     }
 
     @Override

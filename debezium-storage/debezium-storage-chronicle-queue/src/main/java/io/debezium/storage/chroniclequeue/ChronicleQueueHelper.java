@@ -70,6 +70,10 @@ class ChronicleQueueHelper implements AutoCloseable {
         return queuePath;
     }
 
+    boolean isTemporaryPath() {
+        return ownsDirectory;
+    }
+
     void write(DataChangeEvent event) {
         try (DocumentContext dc = appender.writingDocument()) {
             final Wire wire = dc.wire();
