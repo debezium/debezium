@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
@@ -47,6 +46,7 @@ import io.debezium.engine.format.SimpleString;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
+import io.debezium.storage.kafka.offset.KafkaOffsetStoreConverter;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
@@ -253,7 +253,7 @@ public class DebeziumEngineIT {
     public static class TestOffsetStore extends FileOffsetBackingStore {
 
         public TestOffsetStore() {
-            super(KafkaConnectUtil.converterForOffsetStore());
+            super(KafkaOffsetStoreConverter.jsonConverter());
         }
 
         @Override

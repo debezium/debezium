@@ -3,15 +3,17 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.config;
 
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.WorkerConfig;
-
-import io.debezium.config.Field;
+import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Extension to Kafka's {@link WorkerConfig} with additions needed by {@link io.debezium.engine.DebeziumEngine}
@@ -19,19 +21,29 @@ import io.debezium.config.Field;
  * Should be removed once {@link io.debezium.engine.DebeziumEngine} is independent on Kafka model (DBZ-6234).
  */
 public class EmbeddedWorkerConfig extends WorkerConfig {
+    private final Logger LOGGER = LoggerFactory.getLogger(EmbeddedWorkerConfig.class);
+
     private static final ConfigDef CONFIG;
 
     static {
         ConfigDef config = baseConfigDef();
-        Field.group(config, "file", EmbeddedEngineConfig.OFFSET_STORAGE_FILE_FILENAME);
-        Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_TOPIC);
-        Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_PARTITIONS);
-        Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
+        // we cannot use EmbeddedEngineConfig fields here as it would result into circular artifact dependency.
+        Field.group(config, "file", Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG));
+        Field.group(config, "kafka", Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG));
         CONFIG = config;
     }
 
     public EmbeddedWorkerConfig(Map<String, String> props) {
         super(CONFIG, addRequiredWorkerConfig(props));
+    }
+
+    /**
+     * Creates Debezium {@link Configuration} from the original values of this worker config.
+     */
+    public Configuration asDebeziumConfig() {
+        return Configuration.from(this.originalsStrings());
     }
 
     /**

@@ -1,0 +1,92 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.storage.kafka;
+
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.Future;
+
+import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.storage.Converter;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.EmbeddedWorkerConfig;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
+
+/**
+ * Adapter that wraps Kafka Connect's OffsetBackingStore to implement Debezium's OffsetBackingStore interface.
+ * <p>
+ * This allows Kafka-based offset storage implementations to work with Debezium's Kafka-free API.
+ *
+ * @author Debezium Authors
+ */
+public class KafkaConnectOffsetStoreAdapter implements OffsetStore, KafkaConnectStorageAdapter.OffsetBackingStore {
+
+    private final org.apache.kafka.connect.storage.OffsetBackingStore delegate;
+    private final Converter offsetKeyConverter;
+    private final Converter offsetValueConverter;
+
+    public KafkaConnectOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore) {
+        this(kafkaStore, null, null);
+    }
+
+    public KafkaConnectOffsetStoreAdapter(org.apache.kafka.connect.storage.OffsetBackingStore kafkaStore,
+                                          Converter offsetKeyConverter, Converter offsetValueConverter) {
+        this.delegate = kafkaStore;
+        this.offsetKeyConverter = offsetKeyConverter;
+        this.offsetValueConverter = offsetValueConverter;
+    }
+
+    @Override
+    public void configure(Configuration config) {
+        delegate.configure(new EmbeddedWorkerConfig(config.asMap()));
+    }
+
+    @Override
+    public void configure(WorkerConfig workerConfig) {
+        delegate.configure(workerConfig);
+    }
+
+    @Override
+    public void start() {
+        delegate.start();
+    }
+
+    @Override
+    public void stop() {
+        delegate.stop();
+    }
+
+    @Override
+    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> keys) {
+        return delegate.get(keys);
+    }
+
+    @Override
+    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, OffsetStore.Callback<Void> callback) {
+        // Convert Debezium Callback to Kafka Callback
+        org.apache.kafka.connect.util.Callback<Void> kafkaCallback = callback != null ? callback::onCompletion : null;
+        return delegate.set(values, kafkaCallback);
+    }
+
+    @Override
+    public OffsetStorageReader createReader(String namespace) {
+        return new KafkaConnectOffsetStorageReaderAdapter(this, namespace, offsetKeyConverter, offsetValueConverter);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new KafkaConnectOffsetStorageWriterAdapter(this, namespace, offsetKeyConverter, offsetValueConverter);
+    }
+
+    @Override
+    public org.apache.kafka.connect.storage.OffsetBackingStore getDelegate() {
+        return delegate;
+    }
+}

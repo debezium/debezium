@@ -13,6 +13,11 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-kafka-adapters</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-api</artifactId>
         </dependency>
         <dependency>
@@ -27,6 +32,16 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-runtime</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-json</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>
