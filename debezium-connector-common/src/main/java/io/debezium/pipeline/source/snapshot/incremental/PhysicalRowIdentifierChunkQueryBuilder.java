@@ -5,11 +5,20 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -19,14 +28,13 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
 
 /**
- * Chunk query builder that injects a hidden physical row identifier (e.g. Oracle ROWID, PostgreSQL ctid)
- * so it can be used as the surrogate key for incremental snapshots.
+ * Chunk query builder that injects a physical row identifier such as Oracle ROWID.
  * <p>
- * This builder is vendor-agnostic at the core level; connector-specific implementations provide
- * the appropriate physical column metadata for their database.
+ * Connector-specific implementations supply the physical column metadata.
  */
 public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> extends AbstractChunkQueryBuilder<T> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PhysicalRowIdentifierChunkQueryBuilder.class);
     private static final String DEFAULT_TABLE_ALIAS = "DBZ_PHYSICAL_ROW";
 
     private final String physicalColumnName;
@@ -38,6 +46,8 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
     private final Integer physicalScale;
     private final boolean aliasWildcardProjection;
     private final String tableAlias;
+
+    private Object prefetchedChunkEndValue;
 
     public PhysicalRowIdentifierChunkQueryBuilder(RelationalDatabaseConnectorConfig config,
                                                   JdbcConnection jdbcConnection,
@@ -94,10 +104,8 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
             return false;
         }
         return context.currentDataCollectionId().getSurrogateKey()
-                .map(key -> {
-                    String unquoted = Strings.unquoteIdentifierPart(key.trim());
-                    return Strings.isNullOrEmpty(unquoted) ? key.trim() : unquoted;
-                })
+                .map(String::trim)
+                .map(key -> Strings.defaultIfEmpty(Strings.unquoteIdentifierPart(key), key))
                 .filter(physicalColumnName::equalsIgnoreCase)
                 .isPresent();
     }
@@ -140,5 +148,124 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
             return Optional.ofNullable(tableAlias);
         }
         return Optional.empty();
+    }
+
+    /**
+     * Prefetches the next physical-identifier boundary before building the chunk query.
+     */
+    @Override
+    public String buildChunkQuery(IncrementalSnapshotContext<T> context, Table table, int limit, Optional<String> additionalCondition) {
+        if (limit > 0 && usesPhysicalIdentifier(context)) {
+            prefetchedChunkEndValue = executePrefetch(context, table, limit, additionalCondition);
+            LOGGER.debug("Prefetched chunk-end boundary: {}", prefetchedChunkEndValue);
+        }
+        else {
+            prefetchedChunkEndValue = null;
+        }
+        return super.buildChunkQuery(context, table, limit, additionalCondition);
+    }
+
+    /**
+     * Returns the prefetched physical-identifier boundary, falling back to the table maximum on the last chunk.
+     */
+    @Override
+    protected Optional<Object[]> getChunkUpperBound(IncrementalSnapshotContext<T> context) {
+        if (!usesPhysicalIdentifier(context)) {
+            return super.getChunkUpperBound(context);
+        }
+        if (prefetchedChunkEndValue != null) {
+            return Optional.of(new Object[]{ prefetchedChunkEndValue });
+        }
+        return context.maximumKey();
+    }
+
+    /**
+     * Orders by primary key when the physical row identifier is active.
+     */
+    @Override
+    protected List<Column> getOrderByColumns(IncrementalSnapshotContext<T> context, Table table) {
+        if (usesPhysicalIdentifier(context)) {
+            List<Column> pkColumns = getKeyMapper().getKeyKolumns(table);
+            if (!pkColumns.isEmpty()) {
+                return pkColumns;
+            }
+        }
+        return super.getOrderByColumns(context, table);
+    }
+
+    /**
+     * Returns the prefetched boundary as the next chunk start, falling back to the table maximum when no prefetch value is available.
+     */
+    @Override
+    public Object[] resolveChunkEndPosition(IncrementalSnapshotContext<T> context, Table table, Object[] lastRowKey) {
+        if (prefetchedChunkEndValue != null) {
+            return new Object[]{ prefetchedChunkEndValue };
+        }
+        if (usesPhysicalIdentifier(context) && context.maximumKey().isPresent()) {
+            return context.maximumKey().get();
+        }
+        return lastRowKey;
+    }
+
+    /**
+     * Queries for the physical-identifier value at the {@code limit}-th row from the current chunk start.
+     *
+     * @return the boundary value, or {@code null} when fewer rows remain
+     */
+    private Object executePrefetch(IncrementalSnapshotContext<T> context, Table table, int limit, Optional<String> additionalCondition) {
+        final String sql = buildPrefetchQuery(context, table, limit, additionalCondition);
+
+        LOGGER.debug("Prefetch chunk-end query: {}", sql);
+
+        try (PreparedStatement stmt = jdbcConnection.connection().prepareStatement(sql)) {
+            if (context.isNonInitialChunk()) {
+                CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(stmt, getQueryColumns(context, table), context.chunkEndPosititon(), 1, jdbcConnection);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getObject(1);
+                }
+                return null;
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to prefetch chunk-end boundary for table {}", table.id(), e);
+            throw new DebeziumException("Failed to determine chunk end position via prefetch query for table " + table.id(), e);
+        }
+    }
+
+    protected String buildPrefetchQuery(IncrementalSnapshotContext<T> context, Table table, int limit, Optional<String> additionalCondition) {
+        final StringBuilder sql = new StringBuilder("SELECT ");
+        sql.append(physicalIdentifierExpression);
+        sql.append(" FROM ");
+        sql.append(buildTableReference(table));
+
+        boolean hasWhere = false;
+        if (context.isNonInitialChunk()) {
+            sql.append(" WHERE ");
+            addLowerBound(context, table, context.chunkEndPosititon(), sql);
+            hasWhere = true;
+        }
+        if (additionalCondition.isPresent()) {
+            sql.append(hasWhere ? " AND " : " WHERE ");
+            sql.append(additionalCondition.get());
+        }
+
+        sql.append(" ORDER BY ").append(getPrefetchOrderByExpression());
+        sql.append(" OFFSET ").append(limit - 1);
+        sql.append(" ROWS FETCH NEXT 1 ROWS ONLY");
+
+        return sql.toString();
+    }
+
+    protected String getPrefetchOrderByExpression() {
+        return physicalIdentifierExpression;
+    }
+
+    /**
+     * Builds a quoted table reference for {@code FROM} clauses.
+     */
+    protected String buildTableReference(Table table) {
+        return jdbcConnection.quotedTableIdString(table.id());
     }
 }
