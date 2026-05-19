@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -97,7 +98,7 @@ public class AsyncEmbeddedEngineTest {
     void testEngineBasicLifecycle() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -153,7 +154,7 @@ public class AsyncEmbeddedEngineTest {
         final int NUMBER_OF_TASKS = 5;
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, String.valueOf(NUMBER_OF_TASKS));
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), String.valueOf(NUMBER_OF_TASKS));
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.MultiTaskSimpleSourceConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
@@ -191,7 +192,7 @@ public class AsyncEmbeddedEngineTest {
         final int NUMBER_OF_TASKS = 10;
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, String.valueOf(NUMBER_OF_TASKS));
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), String.valueOf(NUMBER_OF_TASKS));
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.AlmostRandomlyFailingDuringStartConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
@@ -237,7 +238,7 @@ public class AsyncEmbeddedEngineTest {
     void testHeaderConverter() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -278,7 +279,7 @@ public class AsyncEmbeddedEngineTest {
     void testCompletionCallbackCalledUponSuccess() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -328,7 +329,7 @@ public class AsyncEmbeddedEngineTest {
     void testCompletionCallbackCalledUponFailure() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.InterruptedConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
@@ -364,7 +365,7 @@ public class AsyncEmbeddedEngineTest {
     void testErrorInConnectorCallbackDoesNotBlockShutdown() throws Exception {
         final Properties props = new Properties();
         props.put(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.put(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -424,7 +425,7 @@ public class AsyncEmbeddedEngineTest {
     void testCannotStopWhileTasksAreStarting() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), AsyncEmbeddedEngineTest.WaitInTaskStartConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
@@ -468,7 +469,7 @@ public class AsyncEmbeddedEngineTest {
     void testCannotStopAlreadyStoppedEngine() throws Exception {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.NoOpConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
@@ -506,7 +507,7 @@ public class AsyncEmbeddedEngineTest {
     void testExecuteSmt() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -573,7 +574,7 @@ public class AsyncEmbeddedEngineTest {
     void testCloseSmt() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -612,7 +613,7 @@ public class AsyncEmbeddedEngineTest {
     void testPollingIsRetriedUponFailure() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, SimpleSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -646,7 +647,7 @@ public class AsyncEmbeddedEngineTest {
     void testConnectorFailsIfMaxRetriesExceeded() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, SimpleSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -689,7 +690,7 @@ public class AsyncEmbeddedEngineTest {
     void testEngineBasicLifecycleConsumerSequentially() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -704,7 +705,7 @@ public class AsyncEmbeddedEngineTest {
     void testEngineBasicLifecycleConsumerNonSequentially() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -720,7 +721,7 @@ public class AsyncEmbeddedEngineTest {
     void testCompletionCallbackCalledAfterConnectorStop() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -788,7 +789,7 @@ public class AsyncEmbeddedEngineTest {
     void testDefaultBuilderFactory() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -832,7 +833,7 @@ public class AsyncEmbeddedEngineTest {
     void testSmtReturnsNullToProcessor() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -877,7 +878,7 @@ public class AsyncEmbeddedEngineTest {
     void testSmtReturnsNullToProcessorAndConvertor() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -923,7 +924,7 @@ public class AsyncEmbeddedEngineTest {
     void testGracefullyShutDownUponStopEngineException() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -986,7 +987,7 @@ public class AsyncEmbeddedEngineTest {
     void testOffsetIsCommittedUponStopEngineException() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -1273,7 +1274,7 @@ public class AsyncEmbeddedEngineTest {
     void testPollingCallbacksAreCalled() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -1352,7 +1353,7 @@ public class AsyncEmbeddedEngineTest {
     void testCanStopEngineFromPollingCallback() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
@@ -1410,7 +1411,7 @@ public class AsyncEmbeddedEngineTest {
     void testOffsetStorageFailure() throws Exception {
         final Properties props = new Properties();
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(EmbeddedEngineConfig.OFFSET_STORAGE.name(), KafkaFailureEmulatingOffsetBackingStore.class.getName());
         props.setProperty(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), "4000");
@@ -1494,7 +1495,7 @@ public class AsyncEmbeddedEngineTest {
 
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.NoOpConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
 
