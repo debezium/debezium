@@ -34,7 +34,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -146,7 +145,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         // Create thread pools for executing tasks and record pipelines.
-        taskService = Executors.newFixedThreadPool(this.config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, () -> 1));
+        taskService = Executors.newFixedThreadPool(this.config.getInteger(CommonConnectorConfig.TASKS_MAX, () -> 1));
         final String processingThreads = this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS);
         if (processingThreads == null || processingThreads.isBlank()) {
             recordService = new ThreadPoolExecutor(0, AsyncEngineConfig.AVAILABLE_CORES, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue());
@@ -382,7 +381,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private void createSourceTasks(final EngineSourceConnector connector, final List<EngineSourceTask> tasks)
             throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         final Class<? extends Task> taskClass = connector.connectConnector().taskClass();
-        final List<Map<String, String>> taskConfigs = connector.connectConnector().taskConfigs(config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, 1));
+        final List<Map<String, String>> taskConfigs = connector.connectConnector().taskConfigs(config.getInteger(CommonConnectorConfig.TASKS_MAX, 1));
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Following task configurations will be used for creating tasks:");
             for (int i = 0; i < taskConfigs.size(); i++) {
