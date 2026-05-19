@@ -102,7 +102,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return;
         }
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, maybeRedactSensitiveData(key), window);
-        if (!window.isEmpty() && context.deduplicationNeeded()) {
+        if (hasOpenWindow() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
         }
     }
@@ -147,5 +147,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         }
 
         return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now()));
+    }
+
+    @Override
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        throw new UnsupportedOperationException(
+                "Parallel snapshot connections not supported for SignalBasedIncrementalSnapshotChangeEventSource. " +
+                        "Parallel incremental snapshots are only supported for read-only snapshot implementations. " +
+                        "To use parallel snapshots, configure your connector to use read-only incremental snapshots.");
     }
 }
