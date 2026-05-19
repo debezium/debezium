@@ -10,7 +10,6 @@ import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -198,7 +197,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     @Incubating
-    interface ShutdownStrategy<T> extends Predicate<T> {
+    interface ShutdownStrategy<R> extends Predicate<R> {
     }
 
     /**
@@ -262,107 +261,18 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     @Incubating
-    interface ShutdownContext<R> {
-
-        Optional<String> configuration(String key);
-
-        R record();
-    }
-
-    @Incubating
     interface Shutdown<R> {
 
         ShutdownStrategy<ShutdownContext<R>> before();
 
         ShutdownStrategy<ShutdownContext<R>> after();
 
-        static <R> Shutdown<R> afterProcessing(ShutdownStrategy<ShutdownContext<R>> shutdownStrategy) {
-            if (shutdownStrategy == null) {
-                throw new IllegalArgumentException("the shutdown strategy cannot be null");
-            }
+        @Incubating
+        interface ShutdownContext<R> {
 
-            return new Shutdown<>() {
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> before() {
-                    return null;
-                }
+            Optional<String> configuration(String key);
 
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> after() {
-                    return shutdownStrategy;
-                }
-            };
-        }
-
-        static <R> Shutdown<R> afterProcessing(int number) {
-            if (number == 0) {
-                throw new IllegalArgumentException("the number of events must be greater than 0");
-            }
-
-            return new Shutdown<>() {
-                private final CountDown<ShutdownContext<R>> countdown = new CountDown<>(number);
-
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> before() {
-                    return null;
-                }
-
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> after() {
-                    return countdown;
-                }
-            };
-        }
-
-        static <R> Shutdown<R> beforeProcessing(ShutdownStrategy<ShutdownContext<R>> shutdownStrategy) {
-            if (shutdownStrategy == null) {
-                throw new IllegalArgumentException("the shutdown strategy cannot be null");
-            }
-
-            return new Shutdown<>() {
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> before() {
-                    return shutdownStrategy;
-                }
-
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> after() {
-                    return null;
-                }
-            };
-        }
-
-        static <R> Shutdown<R> beforeProcessing(int number) {
-            if (number == 0) {
-                throw new IllegalArgumentException("the number of events must be greater than 0");
-            }
-
-            return new Shutdown<>() {
-                private final CountDown<ShutdownContext<R>> countdown = new CountDown<>(number);
-
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> before() {
-                    return countdown;
-                }
-
-                @Override
-                public ShutdownStrategy<ShutdownContext<R>> after() {
-                    return null;
-                }
-            };
-        }
-
-        class CountDown<R> implements ShutdownStrategy<R> {
-            private final AtomicInteger counter;
-
-            private CountDown(int number) {
-                counter = new AtomicInteger(number);
-            }
-
-            @Override
-            public boolean test(R record) {
-                return counter.decrementAndGet() == 0;
-            }
+            R record();
         }
     }
 
