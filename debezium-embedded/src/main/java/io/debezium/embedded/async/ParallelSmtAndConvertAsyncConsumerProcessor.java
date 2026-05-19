@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -76,7 +77,8 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
                                                                             Watcher watcher,
                                                                             DebeziumEngine.Shutdown<R> shutdown,
                                                                             Runnable workflow,
-                                                                            Transformations transformations) {
+                                                                            Transformations transformations,
+                                                                            Map<String, String> configuration) {
         if (shutdown == null) {
             return new ParallelSmtAndConvertAsyncConsumerProcessor<>(
                     committer,
@@ -87,8 +89,8 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
                 record -> new ProcessingCallables.TransformConvertConsumeRecord<>(record,
                         transformations,
                         convertor,
-                        new ShutdownConsumer<>(DefaultShutdownHandler.create(shutdown.before(), workflow, committer),
-                                DefaultShutdownHandler.create(shutdown.after(), workflow, committer),
+                        new ShutdownConsumer<>(DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
+                                DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
                                 transformedRecord -> {
                                     if (transformedRecord != null && watcher.engine().isConsuming()) {
                                         consumer.accept(transformedRecord);

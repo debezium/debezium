@@ -6,7 +6,6 @@
 package io.debezium.embedded.async;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 import io.debezium.engine.DebeziumEngine;
 
@@ -31,18 +30,4 @@ public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<
         records.forEach(after::evaluate);
     }
 
-    public static <R> BiFunction<DebeziumEngine.ChangeConsumer<R>, DebeziumEngine.RecordCommitter, DebeziumEngine.ChangeConsumer<R>> create(
-            DebeziumEngine.Shutdown<R> shutdown,
-            Runnable runner) {
-        return (consumer, committer) -> {
-            if (shutdown == null) {
-                return consumer;
-            }
-
-            return new ShutdownChangeConsumer<>(
-                    DefaultShutdownHandler.create(shutdown.before(), runner, committer),
-                    DefaultShutdownHandler.create(shutdown.after(), runner, committer),
-                    consumer);
-        };
-    }
 }
