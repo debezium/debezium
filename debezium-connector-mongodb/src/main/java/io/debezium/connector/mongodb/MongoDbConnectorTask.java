@@ -27,7 +27,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.DefaultQueueProvider;
+import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
@@ -111,12 +111,21 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 
         try {
+            // Service providers
+            registerServiceProviders(connectorConfig.getServiceRegistry());
+
+            // Manually Register Beans
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
+
             this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(connectorConfig.getPollInterval())
                     .maxBatchSize(connectorConfig.getMaxBatchSize())
                     .maxQueueSize(connectorConfig.getMaxQueueSize())
                     .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
-                    .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
+                    .queueProvider(connectorConfig.getServiceRegistry().tryGetService(QueueProviderService.class).getQueueProvider())
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
@@ -129,15 +138,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     getAvailableSignalChannels(),
                     DocumentReader.defaultReader(),
                     previousOffsets);
-
-            // Manually Register Beans
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-            // Service providers
-            registerServiceProviders(connectorConfig.getServiceRegistry());
 
             final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
@@ -283,6 +283,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         try {
             if (schema != null) {
                 schema.close();
+            }
+
+            if (queue != null) {
+                queue.close();
             }
         }
         finally {

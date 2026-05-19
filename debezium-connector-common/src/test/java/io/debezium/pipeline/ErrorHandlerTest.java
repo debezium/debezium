@@ -211,12 +211,18 @@ public class ErrorHandlerTest {
         return errorHandler;
     }
 
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
+    }
+
     private ChangeEventQueue<DataChangeEvent> queue() {
         return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(1))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
-                .queueProvider(new DefaultQueueProvider<>(1000))
+                .queueProvider(createDefaultQueueProvider(1000))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("test", "test", "test"))
                 .build();
     }
