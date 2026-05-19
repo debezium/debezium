@@ -73,7 +73,7 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
                                                                        Consumer<R> consumer,
                                                                        Function<SourceRecord, R> convertor,
                                                                        Watcher watcher,
-                                                                       DebeziumShutdown<R> shutdown,
+                                                                       DebeziumEngine.Shutdown<R> shutdown,
                                                                        Runnable workflow) {
 
         if (shutdown == null) {

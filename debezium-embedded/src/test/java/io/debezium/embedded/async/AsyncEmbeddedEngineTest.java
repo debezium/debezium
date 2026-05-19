@@ -1074,10 +1074,7 @@ public class AsyncEmbeddedEngineTest {
 
         final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> firstIteration = builder
                 .using(props)
-                .shutdown()
-                .after()
-                .consuming()
-                .records(2)
+                .shutdown(DebeziumEngine.Shutdown.afterProcessing(2))
                 .using(new TestEngineConnectorCallback())
                 .notifying(record -> recordsLatch.countDown())
                 .build();
@@ -1125,10 +1122,11 @@ public class AsyncEmbeddedEngineTest {
 
         final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> firstIteration = builder
                 .using(props)
-                .shutdown()
-                .after()
-                .consuming()
-                .custom(record -> record.value().value().equals("Generated line number 2"))
+                .shutdown(DebeziumEngine.Shutdown.afterProcessing(event -> event
+                        .record()
+                        .value()
+                        .value()
+                        .equals("Generated line number 2")))
                 .using(new TestEngineConnectorCallback())
                 .notifying(record -> recordsLatch.countDown())
                 .build();

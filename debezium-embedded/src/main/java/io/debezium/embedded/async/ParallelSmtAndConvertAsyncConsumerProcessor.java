@@ -74,7 +74,7 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
                                                                             Consumer<R> consumer,
                                                                             Function<SourceRecord, R> convertor,
                                                                             Watcher watcher,
-                                                                            DebeziumShutdown<R> shutdown,
+                                                                            DebeziumEngine.Shutdown<R> shutdown,
                                                                             Runnable workflow,
                                                                             Transformations transformations) {
         if (shutdown == null) {

@@ -7,13 +7,10 @@ package io.debezium.engine;
 
 import java.io.Closeable;
 import java.time.Clock;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.ServiceLoader;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -200,52 +197,6 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         }
     }
 
-    /**
-     * A strategy that determines when the engine should automatically shut down based on
-     * the records being processed. This is a functional interface extending {@link Predicate}
-     * that evaluates each record to decide if shutdown conditions have been met.
-     *
-     * <p>Shutdown strategies can be configured to evaluate records either before or after
-     * they are passed to the consumer, using the {@link ShutdownBuilder} API:
-     *
-     * <pre>{@code
-     * // Shutdown after consuming exactly 100 records
-     * engine = DebeziumEngine.create(Connect.class)
-     *     .shutdown()
-     *     .after()
-     *     .consumed()
-     *     .records(100)
-     *     .notifying(consumer)
-     *     .build();
-     *
-     * // Shutdown before processing records that match a condition
-     * engine = DebeziumEngine.create(Connect.class)
-     *     .shutdown()
-     *     .before()
-     *     .consumed()
-     *     .custom(record -> record.value().toString().contains("STOP"))
-     *     .notifying(consumer)
-     *     .build();
-     * }</pre>
-     *
-     * <p><strong>Before vs After:</strong>
-     * <ul>
-     *   <li><strong>Before:</strong> The strategy evaluates records before they reach the consumer.
-     *       If the condition is met, the record triggering shutdown is not processed.</li>
-     *   <li><strong>After:</strong> The strategy evaluates records after they have been consumed.
-     *       The record triggering shutdown is processed before the engine stops.</li>
-     * </ul>
-     *
-     * <p>When a shutdown strategy's {@link #test(Object)} method returns {@code true},
-     * the engine will gracefully stop, allowing
-     * the current batch to complete and offsets to be committed before shutdown.
-     *
-     * @param <T> the type of records to evaluate (typically the same type as consumed by
-     *            the engine's consumer)
-     *
-     * @see ShutdownBuilder
-     * @since 3.6.0
-     */
     @Incubating
     interface ShutdownStrategy<T> extends Predicate<T> {
     }
@@ -310,157 +261,109 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     }
 
-    /**
-     * builder API for configuring automatic engine shutdown based on record processing.
-     * This builder allows you to specify when and how the engine should automatically stop,
-     * either before or after consuming a certain number of records or based on custom conditions.
-     *
-     * <p>The builder follows this chain:
-     * <pre>
-     * shutdown() → before()/after() → consumed() → records(n)/custom(strategy) → [continue building]
-     * </pre>
-     *
-     * <p><strong>Example - Shutdown after processing 1000 records:</strong>
-     * <pre>{@code
-     * DebeziumEngine<ChangeEvent<String, String>> engine =
-     *     DebeziumEngine.create(Json.class)
-     *         .using(props)
-     *         .shutdown()
-     *             .after()
-     *             .consumed()
-     *             .records(1000)
-     *         .notifying(consumer)
-     *         .build();
-     * }</pre>
-     *
-     * <p><strong>Example - Shutdown before processing a sentinel record:</strong>
-     * <pre>{@code
-     * DebeziumEngine<SourceRecord> engine =
-     *     DebeziumEngine.create(Connect.class)
-     *         .using(props)
-     *         .shutdown()
-     *             .before()
-     *             .consumed()
-     *             .custom(record -> "SHUTDOWN".equals(record.topic()))
-     *         .notifying(consumer)
-     *         .build();
-     * }</pre>
-     *
-     * @param <R> the record type that will be evaluated for shutdown conditions
-     *
-     * @see ShutdownStrategy
-     * @since 3.6.0
-     */
     @Incubating
-    interface ShutdownBuilder<R> {
+    interface ShutdownContext<R> {
 
-        /**
-         * Specifies that the shutdown condition should be evaluated <strong>before</strong>
-         * records are passed to the consumer. When the condition is met, the triggering
-         * record will not be processed by the consumer.
-         *
-         * <p>Use this when you want to stop before processing a specific record, such as
-         * a sentinel/marker record that signals the end of a data stream.
-         *
-         * @return the before builder for further configuration; never null
-         */
-        BeforeBuilder<R> before();
+        Optional<String> configuration(String key);
 
-        /**
-         * Specifies that the shutdown condition should be evaluated <strong>after</strong>
-         * records are passed to the consumer. When the condition is met, the triggering
-         * record will have been processed by the consumer before shutdown begins.
-         *
-         * <p>Use this when you want to ensure a specific number of records have been
-         * fully processed, or to stop after processing a specific record.
-         *
-         * @return the after builder for further configuration; never null
-         */
-        AfterBuilder<R> after();
+        R record();
+    }
 
-        /**
-         * Builder for configuring shutdown that occurs before record consumption.
-         *
-         * @param <R> the record type
-         */
-        interface BeforeBuilder<R> {
+    @Incubating
+    interface Shutdown<R> {
 
-            /**
-             * Continues the builder chain to specify the shutdown condition based on
-             * consumed records. Currently, this is the only supported condition type.
-             *
-             * @return the consumed builder for specifying the exact condition; never null
-             */
-            ConsumedBuilder<R> consuming();
+        ShutdownStrategy<ShutdownContext<R>> before();
+
+        ShutdownStrategy<ShutdownContext<R>> after();
+
+        static <R> Shutdown<R> afterProcessing(ShutdownStrategy<ShutdownContext<R>> shutdownStrategy) {
+            if (shutdownStrategy == null) {
+                throw new IllegalArgumentException("the shutdown strategy cannot be null");
+            }
+
+            return new Shutdown<>() {
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> before() {
+                    return null;
+                }
+
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> after() {
+                    return shutdownStrategy;
+                }
+            };
         }
 
-        /**
-         * Builder for configuring shutdown that occurs after record consumption.
-         *
-         * @param <R> the record type
-         */
-        interface AfterBuilder<R> {
-            /**
-             * Continues the builder chain to specify the shutdown condition based on
-             * consumed records. Currently, this is the only supported condition type.
-             *
-             * @return the consumed builder for specifying the exact condition; never null
-             */
-            ConsumedBuilder<R> consuming();
+        static <R> Shutdown<R> afterProcessing(int number) {
+            if (number == 0) {
+                throw new IllegalArgumentException("the number of events must be greater than 0");
+            }
 
+            return new Shutdown<>() {
+                private final CountDown<ShutdownContext<R>> countdown = new CountDown<>(number);
+
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> before() {
+                    return null;
+                }
+
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> after() {
+                    return countdown;
+                }
+            };
         }
 
-        /**
-         * Builder for specifying the actual shutdown condition based on consumed records.
-         * Provides two options: a simple record count, or a custom predicate-based strategy.
-         *
-         * @param <R> the record type
-         */
-        interface ConsumedBuilder<R> {
+        static <R> Shutdown<R> beforeProcessing(ShutdownStrategy<ShutdownContext<R>> shutdownStrategy) {
+            if (shutdownStrategy == null) {
+                throw new IllegalArgumentException("the shutdown strategy cannot be null");
+            }
 
-            /**
-             * Configures the engine to automatically shut down after processing a specific
-             * number of records. The engine will count each record as it flows through the
-             * pipeline and trigger shutdown when the count is reached.
-             *
-             *
-             * @param number the exact number of records to process before shutdown; must be positive
-             * @return the engine builder to continue configuration; never null
-             * @throws IllegalArgumentException if number is less than 1
-             */
-            Builder<R> records(int number);
+            return new Shutdown<>() {
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> before() {
+                    return shutdownStrategy;
+                }
 
-            /**
-             * Configures the engine to automatically shut down based on a custom strategy
-             * that evaluates each record. The strategy is a {@link Predicate} that returns
-             * {@code true} when shutdown should be triggered.
-             *
-             * <p>The strategy's {@link ShutdownStrategy#test(Object)} method is called for
-             * each record. When it returns {@code true}, the engine will gracefully stop.
-             *
-             * <p><strong>Example - Stop on a specific value:</strong>
-             * <pre>{@code
-             * .custom(record -> {
-             *     MyValue value = record.value();
-             *     return "END_OF_STREAM".equals(value.getMarker());
-             * })
-             * }</pre>
-             *
-             * <p><strong>Example - Stop after a time threshold:</strong>
-             * <pre>{@code
-             * AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
-             * .custom(record -> {
-             *     return System.currentTimeMillis() - startTime.get() > 60000; // 1 minute
-             * })
-             * }</pre>
-             *
-             * @param shutdownStrategy the custom strategy to evaluate records; must not be null
-             * @return the engine builder to continue configuration; never null
-             * @throws IllegalArgumentException if shutdownStrategy is null
-             */
-            Builder<R> custom(ShutdownStrategy<R> shutdownStrategy);
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> after() {
+                    return null;
+                }
+            };
         }
 
+        static <R> Shutdown<R> beforeProcessing(int number) {
+            if (number == 0) {
+                throw new IllegalArgumentException("the number of events must be greater than 0");
+            }
+
+            return new Shutdown<>() {
+                private final CountDown<ShutdownContext<R>> countdown = new CountDown<>(number);
+
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> before() {
+                    return countdown;
+                }
+
+                @Override
+                public ShutdownStrategy<ShutdownContext<R>> after() {
+                    return null;
+                }
+            };
+        }
+
+        class CountDown<R> implements ShutdownStrategy<R> {
+            private final AtomicInteger counter;
+
+            private CountDown(int number) {
+                counter = new AtomicInteger(number);
+            }
+
+            @Override
+            public boolean test(R record) {
+                return counter.decrementAndGet() == 0;
+            }
+        }
     }
 
     /**
@@ -486,67 +389,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          */
         Builder<R> notifying(ChangeConsumer<R> handler);
 
-        /**
-         * Configures automatic engine shutdown based on record processing conditions.
-         * Returns a {@link ShutdownBuilder} that allows you to specify when and how the
-         * engine should automatically stop, either before or after consuming a certain
-         * number of records or based on custom conditions.
-         *
-         * <p>This is useful for scenarios such as:
-         * <ul>
-         *   <li>Processing a finite dataset and stopping after all records are consumed</li>
-         *   <li>Running the engine for testing purposes with a limited record count</li>
-         *   <li>Stopping when a sentinel/marker record is encountered in the stream</li>
-         *   <li>Implementing time-based or condition-based automatic shutdown</li>
-         * </ul>
-         *
-         * <p><strong>Example - Stop after processing exactly 100 records:</strong>
-         * <pre>{@code
-         * DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
-         *     .using(config)
-         *     .shutdown()
-         *         .after()
-         *         .consumed()
-         *         .records(100)
-         *     .notifying(record -> {
-         *         // Process record
-         *     })
-         *     .build();
-         * }</pre>
-         *
-         * <p><strong>Example - Stop before processing a shutdown marker:</strong>
-         * <pre>{@code
-         * DebeziumEngine<ChangeEvent<String, String>> engine =
-         *     DebeziumEngine.create(Json.class)
-         *         .using(config)
-         *         .shutdown()
-         *             .before()
-         *             .consumed()
-         *             .custom(record -> "STOP".equals(record.value()))
-         *         .notifying(consumer)
-         *         .build();
-         * }</pre>
-         *
-         * <p><strong>Shutdown behavior:</strong>
-         * When the shutdown condition is met, the engine will:
-         * <ol>
-         *   <li>signal graceful shutdown</li>
-         *   <li>Allow the current batch of records to complete processing</li>
-         *   <li>Commit all offsets to ensure no data loss</li>
-         *   <li>Stop all tasks and clean up resources</li>
-         *   <li>Call the {@link CompletionCallback} with {@code success=true}</li>
-         * </ol>
-         *
-         * <p><strong>Note:</strong> Shutdown configuration is optional. If not specified,
-         * the engine will run indefinitely until explicitly stopped via {@link #close()}
-         * or thread interruption.
-         *
-         * @return a shutdown builder for configuring automatic shutdown conditions; never null
-         * @see ShutdownBuilder
-         * @see ShutdownStrategy
-         * @since 3.6.0
-         */
-        default ShutdownBuilder<R> shutdown() {
+        default Builder<R> shutdown(Shutdown<R> shutdown) {
             return null;
         }
 

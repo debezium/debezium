@@ -53,7 +53,7 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
     public static <R> ParallelSmtBatchProcessor create(DebeziumEngine.RecordCommitter<SourceRecord> committer,
                                                        final DebeziumEngine.ChangeConsumer<R> userHandler,
                                                        Watcher watcher,
-                                                       DebeziumShutdown<R> shutdown,
+                                                       DebeziumEngine.Shutdown<R> shutdown,
                                                        Runnable runner) {
 
         if (shutdown == null) {
