@@ -939,7 +939,7 @@ To use the `chronicle` provider, set `queue.provider.type` to `chronicle`.
 |Description
 
 |[[queue-provider-type-chronicle]]<<queue-provider-type-chronicle, `queue.provider.type`>>
-|`default`
+|`memory`
 |Must be set to `chronicle`.
 
 |[[chronicle-queue-path]]<<chronicle-queue-path, `chronicle.queue.path`>>
@@ -964,7 +964,7 @@ When polling, {prodname} drains evicted events from Chronicle Queue first, then 
 |Description
 
 |[[queue-provider-type-hybrid]]<<queue-provider-type-hybrid, `queue.provider.type`>>
-|`default`
+|`memory`
 |Must be set to `hybrid_chronicle`.
 
 |[[hybrid-chronicle-queue-path]]<<hybrid-chronicle-queue-path, `chronicle.queue.path`>>
