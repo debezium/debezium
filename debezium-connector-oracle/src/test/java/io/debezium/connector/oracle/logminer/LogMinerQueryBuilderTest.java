@@ -89,6 +89,12 @@ public class LogMinerQueryBuilderTest {
     }
 
     @Test
+    @FixFor("DBZ-1735")
+    public void testLogMinerQueryWithLobAndInternalEventsEnabled() {
+        assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
+    }
+
+    @Test
     @FixFor("DBZ-7847")
     public void testTableIncludeListWithMoreThan1000Elements() {
         String tables = IntStream.range(0, 1001).mapToObj(i -> "DEBEZIUM\\.T" + i).collect(Collectors.joining(","));
@@ -259,6 +265,7 @@ public class LogMinerQueryBuilderTest {
 
     private String getBufferedQuery(OracleConnectorConfig config) {
         final String operationDdlPredicate = " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
+        final String internalEventsPredicate = " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%AAAAAAAAAAAA')";
 
         String query = "SELECT " + buildSelectColumns(config) + "FROM V$LOGMNR_CONTENTS WHERE ";
 
@@ -278,6 +285,7 @@ public class LogMinerQueryBuilderTest {
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
+        query += config.isLobEnabled() && config.isLogMiningIncludeInternalEvents() ? internalEventsPredicate : "";
         query += config.storeOnlyCapturedTables() ? operationDdlPredicate : "";
         query += ")";
 

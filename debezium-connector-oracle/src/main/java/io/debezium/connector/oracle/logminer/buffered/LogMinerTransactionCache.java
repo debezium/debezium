@@ -157,6 +157,16 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean rollbackTransactionEventWithRowId(T transaction, String rowId);
 
     /**
+     * Updates the ROW_ID of the last event in the given transaction if it's empty.
+     * Called when an INTERNAL event reveals the actual row address
+     * so that savepoint rollback UPDATEs or DELETEs can match the correct event.
+     *
+     * @param transaction the transaction, should not be {@code null}
+     * @param rowId the non-empty ROW_ID to assign to the last event
+     */
+    void updateLastEventEmptyRowId(T transaction, String rowId);
+
+    /**
      * Checks whether a specific transaction's event with the event key is cached.
      *
      * @param transaction the transaction, should not be {@code null}

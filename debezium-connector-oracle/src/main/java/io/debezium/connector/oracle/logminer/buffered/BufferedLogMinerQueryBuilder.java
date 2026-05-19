@@ -136,12 +136,21 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         operationInClause.withValues(getOperationCodesList(isCteQuery));
         predicate.append("(").append(operationInClause.build());
 
+        // Handle INTERNAL operations that can contain ROW_IDs for INSERT/UPDATE operations with empty ROW_IDs
+        if (connectorConfig.isLobEnabled() && connectorConfig.isLogMiningIncludeInternalEvents()) {
+            predicate.append(getInternalPredicate());
+        }
+
         // Handle DDL operations
         if (connectorConfig.storeOnlyCapturedTables()) {
             predicate.append(getDdlPredicate());
         }
 
         return predicate.append(")").toString();
+    }
+
+    private static String getInternalPredicate() {
+        return " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%AAAAAAAAAAAA')";
     }
 
     private static String getDdlPredicate() {

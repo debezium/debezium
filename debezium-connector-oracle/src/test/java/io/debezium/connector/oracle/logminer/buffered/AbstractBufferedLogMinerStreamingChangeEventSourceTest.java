@@ -626,6 +626,24 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
     }
 
+    @Test
+    @FixFor("DBZ-1735")
+    public void testSavepointRollbackInsertWithOutOfLineLob() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAA", "EMPTY_CLOB()"));
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.never())
+                    .dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         Configuration configuration = getConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
@@ -701,6 +719,16 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .build();
 
         return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig, java.util.Collections::emptyList);
+    }
+
+    private LogMinerEventRow getInternalLogMinerEventRow(long scn, String transactionId, Instant changeTime, String rowId) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.INTERNAL);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        return row;
     }
 
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId) {
