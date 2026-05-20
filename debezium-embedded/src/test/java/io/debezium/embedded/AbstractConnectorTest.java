@@ -47,13 +47,11 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.Converter;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterEach;
@@ -63,7 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EmbeddedWorkerConfig;
-import io.debezium.config.Instantiator;
+import io.debezium.converter.kafka.KafkaConnectConverterAdapter;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
@@ -1228,11 +1226,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 .build();
 
         final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        keyConverter.configure(internalConverterConfig, true);
-        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        valueConverter.configure(internalConverterConfig, false);
+        Map<String, String> internalConverterConfig = Collections.singletonMap("schemas.enable", "false");
+        KafkaConnectConverterAdapter keyConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", true);
+        KafkaConnectConverterAdapter valueConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", false);
 
         // Enrich config with the default values need for Worker config.
         // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
@@ -1242,7 +1240,7 @@ public abstract class AbstractConnectorTest implements Testing {
         offsetStore.start();
         try {
             final OffsetStorageReader offsetReader = new KafkaConnectOffsetStorageReaderAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
-                    keyConverter, valueConverter);
+                    keyConverter.getDelegate(), valueConverter.getDelegate());
             return offsetReader.offsets(partitions);
         }
         finally {
@@ -1257,11 +1255,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 .build();
 
         final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        keyConverter.configure(internalConverterConfig, true);
-        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        valueConverter.configure(internalConverterConfig, false);
+        Map<String, String> internalConverterConfig = Collections.singletonMap("schemas.enable", "false");
+        KafkaConnectConverterAdapter keyConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", true);
+        KafkaConnectConverterAdapter valueConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", false);
 
         // Enrich config with the default values need for Worker config.
         // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
@@ -1273,7 +1271,7 @@ public abstract class AbstractConnectorTest implements Testing {
         var latch = new CountDownLatch(1);
         try {
             final OffsetStorageWriter offsetWriter = new KafkaConnectOffsetStorageWriterAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
-                    keyConverter, valueConverter);
+                    keyConverter.getDelegate(), valueConverter.getDelegate());
             for (var partition : offsets.keySet()) {
                 offsetWriter.offset(partition, offsets.get(partition));
             }
