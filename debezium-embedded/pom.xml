@@ -64,6 +64,12 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-kafka</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-common</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
