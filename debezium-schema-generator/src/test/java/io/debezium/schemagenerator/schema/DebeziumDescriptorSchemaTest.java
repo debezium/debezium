@@ -280,7 +280,7 @@ class DebeziumDescriptorSchemaTest {
                 // Create ConfigDefinition to resolve matchers (just like real connectors do)
                 ConfigDefinition config = ConfigDefinition.editor()
                         .name("Test")
-                        .connector(adapterField, bufferType)
+                        .group(Field.Group.CONNECTOR, adapterField, bufferType)
                         .create();
 
                 return Field.setOf(config.all());

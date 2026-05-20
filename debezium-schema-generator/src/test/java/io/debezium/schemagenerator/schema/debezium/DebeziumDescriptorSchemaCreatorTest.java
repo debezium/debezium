@@ -769,7 +769,7 @@ class DebeziumDescriptorSchemaCreatorTest {
 
                 ConfigDefinition config = ConfigDefinition.editor()
                         .name("Test")
-                        .connector(adapterField, dependentField)
+                        .group(Field.Group.CONNECTOR, adapterField, dependentField)
                         .create();
 
                 return Field.setOf(config.all());
