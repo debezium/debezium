@@ -39,7 +39,7 @@ public interface ComponentMetadata {
     default ConfigDefinition getConfigDefinition() {
         return ConfigDefinition.editor()
                 .name(getClass().getName())
-                .type(getComponentFields().asArray())
+                .group(Field.Group.CONNECTOR, getComponentFields().asArray())
                 .create();
     }
 

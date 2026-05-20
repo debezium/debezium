@@ -451,7 +451,7 @@ public class ConfigurationTest {
 
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(parent, dependent, sslProtocol)
+                .group(Field.Group.CONNECTOR, parent, dependent, sslProtocol)
                 .create();
 
         config = Configuration.create()
@@ -487,7 +487,7 @@ public class ConfigurationTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(parent, username, password, notRequired, sslProtocol)
+                .group(Field.Group.CONNECTOR, parent, username, password, notRequired, sslProtocol)
                 .create();
 
         config = Configuration.create()
@@ -528,7 +528,7 @@ public class ConfigurationTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(connectorAdapter, logMiningStrategy, logMiningBatchSize,
+                .group(Field.Group.CONNECTOR, connectorAdapter, logMiningStrategy, logMiningBatchSize,
                         logMiningBufferType, xstreamServer, otherField)
                 .create();
 
