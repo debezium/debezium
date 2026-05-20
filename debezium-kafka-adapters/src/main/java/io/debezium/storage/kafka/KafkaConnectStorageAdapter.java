@@ -47,4 +47,13 @@ public interface KafkaConnectStorageAdapter {
          */
         org.apache.kafka.connect.storage.HeaderConverter getDelegate();
     }
+
+    interface Converter {
+        /**
+         * Get the underlying Kafka Converter.
+         *
+         * @return the wrapped Kafka converter
+         */
+        org.apache.kafka.connect.storage.Converter getDelegate();
+    }
 }
