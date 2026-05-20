@@ -65,7 +65,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL;
 
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
-            .history(
+            .group(Field.Group.CONNECTOR_ADVANCED,
                     SCHEMA_HISTORY,
                     SKIP_UNPARSEABLE_DDL_STATEMENTS,
                     STORE_ONLY_CAPTURED_TABLES_DDL,

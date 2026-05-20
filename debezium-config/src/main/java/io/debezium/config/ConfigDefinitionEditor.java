@@ -48,16 +48,7 @@ public class ConfigDefinitionEditor {
      */
     public ConfigDefinitionEditor group(Field.Group group, Field... fields) {
         List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
-        for (Field field : fields) {
-            removeFromOtherGroups(group, field.name());
-            int existingIdx = indexOfByName(groupFields, field.name());
-            if (existingIdx >= 0) {
-                groupFields.set(existingIdx, field);
-            }
-            else {
-                groupFields.add(field);
-            }
-        }
+        insertFields(groupFields, group, groupFields.size(), fields);
         return this;
     }
 
@@ -74,23 +65,9 @@ public class ConfigDefinitionEditor {
         List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
         int anchorIndex = groupFields.indexOf(anchor);
         if (anchorIndex == -1) {
-            // Anchor not found, append to end
             return group(group, fields);
         }
-        int insertIndex = anchorIndex + 1;
-        int insertOffset = 0;
-        for (int i = 0; i < fields.length; i++) {
-            Field field = fields[i];
-            removeFromOtherGroups(group, field.name());
-            int existingIdx = indexOfByName(groupFields, field.name());
-            if (existingIdx >= 0) {
-                groupFields.set(existingIdx, field);
-            }
-            else {
-                groupFields.add(insertIndex + insertOffset, field);
-                insertOffset++;
-            }
-        }
+        insertFields(groupFields, group, anchorIndex + 1, fields);
         return this;
     }
 
@@ -107,21 +84,9 @@ public class ConfigDefinitionEditor {
         List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
         int anchorIndex = groupFields.indexOf(anchor);
         if (anchorIndex == -1) {
-            // Anchor not found, append to end
             return group(group, fields);
         }
-        int insertOffset = 0;
-        for (int i = 0; i < fields.length; i++) {
-            Field field = fields[fields.length - 1 - i];
-            removeFromOtherGroups(group, field.name());
-            int existingIdx = indexOfByName(groupFields, field.name());
-            if (existingIdx >= 0) {
-                groupFields.set(existingIdx, field);
-            }
-            else {
-                groupFields.add(anchorIndex + insertOffset, field);
-            }
-        }
+        insertFields(groupFields, group, anchorIndex, fields);
         return this;
     }
 
@@ -136,18 +101,23 @@ public class ConfigDefinitionEditor {
      */
     public ConfigDefinitionEditor groupFirst(Field.Group group, Field... fields) {
         List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
-        for (int i = 0; i < fields.length; i++) {
-            Field field = fields[fields.length - 1 - i];
+        insertFields(groupFields, group, 0, fields);
+        return this;
+    }
+
+    private void insertFields(List<Field> groupFields, Field.Group group, int insertIndex, Field... fields) {
+        int insertOffset = 0;
+        for (Field field : fields) {
             removeFromOtherGroups(group, field.name());
             int existingIdx = indexOfByName(groupFields, field.name());
             if (existingIdx >= 0) {
                 groupFields.set(existingIdx, field);
             }
             else {
-                groupFields.add(0, field);
+                groupFields.add(insertIndex + insertOffset, field);
+                insertOffset++;
             }
         }
-        return this;
     }
 
     private void removeFromOtherGroups(Field.Group targetGroup, String fieldName) {
@@ -186,7 +156,8 @@ public class ConfigDefinitionEditor {
 
         Map<Field.Group, List<Field>> resolvedFieldsByGroup = new LinkedHashMap<>();
         for (Map.Entry<Field.Group, List<Field>> entry : fieldsByGroup.entrySet()) {
-            resolvedFieldsByGroup.put(entry.getKey(), resolvePatterns(entry.getValue(), allFieldNames));
+            List<Field> resolved = resolvePatterns(entry.getValue(), allFieldNames);
+            resolvedFieldsByGroup.put(entry.getKey(), assignPositions(entry.getKey(), resolved));
         }
 
         return new ConfigDefinition(connectorName, resolvedFieldsByGroup);
@@ -198,42 +169,19 @@ public class ConfigDefinitionEditor {
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    private void addToGroup(Field field) {
-        if (field.group() != null) {
-            Field.Group group = field.group().getGroup();
-            List<Field> groupFields = fieldsByGroup.computeIfAbsent(group, k -> new ArrayList<>());
-            if (!groupFields.contains(field)) {
-                groupFields.add(field);
+    private List<Field> assignPositions(Field.Group group, List<Field> fields) {
+        List<Field> result = new ArrayList<>(fields.size());
+        int implicitPosition = 0;
+        for (Field field : fields) {
+            if (field.group() != null && field.group().getPositionInGroup() != 9999) {
+                result.add(field);
+            }
+            else {
+                Field.Group effectiveGroup = field.group() != null ? field.group().getGroup() : group;
+                result.add(field.withGroup(Field.createGroupEntry(effectiveGroup, implicitPosition)));
+                implicitPosition++;
             }
         }
-    }
-
-    // Legacy methods for backward compatibility during transition.
-    // Fields with an explicit .withGroup() annotation keep their annotated group via group();
-    // unannotated fields fall back to the default group so they are not silently dropped.
-    @Deprecated
-    public ConfigDefinitionEditor type(Field... fields) {
-        return group(Field.Group.CONNECTION, fields);
-    }
-
-    @Deprecated
-    public ConfigDefinitionEditor connector(Field... fields) {
-        return group(Field.Group.CONNECTOR, fields);
-    }
-
-    @Deprecated
-    public ConfigDefinitionEditor history(Field... fields) {
-        for (Field field : fields) {
-            addToGroup(field);
-        }
-        return this;
-    }
-
-    @Deprecated
-    public ConfigDefinitionEditor events(Field... fields) {
-        for (Field field : fields) {
-            addToGroup(field);
-        }
-        return this;
+        return result;
     }
 }
