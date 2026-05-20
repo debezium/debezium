@@ -57,7 +57,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .withDescription("The fully qualified name of the class that provide the column naming strategy. It must implement the ColumnNamingStrategy interface.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .connector(
+            .group(Field.Group.CONNECTOR,
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
                     COLLECTION_NAMING_STRATEGY_FIELD,
