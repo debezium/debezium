@@ -1,0 +1,2 @@
+io.debezium.storage.kafka.offset.KafkaFailureEmulatingOffsetStoreProvider
+io.debezium.storage.kafka.offset.KafkaInterruptingOffsetStoreProvider
