@@ -123,6 +123,18 @@
                 <optional>true</optional>
             </dependency>
 
+            <!-- hibernate -->
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${version.hibernate}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate</groupId>
+                <artifactId>hibernate-agroal</artifactId>
+                <version>${version.hibernate}</version>
+            </dependency>
+
             <!-- Kafka Connect -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
