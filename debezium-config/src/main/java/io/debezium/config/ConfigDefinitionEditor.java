@@ -177,8 +177,7 @@ public class ConfigDefinitionEditor {
                 result.add(field);
             }
             else {
-                Field.Group effectiveGroup = field.group() != null ? field.group().getGroup() : group;
-                result.add(field.withGroup(Field.createGroupEntry(effectiveGroup, implicitPosition)));
+                result.add(field.withGroup(Field.createGroupEntry(group, implicitPosition)));
                 implicitPosition++;
             }
         }
