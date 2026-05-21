@@ -5,7 +5,13 @@
  */
 package io.debezium.metadata;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.debezium.config.ConfigDefinition;
+import io.debezium.config.ConfigDefinitionEditor;
 import io.debezium.config.Field;
 
 public interface ComponentMetadata {
@@ -37,10 +43,16 @@ public interface ComponentMetadata {
      * In future only this method should be used and the {@code getConnectorFields()} removed
      */
     default ConfigDefinition getConfigDefinition() {
-        return ConfigDefinition.editor()
-                .name(getClass().getName())
-                .group(Field.Group.CONNECTOR, getComponentFields().asArray())
-                .create();
+        Map<Field.Group, List<Field>> byGroup = new LinkedHashMap<>();
+        for (Field field : getComponentFields()) {
+            Field.Group group = field.group() != null ? field.group().getGroup() : Field.Group.GENERIC;
+            byGroup.computeIfAbsent(group, k -> new ArrayList<>()).add(field);
+        }
+        ConfigDefinitionEditor editor = ConfigDefinition.editor().name(getClass().getName());
+        for (Map.Entry<Field.Group, List<Field>> entry : byGroup.entrySet()) {
+            editor.group(entry.getKey(), entry.getValue().toArray(new Field[0]));
+        }
+        return editor.create();
     }
 
     Field.Set getComponentFields();

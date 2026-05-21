@@ -10,12 +10,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
@@ -60,13 +59,17 @@ public class DebeziumDescriptorSchemaCreator {
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
         ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
-        StreamSupport.stream(configDefinition.all().spliterator(), false)
-                .map(field -> buildProperty(field))
-                .filter(Objects::nonNull)
-                .forEach(property -> {
+        for (Map.Entry<Field.Group, List<Field>> entry : configDefinition.fieldsByGroup().entrySet()) {
+            String groupName = formatGroupName(entry.getKey());
+            List<Field> groupFields = entry.getValue();
+            for (int i = 0; i < groupFields.size(); i++) {
+                Property property = buildProperty(groupFields.get(i), groupName, i);
+                if (property != null) {
                     usedGroups.add(property.display().group().toLowerCase());
                     properties.add(property);
-                });
+                }
+            }
+        }
 
         return new ComponentDescriptor(
                 componentMetadata.getComponentDescriptor().getDisplayName(),
@@ -77,14 +80,11 @@ public class DebeziumDescriptorSchemaCreator {
                 buildGroups(usedGroups));
     }
 
-    private Property buildProperty(Field field) {
+    private Property buildProperty(Field field, String groupName, int groupOrder) {
 
         if (!fieldFilter.include(field)) {
             return null;
         }
-
-        String groupName = field.group() != null ? formatGroupName(field.group().getGroup()) : null;
-        Integer groupOrder = field.group() != null ? field.group().getPositionInGroup() : null;
 
         Display display = new Display(
                 field.displayName(),
@@ -216,6 +216,7 @@ public class DebeziumDescriptorSchemaCreator {
             case ADVANCED_HEARTBEAT -> "Heartbeat configuration";
             case CONNECTOR_ADVANCED -> "Advanced connector configuration";
             case ADVANCED -> "Advanced configuration";
+            case GENERIC -> "Generic configuration";
         };
     }
 
