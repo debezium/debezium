@@ -154,23 +154,25 @@ public class EnforceRecordSizeTest {
     }
 
     @Test
-    public void shouldTruncateBothBeforeAndAfterForUpdate() {
-        int maxBytes = 600;
+    public void shouldNotOverTruncateUpdateEvents() {
+        int maxBytes = 2000;
         Map<String, String> config = new HashMap<>();
         config.put(EnforceRecordSize.MAX_BYTES_CONF, String.valueOf(maxBytes));
         config.put(EnforceRecordSize.MIN_FIELD_SIZE_CONF, "0");
         transform.configure(config);
 
-        SourceRecord record = createUpdateRecord("x".repeat(4000), "y".repeat(4000));
+        SourceRecord record = createUpdateRecord("x".repeat(5000), "y".repeat(5000));
+        long originalSize = ApproximateStructSizeCalculator.getApproximateRecordSize(record);
         SourceRecord result = transform.apply(record);
 
         Struct value = (Struct) result.value();
         Struct before = value.getStruct("before");
         Struct after = value.getStruct("after");
-        assertThat(before.getString("text_col").length()).isLessThan(4000);
-        assertThat(after.getString("text_col").length()).isLessThan(4000);
+        assertThat(before.getString("text_col").length()).isLessThan(5000);
+        assertThat(after.getString("text_col").length()).isLessThan(5000);
         long resultSize = ApproximateStructSizeCalculator.getApproximateRecordSize(result);
         assertThat(resultSize).isLessThanOrEqualTo(maxBytes);
+        assertThat(resultSize).isGreaterThan((long) (maxBytes * 0.7));
     }
 
     @Test
