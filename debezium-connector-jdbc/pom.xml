@@ -16,7 +16,7 @@
 
     <properties>
         <!-- Other artifact versions -->
-        <version.hibernate>7.1.0.Final</version.hibernate>
+        <version.hibernate>7.2.6.Final</version.hibernate>
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
