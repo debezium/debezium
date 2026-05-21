@@ -272,7 +272,8 @@ public final class Field {
         CONNECTOR,
         ADVANCED_HEARTBEAT,
         CONNECTOR_ADVANCED,
-        ADVANCED
+        ADVANCED,
+        GENERIC
     };
 
     public static class GroupEntry {
