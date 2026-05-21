@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,11 +71,14 @@ public class TypeRegistry {
     private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel ORDER BY t.enumsortorder) as values "
             + "FROM pg_catalog.pg_enum t GROUP BY id";
 
-    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, n.nspname AS schema_name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
+    public static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typelem AS elementoid, n.nspname AS schema_name, t.typtype AS type, t.typcategory AS category, e.values AS enum_values "
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
             + "WHERE n.nspname != 'pg_toast'";
+
+    // Exposed for testing only
+    static final String SQL_TYPES_FOR_TEST = SQL_TYPES + " ORDER BY (t.typelem != 0 OR t.typbasetype != 0), t.oid";
 
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
@@ -463,7 +467,7 @@ public class TypeRegistry {
     private void prime() throws SQLException {
         LOGGER.trace("Priming type registry with database types");
         try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(SQL_TYPES)) {
+                ResultSet rs = statement.executeQuery(SQL_TYPES_FOR_TEST)) {
             final List<TypeBuilderWithSchema> delayResolvedBuilders = new ArrayList<>();
             while (rs.next()) {
                 TypeBuilderWithSchema builderWithSchema = createTypeBuilderFromResultSet(rs);
@@ -476,15 +480,69 @@ public class TypeRegistry {
                 }
 
                 // For types with base or element type mappings, they need to be delayed.
-                // Otherwise their base/element types has not yet be registered,
-                // which triggers additional SQL_OID_LOOKUP queries to PostgreSQL.
                 delayResolvedBuilders.add(builderWithSchema);
             }
 
-            // Resolve delayed builders
-            for (TypeBuilderWithSchema builderWithSchema : delayResolvedBuilders) {
-                addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
+            // Resolve delayed builders iteratively until no progress is made or all are resolved
+            boolean progress = true;
+            while (!delayResolvedBuilders.isEmpty() && progress) {
+                progress = false;
+                final List<TypeBuilderWithSchema> resolvedInThisPass = new ArrayList<>();
+                for (TypeBuilderWithSchema builderWithSchema : delayResolvedBuilders) {
+                    if (canResolveNow(builderWithSchema.builder())) {
+                        addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
+                        resolvedInThisPass.add(builderWithSchema);
+                        progress = true;
+                    }
+                }
+                delayResolvedBuilders.removeAll(resolvedInThisPass);
             }
+
+            if (!delayResolvedBuilders.isEmpty()) {
+                resolveRemainingInBatch(delayResolvedBuilders);
+            }
+        }
+    }
+
+    private boolean canResolveNow(PostgresType.Builder builder) {
+        if (builder.hasElementType() && oidToType.get(builder.getElementTypeOid()) == null) {
+            return false;
+        }
+        if (builder.hasParentType() && oidToType.get(builder.getParentTypeOid()) == null) {
+            return false;
+        }
+        return true;
+    }
+
+    private void resolveRemainingInBatch(List<TypeBuilderWithSchema> remaining) throws SQLException {
+        final Set<Integer> missingOids = new LinkedHashSet<>();
+        for (TypeBuilderWithSchema builderWithSchema : remaining) {
+            PostgresType.Builder builder = builderWithSchema.builder();
+            if (builder.hasElementType() && oidToType.get(builder.getElementTypeOid()) == null) {
+                missingOids.add(builder.getElementTypeOid());
+            }
+            if (builder.hasParentType() && oidToType.get(builder.getParentTypeOid()) == null) {
+                missingOids.add(builder.getParentTypeOid());
+            }
+        }
+
+        if (!missingOids.isEmpty()) {
+            String batchSql = SQL_TYPES + " AND t.oid = ANY(?)";
+            try (PreparedStatement statement = connection.connection().prepareStatement(batchSql)) {
+                Integer[] oidsArray = missingOids.toArray(new Integer[0]);
+                statement.setArray(1, connection.connection().createArrayOf("integer", oidsArray));
+                try (ResultSet rs = statement.executeQuery()) {
+                    while (rs.next()) {
+                        TypeBuilderWithSchema builderWithSchema = createTypeBuilderFromResultSet(rs);
+                        addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
+                    }
+                }
+            }
+        }
+
+        // Now build the originally delayed types with their dependencies in place.
+        for (TypeBuilderWithSchema builderWithSchema : remaining) {
+            addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
         }
     }
 
