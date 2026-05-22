@@ -51,6 +51,7 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
                 }
             }
             catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
             shutdown.run();
