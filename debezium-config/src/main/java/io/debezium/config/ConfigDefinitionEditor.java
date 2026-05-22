@@ -171,15 +171,8 @@ public class ConfigDefinitionEditor {
 
     private List<Field> assignPositions(Field.Group group, List<Field> fields) {
         List<Field> result = new ArrayList<>(fields.size());
-        int implicitPosition = 0;
-        for (Field field : fields) {
-            if (field.group() != null && field.group().getPositionInGroup() != 9999) {
-                result.add(field);
-            }
-            else {
-                result.add(field.withGroup(Field.createGroupEntry(group, implicitPosition)));
-                implicitPosition++;
-            }
+        for (int i = 0; i < fields.size(); i++) {
+            result.add(fields.get(i).withGroup(Field.createGroupEntry(group, i)));
         }
         return result;
     }
