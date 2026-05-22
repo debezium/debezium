@@ -731,7 +731,7 @@ Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 | Container probes configuration.
 
 | [[debezium-operator-schema-reference-containertemplate-imagepullpolicy]]<<debezium-operator-schema-reference-containertemplate-imagepullpolicy, `+imagePullPolicy+`>>
-| String
+| Always,IfNotPresent,Never
 | No default value
 | https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy[Image pull policy] for the container.
 |===
