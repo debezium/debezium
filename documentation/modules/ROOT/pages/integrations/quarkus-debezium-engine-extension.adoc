@@ -1,4 +1,4 @@
-[id="quarkus-debezium-engine-extension"]
+[id="debezium-quarkus-engine-extension"]
 = {prodname} Extensions for Quarkus
 
 :linkattrs:
@@ -39,11 +39,11 @@ The Extension supports well-established {prodname} features and much more! Here 
 
 The following connectors are supported:
 
-- `quarkus-debezium-postgres` extension for *Postgres* Connector
-- `quarkus-debezium-mongodb` extension for *Mongodb* Connector
-- `quarkus-debezium-mysql` extension for *MySQL* Connector
-- `quarkus-debezium-mariadb` extension for *MariaDB* Connector
-- `quarkus-debezium-sqlserver` extension for *MS Sql Server* Connector
+- `debezium-quarkus-postgres` extension for *Postgres* Connector
+- `debezium-quarkus-mongodb` extension for *Mongodb* Connector
+- `debezium-quarkus-mysql` extension for *MySQL* Connector
+- `debezium-quarkus-mariadb` extension for *MariaDB* Connector
+- `debezium-quarkus-sqlserver` extension for *MS Sql Server* Connector
 
 
 == Prerequisites
@@ -83,8 +83,8 @@ In the project, add the {prodname} extension dependency to your application's `p
     <dependencies>
         <!-- [...] -->
         <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>quarkus-debezium-postgres</artifactId>
+            <groupId>io.debezium.quarkus</groupId>
+            <artifactId>debezium-quarkus-postgres</artifactId>
             <version>${version.debezium}</version>
         </dependency>
         <!-- [...] -->
