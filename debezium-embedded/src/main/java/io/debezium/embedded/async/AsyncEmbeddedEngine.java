@@ -202,7 +202,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
         offsetKeyConverter.configure(internalConverterConfig, true);
         offsetValueConverter.configure(internalConverterConfig, false);
-        this.watcher = () -> () -> State.POLLING_TASKS.compareTo(state.get()) == 0;
+        this.watcher = () -> () -> State.POLLING_TASKS.equals(state.get());
     }
 
     List<EngineSourceTask> tasks() {
