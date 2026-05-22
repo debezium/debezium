@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.spi.schema.DataCollectionId;
@@ -31,8 +32,9 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
 
     /**
      * Prepares a statement for reading the next incremental snapshot chunk from a table using the SQL statement returned by buildChunkQuery.
+     * The supplied connection is used to allocate the statement so parallel snapshot workers do not contend on a shared connection.
      */
-    PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException;
+    PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException;
 
     /**
      * Builds a query for reading the maximum primary key value from a table.
