@@ -41,6 +41,9 @@ public interface ComponentMetadata {
      * Groups should be extracted from the fields and the group order defined by {@link io.debezium.config.Field.Group}</p>
      *
      * In future only this method should be used and the {@code getConnectorFields()} removed
+     *
+     * TODO: Remove this default implementation in future and make this method abstract,
+     *       forcing all implementors to explicitly provide their own configuration definition.
      */
     default ConfigDefinition getConfigDefinition() {
         Map<Field.Group, List<Field>> byGroup = new LinkedHashMap<>();
@@ -48,12 +51,13 @@ public interface ComponentMetadata {
             Field.Group group = field.group() != null ? field.group().getGroup() : Field.Group.GENERIC;
             byGroup.computeIfAbsent(group, k -> new ArrayList<>()).add(field);
         }
-        ConfigDefinitionEditor editor = ConfigDefinition.editor().name(getClass().getName());
+        ConfigDefinitionEditor editor = ConfigDefinition.editor().name(getComponentDescriptor().getClassName());
         for (Map.Entry<Field.Group, List<Field>> entry : byGroup.entrySet()) {
             editor.group(entry.getKey(), entry.getValue().toArray(new Field[0]));
         }
         return editor.create();
     }
 
+    @Deprecated
     Field.Set getComponentFields();
 }
