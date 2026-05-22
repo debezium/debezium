@@ -72,7 +72,10 @@ public class FileSignalChannel implements SignalChannelReader {
                 .withDefault(FileSignalChannel.SIGNAL_FILE, "file-signals.txt")
                 .build();
         this.signalFile = new File(signalConfig.getString(SIGNAL_FILE));
-        LOGGER.info("Reading '{}' file for signals", signalFile.getAbsolutePath());
+        LOGGER.info("File signal channel is active, reading signals from '{}'. " +
+                "Ensure the Kafka Connect REST API is protected and the connector process " +
+                "has restricted filesystem permissions to prevent unauthorized file access.",
+                signalFile.getAbsolutePath());
     }
 
     @Override
@@ -106,7 +109,7 @@ public class FileSignalChannel implements SignalChannelReader {
             while (lineIterator.hasNext()) {
                 String signalLine = lineIterator.next();
                 if (signalLine == null || signalLine.isBlank()) {
-                    LOGGER.debug("Ignoring empty signal line: `{}`", signalLine);
+                    LOGGER.debug("Ignoring empty signal line");
                     lineIterator.remove();
                     continue;
                 }
@@ -116,7 +119,7 @@ public class FileSignalChannel implements SignalChannelReader {
                     LOGGER.info("Processing signal: {}, {}, {}, {}", signal.getId(), signal.getType(), signal.getData(), signal.getAdditionalData());
                 }
                 catch (final Exception e) {
-                    LOGGER.warn("Skipped signal due to an error '{}'", signalLine, e);
+                    LOGGER.warn("Skipped signal due to a parse error", e);
                 }
                 lineIterator.remove();
             }
