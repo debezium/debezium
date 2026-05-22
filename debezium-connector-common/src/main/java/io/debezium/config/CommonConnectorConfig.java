@@ -755,6 +755,60 @@ public abstract class CommonConnectorConfig {
             .withDefault(1024)
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final int DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = 5;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = 1000L;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = 60_000L;
+    public static final double DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = 2.0;
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = Field.create("incremental.snapshot.retry.max.attempts")
+            .withDisplayName("Incremental snapshot retry max attempts")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Maximum retry attempts for transient JDBC failures during an incremental snapshot chunk read. -1 means unlimited.")
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS)
+            .withValidation(Field::isInteger);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = Field.create("incremental.snapshot.retry.initial.delay.ms")
+            .withDisplayName("Incremental snapshot retry initial delay (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Initial backoff delay before retrying a failed chunk read.")
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS)
+            .withValidation(Field::isPositiveLong);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = Field.create("incremental.snapshot.retry.max.delay.ms")
+            .withDisplayName("Incremental snapshot retry max delay (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Upper bound on the exponential backoff delay between retries.")
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS)
+            .withValidation(Field::isPositiveLong);
+
+    public static final Field INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = Field.create("incremental.snapshot.retry.backoff.multiplier")
+            .withDisplayName("Incremental snapshot retry backoff multiplier")
+            .withType(Type.DOUBLE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Multiplier applied to the previous delay on each retry. Use a value greater than 1.0 for the delay to grow exponentially.")
+            .withDefault(String.valueOf(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER))
+            .withValidation(Field::isPositiveDouble);
+
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = 60_000L;
+
+    public static final Field INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = Field.create("incremental.snapshot.pool.release.delay.ms")
+            .withDisplayName("Incremental snapshot pool release delay (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Milliseconds to wait after the last active or pending table completes before closing the parallel snapshot connection pool. "
+                    + "A new signal arriving within this window cancels the pending release, so back-to-back signal bursts reuse the same pool. "
+                    + "Set to 0 to release the pool as soon as no work remains.")
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS)
+            .withValidation(Field::isNonNegativeLong);
+
     public static final Field INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES = Field.create("incremental.snapshot.allow.schema.changes")
             .withDisplayName("Allow schema changes during incremental snapshot if supported.")
             .withType(Type.BOOLEAN)
@@ -1544,6 +1598,11 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
+    private final int incrementalSnapshotRetryMaxAttempts;
+    private final long incrementalSnapshotRetryInitialDelayMs;
+    private final long incrementalSnapshotRetryMaxDelayMs;
+    private final double incrementalSnapshotRetryBackoffMultiplier;
+    private final long incrementalSnapshotPoolReleaseDelayMs;
     private final int snapshotMaxThreads;
     private final int snapshotMaxThreadsMultiplier;
     private final boolean legacySnapshotMaxThreads;
@@ -1600,6 +1659,11 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
+        this.incrementalSnapshotRetryMaxAttempts = config.getInteger(INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS);
+        this.incrementalSnapshotRetryInitialDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS);
+        this.incrementalSnapshotRetryMaxDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS);
+        this.incrementalSnapshotRetryBackoffMultiplier = Double.parseDouble(config.getString(INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER));
+        this.incrementalSnapshotPoolReleaseDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
@@ -1794,6 +1858,26 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnapshotChunkSize() {
         return incrementalSnapshotChunkSize;
+    }
+
+    public int getIncrementalSnapshotRetryMaxAttempts() {
+        return incrementalSnapshotRetryMaxAttempts;
+    }
+
+    public long getIncrementalSnapshotRetryInitialDelayMs() {
+        return incrementalSnapshotRetryInitialDelayMs;
+    }
+
+    public long getIncrementalSnapshotRetryMaxDelayMs() {
+        return incrementalSnapshotRetryMaxDelayMs;
+    }
+
+    public double getIncrementalSnapshotRetryBackoffMultiplier() {
+        return incrementalSnapshotRetryBackoffMultiplier;
+    }
+
+    public long getIncrementalSnapshotPoolReleaseDelayMs() {
+        return incrementalSnapshotPoolReleaseDelayMs;
     }
 
     public String getNotificationTopic() {

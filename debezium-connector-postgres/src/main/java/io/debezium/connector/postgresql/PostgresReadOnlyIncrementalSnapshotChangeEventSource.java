@@ -129,7 +129,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
         }
-        else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
+        else if (hasOpenWindow() && getContext().deduplicationNeeded()) {
             LOGGER.trace("Deduplicating");
             deduplicateWindow(dataCollectionId, key);
         }
@@ -241,6 +241,23 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
+    }
+
+    @Override
+    protected JdbcConnection createSnapshotConnection() throws SQLException {
+        LOGGER.debug("[{}] Creating new snapshot connection in NORMAL mode (not replication)",
+                Thread.currentThread().getName());
+
+        PostgresConnectorConfig postgresConfig = (PostgresConnectorConfig) connectorConfig;
+        TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(postgresConfig.getJdbcConfig());
+
+        PostgresConnection snapshotConnection = new PostgresConnection(
+                postgresConfig,
+                typeRegistry,
+                "Debezium Parallel Snapshot Worker");
+
+        LOGGER.debug("[{}] Snapshot connection created successfully with TypeRegistry", Thread.currentThread().getName());
+        return snapshotConnection;
     }
 
 }
