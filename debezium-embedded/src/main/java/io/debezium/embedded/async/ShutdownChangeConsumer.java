@@ -30,6 +30,7 @@ public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<
     private final ShutdownHandler<R> before;
     private final ShutdownHandler<R> after;
     private final DebeziumEngine.ChangeConsumer<R> consumer;
+    private final Watcher watcher;
 
     /**
      * Creates a new {@code ShutdownChangeConsumer}.
@@ -37,19 +38,24 @@ public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<
      * @param before   the handler evaluated for each record before the batch is processed; never null
      * @param after    the handler evaluated for each record after the batch is processed; never null
      * @param consumer the user-supplied batch consumer; never null
+     * @param watcher
      */
     public ShutdownChangeConsumer(ShutdownHandler<R> before,
                                   ShutdownHandler<R> after,
-                                  DebeziumEngine.ChangeConsumer<R> consumer) {
+                                  DebeziumEngine.ChangeConsumer<R> consumer,
+                                  Watcher watcher) {
         this.before = before;
         this.after = after;
         this.consumer = consumer;
+        this.watcher = watcher;
     }
 
     @Override
     public void handleBatch(List<R> records, DebeziumEngine.RecordCommitter<R> committer) throws InterruptedException {
         records.forEach(before::evaluate);
-        consumer.handleBatch(records, committer);
+        if (watcher.engine().isConsuming()) {
+            consumer.handleBatch(records, committer);
+        }
         records.forEach(after::evaluate);
     }
 

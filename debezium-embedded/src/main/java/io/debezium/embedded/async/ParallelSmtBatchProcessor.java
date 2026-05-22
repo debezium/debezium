@@ -68,6 +68,6 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
                         new ShutdownChangeConsumer<>(
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
-                                (DebeziumEngine.ChangeConsumer<SourceRecord>) userHandler)));
+                                (DebeziumEngine.ChangeConsumer<SourceRecord>) userHandler, watcher)));
     }
 }
