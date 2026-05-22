@@ -71,7 +71,7 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
                         new ShutdownChangeConsumer<>(
                                 DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
                                 DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
-                                userHandler)));
+                                userHandler, watcher)));
 
     }
 }
