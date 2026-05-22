@@ -120,6 +120,7 @@ public class FileSignalChannel implements SignalChannelReader {
                 }
                 catch (final Exception e) {
                     LOGGER.warn("Skipped signal due to a parse error", e);
+                    LOGGER.trace("Skipped signal line was: '{}'", signalLine);
                 }
                 lineIterator.remove();
             }
