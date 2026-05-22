@@ -340,7 +340,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @param shutdown the shutdown policy; may be null to disable record-driven shutdown
          */
         default Builder<R> shutdown(Shutdown<R> shutdown) {
-            return null;
+            throw new UnsupportedOperationException("the shutdown API is not supported");
         }
 
         /**
