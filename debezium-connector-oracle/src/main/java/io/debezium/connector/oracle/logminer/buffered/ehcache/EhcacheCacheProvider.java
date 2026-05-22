@@ -117,6 +117,12 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
             // Required for propagating namespace info
             factory.setNamespaceAware(true);
 
+            // Prevent XXE attacks
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setExpandEntityReferences(false);
+
             final DocumentBuilder builder = factory.newDocumentBuilder();
 
             final String xmlData = getConfigurationWithSubstitutions(ehcacheConfig);

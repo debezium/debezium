@@ -619,7 +619,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the transaction cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -628,7 +628,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the processed transaction cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -637,7 +637,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the schema changes cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -646,7 +646,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the events cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -655,7 +655,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the rollbacks cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -2380,6 +2380,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         if (isBufferedLogMiner(config)) {
             if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 return Field.isRequired(config, field, problems);
+            }
+        }
+        return 0;
+    }
+
+    public static int validateEhcacheCacheConfigField(Configuration config, Field field, ValidationOutput problems) {
+        if (isBufferedLogMiner(config)) {
+            if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+                int count = Field.isRequired(config, field, problems);
+                final String fieldValue = config.getString(field, "").toLowerCase();
+                if (!Strings.isNullOrEmpty(fieldValue)) {
+                    if (fieldValue.contains("<cache") || fieldValue.contains("<key-type") || fieldValue.contains("<value-type")) {
+                        problems.accept(field, fieldValue,
+                                "The ehcache cache configuration should not contain <cache/>, <key-type/>, or <value-type/> sections as these are managed by Debezium");
+                        count++;
+                    }
+                }
+                return count;
             }
         }
         return 0;
