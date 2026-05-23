@@ -75,6 +75,7 @@ public class LogMinerEventSerializer extends AbstractEhcacheSerializer<LogMinerE
         registerSerdes(new XmlWriteEventSerdesProvider<>());
         registerSerdes(new ExtendedStringBeginEventSerdesProvider<>());
         registerSerdes(new ExtendedStringWriteEventSerdesProvider<>());
+        registerSerdes(new RollbackToSavepointEventSerdesProvider<>());
     }
 
     private <T> void registerSerdes(SerdesProvider<T> serdesProvider) {

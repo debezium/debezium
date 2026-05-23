@@ -626,6 +626,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withValidation(OracleConnectorConfig::validateLogMiningIncludeRedoSql);
 
+    public static final Field LOG_MINING_INCLUDE_INTERNAL_EVENTS = Field.create("log.mining.include.internal.events")
+            .withDisplayName("Specifies whether the connector supports mining INTERNAL events")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When set to 'false', the default, INTERNAL events will not be captured. " +
+                    "When 'lob.enabled' is 'true' and all LOB columns of an operation are stored out-of-line, " +
+                    "INTERNAL events provide the ROW_IDs necessary for accurate ROLLBACK TO SAVEPOINT handling. " +
+                    "NOTE: Enabling this may significantly increase the volume of events returned by LogMiner.");
+
     public static final Field SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES = Field.create("snapshot.database.errors.max.retries")
             .withDisplayName("The maximum number of retries before snapshot database errors are not retried")
             .withType(Type.INT)
@@ -985,6 +996,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
+    private final boolean logMiningIncludeInternalEvents;
     private final Configuration logMiningEhCacheConfiguration;
     private final boolean logMiningUseSqlRelaxedQuoteDetection;
     private final Set<String> logMiningClientIdIncludes;
@@ -1070,6 +1082,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+        this.logMiningIncludeInternalEvents = config.getBoolean(LOG_MINING_INCLUDE_INTERNAL_EVENTS);
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
@@ -2105,6 +2118,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return logMiningContinuousMining;
+    }
+
+    /**
+     * @return true if INTERNAL events are to be captured.
+     */
+    public boolean isLogMiningIncludeInternalEvents() {
+        return logMiningIncludeInternalEvents;
     }
 
     /**
