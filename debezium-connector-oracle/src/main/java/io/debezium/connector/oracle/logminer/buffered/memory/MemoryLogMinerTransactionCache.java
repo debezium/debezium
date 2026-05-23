@@ -14,10 +14,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import com.google.common.collect.Lists;
+
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 
 /**
  * A concrete implementation of the {@link LogMinerTransactionCache} that stores transactions and events
@@ -87,7 +89,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
             try (var stream = events.stream()) {
                 final Iterator<LogMinerEventEntry> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    if (!predicate.test(iterator.next().event)) {
+                    if (!predicate.test(iterator.next().event())) {
                         break;
                     }
                 }
@@ -111,10 +113,24 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
-        eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>())
-                .add(new LogMinerEventEntry(eventKey, event));
-        eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>())
-                .put(eventKey, event);
+        List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
+        Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>());
+        if (event instanceof RollbackToSavepointEvent rollbackEvent) {
+            LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, Lists.reverse(entries).iterator(), rollbackEvent);
+            if (rolledBackEntry != null) {
+                Iterator<LogMinerEventEntry> it = entries.listIterator(entries.indexOf(rolledBackEntry));
+                while (it.hasNext()) {
+                    LogMinerEventEntry entry = it.next();
+                    if (entry.event() instanceof RollbackToSavepointEvent) {
+                        break;
+                    }
+                    eventsByEventId.remove(entry.eventId());
+                    it.remove();
+                }
+            }
+        }
+        entries.add(new LogMinerEventEntry(eventKey, event));
+        eventsByEventId.put(eventKey, event);
     }
 
     @Override
@@ -124,29 +140,11 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public boolean removeTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
-        final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final var events = eventsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            for (int i = events.size() - 1; i >= 0; i--) {
-                final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId().equals(encodedRowId)) {
-                    events.remove(i);
-                    eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    @Override
     public boolean containsTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
-        if (eventsByEventId != null) {
-            return eventsByEventId.containsKey(eventKey);
-        }
-        return false;
+        // Uses the highest event key ever assigned rather than checking for presence directly
+        // since a partial rollback may have removed the event's entry from the cache.
+        List<LogMinerEventEntry> entries = eventsByTransactionId.get(transaction.getTransactionId());
+        return entries != null && entries.size() > 0 && entries.get(entries.size() - 1).eventId() >= eventKey;
     }
 
     @Override
@@ -173,15 +171,5 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public void syncTransaction(MemoryTransaction transaction) {
         // Changing the heap instance is sufficient, therefore this is a no-op
-    }
-
-    /**
-     * An event record used to map event-id and event since event-id is not currently stored
-     * as part of the LogMinerEvent object. This enables fast cleanup during row-id removal.
-     *
-     * @param eventId the event's unique identifier
-     * @param event the event object
-     */
-    record LogMinerEventEntry(int eventId, LogMinerEvent event) {
     }
 }
