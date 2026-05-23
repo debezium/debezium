@@ -737,6 +737,15 @@ This section describes these mappings.
 Uses the {prodname} `DoubleVector` logical type.
 |===
 
+[id="cockroachdb-default-values"]
+=== Default values
+
+When a CockroachDB column is created with a `DEFAULT` clause, the connector parses the JDBC-reported default expression into the Java type that matches the column's Kafka Connect schema, and sets it as the schema default for that field.
+CockroachDB annotates default expressions with a CRDB-specific `:::TYPE` suffix (for example, `0:::INT8`, `'PENDING':::STRING`, `'[1.0,2.0,3.0]':::VECTOR`); the connector strips this annotation, unwraps quoted literals, and converts the value to the column's Java type.
+
+Function-generated defaults such as `current_timestamp()`, `gen_random_uuid()`, `now()`, and `unique_rowid()` are not evaluated by the connector.
+For these columns, the connector omits the default from the schema so that CockroachDB computes the value at insert time.
+
 // Type: assembly
 // ModuleID: setting-up-cockroachdb-for-debezium
 // Title: Setting up CockroachDB for {prodname}
