@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static io.debezium.config.CommonConnectorConfig.SIGNAL_DATA_COLLECTION;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
@@ -86,6 +87,12 @@ public class LogMinerQueryBuilderTest {
     public void testLogMinerQueryWithLobEnabled() {
         assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).build());
         assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).build());
+    }
+
+    @Test
+    public void testLogMinerInternalEventsIncluded() {
+        assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
     }
 
     @Test
@@ -263,6 +270,7 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getBufferedQuery(OracleConnectorConfig config) {
+        final String internalEventsPredicate = " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%AAAAAAAAAAAA' AND SEQUENCE# > 1)";
         final String operationDdlPredicate = " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
 
         String query = "SELECT " + buildSelectColumns(config) + "FROM V$LOGMNR_CONTENTS WHERE ";
@@ -281,6 +289,7 @@ public class LogMinerQueryBuilderTest {
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
+        query += config.isLobEnabled() && config.isLogMiningIncludeInternalEvents() ? internalEventsPredicate : "";
         query += config.storeOnlyCapturedTables() ? operationDdlPredicate : "";
         query += ")";
 

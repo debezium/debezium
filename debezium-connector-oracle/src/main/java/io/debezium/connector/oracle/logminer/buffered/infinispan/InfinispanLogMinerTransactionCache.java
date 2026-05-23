@@ -18,7 +18,7 @@ import org.infinispan.commons.api.BasicCache;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Infinispan.
@@ -121,8 +121,26 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerEvent event) {
+        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (event instanceof RollbackToSavepointEvent rollbackEvent) {
+            final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
+                    eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
+            final LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, reverseIterator, rollbackEvent);
+            if (rolledBackEntry != null) {
+                final Iterator<Integer> forwardIterator = eventIds.tailSet(rolledBackEntry.eventId()).iterator();
+                while (forwardIterator.hasNext()) {
+                    final int id = forwardIterator.next();
+                    final String eventId = transaction.getEventId(id);
+                    if (eventCache.get(eventId) instanceof RollbackToSavepointEvent) {
+                        break;
+                    }
+                    eventCache.remove(eventId);
+                    forwardIterator.remove();
+                }
+            }
+        }
         eventCache.put(transaction.getEventId(eventKey), event);
-        eventIdsByTransactionId.get(transaction.getTransactionId()).add(eventKey);
+        eventIds.add(eventKey);
     }
 
     @Override
@@ -135,28 +153,11 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public boolean removeTransactionEventWithRowId(InfinispanTransaction transaction, String rowId) {
-        final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        for (Integer eventId : eventIds.descendingSet()) {
-            final String eventKey = transaction.getEventId(eventId);
-            final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId().equals(encodedRowId)) {
-                eventCache.remove(eventKey);
-                eventIds.remove(eventId);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
     public boolean containsTransactionEvent(InfinispanTransaction transaction, int eventKey) {
+        // Uses the highest event key ever assigned rather than checking for presence directly
+        // since a partial rollback may have removed the event's entry from the cache.
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            return events.contains(eventKey);
-        }
-        return false;
+        return events != null && !events.isEmpty() && events.last() >= eventKey;
     }
 
     @Override
