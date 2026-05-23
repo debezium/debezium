@@ -1290,6 +1290,55 @@ Note that CockroachDB's link:https://www.cockroachlabs.com/docs/stable/configure
 If the connector is stopped for longer than the GC TTL, the stored offset may no longer be valid.
 In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when the offset has expired.
 
+[id="cockroachdb-debugging"]
+=== Enabling debug logging
+
+To diagnose connector behavior, enable `DEBUG` (or `TRACE`) logging for one or more of the connector's loggers in the Kafka Connect worker's logging configuration.
+The connector uses SLF4J, so the standard `connect-log4j.properties` mechanism (or the runtime `/admin/loggers` REST endpoint) controls the level.
+
+The most useful logger names for triage are:
+
+[cols="50%a,50%a",options="header"]
+|===
+|Logger
+|What it traces
+
+|`io.debezium.connector.cockroachdb`
+|Top-level connector lifecycle: task start/stop, configuration, signal processing.
+
+|`io.debezium.connector.cockroachdb.CockroachDBSchema`
+|Schema discovery (which tables and schemas were found, which were filtered out by `schema.include.list` / `table.include.list`), and per-table refresh on schema change.
+
+|`io.debezium.connector.cockroachdb.CockroachDBStreamingChangeEventSource`
+|Changefeed query construction, per-event dispatch, resolved-timestamp progression, and Kafka consumer wiring.
+
+|`io.debezium.connector.cockroachdb.CockroachDBSnapshotChangeEventSource`
+|Snapshot decisions and delegation to CockroachDB's `initial_scan` mode.
+
+|`io.debezium.connector.cockroachdb.CockroachDBDefaultValueConverter`
+|Parsing of column `DEFAULT` expressions; logs at `DEBUG` when a default expression cannot be mapped to the column's Java type.
+
+|`io.debezium.connector.cockroachdb.connection.CockroachDBConnection`
+|JDBC connection attempts, retries, and successful connects.
+|===
+
+For example, to enable schema-discovery and streaming traces, add the following to `connect-log4j.properties`:
+
+[source,properties]
+----
+log4j.logger.io.debezium.connector.cockroachdb.CockroachDBSchema=DEBUG
+log4j.logger.io.debezium.connector.cockroachdb.CockroachDBStreamingChangeEventSource=DEBUG
+----
+
+Or set the levels at runtime against a running Kafka Connect worker:
+
+[source,bash]
+----
+curl -X PUT -H "Content-Type: application/json" \
+    --data '{"level":"DEBUG"}' \
+    http://localhost:8083/admin/loggers/io.debezium.connector.cockroachdb
+----
+
 // Type: assembly
 // ModuleID: debezium-cockroachdb-limitations
 // Title: Current Limitations
