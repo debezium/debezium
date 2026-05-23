@@ -1145,9 +1145,22 @@ Options: `serializable` (CockroachDB default), `read_committed`.
 Options: `shared`, `none`, `custom`.
 CockroachDB's changefeed-based snapshot does not require table locks, so `none` is the default and recommended setting.
 
-|[[cockroachdb-property-schema-name]]<<cockroachdb-property-schema-name, `+cockroachdb.schema.name+`>>
-|`public`
-|The schema name to use for changefeed operations.
+|[[cockroachdb-property-schema-include-list]]<<cockroachdb-property-schema-include-list, `+schema.include.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of schemas for which you want to capture changes.
+Any schema name not included in `schema.include.list` is excluded from having its changes captured.
+By default, the connector captures changes in all non-system schemas.
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
+If you include this property in the configuration, do not also set the `schema.exclude.list` property.
+
+|[[cockroachdb-property-schema-exclude-list]]<<cockroachdb-property-schema-exclude-list, `+schema.exclude.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of schemas for which you do _not_ want to capture changes.
+Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas.
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
+If you include this property in the configuration, do not also set the `schema.include.list` property.
 
 |[[cockroachdb-property-read-only]]<<cockroachdb-property-read-only, `+read.only+`>>
 |`false`
