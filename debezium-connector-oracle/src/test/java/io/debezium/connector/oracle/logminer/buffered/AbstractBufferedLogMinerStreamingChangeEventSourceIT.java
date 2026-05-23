@@ -22,6 +22,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -285,6 +287,141 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         }
         finally {
             TestHelper.dropTable(connection, "dbz1553");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1914")
+    public void shouldRollbackToSavepointIdempotently() throws Exception {
+        TestHelper.dropTable(connection, "dbz1914");
+        try {
+            connection.execute("CREATE TABLE dbz1914 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1914");
+
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1914")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            OracleMetricsHelper.waitForOffsetScnAfter(Scn.NULL);
+
+            Scn offsetScn = Scn.valueOf(OracleMetricsHelper.getOffsetScn().toString());
+            connection.executeWithoutCommitting(
+                    "INSERT INTO dbz1914(id,data) VALUES (1,'insert 1')",
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1914 SET data = 'update 1' WHERE id = 1",
+                    "ROLLBACK TO SAVEPOINT s1");
+            OracleMetricsHelper.waitForOffsetScnAfter(offsetScn);
+            connection.executeWithoutCommitting("INSERT INTO dbz1914 (id,data) VALUES (2,'insert 2')");
+            connection.commit();
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1914");
+            assertThat(tableRecords).hasSize(1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("insert 1");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1914");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1735")
+    public void shouldRollbackEventWithEmptyOrOutOfLineLobs() throws Exception {
+        TestHelper.dropTable(connection, "dbz1735");
+        try {
+            connection.execute("CREATE TABLE dbz1735 (id numeric(9,0) primary key, data varchar2(50), clob0 clob, clob1 clob)");
+            TestHelper.streamTable(connection, "dbz1735");
+
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1735")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // data + empty:
+            // - AAAAAAAAAAAAAAAAAA INSERT
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA DELETE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "INSERT INTO dbz1735 (id, data, clob0, clob1) VALUES (1, '1', EMPTY_CLOB(), EMPTY_CLOB())",
+                    "ROLLBACK TO SAVEPOINT s1");
+            // data + out-of-line:
+            // - AAAAAAAAAAAAAAAAAA INSERT
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA DELETE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "INSERT INTO dbz1735 (id, data, clob0, clob1) VALUES (2, '2', '%s', '%s')".formatted("3".repeat(1985), "3".repeat(1986)),
+                    "ROLLBACK TO SAVEPOINT s1");
+            connection.execute("INSERT INTO dbz1735 (id, data, clob0, clob1) VALUES (3, '3', '3', '3')");
+            // out-of-line:
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA UPDATE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1735 SET clob0 = '%s' WHERE id = 3".formatted("3".repeat(1985)),
+                    "ROLLBACK TO SAVEPOINT s1");
+            // data + out-of-line:
+            // - AAAAAAAAAAAAAAAAAA UPDATE
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA UPDATE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1735 SET data = '33', clob0 = '%s' WHERE id = 3".formatted("3".repeat(1985)),
+                    "ROLLBACK TO SAVEPOINT s1");
+            // out-of-line + out-of-line:
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA UPDATE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1735 SET clob0 = '%s', clob1 = '%s' WHERE id = 3".formatted("3".repeat(1985), "3".repeat(1986)),
+                    "ROLLBACK TO SAVEPOINT s1");
+            // data + out-of-line + out-of-line:
+            // - AAAAAAAAAAAAAAAAAA UPDATE
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAAAAAAAAAAAAAAAAA SELECT_LOB_LOCATOR
+            // - AAAAAAAAAAAAAAAAAA LOB_WRITEs
+            // - AAASncAAMAAAACDAAA INTERNAL
+            // - AAASncAAMAAAACDAAA UPDATE ROLLBACK
+            connection.execute(
+                    "SAVEPOINT s1",
+                    "UPDATE dbz1735 SET data = '3', clob0 = '%s', clob1 = '%s' WHERE id = 3".formatted("3".repeat(1985), "3".repeat(1986)),
+                    "ROLLBACK TO SAVEPOINT s1");
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ1735");
+            assertThat(tableRecords).hasSize(1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("DATA")).isEqualTo("3");
+            assertThat(after.get("CLOB0")).isEqualTo("3");
+            assertThat(after.get("CLOB1")).isEqualTo("3");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1735");
         }
     }
 }

@@ -11,6 +11,7 @@ package io.debezium.connector.oracle.logminer.events;
  * @author Chris Cranford
  */
 public enum EventType {
+    INTERNAL(0),
     INSERT(1),
     DELETE(2),
     UPDATE(3),

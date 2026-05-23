@@ -11,6 +11,7 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 
 import java.math.BigInteger;
@@ -52,11 +53,13 @@ import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingC
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -66,6 +69,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
+import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
 
 /**
@@ -77,6 +81,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceTest.class);
 
+    private static final String LOB_TABLE_NAME = "TEST_LOB_TABLE";
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
@@ -606,6 +611,81 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
     }
 
+    @Test
+    @FixFor("DBZ-1422")
+    public void testSavepointRollbackInsertWithInlineLob() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAA", "EMPTY_CLOB()"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB", "NULL"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.never())
+                    .dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1914")
+    public void testSavepointRollbackIdempotence() throws Exception {
+        final Configuration config = getConfig().build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            // Simulate a new mining session
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1735")
+    public void testSavepointRollbackInsertWithOutOfLineLob() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAA", "EMPTY_CLOB()"));
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.never())
+                    .dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1917")
+    public void testSavepointRollbackExactlyOneOperation() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAA", "EMPTY_CLOB()"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(5, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getCommitLogMinerEventRow(6, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+        }
+    }
+
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         Configuration configuration = getConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
@@ -629,7 +709,16 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .addColumn(Column.editor().name("DATA").create())
                 .create();
 
+        Table lobTable = Table.editor()
+                .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_LOB_TABLE"))
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(Column.editor().name("DATA").type("CLOB").jdbcType(OracleTypes.CLOB).create())
+                .setPrimaryKeyNames("ID")
+                .addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(2L).create())
+                .create();
+
         schema.refresh(table);
+        schema.refresh(lobTable);
         return schema;
     }
 
@@ -681,6 +770,24 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return provider;
     }
 
+    private LogMinerEventRow getInternalLogMinerEventRow(long scn, String transactionId, Instant changeTime, String rowId) {
+        final TableId[] tableId = new TableId[1];
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.INTERNAL);
+        Mockito.when(row.isRollbackFlag()).thenReturn(false);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getObjectId()).thenReturn(2L);
+        Mockito.when(row.getTableId()).thenAnswer(invocationOnMock -> tableId[0]);
+        Mockito.doAnswer(invocation -> {
+            tableId[0] = invocation.getArgument(0, TableId.class);
+            return null;
+        }).when(row).setTableId(any(TableId.class));
+        return row;
+    }
+
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId) {
         return getStartLogMinerEventRow(scn, transactionId, Instant.now());
     }
@@ -717,16 +824,77 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
+        return getInsertLogMinerEventRow(scn, transactionId, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
+    }
+
+    private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
-        Mockito.when(row.getRowId()).thenReturn("AAAAAAAAAAAAAAAAAB");
+        Mockito.when(row.getRowId()).thenReturn(rowId);
         Mockito.when(row.getOperation()).thenReturn("INSERT");
-        Mockito.when(row.getTableName()).thenReturn("TEST_TABLE");
-        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"));
-        Mockito.when(row.getRedoSql()).thenReturn("insert into \"DEBEZIUM\".\"TEST_TABLE\"(\"ID\",\"DATA\") values ('1','Test');");
+        Mockito.when(row.getTableName()).thenReturn(tableName);
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        Mockito.when(row.getRedoSql()).thenReturn("insert into \"DEBEZIUM\".\"%s\"(\"ID\",\"DATA\") values ('1',%s);".formatted(tableName, dataValue));
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
+        Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        return row;
+    }
+
+    private LogMinerEventRow getUpdateLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getOperation()).thenReturn("UPDATE");
+        Mockito.when(row.getTableName()).thenReturn(tableName);
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        Mockito.when(row.getRedoSql()).thenReturn(
+                "update \"DEBEZIUM\".\"%s\" set \"DATA\" = %s where \"ID\" = '1' and ROWID = '%s';".formatted(tableName, dataValue, rowId));
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
+        Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        return row;
+    }
+
+    private LogMinerEventRow getRollbackToSavepointLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.DELETE);
+        Mockito.when(row.isRollbackFlag()).thenReturn(true);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getOperation()).thenReturn("DELETE");
+        Mockito.when(row.getTableName()).thenReturn(tableName);
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        Mockito.when(row.getRedoSql()).thenReturn(
+                "delete from \"DEBEZIUM\".\"%s\" where ROWID = '%s';".formatted(tableName, rowId));
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
+        Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        return row;
+    }
+
+    private LogMinerEventRow getRollbackToSavepointLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId,
+                                                                    String dataValue) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
+        Mockito.when(row.isRollbackFlag()).thenReturn(true);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getOperation()).thenReturn("UPDATE");
+        Mockito.when(row.getTableName()).thenReturn(tableName);
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        Mockito.when(row.getRedoSql()).thenReturn(
+                "update \"DEBEZIUM\".\"%s\" set \"DATA\" = %s;".formatted(tableName, dataValue));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
         Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
