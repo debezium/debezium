@@ -54,6 +54,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
+import io.debezium.connector.postgresql.connection.DateTimeFormat;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
@@ -943,6 +944,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            final String str = (String) data;
+            if (str.endsWith("infinity")) {
+                return str;
+            }
+
+            data = DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(str).withOffsetSameInstant(ZoneOffset.UTC);
+        }
+
         if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
@@ -1167,6 +1177,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
         if (data == null) {
             return null;
+        }
+        if (data instanceof String) {
+            final String str = (String) data;
+            switch (str) {
+                case "infinity":
+                    return POSITIVE_INFINITY_LOCAL_DATE_TIME;
+                case "-infinity":
+                    return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+            }
+
+            final Instant instant = DateTimeFormat.get().timestampToInstant(str);
+            return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
         }
         if (!(data instanceof Timestamp)) {
             return data;

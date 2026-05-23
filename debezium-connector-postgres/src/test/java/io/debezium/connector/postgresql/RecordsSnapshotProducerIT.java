@@ -53,6 +53,8 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 
 /**
@@ -1321,6 +1323,52 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         buildWithStreamProducer(TestHelper.defaultConfig());
         waitForSnapshotToBeCompleted();
         waitForStreamingToStart();
+    }
+
+    @Test
+    @FixFor("DBZ-1916")
+    public void shouldSnapshotPre1582TimestampCorrectly() throws Exception {
+        TestHelper.execute("CREATE TABLE pre1582_ts_table (pk SERIAL, "
+                + "ts TIMESTAMP NOT NULL, "
+                + "tstz TIMESTAMPTZ NOT NULL, "
+                + "PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO pre1582_ts_table (ts, tstz) VALUES ("
+                + "'0001-01-31T00:00:00'::TIMESTAMP, "
+                + "'0001-01-31T00:00:00+00'::TIMESTAMPTZ)");
+        TestHelper.execute("INSERT INTO pre1582_ts_table (ts, tstz) VALUES ("
+                + "'1000-06-15T12:30:45.123456'::TIMESTAMP, "
+                + "'1000-06-15T12:30:45.123456+00'::TIMESTAMPTZ)");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.pre1582_ts_table"));
+
+        final TestConsumer consumer = testConsumer(2, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final long expectedTsMicros1 = java.time.LocalDateTime.of(1, 1, 31, 0, 0, 0)
+                .toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final String expectedTstz1 = "0001-01-31T00:00:00.000000Z";
+
+        final long expectedTsMicros2 = java.time.LocalDateTime.of(1000, 6, 15, 12, 30, 45, 123456000)
+                .toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000 + 123456;
+        final String expectedTstz2 = "1000-06-15T12:30:45.123456Z";
+
+        final List<SchemaAndValueField> expected1 = Arrays.asList(
+                new SchemaAndValueField("ts", MicroTimestamp.builder().build(), expectedTsMicros1),
+                new SchemaAndValueField("tstz", ZonedTimestamp.builder().build(), expectedTstz1));
+
+        final List<SchemaAndValueField> expected2 = Arrays.asList(
+                new SchemaAndValueField("ts", MicroTimestamp.builder().build(), expectedTsMicros2),
+                new SchemaAndValueField("tstz", ZonedTimestamp.builder().build(), expectedTstz2));
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(2);
+        VerifyRecord.isValidRead(records.get(0), PK_FIELD, 1);
+        assertRecordSchemaAndValues(expected1, records.get(0), Envelope.FieldName.AFTER);
+        VerifyRecord.isValidRead(records.get(1), PK_FIELD, 2);
+        assertRecordSchemaAndValues(expected2, records.get(1), Envelope.FieldName.AFTER);
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {

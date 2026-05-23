@@ -787,6 +787,10 @@ public class PostgresConnection extends JdbcConnection {
                 case PgOid.TIMETZ:
                     // In order to guarantee that we resolve TIMETZ columns with proper microsecond precision,
                     // read the column as a string instead and then re-parse inside the converter.
+                case PgOid.TIMESTAMP:
+                case PgOid.TIMESTAMPTZ:
+                    // Read as string to avoid java.sql.Timestamp's Julian-Gregorian calendar conversion
+                    // which corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian).
                     return rs.getString(columnIndex);
                 default:
                     Object x = rs.getObject(columnIndex);
