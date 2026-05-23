@@ -7,11 +7,9 @@ package io.debezium.connector.oracle.logminer.buffered.memory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -32,7 +30,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
     private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
     private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
-    private final Map<String, Set<Integer>> rollbacksByTransactionId = new HashMap<>();
 
     @Override
     public MemoryTransaction getTransaction(String transactionId) {
@@ -84,15 +81,13 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public void forEachEvent(MemoryTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
+    public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.getOrDefault(transaction.getTransactionId(), Set.of());
             try (var stream = events.stream()) {
                 final Iterator<LogMinerEventEntry> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    final LogMinerEventEntry entry = iterator.next();
-                    if (!predicate.test(entry.event, rollbacks.contains(entry.eventId))) {
+                    if (!predicate.test(iterator.next().event)) {
                         break;
                     }
                 }
@@ -126,19 +121,18 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void removeTransactionEvents(MemoryTransaction transaction) {
         eventsByTransactionId.remove(transaction.getTransactionId());
         eventsByEventIdByTransactionId.remove(transaction.getTransactionId());
-        rollbacksByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
-    public boolean rollbackTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
+    public boolean removeTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.computeIfAbsent(transaction.getTransactionId(), k -> new HashSet<>());
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId() == encodedRowId && !rollbacks.contains(entry.eventId)) {
-                    rollbacks.add(entry.eventId);
+                if (entry.event.getRowId() == encodedRowId) {
+                    events.remove(i);
+                    eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
                     return true;
                 }
             }
@@ -174,7 +168,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         transactionsByTransactionId.clear();
         eventsByTransactionId.clear();
         eventsByEventIdByTransactionId.clear();
-        rollbacksByTransactionId.clear();
     }
 
     @Override

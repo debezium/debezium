@@ -29,17 +29,13 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     private final BasicCache<String, InfinispanTransaction> transactionCache;
     private final BasicCache<String, LogMinerEvent> eventCache;
-    private final BasicCache<String, Boolean> rollbackCache;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
-    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache,
-                                              BasicCache<String, LogMinerEvent> eventCache,
-                                              BasicCache<String, Boolean> rollbackCache) {
+    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerEvent> eventCache) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
-        this.rollbackCache = rollbackCache;
 
         primeHeapCacheFromOffHeapCaches();
     }
@@ -97,14 +93,14 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void forEachEvent(InfinispanTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
+    public void forEachEvent(InfinispanTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    final String eventKey = transaction.getEventId(iterator.next());
-                    if (!predicate.test(eventCache.get(eventKey), rollbackCache.containsKey(eventKey))) {
+                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
+                    if (!predicate.test(event)) {
                         break;
                     }
                 }
@@ -133,23 +129,21 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     public void removeTransactionEvents(InfinispanTransaction transaction) {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            events.descendingSet().stream().map(transaction::getEventId).forEach(key -> {
-                eventCache.remove(key);
-                rollbackCache.remove(key);
-            });
+            events.descendingSet().stream().map(transaction::getEventId).forEach(eventCache::remove);
         }
         eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
-    public boolean rollbackTransactionEventWithRowId(InfinispanTransaction transaction, String rowId) {
+    public boolean removeTransactionEventWithRowId(InfinispanTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
-                rollbackCache.put(eventKey, Boolean.TRUE);
+            if (event != null && event.getRowId() == encodedRowId) {
+                eventCache.remove(eventKey);
+                eventIds.remove(eventId);
                 return true;
             }
         }
@@ -183,7 +177,6 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
-        rollbackCache.clear();
         eventIdsByTransactionId.clear();
     }
 
