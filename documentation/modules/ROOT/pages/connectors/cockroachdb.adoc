@@ -193,7 +193,7 @@ To enable the connector to use incremental snapshots, you must create a signalin
 
 .Procedure
 
-1.  Create a signaling table in CockroachDB by issuing the following SQL command:
+1. Create a signaling table in CockroachDB by issuing the following SQL command:
 +
 [source,sql]
 ----
@@ -214,9 +214,16 @@ CREATE TABLE debezium_signal (
 }
 ----
 +
-You must include the signaling table in the  `table.include.list` so that the changefeed can deliver signal events to the connector.
+You must include the signaling table in the `table.include.list` so that the changefeed can deliver signal events to the connector.
 
-. To trigger an incremental snapshot, insert a signal row:
+[id="cockroachdb-trigger-an-incremental-snapshot"]
+==== Trigger an incremental snapshot
+
+You trigger an incremental snapshot by inserting a row in the connector's signaling table.
+
+.Procedure
+
+* Run a SQL command that uses the following format to add a row to the signaling table to trigger an incremental snapshot:
 +
 [source,sql]
 ----
@@ -230,7 +237,6 @@ You can use incremental snapshots to:
 
 * Re-populate a downstream consumer that lost data.
 * Backfill a newly added sink or topic.
-
 
 For more information about signaling, see {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
 
@@ -779,20 +785,41 @@ For these columns, the connector omits the default from the schema so that Cockr
 [[setting-up-cockroachdb]]
 == Setting up CockroachDB
 
-Before deploying the {prodname} CockroachDB connector, verify the following prerequisites:
+Before you deploy the {prodname} CockroachDB connector, complete the following tasks in your CockroachDB environment:
+
+* Verify that the required components, user account, and connectivity are available.
+* Grant the changefeed permissions that the connector requires.
 
 .Prerequisites
 
-* **CockroachDB**: The connector requires CockroachDB with support for sink-based changefeeds.
-All changefeed features are available in all CockroachDB editions without an enterprise license.
+CockroachDB cluster::
+A CockroachDB cluster that supports sink-based changefeeds.
+All changefeed features are available in every CockroachDB edition without an enterprise license.
 
-* **Changefeed permissions**: The database user configured for the connector must have one of the following:
-** The `CHANGEFEED` privilege on the target tables (CockroachDB v22.2+)
-** The `ALL` privilege on the target tables
-** Membership in the `admin` role
+Intermediate Kafka cluster::
+A Kafka cluster where CockroachDB publishes changefeed events.
+This can be the same Kafka cluster that Kafka Connect uses, or a separate one.
+
+Network connectivity::
+The CockroachDB cluster must be able to reach the intermediate Kafka cluster to publish changefeed events.
+The Kafka Connect worker must be able to reach both the CockroachDB cluster (for JDBC) and the intermediate Kafka cluster (for consuming changefeed events).
+
+Changefeed user account::
+A CockroachDB user that has one of the following privileges on the target tables:
 +
-Additionally, grant `VIEWCLUSTERSETTING` so the connector can verify that `kv.rangefeed.enabled` is set to `true` (a prerequisite for changefeeds).
+* The `CHANGEFEED` privilege (CockroachDB v22.2+)
+* The `ALL` privilege
+* Membership in the `admin` role
+
+[id="cockroachdb-grant-changefeed-permissions"]
+=== Granting changefeed permissions
+
+Enable cluster-wide rangefeeds and grant the necessary privileges to the database user that the connector uses.
 CockroachDB validates changefeed privileges at `CREATE CHANGEFEED` time and returns accurate, version-specific error messages if the user lacks sufficient permissions.
+
+.Procedure
+
+* As a CockroachDB admin user, run the following SQL commands:
 +
 [source,sql]
 ----
@@ -806,12 +833,8 @@ GRANT VIEWCLUSTERSETTING TO myuser;
 -- Or grant on all tables in a database
 GRANT CHANGEFEED ON ALL TABLES IN DATABASE defaultdb TO myuser;
 ----
-
-* **Intermediate Kafka cluster**: The connector requires a Kafka cluster where CockroachDB will publish changefeed events.
-This can be the same Kafka cluster used by Kafka Connect, or a separate one.
-
-* **Network connectivity**: The CockroachDB cluster must be able to reach the intermediate Kafka cluster to publish changefeed events.
-The Kafka Connect worker must be able to reach both the CockroachDB cluster (for JDBC) and the intermediate Kafka cluster (for consuming changefeed events).
++
+Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabled` is set to `true`, which is a prerequisite for changefeeds.
 
 // Type: assembly
 // ModuleID: deploying-and-managing-debezium-cockroachdb-connectors
@@ -839,21 +862,10 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 
 1. Download the archive file to a temporary directory.
 2. Copy the downloaded file to a directory in your Kafka Connect environment, for example, `/usr/local/share/kafka/plugins`.
-4.  Extract the JAR file into the directory and then remove the downloaded archive file.
-5. Add an entry for the directory with the JAR files to the [Kafka Connect plugin.path](https://kafka.apache.org/documentation/#connectconfigs).
-6. xref:cockroachdb-example-configuration[Configure the connector] and xref:cockroachdb-adding-connector-configuration[add the configuration] to your Kafka Connect cluster.
-7. Restart the Kafka Connect process so that it picks up the new JAR files.
-
-
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka and Kafka Connect.
-
-
-[IMPORTANT]
-====
-The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
-These images are not intended for use in production environments.
-To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
-====
+3. Extract the JAR file into the directory and then remove the downloaded archive file.
+4. Add an entry for the directory with the JAR files to the link:https://kafka.apache.org/documentation/#connectconfigs[Kafka Connect `plugin.path`].
+5. xref:cockroachdb-example-configuration[Configure the connector] and xref:cockroachdb-adding-connector-configuration[add the configuration] to your Kafka Connect cluster.
+6. Restart the Kafka Connect process so that it picks up the new JAR files.
 
 // Type: concept
 // ModuleID: debezium-cockroachdb-connector-configuration-example
