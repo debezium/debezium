@@ -252,8 +252,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     .flatMap(tableId -> getSnapshotConnectionFirstSelect(ctx, tableId));
 
             for (int i = 1; i < snapshotMaxThreads; i++) {
-                JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
-                conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
+                JdbcConnection conn = jdbcConnectionFactory.newConnection();
+                initializePooledConnection(conn);
                 connectionPoolConnectionCreated(ctx, conn);
                 connectionPool.add(conn);
                 if (firstQuery.isPresent()) {
@@ -264,6 +264,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         LOGGER.info("Created connection pool with {} threads", connectionPool.size());
         return connectionPool;
+    }
+
+    private void initializePooledConnection(JdbcConnection connection) throws SQLException {
+        connection.setAutoCommit(false);
+        connection.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
     }
 
     public Connection createSnapshotConnection() throws SQLException {
@@ -1391,6 +1396,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         return () -> {
             final JdbcConnection connection = connectionPool.poll();
             final O offset = offsetPool.poll();
+            if (!connection.isValid()) {
+                LOGGER.warn("Snapshot pool connection is no longer valid, attempting reconnect. Snapshot consistency for subsequent tables may be affected.");
+                connection.reconnect();
+                initializePooledConnection(connection);
+            }
             try {
                 work.execute(connection, offset);
             }
