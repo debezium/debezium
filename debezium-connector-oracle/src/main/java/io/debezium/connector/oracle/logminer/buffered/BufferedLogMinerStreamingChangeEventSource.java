@@ -49,6 +49,7 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.data.Envelope;
@@ -363,6 +364,24 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
 
         return false;
+    }
+
+    @Override
+    protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
+        if (!event.isRollbackFlag() && event.getRowId() != null && !event.getRowId().endsWith(RowIdCodec.EMPTY_ROW_ID_SUFFIX)) {
+            final Transaction transaction = getTransactionCache().getTransaction(event.getTransactionId());
+            if (transaction != null) {
+                final LogMinerEvent lastEvent = getTransactionCache().getLastTransactionEvent(transaction);
+                if (lastEvent != null && lastEvent.getRowId() == RowIdCodec.EMPTY_ROW_ID) {
+                    if (event.getTableId() == null) {
+                        event.setTableId(getSchema().getTableIdByObjectId(event.getObjectId(), event.getDataObjectId()));
+                    }
+                    if (lastEvent.getTableId().equals(event.getTableId())) {
+                        enqueueEvent(event, new LogMinerEvent(event));
+                    }
+                }
+            }
+        }
     }
 
     @Override

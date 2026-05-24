@@ -22,6 +22,18 @@ public class RowIdCodec {
         }
     }
 
+    /**
+     * A ROW_ID is composed of 18 characters, which adhere to the following rules:
+     * Format: OOOOOOFFFBBBBBBRRR
+     * OOOOOO - 6 characters - represents the data object number (never zero)
+     * FFF - 3 characters - represents the relative file number (never zero)
+     * BBBBBB - 6 characters - represents the block number (rows are never in the header, which is 0 block)
+     * RRR - 3 characters - row number in the block
+     *
+     * So a string that ends with 12 A characters represents file=0, block=0, row=0,
+     * which is effectively impossible for a row location inside any Oracle database file.
+     */
+    public static String EMPTY_ROW_ID_SUFFIX = "AAAAAAAAAAAA";
     public static long EMPTY_ROW_ID = RowIdCodec.encode("AAAAAAAAAAAAAAAAAA");
 
     private RowIdCodec() {

@@ -490,6 +490,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 preProcessEvent(event);
 
                 switch (event.getEventType()) {
+                    case INTERNAL -> handleInternalEvent(event);
                     case MISSING_SCN -> handleMissingScnEvent(event);
                     case START -> handleStartEvent(event);
                     case COMMIT -> handleCommitEvent(event);
@@ -521,6 +522,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected void preProcessEvent(LogMinerEventRow event) {
         getBatchMetrics().rowProcessed();
+    }
+
+    protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
+        // no-op
     }
 
     /**

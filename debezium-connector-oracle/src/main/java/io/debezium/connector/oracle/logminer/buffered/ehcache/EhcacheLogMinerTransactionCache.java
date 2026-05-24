@@ -152,17 +152,28 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     @Override
     public boolean removeTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        for (Integer eventId : eventIds.descendingSet()) {
-            final String eventKey = transaction.getEventId(eventId);
+        final Iterator<Integer> eventIdIterator = eventIdsByTransactionId.get(transaction.getTransactionId())
+                .descendingIterator();
+        boolean found = false;
+        while (eventIdIterator.hasNext()) {
+            final String eventKey = transaction.getEventId(eventIdIterator.next());
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId) {
+            if (!found) {
+                if (event != null && event.getRowId() == encodedRowId) {
+                    eventCache.remove(eventKey);
+                    eventIdIterator.remove();
+                    found = true;
+                }
+            }
+            else if (event != null && event.getRowId() == RowIdCodec.EMPTY_ROW_ID) {
                 eventCache.remove(eventKey);
-                eventIds.remove(eventId);
+                eventIdIterator.remove();
+            }
+            else {
                 return true;
             }
         }
-        return false;
+        return found;
     }
 
     @Override

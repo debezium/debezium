@@ -127,17 +127,27 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public boolean removeTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
+        boolean found = false;
         if (events != null) {
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId() == encodedRowId) {
+                if (!found) {
+                    if (entry.event.getRowId() == encodedRowId) {
+                        events.remove(i);
+                        eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
+                        found = true;
+                    }
+                }
+                else if (entry.event.getRowId() == RowIdCodec.EMPTY_ROW_ID) {
                     events.remove(i);
                     eventsByEventIdByTransactionId.get(transaction.getTransactionId()).remove(entry.eventId);
+                }
+                else {
                     return true;
                 }
             }
         }
-        return false;
+        return found;
     }
 
     @Override

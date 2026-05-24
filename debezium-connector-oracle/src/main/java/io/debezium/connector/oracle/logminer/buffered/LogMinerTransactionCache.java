@@ -112,6 +112,16 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     LogMinerEvent getTransactionEvent(T transaction, int eventKey);
 
     /**
+     * Get the last transaction event by transaction reference.
+     *
+     * @param transaction the transaction, should not be {@code null}
+     * @return the event if found, {@code null} if not found
+     */
+    default LogMinerEvent getLastTransactionEvent(T transaction) {
+        return transaction.getNumberOfEvents() > 0 ? getTransactionEvent(transaction, transaction.getNumberOfEvents() - 1) : null;
+    };
+
+    /**
      * Applies a consumer to all event keys in the cache.
      * No assumptions should be made about the order of the event keys.
      *
