@@ -3160,7 +3160,6 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         start(PostgresConnector.class, updatedConfigBuilder.build());
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted();
         consumeRecordsByTopic(2);
 
         stopConnector(value -> assertTrue(
@@ -3381,11 +3380,20 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOps)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // SQL sequence: INSERT(c), UPDATE(u), DELETE(d), TRUNCATE(t), INSERT(c) — 5 records before skipping
+        List<String> executedOps = Arrays.asList(
+                Envelope.Operation.CREATE.code(),
+                Envelope.Operation.UPDATE.code(),
+                Envelope.Operation.DELETE.code(),
+                Envelope.Operation.TRUNCATE.code(),
+                Envelope.Operation.CREATE.code());
 
         TestHelper.execute("INSERT INTO s1.a VALUES(301, 1);");
         TestHelper.execute("UPDATE s1.a SET aa=100 WHERE pk=301;");
@@ -3393,7 +3401,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.execute("TRUNCATE TABLE s1.a;");
         TestHelper.execute("INSERT INTO s1.a VALUES(302, 2);");
 
-        int expectedCount = 4 - skippedOpCodes.size();
+        int expectedCount = (int) executedOps.stream().filter(op -> !skippedOpCodes.contains(op)).count();
+
         SourceRecords records = consumeRecordsByTopic(expectedCount);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.a"));
 
