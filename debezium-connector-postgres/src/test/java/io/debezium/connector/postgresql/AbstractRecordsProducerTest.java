@@ -670,33 +670,21 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         String expectedTzLarge = "+21016-11-04T06:51:30.123456Z";
         String expectedTzLargeZero = "+21016-11-04T06:51:30.000000Z";
 
-        // The assertion for minimimum timestamps is problematic as it seems that Java and PostgreSQL handles conversion from large negative date
-        // to microseconds in different way
-        // written to database: 4713-12-31T23:59:59.999999 BC
-        // arrived from decoding plugin: -210831897600000001
-        // value from decoding plugin converted to Instant: -4712-12-31T23:59:59.999999Z - 1 year difference
-        // JDBC driver delivers Timestamp B.C.E. 4713-12-31T23:59:59.000+0100 that internally contains -210835184391000001 and translates to Instant -4712-11-23T22:59:59.999999Z
-        // The result is that JDBC driver and logical decoding plugin provides different values which moreover
-        // do not map to Java conversions
-        // It seems that JDBC driver always uses Gregorian calendar while Java Time API uses Julian
-        // Also it seems that further distortions could be introduced by timezone used so instead of matching
-        // against exact value the requested date should be smaller than -4712-11-01
+        // Both snapshot and streaming now parse timestamps as strings using the proleptic Gregorian calendar
+        // (via DateTimeFormat), so they produce consistent values for extreme negative dates.
+        // Written to database: 4713-12-31T23:59:59.999999 BC
+        // Proleptic Gregorian: -4712-12-31T23:59:59.999999Z (4713 BC = year -4712 in astronomical numbering)
         final SchemaAndValueField.Condition largeNegativeTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
-            final long expectedMinTsStreaming = -210831897600000001L;
-            final long expectedMinTsSnapshot = LocalDateTime.of(-4712, 11, 1, 0, 0, 0).toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+            final long expectedMinTs = -210831897600000001L;
             final long ts = (long) actualValue;
-            assertTrue(ts >= expectedMinTsSnapshot && ts < 0, "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
+            assertEquals(expectedMinTs, ts, "Negative timestamp don't match for " + fieldName);
         };
-        // The same issue is with timezoned timestamp
         // Database: 4714-12-31T23:59:59.999999Z BC
-        // JDBC: -4713-11-23T23:59:59.999999Z
-        // Streamed as: -210863520000000001
-        // Java conversion: -4713-12-31T23:59:59.999999Z
+        // Proleptic Gregorian: -4713-12-31T23:59:59.999999Z
         final SchemaAndValueField.Condition largeNegativeTzTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
-            final String expectedMinTsStreaming = "-4713-12-31T23:59:59.999999Z";
-            final String expectedMinTsSnapshot = "-4713-11-23T23:59:59.999999Z";
-            assertTrue(expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue),
-                    "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
+            final String expectedMinTs = "-4713-12-31T23:59:59.999999Z";
+            assertEquals(expectedMinTs, actualValue,
+                    "Negative timestamp don't match for " + fieldName);
         };
         return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
