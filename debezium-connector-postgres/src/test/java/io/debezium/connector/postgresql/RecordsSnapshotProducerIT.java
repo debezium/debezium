@@ -1326,7 +1326,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @FixFor("DBZ-1916")
+    @FixFor("debezium/dbz#1916")
     public void shouldSnapshotPre1582TimestampCorrectly() throws Exception {
         TestHelper.execute("CREATE TABLE pre1582_ts_table (pk SERIAL, "
                 + "ts TIMESTAMP NOT NULL, "

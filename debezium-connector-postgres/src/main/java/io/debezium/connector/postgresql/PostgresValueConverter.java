@@ -944,9 +944,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (data instanceof String) {
-            final String str = (String) data;
-            if (str.endsWith("infinity")) {
+        if (data instanceof String str) {
+            if (POSITIVE_INFINITY.equalsIgnoreCase(str) || NEGATIVE_INFINITY.equalsIgnoreCase(str)) {
                 return str;
             }
 
@@ -1178,13 +1177,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == null) {
             return null;
         }
-        if (data instanceof String) {
-            final String str = (String) data;
-            switch (str) {
-                case "infinity":
-                    return POSITIVE_INFINITY_LOCAL_DATE_TIME;
-                case "-infinity":
-                    return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+        if (data instanceof String str) {
+            if (POSITIVE_INFINITY.equalsIgnoreCase(str)) {
+                return POSITIVE_INFINITY_LOCAL_DATE_TIME;
+            }
+            else if (NEGATIVE_INFINITY.equalsIgnoreCase(str)) {
+                return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
             }
 
             final Instant instant = DateTimeFormat.get().timestampToInstant(str);

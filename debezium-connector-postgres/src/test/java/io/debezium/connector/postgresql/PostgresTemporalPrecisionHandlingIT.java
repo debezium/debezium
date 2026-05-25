@@ -415,7 +415,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         // somehow on github pipeline it fails expected:<+292269055-12-02Z> but was:<+292269055-12-03Z>
         assertTrue(after.get("date_ninf").toString().contains("+292269055-12-"));
         assertEquals(after.get("tz_max"), "+294247-01-01T23:59:59.999999Z");
-        assertEquals(after.get("tz_min"), "-4713-11-23T23:59:59.999999Z");
+        assertEquals(after.get("tz_min"), "-4713-12-31T23:59:59.999999Z");
         assertEquals(after.get("ts_pinf"), "+294247-01-10T04:00:25.2Z");
         assertEquals(after.get("ts_ninf"), "-290308-12-21T19:59:27.6Z");
         assertEquals(after.get("tz_pinf"), "infinity");
