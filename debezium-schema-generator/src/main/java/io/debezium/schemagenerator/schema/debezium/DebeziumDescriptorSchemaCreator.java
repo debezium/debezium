@@ -60,10 +60,8 @@ public class DebeziumDescriptorSchemaCreator {
         Set<String> usedGroups = new LinkedHashSet<>();
         ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
         for (Map.Entry<Field.Group, List<Field>> entry : configDefinition.fieldsByGroup().entrySet()) {
-            String groupName = formatGroupName(entry.getKey());
-            List<Field> groupFields = entry.getValue();
-            for (int i = 0; i < groupFields.size(); i++) {
-                Property property = buildProperty(groupFields.get(i), groupName, i);
+            for (Field field : entry.getValue()) {
+                Property property = buildProperty(field);
                 if (property != null) {
                     usedGroups.add(property.display().group().toLowerCase());
                     properties.add(property);
@@ -80,11 +78,14 @@ public class DebeziumDescriptorSchemaCreator {
                 buildGroups(usedGroups));
     }
 
-    private Property buildProperty(Field field, String groupName, int groupOrder) {
+    private Property buildProperty(Field field) {
 
         if (!fieldFilter.include(field)) {
             return null;
         }
+
+        String groupName = field.group() != null ? formatGroupName(field.group().getGroup()) : null;
+        Integer groupOrder = field.group() != null ? field.group().getPositionInGroup() : null;
 
         Display display = new Display(
                 field.displayName(),
