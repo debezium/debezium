@@ -16,8 +16,10 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -45,6 +47,7 @@ import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.ReplicaIdentityMapper;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
+import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
@@ -237,9 +240,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 case DISABLED:
                                     throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
                                 case ALL_TABLES:
-                                    String createPublicationStmt = connectorConfig.isPublishViaPartitionRoot()
-                                            ? String.format("CREATE PUBLICATION %s FOR ALL TABLES WITH (publish_via_partition_root = true);", publicationName)
-                                            : String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES%s;",
+                                            publicationName, buildWithClause());
                                     LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
@@ -268,9 +270,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     }
                                     break;
                                 case NO_TABLES:
-                                    final String createPublicationWithNoTablesStmt = connectorConfig.isPublishViaPartitionRoot()
-                                            ? String.format("CREATE PUBLICATION %s WITH (publish_via_partition_root = true);", publicationName)
-                                            : String.format("CREATE PUBLICATION %s;", publicationName);
+                                    final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s%s;",
+                                            publicationName, buildWithClause());
                                     LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
                                     try {
                                         executeWithTimeout(stmt, createPublicationWithNoTablesStmt);
@@ -458,6 +459,44 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
+    private String buildPublishOptionValue() {
+        Set<Envelope.Operation> skipped = connectorConfig.getSkippedOperations();
+        if (skipped.isEmpty()) {
+            return null;
+        }
+        List<String> ops = new ArrayList<>();
+        if (!skipped.contains(Envelope.Operation.CREATE)) {
+            ops.add("insert");
+        }
+        if (!skipped.contains(Envelope.Operation.UPDATE)) {
+            ops.add("update");
+        }
+        if (!skipped.contains(Envelope.Operation.DELETE)) {
+            ops.add("delete");
+        }
+        if (!skipped.contains(Envelope.Operation.TRUNCATE)) {
+            ops.add("truncate");
+        }
+        return String.join(",", ops);
+    }
+
+    private String buildWithClause() {
+        List<String> options = new ArrayList<>();
+        if (connectorConfig.isPublishViaPartitionRoot()) {
+            options.add("publish_via_partition_root = true");
+        }
+        String publishValue = buildPublishOptionValue();
+        if (publishValue != null) {
+            options.add(String.format("publish = '%s'", publishValue));
+        }
+        return options.isEmpty() ? "" : " WITH (" + String.join(", ", options) + ")";
+    }
+
+    private String buildAlterPublishClause() {
+        String publishValue = buildPublishOptionValue();
+        return publishValue != null ? String.format(" WITH (publish = '%s')", publishValue) : "";
+    }
+
     private void createOrUpdatePublicationModeFiltered(Statement stmt, boolean isUpdate) {
         String tableFilterString = null;
         String createOrUpdatePublicationStmt;
@@ -468,12 +507,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
             if (isUpdate) {
-                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString);
+                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s%s;",
+                        publicationName, tableFilterString, buildAlterPublishClause());
             }
             else {
-                createOrUpdatePublicationStmt = connectorConfig.isPublishViaPartitionRoot()
-                        ? String.format("CREATE PUBLICATION %s FOR TABLE %s WITH (publish_via_partition_root = true);", publicationName, tableFilterString)
-                        : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+                createOrUpdatePublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s%s;",
+                        publicationName, tableFilterString, buildWithClause());
             }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
             try {
