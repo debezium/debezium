@@ -4,10 +4,9 @@ apiVersion: v1
 metadata:
   name: mysql-pv-claim
 spec:
+  volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: standard-csi
-  volumeMode: Filesystem
