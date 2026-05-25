@@ -55,9 +55,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private final BinlogFieldReader fieldReader;
 
     public BinlogConnectorConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
-        super(configuration.config(), configuration.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        super(configuration.config(), configuration.factory(), initialOperations(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
         this.fieldReader = fieldReader;
+    }
+
+    private static Operations initialOperations() {
+        return statement -> statement.getConnection().setAutoCommit(false);
     }
 
     @Override
@@ -219,7 +223,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
             // Choose how we create statements based on the # of rows.
             // This is approximate and less accurate then COUNT(*),
             // but far more efficient for large InnoDB tables.
-            executeWithoutCommitting("USE `" + tableId.catalog() + "`;");
+            execute("USE `" + tableId.catalog() + "`;");
             return queryAndMap("SHOW TABLE STATUS LIKE '" + tableId.table() + "';", rs -> {
                 if (rs.next()) {
                     return OptionalLong.of((rs.getLong(5)));
