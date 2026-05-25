@@ -18,6 +18,7 @@
 
     <modules>
         <module>debezium-storage-api</module>
+        <module>debezium-storage-common</module>
         <module>debezium-storage-kafka</module>
         <module>debezium-storage-file</module>
         <module>debezium-storage-redis</module>
