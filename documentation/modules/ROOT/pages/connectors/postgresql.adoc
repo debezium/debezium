@@ -3725,6 +3725,10 @@ If a publication does not exist, the connector creates a publication for all tab
 The connector runs the following SQL command to create a publication: +
  +
 `CREATE PUBLICATION <__publication_name__> FOR ALL TABLES;`
+ +
+If the xref:postgresql-property-skipped-operations[`skipped.operations`] property is configured, the connector appends a `WITH (publish = '...')` clause to restrict the publication to non-skipped operation types: +
+ +
+`CREATE PUBLICATION <__publication_name__> FOR ALL TABLES WITH (publish = '<__allowed_operations__>');`
 
 `disabled`::
 The connector does not attempt to create a publication.
@@ -3741,6 +3745,8 @@ The resulting publication includes tables that match the current filter configur
 If the publication exists, the connector updates the publication for tables that match the current filter configuration by running a SQL command in the following format: +
  +
 `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
+ +
+In both cases, if the xref:postgresql-property-skipped-operations[`skipped.operations`] property is configured, the connector appends a `WITH (publish = '...')` clause to restrict the publication to non-skipped operation types.
 
 `no_tables`::
 If a publication exists, the connector uses it.
@@ -4373,6 +4379,9 @@ You can configure the connector to skip the following types of operations:
 * `t` (truncate)
 
 Set the value to `none` if you do not want the connector to skip any operations.
+
+When you use the `pgoutput` plug-in and the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, the connector propagates the configured skipped operations into the PostgreSQL publication by setting the `publish` option accordingly.
+For example, if `skipped.operations=d`, the connector creates or updates the publication with `WITH (publish = 'insert,update,truncate')`, so that PostgreSQL omits the skipped operations from the replication stream entirely, reducing unnecessary WAL traffic.
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value

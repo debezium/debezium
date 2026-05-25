@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import javax.management.InstanceNotFoundException;
 
@@ -56,6 +57,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -3112,6 +3116,59 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertTrue(TestHelper.publicationExists("cdc"));
     }
 
+    static Stream<Envelope.Operation> skippableOperationsForAlter() {
+        return Stream.of(Envelope.Operation.CREATE, Envelope.Operation.UPDATE, Envelope.Operation.DELETE, Envelope.Operation.TRUNCATE);
+    }
+
+    @ParameterizedTest(name = "skipped.operations={0}")
+    @MethodSource("skippableOperationsForAlter")
+    @FixFor("DBZ-1970")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldPropagateSkippedOperationsWhenUpdatingFilteredPublication(Envelope.Operation skippedOp) throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder initialConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOp.code());
+
+        start(PostgresConnector.class, initialConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        // Build the expected publish value: all ops except the skipped one
+        List<String> publishOps = new ArrayList<>(Arrays.asList("insert", "update", "delete", "truncate"));
+        publishOps.remove(skippedOp == Envelope.Operation.CREATE ? "insert"
+                : skippedOp == Envelope.Operation.UPDATE ? "update"
+                        : skippedOp == Envelope.Operation.DELETE ? "delete" : "truncate");
+        String expectedPublish = String.join(",", publishOps);
+
+        Configuration.Builder updatedConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a,s2.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOp.code());
+
+        start(PostgresConnector.class, updatedConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(2);
+
+        stopConnector(value -> assertTrue(
+                logInterceptor.containsMessage(String.format(
+                        "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s1\".\"a\", \"s2\".\"a\" WITH (publish = '%s');'",
+                        expectedPublish))));
+    }
+
     @Test
     @FixFor("DBZ-1813")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
@@ -3295,6 +3352,59 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         VerifyRecord.isValidInsert(recs.get(0), PK_FIELD, 1);
         VerifyRecord.isValidInsert(recs.get(1), PK_FIELD, 501);
+    }
+
+    static Stream<Arguments> skippedOperationsArguments() {
+        return Stream.of(
+                Arguments.of(Envelope.Operation.CREATE.code(), List.of(Envelope.Operation.CREATE.code())),
+                Arguments.of(Envelope.Operation.UPDATE.code(), List.of(Envelope.Operation.UPDATE.code())),
+                Arguments.of(Envelope.Operation.DELETE.code(), List.of(Envelope.Operation.DELETE.code())),
+                Arguments.of(Envelope.Operation.TRUNCATE.code(), List.of(Envelope.Operation.TRUNCATE.code())),
+                Arguments.of(Envelope.Operation.DELETE.code() + "," + Envelope.Operation.TRUNCATE.code(),
+                        List.of(Envelope.Operation.DELETE.code(), Envelope.Operation.TRUNCATE.code())));
+    }
+
+    @ParameterizedTest(name = "skipped.operations={0}")
+    @MethodSource("skippedOperationsArguments")
+    @FixFor("DBZ-1970")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication publish option only available for PGOUTPUT decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT plugin")
+    void shouldNotReceiveSkippedOperationsFromPublication(String skippedOps, List<String> skippedOpCodes) throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOps)
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("INSERT INTO s1.a VALUES(301, 1);");
+        TestHelper.execute("UPDATE s1.a SET aa=100 WHERE pk=301;");
+        TestHelper.execute("DELETE FROM s1.a WHERE pk=301;");
+        TestHelper.execute("TRUNCATE TABLE s1.a;");
+        TestHelper.execute("INSERT INTO s1.a VALUES(302, 2);");
+
+        int expectedCount = 4 - skippedOpCodes.size();
+        SourceRecords records = consumeRecordsByTopic(expectedCount);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.a"));
+
+        assertThat(recordsForTopic).hasSize(expectedCount);
+        recordsForTopic.forEach(record -> {
+            String op = ((Struct) record.value()).getString("op");
+            skippedOpCodes.forEach(skipped -> assertNotEquals(skipped, op));
+        });
+
+        assertNoRecordsToConsume();
+        stopConnector();
     }
 
     @Test
