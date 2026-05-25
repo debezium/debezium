@@ -368,3 +368,4 @@ akhilm,Mohammad Akhil
 100maygupta,Saumay Gupta
 huongcb_dep_trai,Cao Ba Huong
 Matei-Gatin,Matei Alexandru Gatin
+rigadon,Davyd Eliosidze
