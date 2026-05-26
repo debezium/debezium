@@ -836,6 +836,45 @@ GRANT CHANGEFEED ON ALL TABLES IN DATABASE defaultdb TO myuser;
 +
 Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabled` is set to `true`, which is a prerequisite for changefeeds.
 
+// Type: concept
+// ModuleID: securing-the-changefeed-sink
+
+[id="cockroachdb-securing-the-changefeed-sink"]
+== Securing the changefeed sink
+
+When the changefeed sink requires TLS, or mutual TLS (mTLS), the connector can read PEM files from disk and inject the base64-encoded material into the sink URI at startup.
+This avoids the need to base64-encode certificates by hand and paste large strings into the connector configuration.
+
+Set any combination of the following properties:
+
+`+cockroachdb.changefeed.sink.tls.ca.cert.file+`::
+Path to a PEM-encoded CA certificate that verifies the sink broker's certificate.
+
+`+cockroachdb.changefeed.sink.tls.client.cert.file+`::
+Path to a PEM-encoded client certificate used for mutual TLS to the sink.
+
+`+cockroachdb.changefeed.sink.tls.client.key.file+`::
+Path to a PEM-encoded client private key used for mutual TLS to the sink.
+
+For each property that is set, the connector reads the file, validates that it is readable and non-empty, base64-encodes the contents, URL-encodes the result, and appends a corresponding query parameter to `cockroachdb.changefeed.sink.uri` in the form expected by the configured sink type.
+For the Kafka sink, the appended parameters are `ca_cert=...`, `client_cert=...`, `client_key=...`, and `tls_enabled=true` (added automatically whenever any of the three TLS file options is set).
+File-based values overwrite any same-named query parameter that was already present inline in the sink URI.
+
+.Example configuration for a Kafka sink secured with mTLS
+[source,json]
+----
+{
+  "cockroachdb.changefeed.sink.type": "kafka",
+  "cockroachdb.changefeed.sink.uri": "kafka://kafka.example.com:9093",
+  "cockroachdb.changefeed.sink.tls.ca.cert.file": "/etc/kafka/secrets/ca.pem",
+  "cockroachdb.changefeed.sink.tls.client.cert.file": "/etc/kafka/secrets/client.pem",
+  "cockroachdb.changefeed.sink.tls.client.key.file": "/etc/kafka/secrets/client-key.pem"
+}
+----
+
+The connector validates each configured file path at startup and fails fast if the file does not exist, is unreadable, or is empty.
+Currently only the Kafka sink consumes these TLS parameters; for other sink types the sink URI passes through unchanged.
+
 // Type: assembly
 // ModuleID: deploying-and-managing-debezium-cockroachdb-connectors
 
@@ -1173,6 +1212,28 @@ For multi-tenant deployments, consider using a unique prefix per tenant.
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default
 |Additional options for the sink in `key=value` format, comma-separated.
+
+|[[cockroachdb-property-sink-tls-ca-cert-file]]<<cockroachdb-property-sink-tls-ca-cert-file, `+cockroachdb.changefeed.sink.tls.ca.cert.file+`>>
+|No default
+|Path to a PEM-encoded CA certificate file used to verify the changefeed sink server's certificate.
+When set, the connector reads the file, base64-encodes the contents, and appends the CA certificate to the sink URI in the form expected by the configured sink type (for example, `ca_cert=...` for Kafka sinks).
+Overrides any equivalent query parameter already present in `cockroachdb.changefeed.sink.uri`.
+See xref:cockroachdb-securing-the-changefeed-sink[Securing the changefeed sink].
+
+|[[cockroachdb-property-sink-tls-client-cert-file]]<<cockroachdb-property-sink-tls-client-cert-file, `+cockroachdb.changefeed.sink.tls.client.cert.file+`>>
+|No default
+|Path to a PEM-encoded client certificate file used for mutual TLS to the changefeed sink.
+When set, the connector reads the file, base64-encodes the contents, and appends the client certificate to the sink URI in the form expected by the configured sink type (for example, `client_cert=...` for Kafka sinks).
+Overrides any equivalent query parameter already present in `cockroachdb.changefeed.sink.uri`.
+See xref:cockroachdb-securing-the-changefeed-sink[Securing the changefeed sink].
+
+|[[cockroachdb-property-sink-tls-client-key-file]]<<cockroachdb-property-sink-tls-client-key-file, `+cockroachdb.changefeed.sink.tls.client.key.file+`>>
+|No default
+|Path to a PEM-encoded client private key file used for mutual TLS to the changefeed sink.
+When set, the connector reads the file, base64-encodes the contents, and appends the client key to the sink URI in the form expected by the configured sink type (for example, `client_key=...` for Kafka sinks).
+Overrides any equivalent query parameter already present in `cockroachdb.changefeed.sink.uri`.
+Setting any of the three sink TLS file options also implies `tls_enabled=true` on the sink URI.
+See xref:cockroachdb-securing-the-changefeed-sink[Securing the changefeed sink].
 
 |[[cockroachdb-property-kafka-consumer-group-prefix]]<<cockroachdb-property-kafka-consumer-group-prefix, `+cockroachdb.changefeed.kafka.consumer.group.prefix+`>>
 |`cockroachdb-connector`
