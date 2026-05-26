@@ -424,6 +424,7 @@
                                         <serviceInterface>org.apache.kafka.connect.storage.Converter</serviceInterface>
                                         <serviceInterface>org.apache.kafka.connect.storage.HeaderConverter</serviceInterface>
                                         <serviceInterface>io.debezium.spi.snapshot.Snapshotter</serviceInterface>
+                                        <serviceInterface>io.debezium.metadata.ComponentMetadataProvider</serviceInterface>
                                     </serviceInterfaces>
                                     <!-- Enforcement strategy: FAIL or WARN -->
                                     <strategy>FAIL</strategy>
