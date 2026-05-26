@@ -45,8 +45,8 @@ public class DefaultShutdownHandler<R> implements ShutdownHandler<R> {
     public void evaluate(R record) {
         if (shutdownStrategy.test(createContext(record))) {
             try {
-                if (record instanceof EmbeddedEngineChangeEvent<?, ?, ?>) {
-                    committer.markProcessed(((EmbeddedEngineChangeEvent<?, ?, ?>) record).sourceRecord());
+                if (record instanceof EmbeddedEngineChangeEvent<?, ?, ?> event) {
+                    committer.markProcessed(event.sourceRecord());
                     committer.markBatchFinished();
                 }
             }
