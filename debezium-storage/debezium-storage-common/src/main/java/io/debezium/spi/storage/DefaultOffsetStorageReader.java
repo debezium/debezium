@@ -20,7 +20,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
-import io.debezium.common.annotation.Incubating;
 
 /**
  * Default implementation of {@link OffsetStorageReader} that works with any {@link OffsetStore}.

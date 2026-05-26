@@ -48,7 +48,6 @@ public class KafkaConnectOffsetStoreAdapter implements OffsetStore, KafkaConnect
         delegate.configure(new EmbeddedWorkerConfig(config.asMap()));
     }
 
-    @Override
     public void configure(WorkerConfig workerConfig) {
         delegate.configure(workerConfig);
     }
