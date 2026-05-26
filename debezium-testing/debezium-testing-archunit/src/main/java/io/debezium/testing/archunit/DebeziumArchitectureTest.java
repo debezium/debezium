@@ -10,7 +10,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.junit.ArchTests;
 
-@AnalyzeClasses(packages = "io.debezium", importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = "io.debezium", importOptions = { ImportOption.DoNotIncludeTests.class, DoNotIncludeTestJars.class })
 public class DebeziumArchitectureTest {
 
     @ArchTest
