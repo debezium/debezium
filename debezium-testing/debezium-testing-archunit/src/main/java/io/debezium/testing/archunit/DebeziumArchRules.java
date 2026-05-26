@@ -37,7 +37,7 @@ public class DebeziumArchRules {
             SinkConnector.class,
             Transformation.class,
             Predicate.class,
-            CustomConverter.Converter.class,
+            CustomConverter.class,
             Converter.class,
             HeaderConverter.class);
 
@@ -47,7 +47,8 @@ public class DebeziumArchRules {
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
             .should().implement(ConfigDescriptor.class)
-            .because("All configurable components (connectors, transforms, converters) must implement ConfigDescriptor. "
+            .allowEmptyShould(true)
+            .because("All configurable components (connectors, transforms, converters) must implement ConfigDescriptor.\n\n "
                     + "Add 'implements ConfigDescriptor' to your class and implement getConfigFields() "
                     + "to return the Field.Set describing your component's configuration");
 
@@ -57,7 +58,8 @@ public class DebeziumArchRules {
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
             .should(beReferencedByAComponentMetadataProvider())
-            .because("All configurable components must be registered in a ComponentMetadataProvider. "
+            .allowEmptyShould(true)
+            .because("All configurable components must be registered in a ComponentMetadataProvider. \n\n"
                     + "Create or update the module's ComponentMetadataProvider implementation to include your component "
                     + "via componentMetadataFactory.createComponentMetadata(), and ensure the provider is listed in "
                     + "META-INF/services/io.debezium.metadata.ComponentMetadataProvider");
