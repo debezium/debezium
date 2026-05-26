@@ -56,6 +56,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private static final String FEATURE_DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl";
     private static final String FEATURE_EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
     private static final String FEATURE_EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
+    private static final String JDK_DOCUMENT_BUILDER_FACTORY_IMPL = "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl";
 
     private final boolean dropBufferOnStop;
     private final CacheManager cacheManager;
@@ -117,7 +118,12 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
             final Configuration ehcacheConfig = connectorConfig.getLogMiningEhcacheConfiguration();
 
             // Create the full XML configuration based on configuration template
-            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // Explicitly use the JDK built-in parser to avoid Oracle's JXDocumentBuilderFactory
+            // being picked up via service-loader when Oracle XML JARs are on the classpath,
+            // as Oracle's parser does not support the Apache XXE security features below.
+            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance(
+                    JDK_DOCUMENT_BUILDER_FACTORY_IMPL,
+                    EhcacheCacheProvider.class.getClassLoader());
 
             // Required for propagating namespace info
             factory.setNamespaceAware(true);
