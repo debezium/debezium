@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 
 /**

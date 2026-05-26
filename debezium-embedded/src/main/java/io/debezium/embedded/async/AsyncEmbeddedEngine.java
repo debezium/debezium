@@ -867,7 +867,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         // Configure and start the offset store
         try {
             LOGGER.debug("Configuring and starting offset store");
-            // TODO use Debezium config one we get rid off Kafka-dependent config
             offsetStore.configure(workerConfig);
             offsetStore.start();
         }
