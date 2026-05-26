@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.ReplicaIdentityMapper;
@@ -460,6 +461,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private String buildPublishOptionValue() {
+        if (!connectorConfig.getConfig().hasKey(CommonConnectorConfig.SKIPPED_OPERATIONS)) {
+            return null;
+        }
         Set<Envelope.Operation> skipped = connectorConfig.getSkippedOperations();
         if (skipped.isEmpty()) {
             return null;
