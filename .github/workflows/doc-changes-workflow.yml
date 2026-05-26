@@ -35,7 +35,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: Send email notification
-        uses: zulip/github-actions-zulip/send-message@v1
+        uses: zulip/github-actions-zulip/send-message@v2
         with:
           api-key: ${{ secrets.ZULIP_TOKEN }}
           email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
