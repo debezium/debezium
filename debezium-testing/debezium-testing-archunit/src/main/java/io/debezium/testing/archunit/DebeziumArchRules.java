@@ -47,7 +47,9 @@ public class DebeziumArchRules {
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
             .should().implement(ConfigDescriptor.class)
-            .because("All component that defines configurations must implement ConfigDescriptor to expose their configuration fields");
+            .because("All configurable components (connectors, transforms, converters) must implement ConfigDescriptor. "
+                    + "Add 'implements ConfigDescriptor' to your class and implement getConfigFields() "
+                    + "to return the Field.Set describing your component's configuration");
 
     @ArchTest
     static final ArchRule config_descriptors_should_be_registered_in_metadata_provider = classes()
@@ -55,7 +57,10 @@ public class DebeziumArchRules {
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
             .should(beReferencedByAComponentMetadataProvider())
-            .because("All components must be registered in a ComponentMetadataProvider");
+            .because("All configurable components must be registered in a ComponentMetadataProvider. "
+                    + "Create or update the module's ComponentMetadataProvider implementation to include your component "
+                    + "via componentMetadataFactory.createComponentMetadata(), and ensure the provider is listed in "
+                    + "META-INF/services/io.debezium.metadata.ComponentMetadataProvider");
 
     private static DescribedPredicate<JavaClass> assignableToAnyOf(List<Class<?>> types) {
         return types.stream()
@@ -75,8 +80,10 @@ public class DebeziumArchRules {
 
                 if (!referenced) {
                     events.add(SimpleConditionEvent.violated(javaClass,
-                            String.format("Class <%s> is not referenced by any ComponentMetadataProvider in (%s:0)",
-                                    javaClass.getName(), javaClass.getSimpleName() + ".java")));
+                            String.format("Class <%s> is not registered in any ComponentMetadataProvider. "
+                                    + "Add it to your module's ComponentMetadataProvider.getConnectorMetadata() method "
+                                    + "using componentMetadataFactory.createComponentMetadata(new %s(), ...)",
+                                    javaClass.getName(), javaClass.getSimpleName())));
                 }
             }
         };
