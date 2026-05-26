@@ -7,31 +7,40 @@ package io.debezium.storage.redis.offset;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
+import io.debezium.spi.storage.DefaultOffsetStorageReader;
+import io.debezium.spi.storage.DefaultOffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.smallrye.mutiny.Uni;
 
 /**
- * Implementation of OffsetBackingStore that saves to Redis
+ * Implementation of OffsetStore that saves to Redis
  * @author Oren Elias
  */
 
-public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
+public class RedisOffsetBackingStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisOffsetBackingStore.class);
+
+    protected Map<ByteBuffer, ByteBuffer> data = new HashMap<>();
+    protected ExecutorService executor;
 
     private RedisOffsetBackingStoreConfig config;
 
@@ -53,10 +62,8 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     @Override
-    public void configure(WorkerConfig config) {
-        super.configure(config);
-        Configuration configuration = Configuration.from(config.originalsStrings());
-        this.config = new RedisOffsetBackingStoreConfig(configuration);
+    public void configure(Configuration config) {
+        this.config = new RedisOffsetBackingStoreConfig(config);
     }
 
     public void configure(RedisOffsetBackingStoreConfig config) {
@@ -65,7 +72,11 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     @Override
     public synchronized void start() {
-        super.start();
+        executor = Executors.newFixedThreadPool(1, r -> {
+            Thread t = new Thread(r, RedisOffsetBackingStore.class.getSimpleName());
+            t.setDaemon(false);
+            return t;
+        });
         LOGGER.info("Starting RedisOffsetBackingStore");
         this.connect();
         this.load();
@@ -73,7 +84,11 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     @VisibleForTesting
     synchronized void startNoLoad() {
-        super.start();
+        executor = Executors.newFixedThreadPool(1, r -> {
+            Thread t = new Thread(r, RedisOffsetBackingStore.class.getSimpleName());
+            t.setDaemon(false);
+            return t;
+        });
         this.connect();
     }
 
@@ -87,7 +102,17 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     @Override
     public synchronized void stop() {
         closeClient();
-        super.stop();
+        if (executor != null) {
+            executor.shutdown();
+            try {
+                // Timeout taken from Kafka, where it's hard-coded as well. Can be make configurable later on.
+                executor.awaitTermination(30, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            executor = null;
+        }
         // Nothing to do since this doesn't maintain any outstanding connections/data
         LOGGER.info("Stopped RedisOffsetBackingStore");
     }
@@ -124,9 +149,7 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
                         })
                 .await().indefinitely();
         this.data = new HashMap<>();
-        LOGGER.info("Offsets: {}", offsets.entrySet().stream()
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .collect(Collectors.joining(", ", "{ ", " }")));
+        LOGGER.info("Offsets: {}", offsets);
 
         for (Map.Entry<String, String> mapEntry : offsets.entrySet()) {
             ByteBuffer key = (mapEntry.getKey() != null) ? ByteBuffer.wrap(mapEntry.getKey().getBytes()) : null;
@@ -138,7 +161,6 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     /**
     * Save offsets to Redis keys
     */
-    @Override
     protected void save() {
         for (Map.Entry<ByteBuffer, ByteBuffer> mapEntry : data.entrySet()) {
             byte[] key = (mapEntry.getKey() != null) ? mapEntry.getKey().array() : null;
@@ -173,7 +195,36 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     @Override
-    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
-        return null;
+    public Future<Map<ByteBuffer, ByteBuffer>> get(final Collection<ByteBuffer> keys) {
+        return executor.submit(() -> {
+            Map<ByteBuffer, ByteBuffer> result = new HashMap<>();
+            for (ByteBuffer key : keys) {
+                result.put(key, data.get(key));
+            }
+            return result;
+        });
+    }
+
+    @Override
+    public Future<Void> set(final Map<ByteBuffer, ByteBuffer> values,
+                            final OffsetStore.Callback<Void> callback) {
+        return executor.submit(() -> {
+            data.putAll(values);
+            save();
+            if (callback != null) {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public OffsetStorageReader createReader(String namespace) {
+        return new DefaultOffsetStorageReader(this, namespace);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new DefaultOffsetStorageWriter(this, namespace);
     }
 }
