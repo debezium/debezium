@@ -18,14 +18,14 @@ import java.util.Map;
  */
 public class ConfigDefinitionEditor {
 
-    private String connectorName;
+    private String componentName;
     private Map<Field.Group, List<Field>> fieldsByGroup = new LinkedHashMap<>();
 
     ConfigDefinitionEditor() {
     }
 
     ConfigDefinitionEditor(ConfigDefinition template) {
-        connectorName = template.connectorName();
+        componentName = template.componentName();
         for (Map.Entry<Field.Group, List<Field>> entry : template.fieldsByGroup().entrySet()) {
             fieldsByGroup.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
                     .addAll(entry.getValue());
@@ -33,7 +33,7 @@ public class ConfigDefinitionEditor {
     }
 
     public ConfigDefinitionEditor name(String name) {
-        this.connectorName = name;
+        this.componentName = name;
         return this;
     }
 
@@ -160,7 +160,7 @@ public class ConfigDefinitionEditor {
             resolvedFieldsByGroup.put(entry.getKey(), assignPositions(entry.getKey(), resolved));
         }
 
-        return new ConfigDefinition(connectorName, resolvedFieldsByGroup);
+        return new ConfigDefinition(componentName, resolvedFieldsByGroup);
     }
 
     private List<Field> resolvePatterns(List<Field> fields, java.util.Set<String> allFieldNames) {
