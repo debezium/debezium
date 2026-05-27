@@ -19,7 +19,7 @@ artifact-size:
   repository-thresholds:
     debezium-connector-cassandra: 95
     debezium: 90
-    debezium-server: 80
+    debezium-server: 85
 
 # Notification Configuration
 notifications:
