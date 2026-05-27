@@ -42,7 +42,7 @@ public class DebeziumArchRules {
             HeaderConverter.class);
 
     @ArchTest
-    static final ArchRule connectors_should_implement_config_descriptor = classes()
+    static final ArchRule connectorsShouldImplementConfigDescriptor = classes()
             .that(assignableToAnyOf(CONFIG_DESCRIPTOR_REQUIRED_TYPES))
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
@@ -53,7 +53,7 @@ public class DebeziumArchRules {
                     + "to return the Field.Set describing your component's configuration");
 
     @ArchTest
-    static final ArchRule config_descriptors_should_be_registered_in_metadata_provider = classes()
+    static final ArchRule configDescriptorsShouldBeRegisteredInMetadataProvider = classes()
             .that(assignableToAnyOf(CONFIG_DESCRIPTOR_REQUIRED_TYPES))
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
