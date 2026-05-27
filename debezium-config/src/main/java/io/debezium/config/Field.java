@@ -273,6 +273,12 @@ public final class Field {
         ADVANCED_HEARTBEAT,
         CONNECTOR_ADVANCED,
         ADVANCED,
+        /**
+         * Temporary fallback group for non-connector components (e.g. transformations, schema history, offset stores)
+         * that do not yet use {@link io.debezium.config.ConfigDefinitionEditor} to define their configuration.
+         * This group should not be used for connector fields and will be removed in a future release
+         * once all configurable components migrate to {@link io.debezium.config.ConfigDefinitionEditor}.
+         */
         GENERIC
     };
 
