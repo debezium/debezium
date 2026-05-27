@@ -25,11 +25,11 @@ import io.debezium.annotation.ThreadSafe;
 @Immutable
 public class ConfigDefinition {
 
-    private final String connectorName;
+    private final String componentName;
     private final Map<Field.Group, List<Field>> fieldsByGroup;
 
-    ConfigDefinition(String connectorName, Map<Field.Group, List<Field>> fieldsByGroup) {
-        this.connectorName = connectorName;
+    ConfigDefinition(String componentName, Map<Field.Group, List<Field>> fieldsByGroup) {
+        this.componentName = componentName;
         this.fieldsByGroup = Collections.unmodifiableMap(fieldsByGroup);
     }
 
@@ -65,8 +65,8 @@ public class ConfigDefinition {
         return config;
     }
 
-    public String connectorName() {
-        return connectorName;
+    public String componentName() {
+        return componentName;
     }
 
     public Map<Field.Group, List<Field>> fieldsByGroup() {
