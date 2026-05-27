@@ -130,6 +130,17 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
+    public void updateLastEventEmptyRowId(MemoryTransaction transaction, String rowId) {
+        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
+        if (eventsByEventId != null) {
+            final LogMinerEvent event = eventsByEventId.get(transaction.getNumberOfEvents() - 1);
+            if (event != null && event.getRowId() == RowIdCodec.EMPTY_ROW_ID) {
+                event.setRowId(RowIdCodec.encode(rowId));
+            }
+        }
+    }
+
+    @Override
     public boolean rollbackTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final var events = eventsByTransactionId.get(transaction.getTransactionId());

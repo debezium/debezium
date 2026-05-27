@@ -33,6 +33,8 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    // Heap-backed caches for non-empty ROW_IDs from INTERNAL events
+    private final Map<String, Map<Integer, Long>> rowIdsByEventIdByTransactionId = new HashMap<>();
 
     public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache,
                                               BasicCache<String, LogMinerEvent> eventCache,
@@ -103,8 +105,10 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    final String eventKey = transaction.getEventId(iterator.next());
-                    if (!predicate.test(eventCache.get(eventKey), rollbackCache.containsKey(eventKey))) {
+                    final int eventId = iterator.next();
+                    final String eventKey = transaction.getEventId(eventId);
+                    final LogMinerEvent event = getTransactionEvent(transaction, eventId);
+                    if (!predicate.test(event, rollbackCache.containsKey(eventKey))) {
                         break;
                     }
                 }
@@ -114,7 +118,17 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public LogMinerEvent getTransactionEvent(InfinispanTransaction transaction, int eventKey) {
-        return eventCache.get(transaction.getEventId(eventKey));
+        final LogMinerEvent event = eventCache.get(transaction.getEventId(eventKey));
+        if (event != null && event.getRowId() == RowIdCodec.EMPTY_ROW_ID) {
+            final Map<Integer, Long> rowIdsByEventId = rowIdsByEventIdByTransactionId.get(transaction.getTransactionId());
+            if (rowIdsByEventId != null) {
+                final Long rowId = rowIdsByEventId.get(eventKey);
+                if (rowId != null) {
+                    event.setRowId(rowId);
+                }
+            }
+        }
+        return event;
     }
 
     @Override
@@ -139,6 +153,17 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             });
         }
         eventIdsByTransactionId.remove(transaction.getTransactionId());
+        rowIdsByEventIdByTransactionId.remove(transaction.getTransactionId());
+    }
+
+    @Override
+    public void updateLastEventEmptyRowId(InfinispanTransaction transaction, String rowId) {
+        final int numberOfEvents = transaction.getNumberOfEvents();
+        if (numberOfEvents > 0) {
+            rowIdsByEventIdByTransactionId
+                    .computeIfAbsent(transaction.getTransactionId(), id -> new HashMap<>())
+                    .computeIfAbsent(numberOfEvents - 1, id -> RowIdCodec.encode(rowId));
+        }
     }
 
     @Override
@@ -147,7 +172,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
-            final LogMinerEvent event = eventCache.get(eventKey);
+            final LogMinerEvent event = getTransactionEvent(transaction, eventId);
             if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
                 rollbackCache.put(eventKey, Boolean.TRUE);
                 return true;
