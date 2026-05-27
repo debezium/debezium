@@ -946,7 +946,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-testing-archunit</artifactId>
+                <artifactId>debezium-archunit</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -19,7 +19,6 @@
   </properties>
   <modules>
     <module>debezium-testing-testcontainers</module>
-    <module>debezium-testing-archunit</module>
     <module>debezium-testing-system</module>
   </modules>
 </project>

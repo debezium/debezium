@@ -269,7 +269,7 @@
                     <reuseForks>${reuseForks}</reuseForks>
                     <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                     <dependenciesToScan>
-                        <dependency>io.debezium:debezium-testing-archunit</dependency>
+                        <dependency>io.debezium:debezium-archunit</dependency>
                     </dependenciesToScan>
                 </configuration>
             </plugin>
