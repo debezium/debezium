@@ -42,6 +42,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -420,7 +421,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
 
-        final Configuration config = config().build();
+        final Configuration config = config()
+                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
+                .build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
