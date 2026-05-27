@@ -98,6 +98,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     public static final OffsetDateTime POSITIVE_INFINITY_OFFSET_DATE_TIME = OffsetDateTime.ofInstant(Conversions.toInstantFromMillis(PGStatement.DATE_POSITIVE_INFINITY),
             ZoneOffset.UTC);
     public static final LocalDate POSITIVE_INFINITY_LOCAL_DATE = LocalDate.parse("-5877611-06-21");
+    public static final String POSITIVE_INFINITY_TIMESTAMP_PG_STRING = "infinity";
 
     public static final Date NEGATIVE_INFINITY_DATE = new Date(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Timestamp NEGATIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
@@ -106,6 +107,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     public static final OffsetDateTime NEGATIVE_INFINITY_OFFSET_DATE_TIME = OffsetDateTime.ofInstant(Conversions.toInstantFromMillis(PGStatement.DATE_NEGATIVE_INFINITY),
             ZoneOffset.UTC);
     public static final LocalDate NEGATIVE_INFINITY_LOCAL_DATE = LocalDate.parse("-5877611-06-22");
+    public static final String NEGATIVE_INFINITY_TIMESTAMP_PG_STRING = "-infinity";
 
     /**
      * Variable scale decimal/numeric is defined by metadata
@@ -945,7 +947,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String str) {
-            if (POSITIVE_INFINITY.equalsIgnoreCase(str) || NEGATIVE_INFINITY.equalsIgnoreCase(str)) {
+            if (POSITIVE_INFINITY_TIMESTAMP_PG_STRING.equals(str) || NEGATIVE_INFINITY_TIMESTAMP_PG_STRING.equals(str)) {
                 return str;
             }
 
@@ -959,10 +961,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-            return "infinity";
+            return POSITIVE_INFINITY_TIMESTAMP_PG_STRING;
         }
         else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-            return "-infinity";
+            return NEGATIVE_INFINITY_TIMESTAMP_PG_STRING;
         }
         else if (data instanceof OffsetDateTime) {
             data = ((OffsetDateTime) data).toZonedDateTime();
@@ -1177,16 +1179,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == null) {
             return null;
         }
-        if (data instanceof String str) {
-            if (POSITIVE_INFINITY.equalsIgnoreCase(str)) {
-                return POSITIVE_INFINITY_LOCAL_DATE_TIME;
-            }
-            else if (NEGATIVE_INFINITY.equalsIgnoreCase(str)) {
-                return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
-            }
-
-            final Instant instant = DateTimeFormat.get().timestampToInstant(str);
-            return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+        if (data instanceof String s) {
+            return switch (s) {
+                case POSITIVE_INFINITY_TIMESTAMP_PG_STRING -> POSITIVE_INFINITY_LOCAL_DATE_TIME;
+                case NEGATIVE_INFINITY_TIMESTAMP_PG_STRING -> NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+                default -> {
+                    final Instant instant = DateTimeFormat.get().timestampToInstant(s);
+                    yield LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+                }
+            };
         }
         if (!(data instanceof Timestamp)) {
             return data;
