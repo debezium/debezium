@@ -3198,6 +3198,58 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeededNoData() throws SQLException, InterruptedException {
+
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+
+        // Use the DB configuration to define the connector's configuration ...
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .build();
+
+        // Start the connector ...
+        start(SqlServerConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        SourceRecords records = consumeRecordsByTopic(1 + 1); // CREATE 1 tables
+        // no data records, so size is null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        stopConnector();
+
+        // insert two data records
+        connection.execute(
+                "INSERT INTO tablea VALUES(100,'100')",
+                "INSERT INTO tablea VALUES(200,'200')");
+
+        purgeDatabaseLogs();
+
+        start(SqlServerConnector.class, config);
+
+        // consume the records
+        records = consumeRecordsByTopic(1 + 2);
+        // data records should be null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+    }
+
+    @Test
     void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         final String pkField = "id";
@@ -3518,6 +3570,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @FunctionalInterface
     interface SqlRunnable {
+
         void run() throws SQLException;
     }
 

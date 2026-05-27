@@ -46,7 +46,7 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
-                .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
+                .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                 .build();
 
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);
@@ -65,4 +65,10 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                                        EventMetadataProvider metadataProvider,
                                        OracleConnectorConfig connectorConfig,
                                        Clock clock);
+
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
+    }
 }

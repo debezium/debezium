@@ -571,6 +571,28 @@ fulfillment.inventory.products
 
 The connector applies similar naming conventions to label its internal database schema history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
 
+[NOTE]
+====
+Oracle is case-insensitive for schema and table names by default, storing them in uppercase when created unless quoted.
+As a result, the {prodname} Oracle connector generates Kafka topic names that contain uppercase characters, for example `fulfillment.INVENTORY.CUSTOMERS`.
+Users who are comfortable with uppercase topic names are not affected.
+If schemas or tables are created with quotes, Oracle preserves the case as specified, and the connector uses those mixed or lowercase names in the topic name accordingly.
+If your environment relies on pre-created topics that fit a specific convention, but the Oracle schema or table is created without quotes, the connector may fail with the following error:
+
+----
+Task failed to create new topic (name=fulfillment.INVENTORY.CUSTOMERS, numPartitions=1, replicationFactor=1).
+Ensure that the task is authorized to create topics or that the topic exists and restart the task.
+----
+
+To convert topic names to lowercase, apply the `LowerCaseTopic` Single Message Transform (SMT) from the https://github.com/jcustenborder/kafka-connect-transform-common[kafka-connect-transform-common] library:
+
+[source]
+----
+transforms=LowerCaseTopicName
+transforms.LowerCaseTopicName.type=com.github.jcustenborder.kafka.connect.transform.common.LowerCaseTopic
+----
+====
+
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
@@ -1012,6 +1034,12 @@ However, before you choose a log mining strategy, it's important to consider the
 
 ==== Writing the data dictionary to redo logs
 
+[WARNING]
+====
+The `redo_log_catalog` mining strategy is deprecated, and is scheduled for removal in a future {prodname} release.
+Consider migrating to the `hybrid` strategy, which provides equivalent schema tracking reliability with better performance and lower overhead.
+====
+
 The `redo_log_catalog` mining strategy instructs the database to flush a copy of the data dictionary to the redo logs immediately after each redo log switch.
 This is the most reliable strategy for tracking schema changes that are interwoven with data changes, because Oracle LogMiner has a way to interpolate between the starting and ending data dictionary states across a series of change vectors.
 
@@ -1058,7 +1086,7 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 [IMPORTANT]
 ====
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
-If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
+If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` (deprecated) strategies can be used.
 ====
 
 ifdef::community[]
@@ -4298,6 +4326,26 @@ After the connector inserts records into the configured table, it is able to rec
 |Specifies an interval in milliseconds that the connector waits after it starts before it takes a snapshot. +
 Use this property to prevent snapshot interruptions when you start multiple connectors in a cluster, which might cause re-balancing of connectors.
 
+|[[oracle-property-statistics-metrics-enabled]]<<oracle-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
+For more information, see xref:oracle-streaming-metrics[Streaming metrics].
+
 |[[oracle-property-streaming-delay-ms]]<<oracle-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
@@ -4331,8 +4379,10 @@ endif::community[]
 |Specifies the mining strategy that controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
 Set one of the following options:
 
-`redo_log_catalog`:: Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
+`redo_log_catalog`:: *(Deprecated)* Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
 This also enables tracking DDL changes against captured tables, so if the schema changes frequently this is the ideal choice.
+This strategy is deprecated and scheduled for removal in a future {prodname} release.
+Consider using the `hybrid` strategy instead.
 
 `online_catalog`:: Uses the database's current data dictionary to resolve object ids and does not write any extra information to the online redo logs.
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
@@ -4386,6 +4436,34 @@ endif::community[]
 
 When enabled, the transaction buffer will store rollback segment information for all change events, populating the value in the event's `source` information block.
 When disabled, the transaction buffer will not store the information, reducing the memory footprint, and excluding the field in the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-client-id]]<<oracle-property-log-mining-buffer-track-client-id, `+log.mining.buffer.track.client_id+`>>
+|`true`
+|Specifies whether the client identifier (`CLIENT_ID`) values are provided in change events.
+
+When enabled, the transaction buffer will store client identifier information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-username]]<<oracle-property-log-mining-buffer-track-username, `+log.mining.buffer.track.username+`>>
+|`true`
+|Specifies whether the username (`USERNAME`) values are provided in change events.
+
+When enabled, the transaction buffer will store username information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-commit-timestamp]]<<oracle-property-log-mining-buffer-track-commit-timestamp, `+log.mining.buffer.track.commit_timestamp+`>>
+|`true`
+|Specifies whether the commit timestamp (`COMMIT_TIMESTAMP`) values are provided in change events.
+
+When enabled, the transaction buffer will store commit timestamp information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
+
+|[[oracle-property-log-mining-buffer-track-start-timestamp]]<<oracle-property-log-mining-buffer-track-start-timestamp, `+log.mining.buffer.track.start_timestamp+`>>
+|`true`
+|Specifies whether the start timestamp (`START_TIMESTAMP`) values are provided in change events.
+
+When enabled, the transaction buffer will store start timestamp information for all change events, populating the value in the event's `source` information block.
+When disabled, the transaction buffer will not store the information, reducing the memory footprint, and the field will be excluded from the event's `source` information block.
 
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
@@ -6036,6 +6114,7 @@ The second option, `redo_log_catalog`, writes the Oracle data dictionary to the 
 This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
 This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
 This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
+Note that this strategy is now deprecated; the `hybrid` strategy provides equivalent reliability with better performance.
 +
 The final option, `hybrid`, combines the strengths of the above two strategies with none of their weaknesses.
 This strategy harnesses the performance of the `online_catalog` with the resilience in schema tracking of the `redo_log_catalog` while also avoiding the overhead and performance costs with the higher than normal archive log generation.

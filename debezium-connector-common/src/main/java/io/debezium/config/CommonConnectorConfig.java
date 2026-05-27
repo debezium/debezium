@@ -71,6 +71,7 @@ public abstract class CommonConnectorConfig {
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
     public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
     public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
+    public static final String DEFAULT_QUEUE_PROVIDER_TYPE = "memory";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
     public static final String CONNECTOR_CLASS = "connector.class";
@@ -726,6 +727,16 @@ public abstract class CommonConnectorConfig {
                     + DEFAULT_MAX_QUEUE_SIZE_IN_BYTES + ". Mean the feature is not enabled")
             .withDefault(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
             .withValidation(Field::isNonNegativeLong);
+
+    public static final Field QUEUE_PROVIDER_TYPE = Field.create("queue.provider.type")
+            .withDisplayName("Queue provider type")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 18))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The name of the queue provider implementation to use for buffering change events. "
+                    + "Defaults to '" + DEFAULT_QUEUE_PROVIDER_TYPE + "' which uses an in-memory ArrayDeque.")
+            .withDefault(DEFAULT_QUEUE_PROVIDER_TYPE);
 
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
             .withDisplayName("Snapshot Delay (milliseconds)")
@@ -1534,6 +1545,7 @@ public abstract class CommonConnectorConfig {
     private final int maxQueueSize;
     private final int maxBatchSize;
     private final long maxQueueSizeInBytes;
+    private final String queueProviderType;
     private final Duration pollInterval;
     protected final String logicalName;
     private final String heartbeatTopicsPrefix;
@@ -1586,6 +1598,7 @@ public abstract class CommonConnectorConfig {
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
+        this.queueProviderType = config.getString(QUEUE_PROVIDER_TYPE);
         this.logicalName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
@@ -1714,6 +1727,10 @@ public abstract class CommonConnectorConfig {
 
     public long getMaxQueueSizeInBytes() {
         return maxQueueSizeInBytes;
+    }
+
+    public String getQueueProviderType() {
+        return queueProviderType;
     }
 
     public Duration getPollInterval() {

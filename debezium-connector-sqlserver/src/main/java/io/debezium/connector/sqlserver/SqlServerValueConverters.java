@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -31,8 +32,13 @@ import microsoft.sql.DateTimeOffset;
  */
 public class SqlServerValueConverters extends JdbcValueConverters {
 
-    public SqlServerValueConverters() {
-    }
+    /**
+     * Marker value indicating an unavailable column value.
+     */
+    public static final Object UNAVAILABLE_VALUE = new Object();
+
+    private final byte[] unavailableValuePlaceholderBinary;
+    private final String unavailableValuePlaceholderString;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when
@@ -50,7 +56,46 @@ public class SqlServerValueConverters extends JdbcValueConverters {
      */
     public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode,
                                     CommonConnectorConfig.BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, binaryMode, null);
+    }
+
+    /**
+     * Create a new instance that always uses UTC for the default time zone when
+     * converting values without timezone information to values that require
+     * timezones.
+     *
+     * @param decimalMode
+     *            how {@code DECIMAL} and {@code NUMERIC} values should be
+     *            treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE}
+     *            is to be used
+     * @param temporalPrecisionMode
+     *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
+     * @param binaryMode
+     *            how binary columns should be represented
+     * @param unavailableValuePlaceholder
+     *            the placeholder value for unavailable column values; may be null
+     */
+    public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode,
+                                    CommonConnectorConfig.BinaryHandlingMode binaryMode,
+                                    byte[] unavailableValuePlaceholder) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
+        if (unavailableValuePlaceholder != null) {
+            this.unavailableValuePlaceholderBinary = unavailableValuePlaceholder;
+            this.unavailableValuePlaceholderString = new String(unavailableValuePlaceholder);
+        }
+        else {
+            this.unavailableValuePlaceholderBinary = null;
+            this.unavailableValuePlaceholderString = null;
+        }
+    }
+
+    public byte[] getUnavailableValuePlaceholderBinary() {
+        return unavailableValuePlaceholderBinary;
+    }
+
+    public String getUnavailableValuePlaceholderString() {
+        return unavailableValuePlaceholderString;
     }
 
     @Override
@@ -99,6 +144,22 @@ public class SqlServerValueConverters extends JdbcValueConverters {
     @Override
     protected int getTimePrecision(Column column) {
         return column.scale().get();
+    }
+
+    @Override
+    protected Object convertString(Column column, Field fieldDefn, Object data) {
+        if (data == UNAVAILABLE_VALUE) {
+            return unavailableValuePlaceholderString;
+        }
+        return super.convertString(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        if (data == UNAVAILABLE_VALUE) {
+            data = unavailableValuePlaceholderBinary;
+        }
+        return super.convertBinary(column, fieldDefn, data, mode);
     }
 
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {

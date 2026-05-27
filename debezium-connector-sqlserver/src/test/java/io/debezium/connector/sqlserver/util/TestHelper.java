@@ -195,7 +195,7 @@ public class TestHelper {
         }
     }
 
-    private static void dropTestDatabase(SqlServerConnection connection, String databaseName) throws SQLException {
+    public static void dropTestDatabase(SqlServerConnection connection, String databaseName) throws SQLException {
         try {
             Awaitility.await("Disabling CDC").atMost(60, TimeUnit.SECONDS).until(() -> {
                 try {

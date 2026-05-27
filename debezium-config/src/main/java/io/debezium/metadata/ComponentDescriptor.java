@@ -40,21 +40,30 @@ public class ComponentDescriptor {
 
     private final String id;
     private final String displayName;
+    private final String description;
     private final String className;
     private final String version;
     private final String type;
 
-    private ComponentDescriptor(String id, String displayName, String className, String version, String type) {
+    private ComponentDescriptor(String id, String displayName, String description, String className, String version, String type) {
         this.id = id;
-        this.displayName = displayName;
+        this.displayName = displayName != null ? displayName : DisplayNameResolver.resolve(className, type);
+        this.description = description;
         this.className = className;
         this.version = version;
         this.type = type;
     }
 
     public ComponentDescriptor(String className, String version) {
-        this(className, getDisplayNameForConnectorClass(className), className, version,
-                determineComponentType(className));
+        this(className, null, null, className, version, determineComponentType(className));
+    }
+
+    public ComponentDescriptor(String className, String displayName, String version) {
+        this(className, displayName, null, className, version, determineComponentType(className));
+    }
+
+    public ComponentDescriptor(String className, String displayName, String description, String version) {
+        this(className, displayName, description, className, version, determineComponentType(className));
     }
 
     public String getId() {
@@ -63,6 +72,10 @@ public class ComponentDescriptor {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getClassName() {
@@ -143,18 +156,6 @@ public class ComponentDescriptor {
             LOGGER.debug("Could not load interface class {}", interfaceClassName);
             return false;
         }
-    }
-
-    public static String getDisplayNameForConnectorClass(String className) {
-        return switch (className) {
-            case "io.debezium.connector.mongodb.MongoDbConnector" -> "Debezium MongoDB Connector";
-            case "io.debezium.connector.mysql.MySqlConnector" -> "Debezium MySQL Connector";
-            case "io.debezium.connector.oracle.OracleConnector" -> "Debezium Oracle Connector";
-            case "io.debezium.connector.postgresql.PostgresConnector" -> "Debezium PostgreSQL Connector";
-            case "io.debezium.connector.sqlserver.SqlServerConnector" -> "Debezium SQLServer Connector";
-            case "io.debezium.connector.mariadb.MariaDbConnector" -> "Debezium MariaDB Connector";
-            default -> className;
-        };
     }
 
     @Override

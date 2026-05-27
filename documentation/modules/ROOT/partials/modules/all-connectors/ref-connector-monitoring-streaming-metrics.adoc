@@ -69,6 +69,36 @@ endif::[]
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
 The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
 
+|[[connectors-strm-metric-millisecondsbehindsourceminvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceminvalue_{context}, `MilliSecondsBehindSourceMinValue`>>
+|`long`
+|The minimum lag in milliseconds behind the source that is observed during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}, `MilliSecondsBehindSourceMaxValue`>>
+|`long`
+|The maximum lag in milliseconds behind the source that is observed during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}, `MilliSecondsBehindSourceAverageValue`>>
+|`double`
+|The average lag in milliseconds behind the source calculated across all observations during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourcep50_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep50_{context}, `MilliSecondsBehindSourceP50`>>
+|`double`
+|The 50th percentile (median) of the lag in milliseconds behind the source.
+This metric provides a more robust measure of typical lag than the average, as it is less affected by outlier values.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
+
+|[[connectors-strm-metric-millisecondsbehindsourcep95_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep95_{context}, `MilliSecondsBehindSourceP95`>>
+|`double`
+|The 95th percentile of the lag in milliseconds behind the source.
+This metric indicates that 95% of lag measurements are below this value, useful for identifying tail latencies and setting SLA thresholds.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
+
+|[[connectors-strm-metric-millisecondsbehindsourcep99_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep99_{context}, `MilliSecondsBehindSourceP99`>>
+|`double`
+|The 99th percentile of the lag in milliseconds behind the source.
+This metric indicates that 99% of lag measurements are below this value, useful for understanding worst-case performance scenarios.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
+
 |[[connectors-strm-metric-numberofcommittedtransactions_{context}]]<<connectors-strm-metric-numberofcommittedtransactions_{context}, `NumberOfCommittedTransactions`>>
 |`long`
 |The number of processed transactions that were committed.

@@ -889,3 +889,90 @@ This field must include a value if xref:schema-history-internal-rocketmq-acl-ena
 |Specifies the time, in milliseconds, that {prodname} waits for a write to Rocket MQ to complete before the operation times out.
 
 |===
+
+ifdef::community[]
+== Chronicle Queue
+
+{prodname} connectors buffer change events in an internal queue before delivering them to the runtime framework.
+By default, {prodname} uses an in-memory bounded queue.
+You can replace the default queue with a https://github.com/OpenHFT/Chronicle-Queue[Chronicle Queue] backed implementation by setting the `queue.provider.type` connector property.
+Chronicle Queue writes events to memory-mapped files on disk, reducing heap pressure during high-throughput periods.
+
+Two Chronicle Queue implementations are available:
+
+`chronicle`:: Spills all change events to disk. This removes events from the JVM heap entirely, which is useful when you expect sustained high throughput and want to minimize garbage collection overhead.
+`hybrid_chronicle`:: Uses an in-memory queue as the primary buffer and spills overflow to disk when the buffer reaches its capacity.
+In low-traffic scenarios, no serialization or disk I/O occurs.
+
+[NOTE]
+====
+Chronicle Queue does not support operating off any network-based file system.
+This includes NFS, AFS, SAN-based storage, or similar.
+The reason for this is those systems do not provide all the required primitives for memory-mapped files.
+If any networking is needed to make the files accessible to the host(s), then Chronicle Queue cannot be used.
+====
+
+### JVM setup
+
+When using the `debezium/server` or `debezium/connect` container images, all the required JVM setups will be configured for you by setting the environment variable `ENABLE_CHRONICLE_QUEUE` to `true`.
+
+When using other deployment alternatives, Chronicle Queue's access to several internal JVM APIs must be explicitly provided by your configuration.
+This requires specifying the following JVM startup arguments, which grants Chronicle Queue reflective access to core Java internals required for its off-heap memory management and low-latency operations.
+
+[source]
+----
+--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+--add-opens=java.base/java.io=ALL-UNNAMED
+--add-opens=java.base/java.util=ALL-UNNAMED
+----
+
+=== Chronicle Queue provider
+
+To use the `chronicle` provider, set `queue.provider.type` to `chronicle`.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[queue-provider-type-chronicle]]<<queue-provider-type-chronicle, `queue.provider.type`>>
+|`memory`
+|Must be set to `chronicle`.
+
+|[[chronicle-queue-path]]<<chronicle-queue-path, `chronicle.queue.path`>>
+|No default
+|(Optional) The directory path where Chronicle Queue stores its data files.
+If not set, {prodname} creates a temporary directory that is cleaned up when the connector stops.
+
+|===
+
+=== Hybrid Chronicle Queue provider
+
+To use the `hybrid_chronicle` provider, set `queue.provider.type` to `hybrid_chronicle`.
+
+The in-memory buffer holds the most recent events up to the capacity defined by `max.queue.size`.
+When the buffer reaches capacity, the oldest event is evicted to disk before a new event is added.
+When polling, {prodname} drains evicted events from Chronicle Queue first, then from the in-memory buffer, preserving strict FIFO ordering.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[queue-provider-type-hybrid]]<<queue-provider-type-hybrid, `queue.provider.type`>>
+|`memory`
+|Must be set to `hybrid_chronicle`.
+
+|[[hybrid-chronicle-queue-path]]<<hybrid-chronicle-queue-path, `chronicle.queue.path`>>
+|No default
+|(Optional) The directory path where Chronicle Queue stores its data files.
+If not set, {prodname} creates a temporary directory that is cleaned up when the connector stops.
+
+|===
+
+NOTE: The in-memory buffer capacity for the `hybrid_chronicle` provider is controlled by the connector's existing `max.queue.size` property.
+endif::community[]

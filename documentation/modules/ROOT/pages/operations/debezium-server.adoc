@@ -1577,6 +1577,83 @@ By default the same name is used.
 
 |===
 
+==== Apache Fluss
+
+https://fluss.apache.org/[Apache Fluss] is a streaming storage built for real-time analytics, providing unified streaming and batch processing capabilities with high performance, low latency, and strong consistency guarantees.
+{prodname} Server can publish change events to Apache Fluss, supporting both primary key tables for upsert/delete operations and log tables for append-only streaming.
+
+[NOTE]
+====
+Apache Fluss requires connectors to be configured with schemas enabled. Schemaless change events are not supported.
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[fluss-type]]<<fluss-type, `debezium.sink.type`>>
+|
+|Must be set to `fluss`.
+
+|[[fluss-bootstrap-servers]]<<fluss-bootstrap-servers, `debezium.sink.fluss.bootstrap.servers`>>
+|
+|Comma-separated list of Fluss coordinator server addresses in `host:port` format.
+
+|[[fluss-default-database]]<<fluss-default-database, `debezium.sink.fluss.default.database`>>
+|
+|Default Fluss database used when resolving table paths from event destinations.
+
+|[[fluss-primary-key-mode]]<<fluss-primary-key-mode, `debezium.sink.fluss.primary.key.mode`>>
+|`auto`
+|Determines the write mode selection based on primary key presence. Valid values:
+
+`auto`:: Automatically selects between append and upsert mode based on whether the table has a primary key.
+`upsert`:: Requires tables to have a primary key and performs insert/update/delete operations.
+`append`:: Writes all records in append-only mode, regardless of primary key existence.
+
+|[[fluss-table-auto-create]]<<fluss-table-auto-create, `debezium.sink.fluss.table.auto.create`>>
+|`false`
+|When `true`, automatically creates Fluss tables if they do not exist, deriving the schema from the Debezium event schema.
+
+|[[fluss-retries-max]]<<fluss-retries-max, `debezium.sink.fluss.retries.max`>>
+|`5`
+|Maximum number of retry attempts on transient write failures.
+
+|[[fluss-retries-interval-ms]]<<fluss-retries-interval-ms, `debezium.sink.fluss.retries.interval.ms`>>
+|`1000`
+|The initial retry interval in milliseconds.
+
+|[[fluss-retries-max-interval-ms]]<<fluss-retries-max-interval-ms, `debezium.sink.fluss.retries.max.interval.ms`>>
+|`60000`
+|The maximum retry interval in milliseconds.
+
+|[[fluss-retries-backoff-multiplier]]<<fluss-retries-backoff-multiplier, `debezium.sink.fluss.retries.backoff.multiplier`>>
+|`2.0`
+|Multiplier applied to retry intervals during exponential backoff.
+
+|===
+
+===== Injection points
+
+The Fluss sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[fluss-ext-stream-name-mapper]]<<fluss-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Fluss table name.
+By default the same name is used.
+
+|===
+
+
 ==== Apache Kafka
 
 https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
@@ -2127,6 +2204,56 @@ For example, if you specify the mapping `header:h1`, when {prodname} detects a h
 Constant::
 If the mapping definition does not include the `header:` or `value:` prefixes, when {prodname} detects instances of the specified value in incoming messages, it treats them as constants, and uses them as-is.
 Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
+
+
+==== JDBC
+
+The JDBC sink writes change events directly to a relational database using JDBC.
+It leverages the xref:connectors/jdbc.adoc[{prodname} JDBC connector] under the hood, supporting a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, and SQL Server.
+
+The sink supports idempotent writes by using upsert semantics, basic schema evolution to automatically create or alter destination tables, and delete propagation.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-type]]<<jdbc-type, `debezium.sink.type`>>
+|
+|Must be set to `jdbc`.
+
+|[[jdbc-props]]<<jdbc-props, `debezium.sink.jdbc.*`>>
+|
+|All JDBC connector configuration properties can be set using the `debezium.sink.jdbc.` prefix.
+For the full list of available properties, including connection, runtime, and dialect-specific options, see the xref:connectors/jdbc.adoc#jdbc-connector-properties[{prodname} JDBC connector configuration properties].
+
+|===
+
+[NOTE]
+====
+The JDBC sink requires the appropriate JDBC driver for the target database to be available on the classpath.
+The {prodname} Server distribution does not include any JDBC drivers for target databases, so you must add the driver for your destination database manually to the `lib/` directory.
+====
+
+[IMPORTANT]
+====
+Although the JDBC sink reuses the {prodname} JDBC sink connector, {prodname} Server does not currently provide the same delivery guarantees that are available when running the connector in other runtimes such as Kafka Connect.
+In particular, features that depend on the runtime for offset management, exactly-once semantics, or automatic error handling and retries may behave differently or may not be available.
+====
+
+.Example JDBC sink configuration
+[source,properties]
+----
+debezium.sink.type=jdbc
+debezium.sink.jdbc.connection.url=jdbc:mysql://localhost:3306/target_db
+debezium.sink.jdbc.connection.username=root
+debezium.sink.jdbc.connection.password=password
+debezium.sink.jdbc.insert.mode=upsert
+debezium.sink.jdbc.primary.key.mode=record_key
+debezium.sink.jdbc.schema.evolution=basic
+debezium.sink.jdbc.delete.enabled=true
+----
 
 
 ==== Apache Iceberg

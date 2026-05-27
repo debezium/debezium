@@ -48,7 +48,7 @@ public class ChangeEventQueueTest {
         ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(8192)
                 .maxQueueSize(8192 * 2)
-                .queueProvider(new DefaultQueueProvider<>(8192 * 2))
+                .queueProvider(createDefaultQueueProvider(8192 * 2))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
                 .build();
@@ -114,6 +114,12 @@ public class ChangeEventQueueTest {
                 }
             }
         });
+    }
+
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
     }
 
     private static DataChangeEvent getDataChangeEvent() {

@@ -10,15 +10,18 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerColumnIndexes;
+import io.debezium.connector.oracle.logminer.ResultSetValueResolver;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
@@ -37,32 +40,9 @@ public class LogMinerEventRow {
     /* Allows for up to 100KB worth of SQL */
     private static final Integer MAX_SQL_CONTINUATIONS = 25;
 
-    private static final int SCN = 1;
-    private static final int SQL_REDO = 2;
-    private static final int OPERATION_CODE = 3;
-    private static final int CHANGE_TIME = 4;
-    private static final int TX_ID = 5;
-    private static final int CSF = 6;
-    private static final int TABLE_NAME = 7;
-    private static final int TABLESPACE_NAME = 8;
-    private static final int OPERATION = 9;
-    private static final int USERNAME = 10;
-    private static final int ROW_ID = 11;
-    private static final int ROLLBACK_FLAG = 12;
-    private static final int RS_ID = 13;
-    private static final int STATUS = 14;
-    private static final int INFO = 15;
-    private static final int SSN = 16;
-    private static final int THREAD = 17;
-    private static final int OBJECT_ID = 18;
-    private static final int OBJECT_VERSION = 19;
-    private static final int OBJECT_DATA_ID = 20;
-    private static final int CLIENT_ID = 21;
-    private static final int START_SCN = 22;
-    private static final int COMMIT_SCN = 23;
-    private static final int START_TIMESTAMP = 24;
-    private static final int COMMIT_TIMESTAMP = 25;
-    private static final int SEQUENCE = 26;
+    // Column ordinals 1–21 are fixed and exposed as constants on LogMinerColumnIndexes.
+    // Column ordinals 22+ are pre-computed at startup by LogMinerColumnIndexes.fromConfig()
+    // because optional columns can be omitted from the SELECT, shifting all subsequent positions.
 
     private Scn scn;
     private TableId tableId;
@@ -204,93 +184,134 @@ public class LogMinerEventRow {
     }
 
     /**
-     * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
+     * Builds the array of {@link ResultSetValueResolver} lambdas used by
+     * {@link LogMinerColumnIndexes#applyResolvers} on every result-set row.
+     * <p>
+     * Each lambda closes over a pre-computed JDBC ordinal; optional columns are excluded when
+     * their index is {@code null}.
      *
-     * It's important to note that the instance returned by this method is never created as a new instance. The
-     * method uses an internal single instance that is initialized based on the values from the current row
-     * of the JDBC result-set to avoid creating lots of intermediate objects.
+     * @param indexes the pre-computed column ordinals, must not be {@code null}
+     * @return an ordered array of resolvers
+     */
+    public static ResultSetValueResolver[] buildOptionalResolvers(LogMinerColumnIndexes indexes) {
+        final List<ResultSetValueResolver> resolvers = new ArrayList<>();
+
+        if (indexes.getUsernameIndex() != null) {
+            final int pos = indexes.getUsernameIndex();
+            resolvers.add((row, rs) -> row.userName = rs.getString(pos));
+        }
+        if (indexes.getRsIdIndex() != null) {
+            final int pos = indexes.getRsIdIndex();
+            resolvers.add((row, rs) -> row.rsId = trim(rs.getString(pos)));
+        }
+        if (indexes.getClientIdIndex() != null) {
+            final int pos = indexes.getClientIdIndex();
+            resolvers.add((row, rs) -> row.clientId = rs.getString(pos));
+        }
+        if (indexes.getStartTimestampIndex() != null) {
+            final int pos = indexes.getStartTimestampIndex();
+            resolvers.add((row, rs) -> row.startTime = getTime(rs, pos));
+        }
+        if (indexes.getCommitTimestampIndex() != null) {
+            final int pos = indexes.getCommitTimestampIndex();
+            resolvers.add((row, rs) -> row.commitTime = getTime(rs, pos));
+        }
+
+        return resolvers.toArray(new ResultSetValueResolver[0]);
+    }
+
+    /**
+     * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
      * @param resultSet the result set to be read, should never be {@code null}
      * @param schema the relational schema, can be {@code null}
-     * @param connectorConfig the connector configuration, should not be {@code null}
+     * @param columnIndexes the pre-computed column ordinals for this query configuration,
+     *                      should not be {@code null}. Obtain via
+     *                      {@link LogMinerColumnIndexes#fromConfig(io.debezium.connector.oracle.OracleConnectorConfig)}
+     *                      once at startup.
      * @return a populated instance of a LogMinerEventRow object.
      * @throws SQLException if there was a problem reading the result set
      */
-    public static LogMinerEventRow fromResultSet(ResultSet resultSet, OracleDatabaseSchema schema, OracleConnectorConfig connectorConfig) throws SQLException {
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, OracleDatabaseSchema schema,
+                                                 LogMinerColumnIndexes columnIndexes)
+            throws SQLException {
         LogMinerEventRow row = new LogMinerEventRow();
-        row.initializeFromResultSet(resultSet, connectorConfig.getCatalogName(), schema, connectorConfig.isLogMiningBufferTrackRsId());
+        row.initializeFromResultSet(resultSet, schema, columnIndexes);
         return row;
     }
 
     /**
-     * Initializes the instance from the JDBC {@link ResultSet}.
+     * Initializes the instance from the JDBC {@link ResultSet} using pre-computed column ordinals.
      *
      * @param resultSet the result set to be read, should never be {@code null}
-     * @param catalogName the catalog name, should never be {@code null}
      * @param schema the relational schema, can be {@code null}
-     * @param trackRsId whether to track the rollback segment id
+     * @param indexes the pre-computed column ordinals, should not be {@code null}
      * @throws SQLException if there was a problem reading the result set
      */
-    private void initializeFromResultSet(ResultSet resultSet, String catalogName, OracleDatabaseSchema schema, boolean trackRsId) throws SQLException {
-        // Initialize the state from the result set
-        this.scn = getScn(resultSet, SCN);
-        this.tableName = resultSet.getString(TABLE_NAME);
-        this.tablespaceName = resultSet.getString(TABLESPACE_NAME);
-        this.eventType = EventType.from(resultSet.getInt(OPERATION_CODE));
-        this.changeTime = getTime(resultSet, CHANGE_TIME);
+    private void initializeFromResultSet(ResultSet resultSet, OracleDatabaseSchema schema,
+                                         LogMinerColumnIndexes indexes)
+            throws SQLException {
+        // Fixed positions 1–21: always present, never shift
+        this.scn = getScn(resultSet, LogMinerColumnIndexes.SCN);
+        this.tableName = resultSet.getString(LogMinerColumnIndexes.TABLE_NAME);
+        this.tablespaceName = resultSet.getString(LogMinerColumnIndexes.SEG_OWNER);
+        this.eventType = EventType.from(resultSet.getInt(LogMinerColumnIndexes.OPERATION_CODE));
+        this.changeTime = getTime(resultSet, LogMinerColumnIndexes.TIMESTAMP);
         this.transactionId = getTransactionId(resultSet);
-        this.operation = resultSet.getString(OPERATION);
-        this.userName = resultSet.getString(USERNAME);
-        this.rowId = resultSet.getString(ROW_ID);
-        this.rollbackFlag = resultSet.getInt(ROLLBACK_FLAG) == 1;
-        this.rsId = trackRsId ? trim(resultSet.getString(RS_ID)) : null;
+        this.operation = resultSet.getString(LogMinerColumnIndexes.OPERATION);
+        this.rowId = resultSet.getString(LogMinerColumnIndexes.ROW_ID);
+        this.rollbackFlag = resultSet.getInt(LogMinerColumnIndexes.ROLLBACK) == 1;
+        this.status = resultSet.getInt(LogMinerColumnIndexes.STATUS);
+        this.info = resultSet.getString(LogMinerColumnIndexes.INFO);
+        this.ssn = resultSet.getLong(LogMinerColumnIndexes.SSN);
+        this.thread = resultSet.getInt(LogMinerColumnIndexes.THREAD);
+        this.objectId = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJ);
+        this.objectVersion = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJV);
+        this.dataObjectId = resultSet.getLong(LogMinerColumnIndexes.DATA_OBJD);
+        this.startScn = getScn(resultSet, LogMinerColumnIndexes.START_SCN);
+        this.commitScn = getScn(resultSet, LogMinerColumnIndexes.COMMIT_SCN);
+        this.transactionSequence = resultSet.getLong(LogMinerColumnIndexes.SEQUENCE);
+
+        // Variable positions and SQL redo: iterate over pre-built resolvers.
+        indexes.applyResolvers(this, resultSet);
+
+        // Explicitly read sqlRedo at the end of all other columns
+        // getSqlRedo reads from fixed positions 2, 3, 6 and may call rs.next() for continuation rows.
         this.redoSql = getSqlRedo(resultSet);
-        this.status = resultSet.getInt(STATUS);
-        this.info = resultSet.getString(INFO);
-        this.ssn = resultSet.getLong(SSN);
-        this.thread = resultSet.getInt(THREAD);
-        this.objectId = resultSet.getLong(OBJECT_ID);
-        this.objectVersion = resultSet.getLong(OBJECT_VERSION);
-        this.dataObjectId = resultSet.getLong(OBJECT_DATA_ID);
-        this.clientId = resultSet.getString(CLIENT_ID);
-        this.startScn = getScn(resultSet, START_SCN);
-        this.commitScn = getScn(resultSet, COMMIT_SCN);
-        this.startTime = getTime(resultSet, START_TIMESTAMP);
-        this.commitTime = getTime(resultSet, COMMIT_TIMESTAMP);
-        this.transactionSequence = resultSet.getLong(SEQUENCE);
+
         if (this.tableName != null) {
             if (schema != null) {
-                this.tableId = schema.resolveTableId(catalogName, tablespaceName, tableName);
+                this.tableId = schema.resolveTableId(indexes.getCatalogName(), tablespaceName, tableName);
             }
             else {
-                this.tableId = new TableId(catalogName, tablespaceName, tableName);
+                this.tableId = new TableId(indexes.getCatalogName(), tablespaceName, tableName);
             }
         }
     }
 
-    private String getTransactionId(ResultSet rs) throws SQLException {
-        byte[] result = rs.getBytes(TX_ID);
+    private static String getTransactionId(ResultSet rs) throws SQLException {
+        byte[] result = rs.getBytes(LogMinerColumnIndexes.XID);
         return result != null ? HexConverter.convertToHexString(result) : null;
     }
 
-    private Instant getTime(ResultSet rs, int columnIndex) throws SQLException {
+    private static Instant getTime(ResultSet rs, int columnIndex) throws SQLException {
         final Timestamp result = rs.getTimestamp(columnIndex, UTC_CALENDAR);
         return result != null ? result.toInstant() : null;
     }
 
-    private Scn getScn(ResultSet rs, int columnIndex) throws SQLException {
+    private static Scn getScn(ResultSet rs, int columnIndex) throws SQLException {
         final String scn = rs.getString(columnIndex);
         return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
     }
 
     private String getSqlRedo(ResultSet rs) throws SQLException {
-        int csf = rs.getInt(CSF);
+        int csf = rs.getInt(LogMinerColumnIndexes.CSF);
         // 0 - indicates SQL_REDO is contained within the same row
         if (csf == 0) {
-            return rs.getString(SQL_REDO);
+            return rs.getString(LogMinerColumnIndexes.SQL_REDO);
         }
-        int operationCode = rs.getInt(OPERATION_CODE);
-        StringBuilder result = new StringBuilder(rs.getString(SQL_REDO));
+        int operationCode = rs.getInt(LogMinerColumnIndexes.OPERATION_CODE);
+        StringBuilder result = new StringBuilder(rs.getString(LogMinerColumnIndexes.SQL_REDO));
 
         long sqlLimitCounter = 0;
         // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
@@ -324,9 +345,9 @@ public class LogMinerEventRow {
                 throw new LogMinerEventRowTooLargeException(tableName, sqlLimitCounter * 4000, scn);
             }
 
-            csf = rs.getInt(CSF);
-            operationCode = rs.getInt(OPERATION_CODE);
-            result.append(rs.getString(SQL_REDO));
+            csf = rs.getInt(LogMinerColumnIndexes.CSF);
+            operationCode = rs.getInt(LogMinerColumnIndexes.OPERATION_CODE);
+            result.append(rs.getString(LogMinerColumnIndexes.SQL_REDO));
         }
 
         return result.toString();

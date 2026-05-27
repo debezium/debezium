@@ -199,6 +199,7 @@ smallYellowCat,Dou Pengwei
 ShuranZhang,Shuran Zhang
 Henko,Henrik Schnell
 caicancai,蔡灿材
+caobahuong,Cao Bá Hướng
 eizners,Sergey Eizner
 twthorn,Thomas Thornton
 tthorn,Thomas Thornton
@@ -362,3 +363,8 @@ Aangbaeck,Björn Ångbäck
 yonatan-h,Yonatan Haile
 marian-derias,Marian Derias
 aqhil07,Mohammad Akhil
+Akhil Mohammad,Mohammad Akhil
+akhilm,Mohammad Akhil
+100maygupta,Saumay Gupta
+huongcb_dep_trai,Cao Ba Huong
+Matei-Gatin,Matei Alexandru Gatin

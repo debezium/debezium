@@ -36,6 +36,12 @@ import io.debezium.util.LoggingContext;
 
 public class ChangeEventQueuePerf {
 
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
+    }
+
     @Fork(1)
     @State(Scope.Thread)
     @Warmup(iterations = 2, time = 5)
@@ -59,7 +65,7 @@ public class ChangeEventQueuePerf {
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
-                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
+                    .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
@@ -111,7 +117,7 @@ public class ChangeEventQueuePerf {
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
-                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
+                    .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
@@ -166,7 +172,7 @@ public class ChangeEventQueuePerf {
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
-                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
+                    .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
@@ -242,7 +248,7 @@ public class ChangeEventQueuePerf {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
-                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
+                    .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();

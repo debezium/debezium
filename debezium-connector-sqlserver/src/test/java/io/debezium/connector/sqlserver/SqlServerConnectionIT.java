@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -680,6 +681,64 @@ public class SqlServerConnectionIT {
 
             assertThat(data.isValid()).isTrue();
             assertThat(metadata.isValid()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1942")
+    void shouldValidateLogPosition() throws Exception {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            connection.execute("CREATE DATABASE testDB1");
+            try {
+                connection.execute("USE testDB1");
+                // NOTE: you cannot enable CDC on master
+                TestHelper.enableDbCdc(connection, "testDB1");
+
+                // create table if exists
+                String sql = "IF EXISTS (select 1 from sys.objects where name = 'testTable' and type = 'u')\n"
+                        + "DROP TABLE testTable\n"
+                        + "CREATE TABLE testTable (ID int not null identity(1, 1) primary key, NUMBER int, TEXT text)";
+                connection.execute(sql);
+
+                // then enable CDC and wrapper functions
+                TestHelper.enableTableCdc(connection, "testTable");
+                // insert some data
+
+                connection.execute("INSERT INTO testTable (NUMBER, TEXT) values (1, 'aaa')");
+
+                // and issue a test call to a CDC wrapper function
+                Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
+                // Testing.Print.enable();
+
+                Properties configProps = new Properties();
+                configProps.setProperty(SqlServerConnectorConfig.SNAPSHOT_MODE_PROPERTY_NAME, SqlServerConnectorConfig.SnapshotMode.WHEN_NEEDED.getValue());
+                SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(Configuration.from(configProps));
+
+                // Query min LSN
+                final String[] minLsn = { null };
+                connection.query("select min(start_lsn) from [testDB1].cdc.change_tables",
+                        rs -> {
+                            while (rs.next()) {
+                                minLsn[0] = rs.getString(1);
+                                Testing.print("minLsn: " + minLsn[0]);
+                            }
+                        });
+
+                boolean validated = connection.validateLogPosition(
+                        new SqlServerPartition("server1", "testDB1"),
+                        new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(Lsn.valueOf(minLsn[0])), SnapshotType.INITIAL, true),
+                        connectorConfig);
+
+                Testing.print("Valid log position: " + validated);
+
+                // The transaction log position must be valid if it is equal to minLsn,
+                assertThat(validated).isTrue();
+                Testing.Print.disable();
+            }
+            finally {
+                TestHelper.dropTestDatabase(connection, "testDB1");
+            }
         }
     }
 

@@ -128,13 +128,15 @@
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.27.1</quarkus.version.runtime>
+        <quarkus.version.runtime>3.33.1.1</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>2.6.13.Final</version.apicurio>
+        <!-- hibernate -->
+        <version.hibernate>7.2.6.Final</version.hibernate>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.7.7</version.postgresql.driver>
+        <version.postgresql.driver>42.7.11</version.postgresql.driver>
         <version.mysql.driver>9.1.0</version.mysql.driver>
         <version.mysql.binlog>0.40.7</version.mysql.binlog>
         <version.mongo.driver>5.6.2</version.mongo.driver>
@@ -203,6 +205,7 @@
         <module>support/checkstyle</module>
         <module>support/ide-configs</module>
         <module>support/revapi</module>
+        <module>support/archunit</module>
         <module>debezium-util</module>
         <module>debezium-api</module>
         <module>debezium-config</module>
@@ -422,6 +425,7 @@
                                         <serviceInterface>org.apache.kafka.connect.storage.Converter</serviceInterface>
                                         <serviceInterface>org.apache.kafka.connect.storage.HeaderConverter</serviceInterface>
                                         <serviceInterface>io.debezium.spi.snapshot.Snapshotter</serviceInterface>
+                                        <serviceInterface>io.debezium.metadata.ComponentMetadataProvider</serviceInterface>
                                     </serviceInterfaces>
                                     <!-- Enforcement strategy: FAIL or WARN -->
                                     <strategy>FAIL</strategy>

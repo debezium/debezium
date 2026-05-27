@@ -83,7 +83,7 @@ class DebeziumDescriptorSchemaTest {
 
         JsonNode metadata = descriptorNode.get("metadata");
         assertThat(metadata.has("description")).isTrue();
-        assertThat(metadata.get("description").asText()).contains("PostgreSQL");
+        assertThat(metadata.get("description").asText()).isEqualTo("Debezium PostgreSQL Connector");
 
         JsonNode properties = descriptorNode.get("properties");
         assertThat(properties.isArray()).isTrue();
@@ -224,7 +224,8 @@ class DebeziumDescriptorSchemaTest {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "Debezium PostgreSQL Connector", "Debezium PostgreSQL Connector",
+                        "1.0.0-SNAPSHOT");
             }
 
             @Override
@@ -255,7 +256,8 @@ class DebeziumDescriptorSchemaTest {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "Debezium PostgreSQL Connector", "Debezium PostgreSQL Connector",
+                        "1.0.0-SNAPSHOT");
             }
 
             @Override
@@ -292,7 +294,8 @@ class DebeziumDescriptorSchemaTest {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "Debezium PostgreSQL Connector", "Debezium PostgreSQL Connector",
+                        "1.0.0-SNAPSHOT");
             }
 
             @Override
@@ -322,7 +325,8 @@ class DebeziumDescriptorSchemaTest {
         return new ComponentMetadata() {
             @Override
             public ComponentDescriptor getComponentDescriptor() {
-                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "1.0.0-SNAPSHOT");
+                return new ComponentDescriptor("io.debezium.connector.postgresql.PostgresConnector", "Debezium PostgreSQL Connector", "Debezium PostgreSQL Connector",
+                        "1.0.0-SNAPSHOT");
             }
 
             @Override

@@ -82,12 +82,15 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(#db.sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
+    private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_begin_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], #, "
+            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
     private static final String CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
@@ -194,20 +197,31 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
                                                    Set<Envelope.Operation> skippedOperations) {
-        String result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " ";
+        boolean isDirectMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
+        String result;
         List<String> where = new LinkedList<>();
         switch (dataQueryMode) {
             case FUNCTION:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
+                result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
                 break;
             case DIRECT:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT + " ";
+            default:
+                result = GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT + " ";
                 break;
         }
-        where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
-                "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
-                "OR ([__$start_lsn] > ?))");
-        where.add("[__$start_lsn] <= ?");
+
+        if (isDirectMode) {
+            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] > ?))");
+            where.add("[cdc_data].[__$start_lsn] <= ?");
+        }
+        else {
+            where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
+                    "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
+                    "OR ([__$start_lsn] > ?))");
+            where.add("[__$start_lsn] <= ?");
+        }
 
         if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();
@@ -227,7 +241,8 @@ public class SqlServerConnection extends JdbcConnection {
                         break;
                 }
             });
-            where.add("[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
+            String colPrefix = isDirectMode ? "[cdc_data]." : "";
+            where.add(colPrefix + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
         }
 
         if (!where.isEmpty()) {
@@ -835,7 +850,7 @@ public class SqlServerConnection extends JdbcConnection {
 
             LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
             LOGGER.info("Stored LSN is '{}'", storedLsn);
-            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
+            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);

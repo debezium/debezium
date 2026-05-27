@@ -11,4 +11,6 @@
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]ProxyParseTreeListener\.java$"/>
 
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]util[\\/]BoundedConcurrentHashMap\.java$"/>
+
+    <suppress checks="." files=".*JBang\.java$"/>
 </suppressions>

@@ -16,7 +16,7 @@
 
     <properties>
         <!-- Other artifact versions -->
-        <version.hibernate>7.1.0.Final</version.hibernate>
+        <version.hibernate>7.2.6.Final</version.hibernate>
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
@@ -92,12 +92,10 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
-            <version>${version.hibernate}</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-agroal</artifactId>
-            <version>${version.hibernate}</version>
         </dependency>
 
         <!-- Testing -->
@@ -137,6 +135,11 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-archunit</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

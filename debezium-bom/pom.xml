@@ -29,7 +29,7 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentelemetry>1.59.0</version.opentelemetry>
+        <version.opentelemetry>1.62.0</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -54,6 +54,9 @@
         <!-- Azure Identity -->
         <version.azure.identity>1.15.4</version.azure.identity>
 
+        <!-- Chronicle Queue -->
+        <version.chronicle.queue>2026.2</version.chronicle.queue>
+
         <!-- k8s Config Map Storage -->
         <version.kubernetes.client>7.6.1</version.kubernetes.client>
 
@@ -77,6 +80,7 @@
         <version.cassandra.unit>4.3.1.0</version.cassandra.unit>
         <version.logback>1.2.13</version.logback> <!-- Latest: 1.5.21 Update with SLF4J.-->
         <version.rest-assured>5.5.2</version.rest-assured>
+        <version.archunit>1.4.2</version.archunit>
     </properties>
 
     <dependencyManagement>
@@ -121,6 +125,18 @@
                 <artifactId>jackson-annotations</artifactId>
                 <version>${version.jackson}</version>
                 <optional>true</optional>
+            </dependency>
+
+            <!-- hibernate -->
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${version.hibernate}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate</groupId>
+                <artifactId>hibernate-agroal</artifactId>
+                <version>${version.hibernate}</version>
             </dependency>
 
             <!-- Kafka Connect -->
@@ -529,6 +545,13 @@
 
 
             <!--Storages -->
+            <!-- Chronicle Queue Storage -->
+            <dependency>
+                <groupId>net.openhft</groupId>
+                <artifactId>chronicle-queue</artifactId>
+                <version>${version.chronicle.queue}</version>
+            </dependency>
+
             <!-- Redis Storage -->
             <dependency>
                 <groupId>redis.clients</groupId>
@@ -730,6 +753,11 @@
                 <version>${version.strimzi-test-container}</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${version.archunit}</version>
+            </dependency>
 
             <dependency>
                 <groupId>io.fabric8</groupId>
@@ -813,6 +841,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-tests</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-chronicle-queue</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -924,6 +957,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-testing-testcontainers</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-archunit</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

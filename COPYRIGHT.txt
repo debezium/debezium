@@ -122,7 +122,9 @@ Byron Ruth
 Camile Sing
 ccro
 César Martínez
+Cao Ba Huong
 Cao Manh Dat
+Cao Bá Hướng
 Chad Marmon
 Chai Stofkoper
 Chaitra Dalawai
@@ -606,11 +608,13 @@ Sanne Grinovero
 Sarthak Sonagara
 Satyajit Vegesna
 Saulius Valatka
+Saumay Gupta
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
 Sean C. Sullivan
 Sean Rooney
+Sean Stewart
 Sean Wu
 Sebastiaan Knijnenburg
 Sebastian Bruckner
@@ -712,6 +716,7 @@ Wang-Yu-Chao
 WenChao Ke
 Wei Wu
 WenZe Hu
+Will Sehorn
 William Pursell
 Willie Cheong
 Willie Zhu

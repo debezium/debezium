@@ -92,6 +92,13 @@ spec:
     jmx:
       enabled: boolean
       port: int  # defaults to 1099
+    metrics:
+      jmxExporter:
+        enabled: boolean
+      openTelemetry:
+        enabled: boolean
+        collector:
+          endpoint: String
     templates:
       container:
         resources: ResourceRequirements
@@ -587,6 +594,11 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | <<debezium-operator-schema-reference-jmxexporter, `+JmxExporter+`>>
 | No default value
 | Prometheus JMX exporter configuration
+
+| [[debezium-operator-schema-reference-metrics-opentelemetry]]<<debezium-operator-schema-reference-metrics-opentelemetry, `+openTelemetry+`>>
+| <<debezium-operator-schema-reference-opentelemetry, `+OpenTelemetry+`>>
+| No default value
+| OpenTelemetry configuration
 |===
 
 [id="debezium-operator-schema-reference-jmxexporter"]
@@ -608,6 +620,56 @@ Used in: <<debezium-operator-schema-reference-metrics, `+Metrics+`>>
 | ConfigMapKeySelector
 | No default value
 | Config map key reference which value will be used as configuration file
+|===
+
+
+[id="debezium-operator-schema-reference-opentelemetry"]
+=== OpenTelemetry schema reference
+Used in: <<debezium-operator-schema-reference-metrics, `+Metrics+`>>
+
+When OpenTelemetry is enabled, the operator automatically configures the {prodname} Server container with the following environment variables:
+
+* `OTEL_ENABLED` -- Activates the OpenTelemetry Java Agent bundled with {prodname} Server.
+* `OTEL_SDK_DISABLED` -- Set to `false` to ensure the OpenTelemetry SDK is active.
+* `OTEL_EXPORTER_OTLP_ENDPOINT` -- The OTLP collector endpoint (defaults to `http://localhost:4318`).
+* `OTEL_METRICS_EXPORTER` -- The metrics exporter type (defaults to `otlp`).
+* `OTEL_SERVICE_NAME` -- Set to the name of the DebeziumServer resource.
+* `OTEL_RESOURCE_ATTRIBUTES` -- Includes `service.name` and `debezium.connector.type` attributes.
+* `OTEL_JMX_CONFIG` -- Points to the built-in JMX-to-OpenTelemetry metrics mapping configuration.
+
+You can override any of these environment variables by specifying them in `spec.runtime.environment.vars`.
+User-provided environment variables take precedence over operator-managed defaults.
+
+.OpenTelemetry properties
+[cols="20%a,25%s,15%a,40%a",options="header"]
+|===
+| Property | Type | Default | Description
+
+| [[debezium-operator-schema-reference-opentelemetry-enabled]]<<debezium-operator-schema-reference-opentelemetry-enabled, `+enabled+`>>
+| boolean
+| false
+| Enables OpenTelemetry
+
+| [[debezium-operator-schema-reference-opentelemetry-collector]]<<debezium-operator-schema-reference-opentelemetry-collector, `+collector+`>>
+| <<debezium-operator-schema-reference-otelcollector, `+OtelCollector+`>>
+| No default value
+| OpenTelemetry collector configuration
+|===
+
+[id="debezium-operator-schema-reference-otelcollector"]
+=== OtelCollector schema reference
+Used in: <<debezium-operator-schema-reference-opentelemetry, `+OpenTelemetry+`>>
+
+
+.OpenTelemetry collector properties
+[cols="20%a,25%s,15%a,40%a",options="header"]
+|===
+| Property | Type | Default | Description
+
+| [[debezium-operator-schema-reference-otelcollector-endpoint]]<<debezium-operator-schema-reference-otelcollector-endpoint, `+endpoint+`>>
+| String
+| http://localhost:4318
+| OTLP collector endpoint
 |===
 
 
@@ -729,6 +791,11 @@ Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 | <<debezium-operator-schema-reference-probes, `+Probes+`>>
 | No default value
 | Container probes configuration.
+
+| [[debezium-operator-schema-reference-containertemplate-imagepullpolicy]]<<debezium-operator-schema-reference-containertemplate-imagepullpolicy, `+imagePullPolicy+`>>
+| Always,IfNotPresent,Never
+| No default value
+| https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy[Image pull policy] for the container.
 |===
 
 [id="debezium-operator-schema-reference-customstore"]
@@ -1466,6 +1533,10 @@ spec:
     metrics:
       jmxExporter:
         enabled: true
+      openTelemetry:
+        enabled: true
+        collector:
+          endpoint: http://otel-collector:4318
   transforms:
     - type: io.debezium.transforms.UnwrapFromEnvelope
       config:

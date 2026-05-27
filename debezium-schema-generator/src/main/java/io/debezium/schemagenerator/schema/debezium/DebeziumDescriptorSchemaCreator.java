@@ -51,10 +51,10 @@ public class DebeziumDescriptorSchemaCreator {
 
     public ComponentDescriptor buildDescriptor() {
 
-        Metadata metadata = new Metadata(
-                // TODO provide a mechanism to get a meaningful description
-                componentMetadata.getComponentDescriptor().getDisplayName(),
-                null);
+        String description = componentMetadata.getComponentDescriptor().getDescription() != null
+                ? componentMetadata.getComponentDescriptor().getDescription()
+                : "";
+        Metadata metadata = new Metadata(description, null);
 
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();

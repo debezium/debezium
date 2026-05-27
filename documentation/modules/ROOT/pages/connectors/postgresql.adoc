@@ -671,7 +671,7 @@ Details follow in these sections:
 * <<postgresql-tombstone-events, Tombstone events>>
 endif::product[]
 
-// Type: continue
+// Type: concept
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -686,7 +686,8 @@ If a table does not have a primary key, the connector does not emit `UPDATE` or 
 * `FULL` - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-create-events]]
 === _create_ events
 
@@ -965,7 +966,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 |===
 
-// Type: continue
+
+// Type: reference
 [[postgresql-update-events]]
 === _update_ events
 
@@ -1054,7 +1056,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
 ====
 
-// Type: continue
+
+// Type: reference
 [[postgresql-primary-key-updates]]
 === Primary key updates
 
@@ -1065,7 +1068,8 @@ as a primary key change. For a primary key change, in place of sending an `UPDAT
 
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-delete-events]]
 === _delete_ events
 
@@ -1153,12 +1157,14 @@ For a consumer to be able to process a _delete_ event generated for a table that
 
 PostgreSQL connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-tombstone-events]]
 .Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, the PostgreSQL connector follows a _delete_ event with a special _tombstone_ event that has the same key but a `null` value.
 
-// Type: continue
+
+// Type: reference
 [[postgresql-truncate-events]]
 === _truncate_ events
 
@@ -1237,7 +1243,7 @@ Ordering is guaranteed only for topics that use a single partition.
 
 If you do not want the connector to capture _truncate_ events, use the xref:postgresql-property-skipped-operations[`skipped.operations`] option to filter them out.
 
-// Type: continue
+// Type: reference
 [[postgresql-message-events]]
 === _message_ events
 
@@ -2177,29 +2183,35 @@ The default `false` setting causes the custom converter to always return `null` 
 
 ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.
-If you plan *not* to use the native `pgoutput` logical replication stream support, then you must install the logical decoding plug-in into the PostgreSQL server. Afterward, enable a replication slot, and configure a user with sufficient privileges to perform the replication.
+If you plan *not* to use the native `pgoutput` logical replication stream support, then you must install the logical decoding plug-in into the PostgreSQL server.
+Afterward, enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
 If your database is hosted by a service such as link:https://www.heroku.com/postgres[Heroku Postgres] you might be unable to install the plug-in. If so, and if you are using PostgreSQL 10+, you can use the `pgoutput` decoder support to capture changes in your database. If that is not an option, you are unable to use {prodname} with your database.
 endif::community[]
 
 ifdef::product[]
-This release of {prodname} supports only the native `pgoutput` logical replication stream. To set up PostgreSQL so that it uses the `pgoutput` plug-in, you must enable a replication slot, and configure a user with sufficient privileges to perform the replication.
+To set up PostgreSQL so that the {prodname} connector can capture change events, you must configure the database to use the `pgoutput` logical replication plug-in, enable a replication slot, configure user permissions, and set up network access for replication.
 
 Details are in the following topics:
 
 * xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[]
+* xref:debezium-postgresql-connector-specify-the-plugin-name[]
+* xref:debezium-postgresql-connector-create-a-replication-user[]
+* xref:postgresql-server-configuration[]
+* xref:enabling-postgresql-failover-slots[]
 * xref:setting-up-postgresql-permissions-required-by-debezium-connectors[]
 * xref:setting-privileges-to-permit-debezium-user-to-create-postgresql-publications[]
 * xref:configuring-postgresql-to-allow-replication-with-the-connector-host[]
+* xref:supported-postgresql-topologies[]
 * xref:configuring-postgresql-to-manage-debezium-wal-disk-space-consumption[]
+* xref:postgresql-deploying-multiple-connectors[]
 * xref:upgrading-postgresql-databases-that-debezium-captures-from[]
 endif::product[]
 
-ifdef::product[]
 
 // Type: concept
 // ModuleID: configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in
-// Title: Configuring a replication slot for the {prodname} `pgoutput` plug-in
+// Title: Configure a replication slot for the {prodname} `pgoutput` plug-in
 === Configuring replication slot
 
 PostgreSQL's logical decoding uses replication slots. To configure a replication slot, specify the following in the `postgresql.conf` file:
@@ -2228,7 +2240,8 @@ For more information, see the link:https://www.postgresql.org/docs/current/warm-
 ====
 Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector.
 ====
-endif::product[]
+
+
 
 ifdef::community[]
 [[postgresql-in-the-cloud]]
@@ -2270,7 +2283,7 @@ az postgres server configuration set --resource-group mygroup --server-name myse
 
 az postgres server restart --resource-group mygroup --name myserver
 ```
-ifdef::community[]
+
 [[cloud-sql-for-postgresql]]
 ==== Cloud SQL for PostgreSQL
 
@@ -2292,47 +2305,17 @@ To verify that the value of the setting reflects your changes, run the following
 SHOW wal_level;
 ----
 
-.Creating a replication user
-To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
-
-To create a user with the `REPLICATION` attribute::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
-----
-
-To set the `REPLICATION` attribute on an existing user::
-
-Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
-+
-----
-ALTER USER existing_user WITH REPLICATION;
-----
-
-.Specifying the {prodname} `plugin.name`
-
-In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
-
-----
-{
-      ..
-      "plugin.name": "pgoutput",
-      ..
-      ..
-}
-----
-endif::community[]
-
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
 
-It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge]; logical replication is already turned on. The `pgoutput` plugin is available. You will have to create a replication user and provide correct privileges.
+It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge]; logical replication is already turned on.
+The `pgoutput` plugin is available.
+You will have to create a replication user and provide correct privileges.
 
 [IMPORTANT]
 ====
-While using the `pgoutput` plug-in, it is recommended that you configure `filtered` as the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`]. If you use `all_tables`, which is the default value for `publication.autocreate.mode`, and the publication is not found, the connector tries to create one by using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`, but this fails due to lack of permissions.
+While using the `pgoutput` plug-in, it is recommended that you configure `filtered` as the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`].
+If you use `all_tables`, which is the default value for `publication.autocreate.mode`, and the publication is not found, the connector tries to create one by using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`, but this fails due to lack of permissions.
 ====
 
 [[installing-postgresql-output-plugin]]
@@ -2353,7 +2336,8 @@ For simplicity, {prodname} also provides a container image based on the upstream
 
 [WARNING]
 ====
-The {prodname} logical decoding plug-ins have been installed and tested on only Linux machines. For Windows and other operating systems, different installation steps might be required.
+The {prodname} logical decoding plug-ins have been installed and tested on only Linux machines.
+For Windows and other operating systems, different installation steps might be required.
 ====
 
 [[postgresql-differences-between-plugins]]
@@ -2366,9 +2350,79 @@ These differences have been identified:
 
 All up-to-date differences are tracked in a test suite link:https://github.com/debezium/debezium/blob/main/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
+endif::community[]
+
+// Type: procedure
+[id="debezium-postgresql-connector-specify-the-plugin-name"]
+=== Specify the {prodname} `plugin.name`
+
+ifdef::community[]
+In environments that require the connector to use the `pgoutput` logical decoding plug-in, such as Google Cloud SQL for PostgreSQL or PostgreSQL on Amazon RDS, you must explicitly set the value of the connector's `plugin.name` property to `pgoutput`.
+endif::community[]
+ifdef::product[]
+For the connector to capture change events from a PostgreSQL database, you must configure it to use the `pgpoutput` logical decoding plug-in.
+Setting this property is required, even though the connector does not support use of alternate decoding plug-ins.
+endif::product[]
+
+.Procedure
+
+* In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
++
+ifdef::community[]
+[source,json]
+----
+{
+      ..
+      "plugin.name": "pgoutput",
+      ..
+      ..
+}
+----
+endif::community[]
+ifdef::product[]
+[source,yaml]
+----
+spec:
+  ..
+  config:
+    ..
+    plugin.name: pgoutput
+    ..
+----
+endif::product[]
+
+
+//Type: procedure
+[id="debezium-postgresql-connector-create-a-replication-user"]
+=== Create a replication user
+
+To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+
+.Procedure
+
+* Complete one of the following steps:
++
+Create a user with the `REPLICATION` attribute::
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
+----
+
+Set the `REPLICATION` attribute for an existing user::
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+ALTER USER existing_user WITH REPLICATION;
+----
+
+
+// Type: assembly
+// Title: Configure the PostgreSQL server for {prodname}
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
 
+ifdef::community[]
 If you are using a xref:postgresql-output-plugin[logical decoding plug-in] other than pgoutput, after installing it, configure the PostgreSQL server as follows:
 
 . To load the plug-in at startup, add the following to the `postgresql.conf` file::
@@ -2388,37 +2442,96 @@ The preceding statement instructs the PostgreSQL server to load the `decoderbufs
 wal_level = logical
 ----
 The preceding statement instructs the PostgreSQL server to use logical decoding with the write-ahead log.
+endif::community[]
 
-Depending on your requirements, you may have to set other PostgreSQL streaming replication parameters when using {prodname}.
-Examples include `max_wal_senders` and `max_replication_slots` for increasing the number of connectors that can access the sending server concurrently, and `wal_keep_size` for limiting the maximum WAL size which a replication slot will retain.
-For more information about configuring streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
+// Type: concept
+// Title: PostgreSQL replication parameters and performance considerations
+[id="debezium-postgresql-connector-replication-parameters-and-performance-considerations"]
+==== Replication parameters and performance considerations
+
+Depending on your requirements, you can set other PostgreSQL streaming replication parameters to customize performance in a {prodname} environment.
+For example, you can increase the number of connectors that can access the sending server concurrently by setting the `max_wal_senders` and `max_replication_slots` parameters.
+Or you can set `wal_keep_size` to limit the maximum WAL size of a replication slot.
 
 {prodname} uses PostgreSQL's logical decoding, which uses replication slots.
-Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages. For this reason, it is important to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
-For more information, see the link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication documentation].
+Logical decoding extracts data changes from the PostgreSQL write-ahead log (WAL) and converts them to a format that {prodname} can consume.
+Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages.
+For this reason, it is important to closely monitor replication slots to avoid excess disk consumption and conditions such as catalog bloat that can result if a replication slot is unused for too long.
 
-When connecting to a Postgres primary (i.e. not a read replica) and the version of Postgres is 17 or later,
-{prodname} will create a replication slot enabled for https://www.postgresql.org/docs/current/logical-replication-failover.html[failover].
-This means {prodname} can continue to read changes from a replica promoted to primary in case of a failure,
-without missing any events.
-This requires the state of the slot to be synchronized from primary to replica server;
-refer to the Postgres documentation for the details.
-
-If you are working with `synchronous_commit` set to `off`,
-the recommendation is to set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
-Otherwise, its default value is applied, which adds a latency of about 200 milliseconds.
+To minimize the latency of change events when the PostgreSQL `synchronous_commit` parameter is set to values other than `on`, set the `wal_writer_delay` for the cluster to a value such as 10 milliseconds
+If the property does not specify an explicit value, {prodname} applies the default value of 200 milliseconds, which increase latency.
 
 [TIP]
 ====
 Reading and understanding link:https://www.postgresql.org/docs/current/static/wal-configuration.html[PostgreSQL documentation about the mechanics and configuration of the PostgreSQL write-ahead log] is strongly recommended.
 ====
-endif::community[]
+
+.Additional resources
+* link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[Configuring PostgreSQL streaming replication (PostgreSQL documentation)^].
+* link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication (PostgreSQL documentation)^].
+
+
+// Type: procedure
+// ModuleID: debezium-postgresql-connector-enabling-failover-slots
+[id="enabling-postgresql-failover-slots"]
+==== Enable failover slots for the PostgreSQL connector
+
+When {prodname} connects to a PostgreSQL primary server that runs PostgreSQL 17 or later, you can configure the connector to create replication slots that support failover.
+Failover-enabled replication slots enable {prodname} to continue reading changes from a new primary server after a failover event, without losing events.
+
+.Prerequisites
+
+* {prodname} connects to a primary server that runs PostgreSQL 17 or later.
+* You have administrative access to configure PostgreSQL server parameters.
+* You have configured the {prodname} connector properties.
+
+.Procedure
+
+. In the {prodname} connector configuration, set the xref:postgresql-property-slot-failover[`slot.failover`] property to `true`.
++
+This setting enables the connector to create failover-enabled replication slots.
+
+. On the PostgreSQL primary server, configure the `synchronized_standby_slots` parameter to include the name of the replication slot that the connector uses.
++
+The primary server uses this parameter to synchronize the replication slot state with standby servers.
++
+For example, if your replication slot is named `debezium`, add the following configuration to the `postgresql.conf` file:
++
+[source,properties]
+----
+synchronized_standby_slots = 'debezium'
+----
+
+. Restart the PostgreSQL server to apply the configuration changes.
+
+. Verify that the failover slot is created and synchronized.
++
+You can query the `pg_replication_slots` view to confirm that the slot exists and that the `failover` column is set to `true`:
++
+[source,sql]
+----
+SELECT slot_name, failover, synced
+FROM pg_replication_slots
+WHERE slot_name = 'debezium';
+----
+
+.Results
+
+When the `slot.failover` property is enabled and the slot is listed in `synchronized_standby_slots`, if the primary server fails and a standby replica is promoted to primary, {prodname} continues to read changes from the specified failover slot on the new primary.
+
+.Additional resources
+
+* link:https://www.postgresql.org/docs/current/logical-replication-failover.html[PostgreSQL failover slot behavior (PostgreSQL documentation)^].
+* link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication slots (PostgreSQL documentation)^].
+* xref:postgresql-property-slot-failover[`slot.failover` connector property]
+* xref:postgresql-cluster-failures-recovering-from-failures-pg17-cluster[Recovering from failures in a PostgreSQL 17 cluster].
+
 
 // Type: procedure
 // ModuleID: setting-up-postgresql-permissions-required-by-debezium-connectors
-// Title: Setting up PostgreSQL permissions for the {prodname} connector
+// Title: Set up PostgreSQL permissions for the {prodname} connector
 [[postgresql-permissions]]
-=== Setting up permissions
+==== Setting up permissions
 
 Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
@@ -2442,7 +2555,7 @@ CREATE ROLE __<name>__ REPLICATION LOGIN;
 
 // Type: procedure
 // ModuleID: setting-privileges-to-permit-debezium-user-to-create-postgresql-publications
-// Title: Setting privileges to enable {prodname} to create PostgreSQL publications
+// Title: Set privileges to enable {prodname} to create PostgreSQL publications
 [[postgresql-replication-user-privileges]]
 === Setting privileges to enable {prodname} to create PostgreSQL publications when you use `pgoutput`
 
@@ -2504,6 +2617,7 @@ For {prodname} to specify the capture configuration, the value of xref:postgresq
 
 // Type: procedure
 // ModuleID: configuring-postgresql-to-allow-replication-with-the-connector-host
+// Title: Configure PostgreSQL to permit replication with the {prodname} host
 [[postgresql-host-replication-permissions]]
 === Configuring PostgreSQL to allow replication with the {prodname} connector host
 
@@ -2539,10 +2653,10 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 |Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
 
 |===
-
++
 [NOTE]
 ====
-For more information about network masks, see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[the PostgreSQL documentation].
+For more information about network masks (netmasks), see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[Network address types (PostgreSQL documentation)].
 ====
 
 
@@ -2628,28 +2742,52 @@ Again, regularly emitting events solves the problem.
 ====
 endif::community[]
 
-
+// Type: concept
+// Title: Replication slot configuration when multiple connectors capture from a database server
 [[postgresql-deploying-multiple-connectors]]
-=== Setting up multiple connectors for same database server
+=== Setting up multiple connectors for the same database server
 
-{prodname} uses replication slots to stream changes from a database. These replication slots maintain the current position in form of a LSN (Log Sequence Number) which is pointer to a location in the WAL being consumed by the Debezium connector. This helps PostgreSQL keep the WAL available until it is processed by {prodname}. A single replication slot can exist only for a single consumer or process - as different consumer might have different state and may need data from different position.
+When you deploy multiple {prodname} connectors to capture changes from the same PostgreSQL database server, each connector requires a unique replication slot and publication.
+This configuration prevents data loss and ensures that each connector independently tracks its position in the database transaction log.
 
-Since a replication slot can only be used by a single connector, it is essential to create a unique replication slot for each Debezium connector. Although when a connector is not active, Postgres may allow other connector to consume the replication slot - which could be dangerous as it may lead to data loss as a slot will emit each change just once [link:https://www.postgresql.org/docs/10/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[See More]].
+{prodname} uses replication slots to stream changes from a database.
+Replication slots use a log sequence number (LSN) as a persistent pointer to track the last position in the write-ahead Log (WAL) that the connector has processed.
+This tracking mechanism enables PostgreSQL to retain WAL segments until {prodname} processes them.
 
-In addition to replication slot, {prodname} uses publication to stream events when using the `pgoutput` plugin. Similar to replication slot, publication is at database level and is defined for a set of tables. Thus, you'll need a unique publication for each connector, unless the connectors work on same set of tables. For more information about the options for enabling {prodname} to create publications, see xref:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]
+Because each replication slot maintains a single LSN pointer, it can track only one consumer's position in the WAL.
+When multiple connectors attempt to share a replication slot, they compete for the same position marker, resulting in unpredictable behavior and potential data loss.
 
-See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] and xref:{link-postgresql-connector}#postgresql-property-publication-name[`publication.name`] on how to set a unique replication slot name and publication name for each connector.
+[WARNING]
+====
+If you permit multiple connectors to capture from a replication slot, you risk data loss, because a replication slot can emit each change only once.
+When multiple connectors share a slot, PostgreSQL delivers each change event to only one of the competing consumers.
+The other connectors never receive those events, resulting in incomplete data capture.
+PostgreSQL provides no warnings when this misconfiguration occurs, making the data loss silent and difficult to detect.
+====
+
+In addition to replication slots, when the {prodname} connector uses the `pgoutput` plugin, it uses publications to stream events.
+Publications exist at the database level and define the set of tables from which the connector captures changes.
+Like replication slots, publications should be unique to each connector to ensure proper isolation and independent configuration.
+
+While multiple connectors can technically share a publication if they capture changes from the same set of tables, this configuration still requires unique replication slots for each connector.
+Sharing publications is appropriate only when you intentionally want multiple connectors to monitor identical table sets, such as when distributing processing load across multiple pipelines.
+
+.Additional resources
+* https://www.postgresql.org/docs/18/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[PostgreSQL replication slot details and resource implications. (PostgreSQL documentation)^].
+* xref:postgresql-publication-autocreate-mode[Description of the `publication.autocreate.mode` property for specifying how {prodname} creates publication to control table inclusion].
+* xref:postgresql-property-slot-name[Description of the `slot.name` property for specifying a unique replication slot name for each connector].
+* xref:postgresql-property-publication-name[Description of the `publication.name` property for specifying a unique publication name for each connector].
 
 // Type: procedure
 // ModuleID: upgrading-postgresql-databases-that-debezium-captures-from
-// Title: Upgrading PostgreSQL databases that {prodname} captures from
+// Title: Upgrade PostgreSQL databases that {prodname} captures from
 [id="upgrading-postgresql"]
 === Upgrading PostgreSQL
 
 When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and to ensure that {prodname} continues to operate.
 In general, {prodname} is resilient to interruptions caused by network failures and other outages.
 For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
-The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for a log sequence number (LSN) with the same value.
+The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for an LSN with the same value.
 
 For the connector to start and to capture change events from a PostgreSQL database, a replication slot must be present.
 However, as part of the PostgreSQL upgrade process, replication slots are removed, and the original slots are not restored after the upgrade completes.
@@ -3151,7 +3289,8 @@ ifdef::community[]
 Supported values are `decoderbufs`, and `pgoutput`.
 endif::community[]
 ifdef::product[]
-The only supported value is `pgoutput`. You must explicitly set `plugin.name` to `pgoutput`.
+The only supported value is `pgoutput`.
+You must explicitly set `plugin.name` to `pgoutput`.
 endif::product[]
 
 |[[postgresql-property-slot-name]]<<postgresql-property-slot-name, `+slot.name+`>>
@@ -4078,6 +4217,26 @@ become outdated if TOASTable columns are dropped from the table.
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
 
+|[[postgresql-property-statistics-metrics-enabled]]<<postgresql-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
+For more information, see xref:postgresql-streaming-metrics[Streaming metrics].
+
 |[[postgresql-property-streaming-delay-ms]]<<postgresql-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
@@ -4561,10 +4720,10 @@ ifdef::community[]
 Some managed PostgreSQL services (for example, AWS RDS and GCP CloudSQL) use disk replication to implement replication to a standby.
 As a result, these services automatically replicate the replication slot so that it is available after a failover.
 ====
-endif::community[]
 
 The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes.
 Only then can you point the connector to the new server and restart the connector.
+endif::community[]
 
 ifdef::product[]
 The new primary must have a replication slot that is configured to use the `pgoutput` plug-in, and must include the database for which you want to capture changes.

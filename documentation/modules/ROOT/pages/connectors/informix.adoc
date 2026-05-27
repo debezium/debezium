@@ -2510,6 +2510,10 @@ Specify one of the following values:
 |`65536`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
+|[[informix-property-cdc-max-records]]<<informix-property-cdc-max-records, `+cdc.max.records+`>>
+|`64`
+|Positive integer value that specifies the maximum number of CDC records that the Informix Change Stream Client processes.
+
 |[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
 |`true`
 |Boolean value that specifies whether Informix should stop Full Row Logging of watched tables when streaming is closed.
@@ -2584,6 +2588,26 @@ This allows the connector to receive changes from the low-traffic database and u
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts.
 If you start multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+
+|[[informix-property-statistics-metrics-enabled]]<<informix-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
+For more information, see xref:informix-streaming-metrics[Streaming metrics].
 
 |[[informix-property-streaming-delay-ms]]<<informix-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0

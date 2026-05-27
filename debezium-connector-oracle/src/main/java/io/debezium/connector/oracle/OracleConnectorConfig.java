@@ -162,7 +162,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 8))
             .withValidation(OracleConnectorConfig::validateLogMiningStrategy)
-            .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");
+            .withDescription("Defines the mining strategy and LogMiner session characteristics: " +
+                    "'redo_log_catalog' writes the data dictionary to the redo logs, is deprecated and will be removed in 3.7, " +
+                    "'online_catalog' uses the existing data dictionary and operates faster than 'redo_log_catalog' but requires schema changes in lock-step, " +
+                    "'hybrid' uses the existing data dictionary, operates faster than 'redo_log_catalog', and supports interleaved schema changes.");
 
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.createInternal("snapshot.enhance.predicate.scn")
             .withDisplayName("A string to replace on snapshot predicate enhancement")
@@ -306,7 +309,56 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isRequired)
             .withDescription("This controls whether the 'RS_ID' column values are tracked. " +
                     "When set to true (the default), the 'RS_ID' values are buffered and provided in events when available. " +
-                    "When set to false, the 'RS_ID' values are not buffered and can reduce the memory footprint.");
+                    "When set to false, the 'RS_ID' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_CLIENT_ID = Field.create("log.mining.buffer.track.client_id")
+            .withDisplayName("Toggle whether the 'client_id' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'CLIENT_ID' column values are tracked. " +
+                    "When set to true (the default), the 'CLIENT_ID' values are buffered and provided in events when available. " +
+                    "When set to false, the 'CLIENT_ID' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_USERNAME = Field.create("log.mining.buffer.track.username")
+            .withDisplayName("Toggle whether the 'username' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'USERNAME' column values are tracked. " +
+                    "When set to true (the default), the 'USERNAME' values are buffered and provided in events when available. " +
+                    "When set to false, the 'USERNAME' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP = Field.create("log.mining.buffer.track.commit_timestamp")
+            .withDisplayName("Toggle whether the 'commit_timestamp' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'COMMIT_TIMESTAMP' column values are tracked. " +
+                    "When set to true (the default), the 'COMMIT_TIMESTAMP' values are buffered and provided in events when available. " +
+                    "When set to false, the 'COMMIT_TIMESTAMP' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
+
+    public static final Field LOG_MINING_BUFFER_TRACK_START_TIMESTAMP = Field.create("log.mining.buffer.track.start_timestamp")
+            .withDisplayName("Toggle whether the 'start_timestamp' value is tracked and buffered")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isRequired)
+            .withDescription("This controls whether the 'START_TIMESTAMP' column values are tracked. " +
+                    "When set to true (the default), the 'START_TIMESTAMP' values are buffered and provided in events when available. " +
+                    "When set to false, the 'START_TIMESTAMP' column is excluded from the LogMiner query and its values are not buffered, " +
+                    "reducing both the memory footprint and query bandwidth.");
 
     public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
             .withDisplayName("The maximum number of events a transaction can have before being discarded.")
@@ -567,7 +619,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the transaction cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -576,7 +628,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the processed transaction cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -585,7 +637,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the schema changes cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -594,7 +646,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the events cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -603,7 +655,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the rollbacks cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
@@ -766,6 +818,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_TRACK_RS_ID,
+                    LOG_MINING_BUFFER_TRACK_CLIENT_ID,
+                    LOG_MINING_BUFFER_TRACK_USERNAME,
+                    LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP,
+                    LOG_MINING_BUFFER_TRACK_START_TIMESTAMP,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
@@ -891,6 +947,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Integer logMiningMinimumLogCount;
     private final ArchiveDestinationNameResolver destinationNameResolver;
     private final boolean logMiningBufferTrackRsId;
+    private final boolean logMiningBufferTrackClientId;
+    private final boolean logMiningBufferTrackUsername;
+    private final boolean logMiningBufferTrackCommitTimestamp;
+    private final boolean logMiningBufferTrackStartTimestamp;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -977,6 +1037,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
         this.logMiningMinimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
         this.logMiningBufferTrackRsId = config.getBoolean(LOG_MINING_BUFFER_TRACK_RS_ID);
+        this.logMiningBufferTrackClientId = config.getBoolean(LOG_MINING_BUFFER_TRACK_CLIENT_ID);
+        this.logMiningBufferTrackUsername = config.getBoolean(LOG_MINING_BUFFER_TRACK_USERNAME);
+        this.logMiningBufferTrackCommitTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP);
+        this.logMiningBufferTrackStartTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_START_TIMESTAMP);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1463,8 +1527,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This strategy uses LogMiner with data dictionary in REDO LOG files.
          * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
          * This option does not use CONTINUOUS_MINE option
-         * This is default value
+         *
+         * @deprecated to be removed in Debezium 3.7, use {@link #HYBRID} or {@link #ONLINE_CATALOG} instead
          */
+        @Deprecated
         CATALOG_IN_REDO("redo_log_catalog"),
 
         /**
@@ -1808,6 +1874,34 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferTrackRsId() {
         return logMiningBufferTrackRsId;
+    }
+
+    /**
+     * @return determines whether {@code CLIENT_ID} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackClientId() {
+        return logMiningBufferTrackClientId;
+    }
+
+    /**
+     * @return determines whether {@code USERNAME} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackUsername() {
+        return logMiningBufferTrackUsername;
+    }
+
+    /**
+     * @return determines whether {@code COMMIT_TIMESTAMP} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackCommitTimestamp() {
+        return logMiningBufferTrackCommitTimestamp;
+    }
+
+    /**
+     * @return determines whether {@code START_TIMESTAMP} column values are buffered and tracked
+     */
+    public boolean isLogMiningBufferTrackStartTimestamp() {
+        return logMiningBufferTrackStartTimestamp;
     }
 
     /**
@@ -2240,18 +2334,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningStrategy(Configuration config, Field field, ValidationOutput problems) {
-        if (isLogMiner(config) && config.getBoolean(LOB_ENABLED)) {
-            // When LOB is enabled, the combination is not valid with the hybrid strategy.
-            // This is because we currently are not capable of decoding all LOB-based operations in
-            // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
-            // This is an ongoing, work-in-progress strategy.
+        if (isLogMiner(config)) {
             final String strategy = config.getString(LOG_MINING_STRATEGY);
-            if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
-                problems.accept(LOG_MINING_STRATEGY, strategy,
-                        String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
-                                "Please use a different '%s' or do not enable '%s'.",
-                                LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
-                return 1;
+            if (LogMiningStrategy.CATALOG_IN_REDO.equals(LogMiningStrategy.parse(strategy))) {
+                LOGGER.warn("The '{}' mining strategy '{}' is deprecated and will be removed in a future version. " +
+                        "Please consider using the '{}' or '{}' strategy instead.",
+                        LOG_MINING_STRATEGY.name(), strategy,
+                        LogMiningStrategy.HYBRID.getValue(), LogMiningStrategy.ONLINE_CATALOG.getValue());
+            }
+            if (config.getBoolean(LOB_ENABLED)) {
+                // When LOB is enabled, the combination is not valid with the hybrid strategy.
+                // This is because we currently are not capable of decoding all LOB-based operations in
+                // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
+                // This is an ongoing, work-in-progress strategy.
+                if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
+                    problems.accept(LOG_MINING_STRATEGY, strategy,
+                            String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
+                                    "Please use a different '%s' or do not enable '%s'.",
+                                    LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
+                    return 1;
+                }
             }
         }
         return 0;
@@ -2278,6 +2380,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         if (isBufferedLogMiner(config)) {
             if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 return Field.isRequired(config, field, problems);
+            }
+        }
+        return 0;
+    }
+
+    public static int validateEhcacheCacheConfigField(Configuration config, Field field, ValidationOutput problems) {
+        if (isBufferedLogMiner(config)) {
+            if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+                int count = Field.isRequired(config, field, problems);
+                final String fieldValue = config.getString(field, "").toLowerCase();
+                if (!Strings.isNullOrEmpty(fieldValue)) {
+                    if (fieldValue.contains("<cache") || fieldValue.contains("<key-type") || fieldValue.contains("<value-type")) {
+                        problems.accept(field, fieldValue,
+                                "The ehcache cache configuration should not contain <cache/>, <key-type/>, or <value-type/> sections as these are managed by Debezium");
+                        count++;
+                    }
+                }
+                return count;
             }
         }
         return 0;

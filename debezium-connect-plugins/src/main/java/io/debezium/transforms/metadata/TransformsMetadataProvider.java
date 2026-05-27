@@ -11,6 +11,7 @@ import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
 import io.debezium.transforms.ByLogicalTableRouter;
+import io.debezium.transforms.EnforceRecordSize;
 import io.debezium.transforms.ExtractChangedRecordState;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.debezium.transforms.ExtractSchemaToNewRecord;
@@ -37,6 +38,7 @@ public class TransformsMetadataProvider implements ComponentMetadataProvider {
         return List.of(
                 componentMetadataFactory.createComponentMetadata(new ActivateTracingSpan<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ByLogicalTableRouter<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new EnforceRecordSize<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new EventRouter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractChangedRecordState<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ExtractNewRecordState<>(), io.debezium.Module.version()),

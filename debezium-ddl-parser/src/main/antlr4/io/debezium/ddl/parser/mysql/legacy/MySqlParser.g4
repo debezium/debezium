@@ -457,6 +457,7 @@ columnConstraint
     | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED)? # generatedColumnConstraint
     | SERIAL DEFAULT VALUE                                          # serialDefaultColumnConstraint
     | (CONSTRAINT name = uid?)? CHECK '(' expression ')'            # checkColumnConstraint
+    | SRID decimalLiteral                                           # sridColumnConstraint
     ;
 
 tableConstraint
@@ -2253,7 +2254,7 @@ dataType
         | POLYGON
         | JSON
         | GEOMETRY
-    ) (SRID decimalLiteral)?                                                           # spatialDataType
+    )                                                                                  # spatialDataType
     | typeName = LONG VARCHAR? BINARY? (charSet charsetName)? (COLLATE collationName)? # longVarcharDataType // LONG VARCHAR is the same as LONG
     | LONG VARBINARY                                                                   # longVarbinaryDataType
     ;
