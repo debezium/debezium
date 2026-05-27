@@ -42,6 +42,7 @@ ifeval::['{page-version}' == 'master']
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 * {link-cockroachdb-plugin-snapshot}[CockroachDB plugin archive] (incubating)
+* {link-yashandb-plugin-snapshot}[YashanDB plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
@@ -61,6 +62,7 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cockroachdb/{debezium-version}/debezium-connector-cockroachdb-{debezium-version}-plugin.tar.gz[CockroachDB plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-yashandb/{debezium-version}/debezium-connector-yashandb-{debezium-version}-plugin.tar.gz[YashanDB plugin archive] (incubating)
 endif::[]
 
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
@@ -110,6 +112,7 @@ xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
 xref:connectors/spanner.adoc#spanner-deploying-a-connector[Spanner Connector],
 xref:connectors/jdbc.adoc#jdbc-deployment[JDBC sink Connector],
 xref:connectors/informix.adoc#informix-deploying-a-connector[Informix Connector],
+xref:connectors/yashandb.adoc#deploying-yashandb-connector[YashanDB Connector],
 and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.
