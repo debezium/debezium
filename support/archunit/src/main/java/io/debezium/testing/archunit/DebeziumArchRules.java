@@ -46,6 +46,7 @@ public class DebeziumArchRules {
             .that(assignableToAnyOf(CONFIG_DESCRIPTOR_REQUIRED_TYPES))
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
+            .and().areNotAnnotatedWith(Deprecated.class)
             .should().implement(ConfigDescriptor.class)
             .allowEmptyShould(true)
             .because("""
@@ -60,6 +61,7 @@ public class DebeziumArchRules {
             .that(assignableToAnyOf(CONFIG_DESCRIPTOR_REQUIRED_TYPES))
             .and().doNotHaveModifier(JavaModifier.ABSTRACT)
             .and().areNotAnonymousClasses()
+            .and().areNotAnnotatedWith(Deprecated.class)
             .should(beReferencedByAComponentMetadataProvider())
             .allowEmptyShould(true)
             .because("""
