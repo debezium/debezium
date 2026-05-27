@@ -27,7 +27,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
-import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Threads;
 
@@ -40,7 +39,7 @@ import io.debezium.util.Threads;
  *
  * @author Horia Chiorean
  */
-public class PostgresConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
+public class PostgresConnector extends RelationalBaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnector.class);
     public static final int READ_ONLY_SUPPORTED_VERSION = 13;
@@ -81,7 +80,6 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
         return PostgresConnectorConfig.configDef();
     }
 
-    @Override
     public Field.Set getConfigFields() {
         return PostgresConnectorConfig.ALL_FIELDS;
     }

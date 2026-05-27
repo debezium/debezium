@@ -48,9 +48,12 @@ public class DebeziumArchRules {
             .and().areNotAnonymousClasses()
             .should().implement(ConfigDescriptor.class)
             .allowEmptyShould(true)
-            .because("All configurable components (connectors, transforms, converters) must implement ConfigDescriptor.\n\n "
-                    + "Add 'implements ConfigDescriptor' to your class and implement getConfigFields() "
-                    + "to return the Field.Set describing your component's configuration");
+            .because("""
+                    All configurable components (connectors, transforms, converters) must implement ConfigDescriptor.
+
+                     \
+                    Add 'implements ConfigDescriptor' to your class and implement getConfigFields() \
+                    to return the Field.Set describing your component's configuration""");
 
     @ArchTest
     static final ArchRule configDescriptorsShouldBeRegisteredInMetadataProvider = classes()
@@ -59,10 +62,12 @@ public class DebeziumArchRules {
             .and().areNotAnonymousClasses()
             .should(beReferencedByAComponentMetadataProvider())
             .allowEmptyShould(true)
-            .because("All configurable components must be registered in a ComponentMetadataProvider. \n\n"
-                    + "Create or update the module's ComponentMetadataProvider implementation to include your component "
-                    + "via componentMetadataFactory.createComponentMetadata(), and ensure the provider is listed in "
-                    + "META-INF/services/io.debezium.metadata.ComponentMetadataProvider");
+            .because("""
+                    All configurable components must be registered in a ComponentMetadataProvider.\s
+
+                    Create or update the module's ComponentMetadataProvider implementation to include your component \
+                    via componentMetadataFactory.createComponentMetadata(), and ensure the provider is listed in \
+                    META-INF/services/io.debezium.metadata.ComponentMetadataProvider""");
 
     private static DescribedPredicate<JavaClass> assignableToAnyOf(List<Class<?>> types) {
         return types.stream()
