@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -15,11 +16,13 @@ import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfo;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 
 /**
  * An auxiliary class that exposes various Kafka Connect APIs.
@@ -57,6 +60,31 @@ public class KafkaConnectUtil {
         }
         LOGGER.debug("Connector configuration is valid.");
         return connectorConfigMap;
+    }
+
+    /**
+     * Converts {@link io.debezium.spi.storage.OffsetStorageReader} to Kafka Connect {@link OffsetStorageReader}.
+     * If the offset storage reader is an instance of {@KafkaConnectStorageAdapter.OffsetStorageReader}, returns
+     * tha Kafka offset reader this is wrapped by this instance.
+     *
+     * @param reader Debezium {@link io.debezium.spi.storage.OffsetStorageReader}
+     * @return Kafka Connect {@link OffsetStorageReader}
+     */
+    public static OffsetStorageReader toKafkaReader(io.debezium.spi.storage.OffsetStorageReader reader) {
+        if (reader instanceof KafkaConnectStorageAdapter.OffsetStorageReader kafkaReader) {
+            return kafkaReader.getDelegate();
+        }
+        return new OffsetStorageReader() {
+            @Override
+            public <T> Map<String, Object> offset(Map<String, T> partition) {
+                return reader.offset(partition);
+            }
+
+            @Override
+            public <T> Map<Map<String, T>, Map<String, Object>> offsets(Collection<Map<String, T>> partitions) {
+                return reader.offsets(partitions);
+            }
+        };
     }
 
 }

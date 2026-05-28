@@ -71,7 +71,6 @@ import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
-import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
 import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.KafkaConnectUtil;
@@ -417,7 +416,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 // TODO: remove switching to Kafka
                 task.initialize(
                         new KafkaConnectSourceTaskContextAdapter(taskContext.config(),
-                                ((KafkaConnectStorageAdapter.OffsetStorageReader) taskContext.offsetStorageReader()).getDelegate()).getDelegate()); // Initialize Kafka Connect source task
+                                taskContext.offsetStorageReader()).getDelegate()); // Initialize Kafka Connect source task
                 tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
             }
         }
