@@ -18,7 +18,6 @@ import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
 import org.apache.kafka.raft.QuorumConfig;
-import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ServerConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
 import org.slf4j.Logger;
@@ -39,6 +38,8 @@ import kafka.server.KafkaConfig;
 public class KafkaServer {
 
     public static final int DEFAULT_BROKER_ID = 1;
+    public static final String KRAFT_PROCESS_ROLES_CONFIG = "process.roles";
+    public static final String KRAFT_CONTROLLER_LISTENER_NAMES_CONFIG = "controller.listener.names";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaServer.class);
 
@@ -152,8 +153,8 @@ public class KafkaServer {
         Properties runningConfig = new Properties();
         runningConfig.putAll(config);
         runningConfig.setProperty(ServerConfigs.BROKER_ID_CONFIG, Integer.toString(brokerId));
-        runningConfig.setProperty(KRaftConfigs.PROCESS_ROLES_CONFIG, "broker,controller");
-        runningConfig.setProperty(KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
+        runningConfig.setProperty(KRAFT_PROCESS_ROLES_CONFIG, "broker,controller");
+        runningConfig.setProperty(KRAFT_CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
         runningConfig.setProperty(ServerLogConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG,
                 String.valueOf(config.getOrDefault(ServerLogConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG, Boolean.TRUE)));
         // 1 partition for the __consumer_offsets_ topic should be enough
