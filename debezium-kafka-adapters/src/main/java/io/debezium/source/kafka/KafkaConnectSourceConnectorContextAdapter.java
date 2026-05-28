@@ -9,6 +9,8 @@ import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 
+import io.debezium.util.KafkaConnectUtil;
+
 /**
  *  Adapter that wraps Kafka Connect's {@link SourceConnectorContext} to adapt it for Debezium's internal usage.
  *
@@ -23,7 +25,15 @@ public class KafkaConnectSourceConnectorContextAdapter {
     }
 
     public KafkaConnectSourceConnectorContextAdapter(OffsetStorageReader reader) {
-        this.delegate = new SourceConnectorContext() {
+        this.delegate = createDelegate(reader);
+    }
+
+    public KafkaConnectSourceConnectorContextAdapter(io.debezium.spi.storage.OffsetStorageReader reader) {
+        this.delegate = createDelegate(KafkaConnectUtil.toKafkaReader(reader));
+    }
+
+    private static SourceConnectorContext createDelegate(OffsetStorageReader reader) {
+        return new SourceConnectorContext() {
             @Override
             public OffsetStorageReader offsetStorageReader() {
                 return reader;
@@ -36,7 +46,7 @@ public class KafkaConnectSourceConnectorContextAdapter {
 
             @Override
             public void raiseError(Exception e) {
-                // not supporter
+                // not supported
             }
 
             @Override

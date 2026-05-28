@@ -11,6 +11,8 @@ import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 
+import io.debezium.util.KafkaConnectUtil;
+
 /**
  * Adapter that wraps Kafka Connect's {@link SourceTaskContext} to adapt it for Debezium's internal usage.
  *
@@ -24,7 +26,15 @@ public class KafkaConnectSourceTaskContextAdapter {
     }
 
     public KafkaConnectSourceTaskContextAdapter(final Map<String, String> config, final OffsetStorageReader offsetReader) {
-        this.delegate = new SourceTaskContext() {
+        this.delegate = createDelegate(config, offsetReader);
+    }
+
+    public KafkaConnectSourceTaskContextAdapter(final Map<String, String> config, final io.debezium.spi.storage.OffsetStorageReader offsetReader) {
+        this.delegate = createDelegate(config, KafkaConnectUtil.toKafkaReader(offsetReader));
+    }
+
+    private static SourceTaskContext createDelegate(final Map<String, String> config, final OffsetStorageReader offsetReader) {
+        return new SourceTaskContext() {
             @Override
             public Map<String, String> configs() {
                 return config;
