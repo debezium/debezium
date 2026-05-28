@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
