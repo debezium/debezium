@@ -1,0 +1,34 @@
+CREATE TABLE dt_full (
+  id              INT PRIMARY KEY,
+  label           VARCHAR(64),
+  d_no_default    DATE     NOT NULL,
+  d_epoch_default DATE     NOT NULL DEFAULT '1970-01-01',
+  d_other_default DATE     NOT NULL DEFAULT '2030-12-31',
+  dt_no_default   DATETIME NOT NULL,
+  dt_epoch_default DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+  dt_other_default DATETIME NOT NULL DEFAULT '2030-12-31 23:59:59',
+  ts_no_default   TIMESTAMP NOT NULL,
+  ts_epoch_default TIMESTAMP NOT NULL DEFAULT '1970-01-02 00:00:00',
+  ts_other_default TIMESTAMP NOT NULL DEFAULT '2030-12-31 23:59:59'
+);
+
+INSERT INTO dt_full VALUES (
+  1, 'real-1970',
+  '1970-01-01', '1970-01-01', '1970-01-01',
+  '1970-01-01 00:00:00', '1970-01-01 00:00:00', '1970-01-01 00:00:00',
+  '1970-01-02 00:00:00', '1970-01-02 00:00:00', '1970-01-02 00:00:00'
+);
+
+INSERT INTO dt_full VALUES (
+  2, 'zero-date',
+  '0000-00-00', '0000-00-00', '0000-00-00',
+  '0000-00-00 00:00:00', '0000-00-00 00:00:00', '0000-00-00 00:00:00',
+  '0000-00-00 00:00:00', '0000-00-00 00:00:00', '0000-00-00 00:00:00'
+);
+
+INSERT INTO dt_full VALUES (
+  3, 'normal',
+  '2024-06-15', '2024-06-15', '2024-06-15',
+  '2024-06-15 12:34:56', '2024-06-15 12:34:56', '2024-06-15 12:34:56',
+  '2024-06-15 12:34:56', '2024-06-15 12:34:56', '2024-06-15 12:34:56'
+);
