@@ -233,10 +233,6 @@ INSERT INTO debezium_signal (id, type, data) VALUES
 ----
 
 The connector re-reads all rows from the specified table(s) and emits them as `op=r` events.
-You can use incremental snapshots to:
-
-* Re-populate a downstream consumer that lost data.
-* Backfill a newly added sink or topic.
 
 For more information about signaling, see {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
 
