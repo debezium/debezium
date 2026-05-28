@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.binlog;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
