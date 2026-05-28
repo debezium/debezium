@@ -34,12 +34,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.apache.kafka.connect.util.LoggingContext;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
