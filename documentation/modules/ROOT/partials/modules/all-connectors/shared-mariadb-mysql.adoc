@@ -2260,6 +2260,72 @@ For example, to set the scope of the Boolean converter, add the following rule t
 end::jdbc-sink-data-types[]
 
 
+=== Zero-date fallback
+
+tag::zero-date-fallback[]
+By default, MySQL/MariaDB allow inserting `0000-00-00` (DATE) and `0000-00-00 00:00:00` (DATETIME / TIMESTAMP) values, which are sentinel "zero-date" values that do not represent any real instant in time.
+{prodname} cannot represent these sentinels in its standard temporal logical types (`io.debezium.time.Date`, `io.debezium.time.Timestamp`, `io.debezium.time.ZonedTimestamp`), so by default it collapses them either to `null` (when the column is nullable) or to the epoch (`1970-01-01[T00:00:00Z]`) when the column is `NOT NULL`.
+
+The `ZeroDateFallbackConverter` custom converter lets you decide, per JDBC type or per column, what value the connector emits for zero-date rows.
+You can also opt to emit `null` for `NOT NULL` columns — the converter promotes the column's Kafka Connect schema to optional and clears its `defaultValue` slot so the `null` row is not back-filled with the column's DDL default during Avro serialization.
+
+.Example: `ZeroDateFallbackConverter` configuration
+[source]
+----
+converters=zero-date
+zero-date.type=io.debezium.connector.binlog.converters.ZeroDateFallbackConverter
+zero-date.target.types=DATE,DATETIME,TIMESTAMP
+zero-date.fallback.date=NULL
+zero-date.fallback.datetime=2000-01-01 00:00:00
+zero-date.fallback.timestamp=1970-01-01T00:00:00Z
+zero-date.column.appdb.users.deleted_at.fallback=NULL
+zero-date.column.appdb.orders.shipped_at.fallback=2099-12-31 23:59:59
+zero-date.selector=.*
+----
+
+[cols="2,1,3"]
+|===
+|Property |Default |Description
+
+|`target.types`
+|`DATE,DATETIME,TIMESTAMP`
+|Comma-separated subset of `DATE`, `DATETIME`, `TIMESTAMP` controlling which JDBC temporal types the converter applies to.
+
+|`fallback.date`
+|`NULL`
+|Value emitted for zero-date `DATE` rows. `NULL` (or unset) promotes the column schema to optional and emits `null`. Otherwise an ISO-8601 date literal (`yyyy-MM-dd`).
+
+|`fallback.datetime`
+|`NULL`
+|Value emitted for zero-date `DATETIME` rows. `NULL` (or unset) promotes the column schema to optional and emits `null`. Otherwise a UTC datetime literal (`yyyy-MM-dd HH:mm:ss`).
+
+|`fallback.timestamp`
+|`NULL`
+|Value emitted for zero-date `TIMESTAMP` rows. `NULL` (or unset) promotes the column schema to optional and emits `null`. Otherwise an ISO-8601 offset datetime literal (for example, `1970-01-01T00:00:00Z`).
+
+|`column.<db>.<table>.<column>.fallback`
+|(unset)
+|Column-specific override of the type-level fallback. Same allowed values as the type-level options (`NULL` or a type-appropriate literal). The lookup key uses the fully-qualified column name reported by `RelationalColumn#dataCollection()`.
+
+|`selector`
+|`.*`
+|Comma-separated list of regular expressions matched against `<db>.<table>.<column>`. Only matching columns are passed through the converter. The default wildcard applies the converter to every column whose JDBC type is included in `target.types`.
+|===
+
+Resolution order for the effective fallback is: column-level override > type-level fallback > `NULL`.
+
+The converter distinguishes zero-date rows from genuine `1970-01-01` rows by relying on the binlog deserializer / JDBC driver to surface zero-date values as `null` at the SPI input.
+Row-level emission therefore has no false positives: a real `1970-01-01 00:00:00 UTC` row continues to emit `0` (epoch days / millis) as it does without the converter, while zero-date rows emit the configured fallback (or `null`).
+
+[NOTE]
+====
+The converter applies the user-configured fallback to the Kafka Connect schema's `defaultValue` slot at schema-build time, regardless of the column's DDL default.
+This relies on `TableSchemaBuilder` invoking the registered converter lambda exactly once during schema build for the purpose of resolving the column's default.
+This is an internal contract rather than a published SPI guarantee.
+====
+end::zero-date-fallback[]
+
+
 
 
 

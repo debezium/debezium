@@ -9,6 +9,7 @@ import java.util.List;
 
 import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.binlog.converters.ZeroDateFallbackConverter;
 import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.transforms.ReadToInsertEvent;
@@ -29,6 +30,7 @@ public class MySqlMetadataProvider implements ComponentMetadataProvider {
                 componentMetadataFactory.createComponentMetadata(new MySqlConnector(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new ReadToInsertEvent<>(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TinyIntOneToBooleanConverter(), Module.version()),
-                componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()));
+                componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new ZeroDateFallbackConverter(), Module.version()));
     }
 }
