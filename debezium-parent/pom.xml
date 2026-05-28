@@ -268,10 +268,24 @@
                     <forkCount>${forkCount}</forkCount>
                     <reuseForks>${reuseForks}</reuseForks>
                     <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
-                    <dependenciesToScan>
-                        <dependency>io.debezium:debezium-archunit</dependency>
-                    </dependenciesToScan>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>archunit</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <dependenciesToScan>
+                                <dependency>io.debezium:debezium-archunit</dependency>
+                            </dependenciesToScan>
+                            <includes>
+                                <include>**/DebeziumArchitectureTest*</include>
+                            </includes>
+                            <reportNameSuffix>${project.artifactId}</reportNameSuffix>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <!-- Serves as support for configuring Revapi -->
