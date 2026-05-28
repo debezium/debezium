@@ -9,6 +9,7 @@ import java.util.List;
 
 import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.binlog.converters.ZeroDateFallbackConverter;
 import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.Module;
 import io.debezium.metadata.ComponentMetadata;
@@ -28,6 +29,7 @@ public class MariaDbMetadataProvider implements ComponentMetadataProvider {
                 componentMetadataFactory.createComponentMetadata(new MariaDbConnector(), "Debezium MariaDB Connector",
                         "Captures row-level changes from a MariaDB database in near real-time.", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new TinyIntOneToBooleanConverter(), Module.version()),
-                componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()));
+                componentMetadataFactory.createComponentMetadata(new JdbcSinkDataTypesConverter(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new ZeroDateFallbackConverter(), Module.version()));
     }
 }
