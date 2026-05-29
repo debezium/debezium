@@ -1215,6 +1215,9 @@ When enabled, UPDATE events include the previous row state in the `before` field
 |[[cockroachdb-property-enriched-properties]]<<cockroachdb-property-enriched-properties, `+cockroachdb.changefeed.enriched.properties+`>>
 |`source,schema`
 |Comma-separated list of properties to include in the enriched envelope: `source`, `schema`, `mvcc`.
+The connector requires only `source`, which it uses to identify the originating table for each event.
+The connector does not read the `schema` property; it infers the event schema from the message payload and from the table metadata that it discovers over JDBC.
+The default includes `schema` for completeness, but you can set this property to `source` alone to reduce the size of each changefeed message.
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
 |`now`
