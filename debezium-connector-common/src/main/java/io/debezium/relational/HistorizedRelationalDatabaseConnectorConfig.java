@@ -21,8 +21,11 @@ import io.debezium.function.Predicates;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.InternerMetrics;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
+import io.debezium.util.Interner;
+import io.debezium.util.InternerStats;
 
 /**
  * Configuration options shared across the relational CDC connectors which use a persistent database schema history.
@@ -39,6 +42,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
     private final Predicate<String> ddlFilter;
+    private final InternerStats internerStats;
     protected boolean skipUnparseableDDL;
     protected boolean storeOnlyCapturedTablesDdl;
     protected boolean storeOnlyCapturedDatabasesDdl;
@@ -64,12 +68,15 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL;
 
+    public static final Field MEMORY_OPTIMIZATION = SchemaHistory.MEMORY_OPTIMIZATION;
+
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
                     SCHEMA_HISTORY,
                     SKIP_UNPARSEABLE_DDL_STATEMENTS,
                     STORE_ONLY_CAPTURED_TABLES_DDL,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    STORE_ONLY_CAPTURED_DATABASES_DDL,
+                    MEMORY_OPTIMIZATION)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -110,6 +117,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         this.skipUnparseableDDL = config.getBoolean(SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyCapturedTablesDdl = config.getBoolean(STORE_ONLY_CAPTURED_TABLES_DDL);
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
+        this.internerStats = Interner.activate(Interner.Mode.parse(config.getString(MEMORY_OPTIMIZATION)));
     }
 
     /**
@@ -133,9 +141,12 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 .withDefault(SchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)
                 .build();
 
+        InternerMetrics internerMetrics = internerStats != null
+                ? new InternerMetrics(this, multiPartitionMode(), internerStats)
+                : null;
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
         schemaHistory.configure(schemaHistoryConfig, historyComparator,
-                new SchemaHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
+                new SchemaHistoryMetrics(this, multiPartitionMode(), internerMetrics), useCatalogBeforeSchema()); // validates
 
         return schemaHistory;
     }
