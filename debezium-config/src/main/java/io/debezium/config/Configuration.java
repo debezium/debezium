@@ -64,7 +64,8 @@ public interface Configuration {
 
     Logger CONFIGURATION_LOGGER = LoggerFactory.getLogger(Configuration.class);
 
-    Pattern PASSWORD_PATTERN = Pattern.compile(".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret|.*credentials\\.json$",
+    Pattern PASSWORD_PATTERN = Pattern.compile(
+            ".*secret$|.*password$|.*sasl\\.jaas\\.config$|.*basic\\.auth\\.user\\.info|.*registry\\.auth\\.client-secret|.*credentials\\.json$",
             Pattern.CASE_INSENSITIVE);
 
     String CUSTOM_SANITIZE_PATTERN_KEY = "custom.sanitize.pattern";
