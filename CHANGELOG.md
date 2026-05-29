@@ -3,6 +3,76 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.0.Beta1
+May 29th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Beta1)
+
+### New features since 3.6.0.Alpha2
+
+* SQL Server varbinary(max), varchar(max), and nvarchar(max) should use unavailable.value.placeholder [DBZ-6884] [debezium/dbz#1164](https://github.com/debezium/dbz/issues/1164)
+* Add when_needed_no_data snapshot mode [debezium/dbz#1513](https://github.com/debezium/dbz/issues/1513)
+* debezium operator: allow specifying ImagePullPolicy in DebeziumServer CRD [debezium/dbz#1591](https://github.com/debezium/dbz/issues/1591)
+* Allow non-critical metadata columns to be removed from Logminer query [debezium/dbz#1663](https://github.com/debezium/dbz/issues/1663)
+* Introduce an incubating Apache Fluss Debezium Sink [debezium/dbz#1840](https://github.com/debezium/dbz/issues/1840)
+* Add support for a connector: YashanDB [debezium/dbz#1850](https://github.com/debezium/dbz/issues/1850)
+* Adding support for MongoDB source [debezium/dbz#1871](https://github.com/debezium/dbz/issues/1871)
+* Auto truncate columns to adhere to a max message size [debezium/dbz#1879](https://github.com/debezium/dbz/issues/1879)
+* Extend Debezium Operator to support OpenTelemetry configuration [debezium/dbz#1896](https://github.com/debezium/dbz/issues/1896)
+* Replace fn_cdc_map_lsn_to_time scalar function with lsn_time_mapping JOIN [debezium/dbz#1915](https://github.com/debezium/dbz/issues/1915)
+* Update the catalog to integrate the catalog API call for source types [debezium/dbz#1920](https://github.com/debezium/dbz/issues/1920)
+* Add Schema descriptor support in the Destination connectors [debezium/dbz#1921](https://github.com/debezium/dbz/issues/1921)
+* Update signal verify call Payload [debezium/dbz#1937](https://github.com/debezium/dbz/issues/1937)
+* Introduce Oracle Query Tool in Debezium Tooling Image [debezium/dbz#1952](https://github.com/debezium/dbz/issues/1952)
+* Add propagation of "skipped.operations" into publications for the Postgres connector [debezium/dbz#1970](https://github.com/debezium/dbz/issues/1970)
+* Check all configurable components implements the required interface [debezium/dbz#1979](https://github.com/debezium/dbz/issues/1979)
+* Add BeanRegistry support to CockroachDB [debezium/dbz#1983](https://github.com/debezium/dbz/issues/1983)
+
+
+### Breaking changes since 3.6.0.Alpha2
+
+* Deprecate "redo_log_catalog" Oracle mining strategy [debezium/dbz#1693](https://github.com/debezium/dbz/issues/1693)
+
+
+### Fixes since 3.6.0.Alpha2
+
+* MySQL connector fails to parse DDL when SRID follows NULL/NOT NULL (DDL statement ParsingException) [debezium/dbz#1510](https://github.com/debezium/dbz/issues/1510)
+* JDBC Sink Connector errors when "-infinity" provided for timestamptz column if not first row in batch [debezium/dbz#1658](https://github.com/debezium/dbz/issues/1658)
+* Flaky chunked snapshot test due to incorrect random row-count generation [debezium/dbz#1929](https://github.com/debezium/dbz/issues/1929)
+* Connector context MDC tag is missing in logs produced in ChangeEventSourceCoordinator thread [debezium/dbz#1933](https://github.com/debezium/dbz/issues/1933)
+* SQLServer - Full database snapshot when snapshot mode is 'when_needed' [debezium/dbz#1942](https://github.com/debezium/dbz/issues/1942)
+* [Spanner] NullPointerException in ApproximateStructSizeCalculator when finished-partition cleanup dispatches a null-offset heartbeat (max.queue.size.in.bytes > 0) [debezium/dbz#1944](https://github.com/debezium/dbz/issues/1944)
+* mongodb tcmalloc kernel issue for MongoDB 8.0+ images [debezium/dbz#1945](https://github.com/debezium/dbz/issues/1945)
+* Incorrect pg_stat_replication.reply_time calculation [debezium/dbz#1950](https://github.com/debezium/dbz/issues/1950)
+* PostgresTemporalPrecisionHandlingIT.shouldReceiveDeletesWithInfinityDate fails [debezium/dbz#1958](https://github.com/debezium/dbz/issues/1958)
+* Debezium Server JDBC sink descriptor are not generated [debezium/dbz#1961](https://github.com/debezium/dbz/issues/1961)
+* Build of Debezium server fails [debezium/dbz#1962](https://github.com/debezium/dbz/issues/1962)
+* Adding unintended scroll in the card Ui for the unusual long name in the catalog listing [debezium/dbz#1967](https://github.com/debezium/dbz/issues/1967)
+* Harden EhcacheCacheProvider XML parser against XXE and extend cache config validation [debezium/dbz#1968](https://github.com/debezium/dbz/issues/1968)
+* Prevent file contents from appearing in logs and add security notice for FileSignalChannel [debezium/dbz#1969](https://github.com/debezium/dbz/issues/1969)
+* CockroachDB connector: table discovery only scans `cockroachdb.schema.name`, ignores `schema.include.list` and drops tables in `table.include.list` from other schemas [debezium/dbz#1973](https://github.com/debezium/dbz/issues/1973)
+* CockroachDB connector: typed column DEFAULT values rejected because DefaultValueConverter is null [debezium/dbz#1975](https://github.com/debezium/dbz/issues/1975)
+* MySQL connector: snapshot fails at step 7 with "Cannot execute without committing" [debezium/dbz#1976](https://github.com/debezium/dbz/issues/1976)
+* MySQL connector:  Snapshot fails with Failed reading CURRENT_TIMESTAMP when connections go stale during stage 6 [debezium/dbz#1977](https://github.com/debezium/dbz/issues/1977)
+* Jenkins CI failing copying surefire reports [debezium/dbz#1989](https://github.com/debezium/dbz/issues/1989)
+* Pipeline creation fails on Debezium Platform [debezium/dbz#1990](https://github.com/debezium/dbz/issues/1990)
+
+
+### Other changes since 3.6.0.Alpha2
+
+* Reduce Antora builds for Debezium 2.x to only 2.7. [debezium/dbz#1741](https://github.com/debezium/dbz/issues/1741)
+* Setup LogMiner/XStream 23.26.1 tests [debezium/dbz#1836](https://github.com/debezium/dbz/issues/1836)
+* [Oracle] Document uppercase schema/table name behaviour causing topic creation failures [debezium/dbz#1892](https://github.com/debezium/dbz/issues/1892)
+* Update documentation with quantile metrics [debezium/dbz#1903](https://github.com/debezium/dbz/issues/1903)
+* Improve name  of component descriptors [debezium/dbz#1926](https://github.com/debezium/dbz/issues/1926)
+* Increase the memory allocation for Oracle testing farm [debezium/dbz#1948](https://github.com/debezium/dbz/issues/1948)
+* add checkstyle suppression for JBang files [debezium/dbz#1954](https://github.com/debezium/dbz/issues/1954)
+* Use the default storage class in the testing persistent volume claims. [debezium/dbz#1971](https://github.com/debezium/dbz/issues/1971)
+* fix artifactId in the Quarkus Extensions documentation [debezium/dbz#1972](https://github.com/debezium/dbz/issues/1972)
+* Increase liveness and readiness probes for OCP DB2 deployments [debezium/dbz#1981](https://github.com/debezium/dbz/issues/1981)
+* Add LICENSE.txt to platform/server repo [debezium/dbz#1982](https://github.com/debezium/dbz/issues/1982)
+* Upgrade Kafka to 4.3.0 [debezium/dbz#1987](https://github.com/debezium/dbz/issues/1987)
+
+
+
 ## 3.6.0.Alpha2
 May 15th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Alpha2)
 
