@@ -31,6 +31,10 @@ tag::common-schema-history[]
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<topic.prefix>_`.
 end::common-schema-history[]
 
+tag::common-interner[]
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=interner,server=_<topic.prefix>_`.
+end::common-interner[]
+
 tag::sqlserver-schema-history[]
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<topic.prefix>_,task=_<task.id>_`.
 end::sqlserver-schema-history[]
