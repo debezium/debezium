@@ -3,7 +3,7 @@
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       xsi:schemaLocation="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0
                           https://maven.apache.org/xsd/archetype-descriptor-1.1.0.xsd"
-                      name="debezium-connector-archetype">
+                      name="debezium-source-connector-archetype">
 
     <requiredProperties>
         <!-- PascalCase connector name used as class-name prefix (e.g. "MyDb") -->
@@ -31,6 +31,6 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
-    </fileSets>
+ok    </fileSets>
 
 </archetype-descriptor>
