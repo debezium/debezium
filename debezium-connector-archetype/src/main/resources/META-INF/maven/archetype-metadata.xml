@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<archetype-descriptor xmlns="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0
+                          https://maven.apache.org/xsd/archetype-descriptor-1.1.0.xsd"
+                      name="debezium-connector-archetype">
+
+    <requiredProperties>
+        <!-- PascalCase connector name used as class-name prefix (e.g. "MyDb") -->
+        <requiredProperty key="connectorName">
+            <defaultValue>MyConnector</defaultValue>
+        </requiredProperty>
+        <!-- Debezium version to target -->
+        <requiredProperty key="debeziumVersion">
+            <defaultValue>3.6.0.Final</defaultValue>
+        </requiredProperty>
+    </requiredProperties>
+
+    <fileSets>
+        <!-- Java source files; packaged=true places them under the package directory -->
+        <fileSet filtered="true" packaged="true">
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.java</include>
+            </includes>
+        </fileSet>
+        <!-- Resource files: service loader descriptor, build.version, etc. -->
+        <fileSet filtered="true">
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+
+</archetype-descriptor>
