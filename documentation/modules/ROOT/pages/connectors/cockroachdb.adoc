@@ -137,6 +137,42 @@ When Kafka Connect gracefully shuts down, it stops the connectors, flushes all e
 When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset.
 
 // Type: concept
+// ModuleID: cockroachdb-reusing-an-existing-changefeed
+
+[[cockroachdb-reusing-an-existing-changefeed]]
+=== Reusing an existing changefeed
+
+By default, the connector creates and manages its own CockroachDB changefeed.
+Before it creates a changefeed, the connector checks whether a running changefeed already covers the configured tables.
+If a matching changefeed is found, the connector skips creation and consumes from the existing changefeed instead.
+This behavior keeps connector restarts idempotent and avoids creating duplicate changefeed jobs on the cluster.
+It also lets an operator pre-provision a changefeed that the connector then attaches to.
+
+A changefeed is considered a match only when both of the following are true for the running changefeed job:
+
+* Its description includes the fully-qualified name of each configured table.
+* Its description includes the `topic_prefix` that the connector expects, which is the value of xref:cockroachdb-property-sink-topic-prefix[`cockroachdb.changefeed.sink.topic.prefix`], or the value of xref:cockroachdb-property-topic-prefix[`topic.prefix`] when no sink topic prefix is set.
+
+For the connector to consume the existing changefeed correctly, the changefeed must publish to Kafka topics whose names match the topics that the connector subscribes to, in the format `_topicPrefix_._database_._schema_._table_`.
+To produce that topic layout, and to emit events in the structure that the connector expects, create the changefeed with the following options:
+
+`full_table_name`:: Required so that CockroachDB names topics in `_database_._schema_._table_` form.
+`topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list. Note the trailing dot.
+`envelope='enriched'`:: Required. The connector consumes the enriched envelope.
+`enriched_properties`:: Must match the value of xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] (default `source,schema`).
+`format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
+`diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
+
+If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
+A changefeed created with a different `topic_prefix`, without `full_table_name`, or with a different envelope or set of enriched properties is not reused, even if it captures the same tables.
+
+[NOTE]
+====
+For most deployments, the simplest approach is to let the connector create and manage the changefeed.
+Reuse an existing changefeed only when you have a specific reason to do so, such as preserving an existing cursor position or a custom partitioning scheme.
+====
+
+// Type: concept
 // ModuleID: cockroachdb-heartbeats
 
 [[cockroachdb-heartbeats]]
