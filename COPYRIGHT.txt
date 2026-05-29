@@ -166,6 +166,7 @@ Daan Gerits
 Daan Roosen
 Daniel Eriksson
 Daniel Petisme
+Daniele Licini
 dario
 Dave Charron
 Dave Cramer
@@ -326,6 +327,7 @@ Ivan Trusov
 Ivan Vucina
 Jackey Zhang
 Jakub Cechacek
+Jakub Małek
 James Gormley
 James Johnston
 Jan-Hendrik Dolling
@@ -689,6 +691,7 @@ Tomaz Lemos Fernandes
 Tommy Karlsson
 Tomoyuki Nakamura
 Tony Joseph
+Tony Nyurkin
 Tony Rizko
 tooptoop4
 Tova Cohen
