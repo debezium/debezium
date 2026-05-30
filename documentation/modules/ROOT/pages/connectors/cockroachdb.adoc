@@ -159,12 +159,12 @@ To produce that topic layout, and to emit events in the structure that the conne
 `full_table_name`:: Required so that CockroachDB names topics in `_database_._schema_._table_` form.
 `topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list. Note the trailing dot.
 `envelope='enriched'`:: Required. The connector consumes the enriched envelope.
-`enriched_properties`:: Must match the value of xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] (default `source,schema`).
+`enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. Including `source` (the connector default) is recommended so that the intermediate topics carry origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
 `diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
 
 If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
-A changefeed created with a different `topic_prefix`, without `full_table_name`, or with a different envelope or set of enriched properties is not reused, even if it captures the same tables.
+A changefeed created with a different `topic_prefix`, without `full_table_name`, or with a different envelope is not reused, even if it captures the same tables.
 
 [NOTE]
 ====
@@ -204,8 +204,15 @@ When an incoming changefeed event contains fields that do not match the register
 3. Refreshes the internal schema and continues processing the table based on the adjusted column layout.
 
 CockroachDB changefeeds handle schema changes natively by performing a _backfill_ operation in which the Schema Change Manager re-emits all existing rows with the updated schema.
-A backfill ensures that no events are lost during the schema transition.  
+A backfill ensures that no events are lost during the schema transition.
 After a backfill completes, the refreshed columns are immediately available to downstream consumers.
+
+[NOTE]
+====
+The connector adapts the schema of the change events that it emits, so that the records on the output topics always reflect the current table structure.
+It does not maintain a database history and does not emit DDL change events to a separate schema change topic.
+The schema that the connector uses comes from its own JDBC discovery of the table, not from the `schema` block in the changefeed message, so schema changes are handled even when xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] is set to `source` alone.
+====
 
 // Type: concept
 // ModuleID: cockroachdb-incremental-snapshots
@@ -1213,11 +1220,12 @@ Resolved timestamps are used for offset tracking.
 When enabled, UPDATE events include the previous row state in the `before` field.
 
 |[[cockroachdb-property-enriched-properties]]<<cockroachdb-property-enriched-properties, `+cockroachdb.changefeed.enriched.properties+`>>
-|`source,schema`
-|Comma-separated list of properties to include in the enriched envelope: `source`, `schema`, `mvcc`.
-The connector requires only `source`, which it uses to identify the originating table for each event.
-The connector does not read the `schema` property; it infers the event schema from the message payload and from the table metadata that it discovers over JDBC.
-The default includes `schema` for completeness, but you can set this property to `source` alone to reduce the size of each changefeed message.
+|`source`
+|Comma-separated enriched envelope properties, passed through verbatim to the CockroachDB `CREATE CHANGEFEED` statement (applies only when xref:cockroachdb-property-envelope[`cockroachdb.changefeed.envelope`] is `enriched`).
+CockroachDB owns the set of valid values, currently `source` and `schema`, and validates them when the changefeed is created.
+The connector derives the schema of each event from the table metadata that it discovers over JDBC, and it identifies each event's table from the topic on which the event arrives.
+It therefore does not read the `schema` block, which duplicates information the connector already has; `schema` is accepted and passed through for other consumers of the intermediate topics but is not used by the connector.
+The default is `source` because that block carries the originating database, schema, table, and commit timestamp, which is useful when you inspect the intermediate topics or when other tools also consume them.
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
 |`now`
