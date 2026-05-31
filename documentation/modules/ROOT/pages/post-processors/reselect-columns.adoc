@@ -170,6 +170,46 @@ By default, the post-processor logs a warning message when the row cannot be fou
 
 When set to `FAIL`, the connector will stop processing changes if the row no longer exists at the time of reselection or if there is a database failure when reselecting the row.
 
+|[[reselect-columns-post-processor-property-reselect-cache-enabled]]<<reselect-columns-post-processor-property-reselect-cache-enabled, `+post.processors.reselect.cache.enabled+`>>
+|`false`
+|Enables an optional, per-column cache of reselected values. +
+ +
+By default the post processor queries the database for every event that requires reselection.
+When set to `true`, reselected column values are cached per row and column, keyed by the event's message key, and subsequent events that require the same column are served from the cache instead of querying the database.
+The cache is refreshed on modification: any event that carries a real (non-placeholder) value for a column updates that column's cache entry with the current value, so a later event that does not modify the column can be served from the cache, and a cached value is never served after the column has changed.
+Because the row identity is the message key, a change to the key's schema (for example, a DDL change or a primary-key reordering) yields a different key and a natural cache miss rather than a stale hit.
+This is most useful for large, rarely-changing columns (such as TOAST or LOB values) on frequently-updated rows.
+
+|[[reselect-columns-post-processor-property-reselect-cache-type]]<<reselect-columns-post-processor-property-reselect-cache-type, `+post.processors.reselect.cache.type+`>>
+|`io.debezium.processors.reselect.cache.MemoryReselectColumnCache`
+|The fully-qualified name of the `io.debezium.processors.reselect.cache.ReselectColumnCache` implementation used to store reselected values. +
+ +
+Defaults to an in-memory implementation.
+Provide a custom class to plug in an alternative cache backend.
+Applies only when `reselect.cache.enabled` is `true`.
+
+|[[reselect-columns-post-processor-property-reselect-cache-max-size]]<<reselect-columns-post-processor-property-reselect-cache-max-size, `+post.processors.reselect.cache.max.size+`>>
+|`10000`
+|The maximum number of cached rows retained in the reselection cache. +
+ +
+When the limit is reached, the least-recently-used entries are evicted.
+Applies only to the default in-memory cache, when `reselect.cache.enabled` is `true`.
+
+|[[reselect-columns-post-processor-property-reselect-cache-ttl-ms]]<<reselect-columns-post-processor-property-reselect-cache-ttl-ms, `+post.processors.reselect.cache.ttl.ms+`>>
+|`600000`
+|The time-to-live, in milliseconds, of a cached reselection value. +
+ +
+Because the cache is refreshed on modification, this value only bounds how long entries for rows that are no longer being updated are retained in memory; it is not the mechanism that guarantees freshness.
+Applies only to the default in-memory cache, when `reselect.cache.enabled` is `true`.
+
+|[[reselect-columns-post-processor-property-reselect-cache-max-columns-per-row]]<<reselect-columns-post-processor-property-reselect-cache-max-columns-per-row, `+post.processors.reselect.cache.max.columns.per.row+`>>
+|`200`
+|The maximum number of columns cached per row in the reselection cache. +
+ +
+When the limit is reached, the least-recently-used column entries for that row are evicted.
+This bound guards against wide tables (for example, tables with 500–1000 columns) growing the per-row inner map without limit.
+Applies only to the default in-memory cache, when `reselect.cache.enabled` is `true`.
+
 
 |===
 
