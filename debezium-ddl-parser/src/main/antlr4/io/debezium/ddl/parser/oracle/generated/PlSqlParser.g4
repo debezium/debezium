@@ -5351,6 +5351,7 @@ varray_storage_clause
 
 lob_segname
     : regular_id
+    | DELIMITED_ID
     ;
 
 lob_item
