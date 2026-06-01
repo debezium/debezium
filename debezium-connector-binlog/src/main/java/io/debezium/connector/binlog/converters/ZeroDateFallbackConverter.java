@@ -345,7 +345,7 @@ public class ZeroDateFallbackConverter
     }
 
     private static boolean isNullToken(String raw) {
-        return raw == null || raw.trim().isEmpty() || NULL_TOKEN.equalsIgnoreCase(raw.trim());
+        return Strings.isNullOrBlank(raw) || NULL_TOKEN.equalsIgnoreCase(raw.trim());
     }
 
     private static String describe(Object value) {
