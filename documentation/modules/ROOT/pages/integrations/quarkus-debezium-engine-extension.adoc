@@ -159,6 +159,8 @@ The `CapturingEvent<T>` contains information related to the kind of database ope
 
 === Filtering Change Data Capture Events
 
+==== By destination
+
 It's possible to filter events by `destination`:
 
 ```java
@@ -170,6 +172,90 @@ It's possible to filter events by `destination`:
 
 The default behavior is that a {prodname} connector `destination` is formed from the name of the `prefix` defined in the configuration with the database name and the name of the table in which the change was made.
 In some cases the `destination` is redefined using an https://debezium.io/documentation/reference/stable/transformations/topic-routing.html[SMT].
+
+==== By custom filter strategy
+
+For advanced filtering, you can provide a custom `CapturingFilterStrategy` that receives the full event and decides whether to capture it:
+
+```java
+@ApplicationScoped
+public class ProductsOnlyFilter implements CapturingFilterStrategy {
+    @Override
+    public boolean shouldCapture(CapturingEvent<SourceRecord, SourceRecord> event) {
+        return "native.inventory.products".equals(event.destination());
+    }
+}
+```
+
+Then reference it in the annotation:
+
+```java
+    @Capturing(filter = ProductsOnlyFilter.class)
+    public void capture(CapturingEvent<SourceRecord, SourceRecord> event) {
+        // only receives events accepted by the filter
+    }
+```
+
+[NOTE]
+====
+The `filter` attribute is mutually exclusive with `destination` and `engine`, validated at build time.
+====
+
+==== By field changes
+
+A built-in `CapturingFieldsFilterStrategy` can filter events based on the state of specific watched fields, where that state depends on the event type:
+
+- *Create / Read*: captured if any watched field exists in the record schema
+- *Update*: captured only if at least one watched field value changed between before and after
+- *Delete*: captured if any watched field exists in the before schema
+- *Truncate / Message*: not captured (no field-level data)
+
+Extend it and pass the field names to watch:
+
+```java
+@ApplicationScoped
+public class PriceChangeFilter extends CapturingFieldsFilterStrategy {
+    public PriceChangeFilter() {
+        super(Set.of("name", "price"));
+    }
+}
+```
+
+Then use it:
+
+```java
+    @Capturing(filter = PriceChangeFilter.class)
+    public void capture(CapturingEvent<SourceRecord, SourceRecord> event) {
+        // only receives events where 'name' or 'price' are impacted
+    }
+```
+
+==== Batch event filtering
+
+The filter strategy also works with batch event processing (`CapturingEvents<BatchEvent>`):
+
+```java
+    @Capturing(filter = PriceChangeFilter.class)
+    public void onBatch(CapturingEvents<BatchEvent> events) {
+        // only receives batch events where at least one record impacts 'name' or 'price'
+    }
+```
+
+For batch events, each record in the batch is individually evaluated by `shouldCapture` and only matching records are delivered to the filter handler.
+
+==== Fallback chain
+
+When multiple `@Capturing` methods are defined, events are dispatched through a fallback chain:
+
+1. Methods with `filter` are checked first. The filter's `shouldCapture` decides.
+2. Methods with a registered deserializer for the destination (single event only).
+3. Methods with `destination` (exact match, then wildcard `*` fallback).
+
+First match wins.
+A `@Capturing()` with no destination acts as a wildcard and catches any event not matched by the previous levels.
+If no wildcard is defined, unmatched events are skipped.
+
+The same fallback chain applies to both single event and batch event processing.
 
 === Deserializer via Jackson
 
