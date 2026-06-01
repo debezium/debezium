@@ -99,6 +99,9 @@ public class ZeroDateFallbackConverter
 
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String NULL_TOKEN = "NULL";
+    private static final String TYPE_DATE = "DATE";
+    private static final String TYPE_DATETIME = "DATETIME";
+    private static final String TYPE_TIMESTAMP = "TIMESTAMP";
     private static final int SCHEMA_VERSION = 1;
 
     private boolean applyToDate;
@@ -120,9 +123,9 @@ public class ZeroDateFallbackConverter
                 ZeroDateFallbackConverterConfig.TARGET_TYPES.name(),
                 ZeroDateFallbackConverterConfig.DEFAULT_TARGET_TYPES).toUpperCase();
         final Set<String> tokens = parseCsv(targets);
-        this.applyToDate = tokens.contains("DATE");
-        this.applyToDatetime = tokens.contains("DATETIME");
-        this.applyToTimestamp = tokens.contains("TIMESTAMP");
+        this.applyToDate = tokens.contains(TYPE_DATE);
+        this.applyToDatetime = tokens.contains(TYPE_DATETIME);
+        this.applyToTimestamp = tokens.contains(TYPE_TIMESTAMP);
 
         this.fallbackDate = parseDateFallback(props.getProperty(
                 ZeroDateFallbackConverterConfig.FALLBACK_DATE.name()));
@@ -157,10 +160,10 @@ public class ZeroDateFallbackConverter
         if (jdbcType == Types.DATE && applyToDate) {
             registerDate(field, registration);
         }
-        else if (jdbcType == Types.TIMESTAMP && applyToDatetime && "DATETIME".equals(typeName)) {
+        else if (jdbcType == Types.TIMESTAMP && applyToDatetime && TYPE_DATETIME.equals(typeName)) {
             registerDatetime(field, registration);
         }
-        else if ((jdbcType == Types.TIMESTAMP_WITH_TIMEZONE || "TIMESTAMP".equals(typeName)) && applyToTimestamp) {
+        else if ((jdbcType == Types.TIMESTAMP_WITH_TIMEZONE || TYPE_TIMESTAMP.equals(typeName)) && applyToTimestamp) {
             registerTimestamp(field, registration);
         }
         else {
@@ -189,7 +192,7 @@ public class ZeroDateFallbackConverter
         if (fallback == null) {
             schema = schema.optional();
         }
-        logRegistration("DATE", field, columnRaw, hasDefault, fallback);
+        logRegistration(TYPE_DATE, field, columnRaw, hasDefault, fallback);
 
         final AtomicBoolean firstCallSeen = new AtomicBoolean(false);
         registration.register(schema, input -> {
@@ -224,7 +227,7 @@ public class ZeroDateFallbackConverter
         if (fallback == null) {
             schema = schema.optional();
         }
-        logRegistration("DATETIME", field, columnRaw, hasDefault, fallback);
+        logRegistration(TYPE_DATETIME, field, columnRaw, hasDefault, fallback);
 
         final AtomicBoolean firstCallSeen = new AtomicBoolean(false);
         registration.register(schema, input -> {
@@ -259,7 +262,7 @@ public class ZeroDateFallbackConverter
         if (fallback == null) {
             schema = schema.optional();
         }
-        logRegistration("TIMESTAMP", field, columnRaw, hasDefault, fallback);
+        logRegistration(TYPE_TIMESTAMP, field, columnRaw, hasDefault, fallback);
 
         final AtomicBoolean firstCallSeen = new AtomicBoolean(false);
         registration.register(schema, input -> {
