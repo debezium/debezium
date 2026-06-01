@@ -4177,6 +4177,46 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("debezium/dbz#2004")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldNotReemitConsumedLogicalMessageAfterRestart() throws Exception {
+        // The issue only occurred for transactional logical messages, where the first
+        // parameter of pg_logical_emit_message() is set to true.
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.NO_TABLES.getValue());
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        TestHelper.execute("BEGIN; SELECT pg_logical_emit_message(true, 'foo', 'msg1'); COMMIT;");
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+
+        TestHelper.execute("BEGIN; SELECT pg_logical_emit_message(true, 'foo', 'msg2'); COMMIT;");
+        SourceRecords recordsBeforeRestart = consumeRecordsByTopic(1);
+        assertThat(recordsBeforeRestart.allRecordsInOrder().size()).isEqualTo(1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Since 'msg2' has been already consumed before restart, verify that no records can
+        // be consumed after restart.
+        // Note consumeRecordsByTopic(1) is expected to return due to consumer timeout rather
+        // than receiving a record.
+        SourceRecords recordsAfterRestart = consumeRecordsByTopic(1);
+        assertThat(recordsAfterRestart.allRecordsInOrder().size()).isEqualTo(0);
+    }
+
     /**
      * Postgres override for getting TX ID, as due to DBZ-5329 Postgres TX ID is in form of {@code txId:LSN}.
      */
