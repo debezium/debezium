@@ -14,7 +14,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -313,14 +312,7 @@ public class ZeroDateFallbackConverter
     }
 
     private static Set<String> parseCsv(String raw) {
-        final Set<String> out = new HashSet<>();
-        for (String token : raw.split(",")) {
-            final String trimmed = token.trim();
-            if (!trimmed.isEmpty()) {
-                out.add(trimmed);
-            }
-        }
-        return out;
+        return Strings.setOfTrimmed(raw, ',', s -> s.isEmpty() ? null : s);
     }
 
     static LocalDate parseDateFallback(String raw) {
