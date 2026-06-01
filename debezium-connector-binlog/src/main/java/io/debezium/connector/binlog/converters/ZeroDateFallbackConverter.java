@@ -309,7 +309,7 @@ public class ZeroDateFallbackConverter
                 typeLabel, field.dataCollection(), field.name(),
                 columnRaw != null ? "column-level" : "type-level",
                 hasDefault,
-                fallback == null ? "NULL" : fallback);
+                fallback == null ? NULL_TOKEN : fallback);
     }
 
     private static Set<String> parseCsv(String raw) {
