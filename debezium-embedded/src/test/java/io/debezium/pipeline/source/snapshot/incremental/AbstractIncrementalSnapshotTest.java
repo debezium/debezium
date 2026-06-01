@@ -388,6 +388,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
+                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
                         restarted.set(true);
                     }
                 });
@@ -444,6 +445,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
+                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
                         restarted.set(true);
                     }
                 });
@@ -490,6 +492,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                             start(connectorClass(), config);
                             waitForConnectorToStart();
+                            waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
                             restarted.set(true);
                         }
                     }
@@ -1027,6 +1030,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
+                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
                         restarted.set(true);
                     }
                 });
