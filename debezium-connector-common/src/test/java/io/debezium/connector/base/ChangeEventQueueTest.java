@@ -20,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
 
@@ -115,10 +116,12 @@ public class ChangeEventQueueTest {
         Thread[] readers = new Thread[noOfReaders];
         AtomicLong recordsRead = new AtomicLong();
 
+        DefaultQueueProvider<DataChangeEvent> queueProvider = new DefaultQueueProvider<>();
+        queueProvider.configure(java.util.Map.of(CommonConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(8192 * 2)));
         ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(8192 * 2)
                 .maxQueueSize(8192 * 2)
-                .queueProvider(new DefaultQueueProvider<>(8192 * 2))
+                .queueProvider(queueProvider)
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
                 .pollDispatchInterval(Duration.ofMillis(1500))
@@ -176,10 +179,12 @@ public class ChangeEventQueueTest {
         Thread[] readers = new Thread[noOfReaders];
         AtomicLong recordsRead = new AtomicLong();
 
+        DefaultQueueProvider<DataChangeEvent> queueProvider = new DefaultQueueProvider<>();
+        queueProvider.configure(java.util.Map.of(CommonConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(8192 * 2)));
         ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(8192)
                 .maxQueueSize(8192 * 2)
-                .queueProvider(new DefaultQueueProvider<>(8192 * 2))
+                .queueProvider(queueProvider)
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
                 .pollDispatchInterval(Duration.ofMillis(4000))
@@ -236,10 +241,12 @@ public class ChangeEventQueueTest {
         Thread[] readers = new Thread[noOfReaders];
         AtomicLong recordsRead = new AtomicLong();
 
+        DefaultQueueProvider<DataChangeEvent> queueProvider = new DefaultQueueProvider<>();
+        queueProvider.configure(java.util.Map.of(CommonConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(1000)));
         ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
-                .queueProvider(new DefaultQueueProvider<>(1000))
+                .queueProvider(queueProvider)
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
                 .pollDispatchInterval(Duration.ofMillis(4000))
