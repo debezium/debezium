@@ -1,0 +1,98 @@
+name: Oracle Testing Farm
+on:
+  workflow_call:
+    secrets:
+      TF_PUBLIC_API_KEY:
+        description: "Testing Farm API key"
+        required: true
+
+jobs:
+  test-oracle-tf:
+    name: "Oracle TF -- ${{ matrix.identifier }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - identifier: "oracle-19"
+            compose: "debezium-tf-1930"
+            oracle-version: "19.3.0"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: ""
+            oracle-args: ""
+          - identifier: "oracle-19-unbuffered"
+            compose: "debezium-tf-1930"
+            oracle-version: "19.3.0"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: "-Poracle-logminer-unbuffered -pl debezium-connector-oracle"
+            oracle-args: ""
+          - identifier: "oracle-19-xs"
+            compose: "debezium-tf-1930-xs"
+            oracle-version: "19.3.0-xs"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: ""
+            oracle-args: "-Poracle-xstream"
+          - identifier: "oracle-19-ispn"
+            compose: "debezium-tf-1930"
+            oracle-version: "19.3.0"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
+            oracle-args: ""
+          - identifier: "oracle-19-ehcache"
+            compose: "debezium-tf-1930"
+            oracle-version: "19.3.0"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: "-Poracle-ehcache -pl debezium-connector-oracle"
+            oracle-args: ""
+          - identifier: "oracle-19-se"
+            compose: "debezium-tf-1930-se"
+            oracle-version: "19.3.0-se"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: ""
+            oracle-args: ""
+          - identifier: "oracle-19-se-xs"
+            compose: "debezium-tf-1930-se-xs"
+            oracle-version: "19.3.0-se-xs"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: ""
+            oracle-args: "-Poracle-xstream"
+          - identifier: "oracle-21"
+            compose: "debezium-tf-2130"
+            oracle-version: "21.3.0"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: ""
+            oracle-args: ""
+          - identifier: "oracle-23"
+            compose: "debezium-tf-2330"
+            oracle-version: "23.3.0.0"
+            oracle-registry: "container-registry.oracle.com/database/free"
+            oracle-profile-args: "-Poracle-23 -pl debezium-connector-oracle"
+            oracle-args: ""
+          - identifier: "oracle-26"
+            compose: "debezium-tf-2326"
+            oracle-version: "23.26.1"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: "-Poracle-26"
+            oracle-args: ""
+          - identifier: "oracle-26-xs"
+            compose: "debezium-tf-2326-xs"
+            oracle-version: "23.26.1-xs"
+            oracle-registry: "quay.io/rh_integration/dbz-oracle"
+            oracle-profile-args: "-Poracle-26,oracle-xstream"
+            oracle-args: "-Poracle-xstream,oracle-26"
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/build-debezium-oracle-tf
+        with:
+          compose: ${{ matrix.compose }}
+          oracle-version: ${{ matrix.oracle-version }}
+          oracle-registry: ${{ matrix.oracle-registry }}
+          oracle-profile-args: ${{ matrix.oracle-profile-args }}
+          oracle-args: ${{ matrix.oracle-args }}
+          pull-request-status-name: "Oracle Testing Farm -- ${{ matrix.identifier }}"
+          tf-api-key: ${{ secrets.TF_PUBLIC_API_KEY }}
