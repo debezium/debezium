@@ -1,0 +1,43 @@
+name: "Test Oracle on Testing Farm"
+description: "Runs Oracle connector integration tests on Testing Farm"
+
+inputs:
+  compose:
+    description: "Testing Farm compose (pre-built Oracle image, e.g. debezium-tf-1930)"
+    required: true
+  oracle-version:
+    description: "Oracle version (e.g. 19.3.0, 21.3.0, 23.3.0.0)"
+    required: true
+  oracle-registry:
+    description: "Oracle container image registry"
+    required: false
+    default: "quay.io/rh_integration/dbz-oracle"
+  oracle-profile-args:
+    description: "Additional Maven profile args (e.g. -Poracle-infinispan-buffer -pl debezium-connector-oracle)"
+    required: false
+    default: ""
+  oracle-args:
+    description: "Additional Oracle args (e.g. -Poracle-xstream)"
+    required: false
+    default: ""
+  pull-request-status-name:
+    description: "Name shown in PR status checks"
+    required: true
+  tf-api-key:
+    description: "Testing Farm API key"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Schedule test on Testing Farm
+      uses: sclorg/testing-farm-as-github-action@v4
+      with:
+        api_key: ${{ inputs.tf-api-key }}
+        tmt_plan_regex: "oracle"
+        git_ref: ${{ github.event.pull_request.head.sha }}
+        compose: ${{ inputs.compose }}
+        variables: "ORACLE_VERSION=${{ inputs.oracle-version }};ORACLE_REGISTRY=${{ inputs.oracle-registry }};TEST_PROFILE=oracle;ORACLE_PROFILE_ARGS=${{ inputs.oracle-profile-args }};ORACLE_ARG=${{ inputs.oracle-args }}"
+        pull_request_status_name: ${{ inputs.pull-request-status-name }}
+        update_pull_request_status: "true"
+        create_github_summary: "true"
