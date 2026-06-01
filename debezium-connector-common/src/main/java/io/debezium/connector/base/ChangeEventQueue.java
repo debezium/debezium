@@ -190,7 +190,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 defaultProvider.configure(java.util.Map.of(CommonConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(maxQueueSize)));
                 queueProvider = defaultProvider;
             }
-            return new ChangeEventQueue<>(pollInterval, pollDispatchInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, queueProvider);
+            return new ChangeEventQueue<>(pollInterval, pollDispatchInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering,
+                    queueProvider);
         }
     }
 
