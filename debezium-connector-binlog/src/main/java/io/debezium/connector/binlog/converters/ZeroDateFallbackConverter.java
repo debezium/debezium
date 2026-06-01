@@ -99,9 +99,6 @@ public class ZeroDateFallbackConverter
 
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String NULL_TOKEN = "NULL";
-    private static final String SCHEMA_DATE = "io.debezium.time.Date";
-    private static final String SCHEMA_TIMESTAMP = "io.debezium.time.Timestamp";
-    private static final String SCHEMA_ZONED_TIMESTAMP = "io.debezium.time.ZonedTimestamp";
     private static final int SCHEMA_VERSION = 1;
 
     private boolean applyToDate;
@@ -188,7 +185,7 @@ public class ZeroDateFallbackConverter
         final Integer fallback = effective == null ? null : (int) effective.toEpochDay();
         final boolean hasDefault = field.hasDefaultValue();
 
-        SchemaBuilder schema = SchemaBuilder.int32().name(SCHEMA_DATE).version(SCHEMA_VERSION);
+        SchemaBuilder schema = SchemaBuilder.int32().name(io.debezium.time.Date.SCHEMA_NAME).version(SCHEMA_VERSION);
         if (fallback == null) {
             schema = schema.optional();
         }
@@ -223,7 +220,7 @@ public class ZeroDateFallbackConverter
         final Long fallback = effective == null ? null : effective.toInstant(ZoneOffset.UTC).toEpochMilli();
         final boolean hasDefault = field.hasDefaultValue();
 
-        SchemaBuilder schema = SchemaBuilder.int64().name(SCHEMA_TIMESTAMP).version(SCHEMA_VERSION);
+        SchemaBuilder schema = SchemaBuilder.int64().name(io.debezium.time.Timestamp.SCHEMA_NAME).version(SCHEMA_VERSION);
         if (fallback == null) {
             schema = schema.optional();
         }
@@ -258,7 +255,7 @@ public class ZeroDateFallbackConverter
         final String fallback = effective == null ? null : effective.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         final boolean hasDefault = field.hasDefaultValue();
 
-        SchemaBuilder schema = SchemaBuilder.string().name(SCHEMA_ZONED_TIMESTAMP).version(SCHEMA_VERSION);
+        SchemaBuilder schema = SchemaBuilder.string().name(io.debezium.time.ZonedTimestamp.SCHEMA_NAME).version(SCHEMA_VERSION);
         if (fallback == null) {
             schema = schema.optional();
         }
