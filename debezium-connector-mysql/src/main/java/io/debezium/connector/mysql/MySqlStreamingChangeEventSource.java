@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.source.SourceConnector;
@@ -20,6 +21,8 @@ import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
+import com.github.shyiko.mysql.binlog.event.GtidTaggedEventData;
+import com.github.shyiko.mysql.binlog.event.MySqlGtid;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 
@@ -63,10 +66,9 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
             // Fallback to second resolution event timestamps
             eventTimestamp = Instant.ofEpochMilli(eventTs);
         }
-        else if (event.getHeader().getEventType() == EventType.GTID) {
+        else if (isGtidEvent(event)) {
             // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
-            GtidEventData gtidEvent = unwrapData(event);
-            final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
+            final long gtidEventTs = getOriginalCommitTimestamp(event);
             if (gtidEventTs != 0) {
                 // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
                 eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
@@ -79,7 +81,7 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
     }
 
     /**
-     * Handle the supplied event with a {@link GtidEventData} that signals the beginning of a GTID transaction.
+     * Handle the supplied event with a {@link GtidEventData} or {@link GtidTaggedEventData} that signals the beginning of a GTID transaction.
      * We don't yet know whether this transaction contains any events we're interested in, but we have to record
      * it so that we know the position of this event and know we've processed the binlog to this point.
      * <p>
@@ -98,13 +100,13 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
     protected void handleGtidEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event,
                                    Predicate<String> gtidSourceFilter) {
         LOGGER.debug("GTID transaction: {}", event);
-        GtidEventData gtidEvent = unwrapData(event);
-        String gtid = gtidEvent.getGtid();
+        final MySqlGtid mySqlGtid = getGtid(event);
+        String gtid = mySqlGtid.toString();
         gtidSet.add(gtid);
         offsetContext.startGtid(gtid, gtidSet.toString()); // rather than use the client's GTID set
         setIgnoreDmlEventByGtidSource(false);
         if (gtidSourceFilter != null && gtid != null) {
-            String uuid = gtid.trim().substring(0, gtid.indexOf(":"));
+            String uuid = mySqlGtid.getServerId().toString();
             if (!gtidSourceFilter.test(uuid)) {
                 setIgnoreDmlEventByGtidSource(true);
             }
@@ -148,6 +150,11 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
     }
 
     @Override
+    protected List<EventType> getGtidEventTypes() {
+        return List.of(EventType.GTID, EventType.GTID_TAGGED);
+    }
+
+    @Override
     protected void initializeGtidSet(String value) {
         this.gtidSet = new GtidSet(value);
     }
@@ -167,6 +174,33 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
                 return SSLMode.VERIFY_IDENTITY;
         }
         return null;
+    }
+
+    private boolean isGtidEvent(Event event) {
+        final EventType eventType = event.getHeader().getEventType();
+        return eventType == EventType.GTID || eventType == EventType.GTID_TAGGED;
+    }
+
+    private long getOriginalCommitTimestamp(Event event) {
+        final EventData eventData = unwrapData(event);
+        if (eventData instanceof GtidEventData) {
+            return ((GtidEventData) eventData).getOriginalCommitTimestamp();
+        }
+        if (eventData instanceof GtidTaggedEventData) {
+            return ((GtidTaggedEventData) eventData).getOriginalCommitTimestamp();
+        }
+        throw new IllegalArgumentException("Unexpected GTID event data type: " + eventData.getClass());
+    }
+
+    private MySqlGtid getGtid(Event event) {
+        final EventData eventData = unwrapData(event);
+        if (eventData instanceof GtidEventData) {
+            return ((GtidEventData) eventData).getMySqlGtid();
+        }
+        if (eventData instanceof GtidTaggedEventData) {
+            return ((GtidTaggedEventData) eventData).getMySqlGtid();
+        }
+        throw new IllegalArgumentException("Unexpected GTID event data type: " + eventData.getClass());
     }
 
 }

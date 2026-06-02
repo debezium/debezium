@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
-import static io.debezium.connector.mysql.gtid.MySqlGtidSet.GTID_DELIMITER;
-
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.github.shyiko.mysql.binlog.event.MySqlGtid;
 
 import io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotContext;
 import io.debezium.connector.binlog.gtid.GtidSet;
@@ -78,14 +78,14 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends BinlogReadOnlyIn
         if (currentGtid == null) {
             return true;
         }
-        String[] gtid = GTID_DELIMITER.split(currentGtid);
-        MySqlGtidSet.UUIDSet uuidSet = getUuidSet(gtid[0]);
+        final MySqlGtid gtid = MySqlGtid.fromString(currentGtid);
+        MySqlGtidSet.UUIDSet uuidSet = getUuidSet(gtid.getServerId().toString());
         if (uuidSet != null) {
             long maxTransactionId = uuidSet.getIntervals().stream()
                     .mapToLong(MySqlGtidSet.Interval::getEnd)
                     .max()
                     .getAsLong();
-            if (maxTransactionId <= Long.parseLong(gtid[1])) {
+            if (maxTransactionId <= gtid.getTransactionId()) {
                 LOGGER.debug("Gtid {} reached high watermark {}", currentGtid, highWatermark);
                 return true;
             }

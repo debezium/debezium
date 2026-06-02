@@ -232,8 +232,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         if (isGtidModeEnabled && shouldRecoverUsingGtid()) {
             // The server is using GTIDs, so enable the handler ...
-            eventHandlers.put(getGtidEventType(),
-                    (event) -> handleGtidEvent(partition, effectiveOffsetContext, event, gtidDmlSourceFilter));
+            for (EventType eventType : getGtidEventTypes()) {
+                eventHandlers.put(eventType,
+                        (event) -> handleGtidEvent(partition, effectiveOffsetContext, event, gtidDmlSourceFilter));
+            }
 
             // Now look at the GTID set from the server and what we've previously seen ...
             GtidSet availableServerGtidSet = connection.knownGtidSet();
@@ -1005,6 +1007,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      * @return the event type for the global transaction identifier events
      */
     protected abstract EventType getGtidEventType();
+
+    /**
+     * @return the event types for global transaction identifier events
+     */
+    protected List<EventType> getGtidEventTypes() {
+        return List.of(getGtidEventType());
+    }
 
     /**
      * Initialize the connector's global transaction identifier set.
