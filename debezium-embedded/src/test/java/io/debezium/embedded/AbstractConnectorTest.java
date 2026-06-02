@@ -713,9 +713,9 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
-     * Try to consume and capture records untel a codition is satisfied.
+     * Try to consume and capture records until a condition is satisfied.
      *
-     * @param condition contition that must be satisifed to terminate reading
+     * @param condition condition that must be satisfied to terminate reading
      * @return the collector into which the records were captured; never null
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
