@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactoryProvider;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Threads;
@@ -79,24 +80,18 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
         }
 
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
-        final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
+        final OracleConnectionFactory connectionFactory = OracleConnectionFactoryProvider.create(connectorConfig);
+
         try {
             Threads.runWithTimeout(OracleConnector.class, () -> {
-                try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
-                    // Force a connection call to the database.
-                    connection.getOracleVersion();
-
-                    LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
-                            connection.username());
-                }
-                catch (SQLException | RuntimeException e) {
-                    LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
-                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                }
+                connectionFactory.validateConnections((name, error) -> {
+                    LOGGER.error("Failed testing {} connection for {}", name, config.withMaskedPasswords(), error);
+                    hostnameValue.addErrorMessage("Unable to connect (" + name + "): " + error.getMessage());
+                });
             }, null, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
