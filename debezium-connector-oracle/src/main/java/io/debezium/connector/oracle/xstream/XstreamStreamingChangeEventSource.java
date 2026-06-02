@@ -22,8 +22,9 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
+import io.debezium.connector.oracle.StreamingAdapter;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
@@ -48,10 +49,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private static final int DEFAULT_MAX_ATTACH_RETRIES = 10;
-    private static final int DEFAULT_MAX_ATTACH_RETRY_DELAY_SECONDS = 10;
 
     private final OracleConnectorConfig connectorConfig;
-    private final OracleConnection jdbcConnection;
+    private final OracleConnectionFactory connectionFactory;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
@@ -70,19 +70,19 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
     private OracleOffsetContext effectiveOffset;
 
-    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
+    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                              EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
                                              Clock clock, OracleDatabaseSchema schema,
                                              XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.connectionFactory = connectionFactory;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
         this.xstreamOutboundServerName = connectorConfig.getXStreamOutboundServerName();
-        this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
+        this.posVersion = resolvePosVersion(connectionFactory.streamingConnectionFactory().mainConnection());
     }
 
     @Override
@@ -104,11 +104,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.effectiveOffset = offsetContext;
 
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
-                partition, offsetContext,
-                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)),
-                this, streamingMetrics);
+                partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
 
-        try (OracleConnection xsConnection = connectAndAttachWithRetries(jdbcConnection.config(), getStartPosition(offsetContext))) {
+        try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
             try {
                 // 2. receive events while running
                 while (context.isRunning()) {
@@ -160,6 +158,12 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return effectiveOffset;
     }
 
+    private boolean isTableCaseInsensitive() {
+        final StreamingAdapter<?> adapter = connectorConfig.getAdapter();
+        final OracleConnection connection = connectionFactory.streamingConnectionFactory().mainConnection();
+        return TableNameCaseSensitivity.INSENSITIVE.equals(adapter.getTableNameCaseSensitivity(connection));
+    }
+
     private byte[] getStartPosition(OracleOffsetContext offsetContext) {
         final String lcrPosition = offsetContext.getLcrPosition();
         if (lcrPosition != null) {
@@ -168,12 +172,14 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return convertScnToPosition(offsetContext.getScn());
     }
 
-    private OracleConnection connectAndAttachWithRetries(JdbcConfiguration jdbcConfig, byte[] startPosition) throws Exception {
+    private OracleConnection connectAndAttachWithRetries(byte[] startPosition) throws Exception {
         OracleConnection connection = null;
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
             XStreamOut out = null;
             try {
-                connection = new OracleConnection(connectorConfig, jdbcConfig, true);
+                connection = connectionFactory.streamingConnectionFactory().newConnection();
+                connection.setAutoCommit(true);
+
                 out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xstreamOutboundServerName,
                         startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
@@ -240,7 +246,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return lcrMessage.getAndSet(null);
     }
 
-    private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
+    private static int resolvePosVersion(OracleConnection connection) {
         final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
         if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMinor() < 2)) {
             return XStreamUtility.POS_VERSION_V1;
