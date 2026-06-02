@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.SQLException;
 import java.util.Optional;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -54,14 +57,21 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     @Override
     public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener,
                                                                                                         NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
-        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
+        return new OracleSnapshotChangeEventSource(
+                configuration,
+                connectionFactory.snapshotConnectionFactory(),
+                schema,
+                dispatcher,
+                clock,
+                snapshotProgressListener,
+                notificationService,
                 snapshotterService);
     }
 
     @Override
     public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getStreamingChangeEventSource() {
         return configuration.getAdapter().getSource(
-                connectionFactory.mainConnection(),
+                connectionFactory,
                 dispatcher,
                 errorHandler,
                 clock,
@@ -84,13 +94,26 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
             return Optional.empty();
         }
 
+        // Cannot use incremental snapshots with a read only connection
+        if (configuration.isLogMiningReadOnly()) {
+            return Optional.empty();
+        }
+
+        final OracleConnection connection = connectionFactory.snapshotConnectionFactory().newConnection();
+        try {
+            connection.setAutoCommit(true);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to set incremental snapshot connection to auto-commit", e);
+        }
+
         // Incremental snapshots requires a secondary database connection
         // This is because Xstream does not allow any work on the connection while the LCR handler may be invoked
         // and LogMiner streams results from the CDB$ROOT container but we will need to stream changes from the
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(configuration, connectionFactory.mainConnection().config(), true),
+                connection,
                 dispatcher,
                 schema,
                 clock,

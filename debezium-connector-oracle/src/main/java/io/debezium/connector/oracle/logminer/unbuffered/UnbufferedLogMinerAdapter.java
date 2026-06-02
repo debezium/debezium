@@ -7,12 +7,12 @@ package io.debezium.connector.oracle.logminer.unbuffered;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.ErrorHandler;
@@ -45,7 +45,7 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
     }
 
     @Override
-    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
+    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnectionFactory connectionFactory,
                                                                                       EventDispatcher<OraclePartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
@@ -56,7 +56,7 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
                                                                                       SnapshotterService snapshotterService) {
         return new UnbufferedLogMinerStreamingChangeEventSource(
                 connectorConfig,
-                connection,
+                connectionFactory,
                 dispatcher,
                 errorHandler,
                 clock,

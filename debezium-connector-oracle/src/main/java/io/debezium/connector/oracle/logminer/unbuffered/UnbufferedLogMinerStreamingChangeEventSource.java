@@ -22,11 +22,11 @@ import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.CommitScn;
-import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
@@ -70,14 +70,14 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     private Scn lastCommitScn = Scn.NULL;
 
     public UnbufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                                        OracleConnection jdbcConnection,
+                                                        OracleConnectionFactory connectionFactory,
                                                         EventDispatcher<OraclePartition, TableId> dispatcher,
                                                         ErrorHandler errorHandler,
                                                         Clock clock,
                                                         OracleDatabaseSchema schema,
                                                         Configuration jdbcConfig,
                                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
+        super(connectorConfig, connectionFactory, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
         this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
         this.includeSql = connectorConfig.isLogMiningIncludeRedoSql();
         this.accumulator = new TransactionCommitConsumer(this::dispatchEvent, connectorConfig, schema);
@@ -252,12 +252,12 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     private PreparedStatement createQueryStatement() throws SQLException {
-        final PreparedStatement statement = getConnection().connection()
+        final PreparedStatement statement = getStreamingConnection().connection()
                 .prepareStatement(miningQuery,
                         ResultSet.TYPE_FORWARD_ONLY,
                         ResultSet.CONCUR_READ_ONLY,
                         ResultSet.HOLD_CURSORS_OVER_COMMIT);
-        statement.setQueryTimeout((int) getConnection().config().getQueryTimeout().toSeconds());
+        statement.setQueryTimeout((int) getStreamingConnection().config().getQueryTimeout().toSeconds());
         return statement;
     }
 

@@ -9,6 +9,7 @@ import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
@@ -55,7 +56,7 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
 
     OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader();
 
-    StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
+    StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnectionFactory connectionFactory,
                                                                                EventDispatcher<OraclePartition, TableId> dispatcher,
                                                                                ErrorHandler errorHandler, Clock clock,
                                                                                OracleDatabaseSchema schema,
