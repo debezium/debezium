@@ -125,7 +125,7 @@ public class WalPositionLocator {
                 break;
             case COMMIT:
                 if (currentLsn.compareTo(lastCommitStoredLsn) > 0) {
-                    LOGGER.info("Received COMMIT LSN '{}' larger than than last stored commit LSN '{}'", currentLsn,
+                    LOGGER.info("Received COMMIT LSN '{}' larger than last stored commit LSN '{}'", currentLsn,
                             lastCommitStoredLsn);
                     if (lsnAfterLastEventStoredLsn != null) {
                         startStreamingLsn = lsnAfterLastEventStoredLsn;
