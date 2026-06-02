@@ -64,7 +64,9 @@ The enriched format includes both schema metadata and the full before and after 
 2. **Intermediate Kafka to {prodname} to Output Kafka**: The connector subscribes to all per-table Kafka topics in a single KafkaConsumer; routes each event to the correct table based on the topic name; transforms the enriched changefeed events into the standard {prodname} envelope format (with `before`, `after`, `source`, and `op` fields); and produces them to the final output Kafka topics.
 
 This architecture allows the connector to leverage CockroachDB's native, highly-available changefeed infrastructure for capture reliability, while providing the standard {prodname} event format that downstream consumers expect.
-Using a single multi-table changefeed is the link:https://www.cockroachlabs.com/docs/stable/create-and-configure-changefeeds#recommendations[recommended approach] to stay within CockroachDB's limit of approximately 80 changefeed jobs per cluster.
+By default the connector consolidates all configured tables into a single changefeed, which keeps it to one changefeed job and helps stay within CockroachDB's link:https://www.cockroachlabs.com/docs/stable/create-and-configure-changefeeds#recommendations[recommended limit] on the number of changefeeds per cluster (approximately 80 at the time of writing).
+CockroachDB also link:https://www.cockroachlabs.com/docs/stable/changefeed-best-practices[advises against] watching very many tables with a single changefeed, because their performance becomes coupled.
+For large table counts, set xref:cockroachdb-property-max-tables-per-changefeed[`cockroachdb.changefeed.max.tables.per.changefeed`] to split the tables across several changefeeds, or run multiple connector instances that each capture a related subset of the tables.
 
 // Type: concept
 // ModuleID: cockroachdb-snapshots
@@ -1241,9 +1243,17 @@ Currently supported: `kafka`.
 
 |[[cockroachdb-property-sink-topic-prefix]]<<cockroachdb-property-sink-topic-prefix, `+cockroachdb.changefeed.sink.topic.prefix+`>>
 |_empty_
-|Prefix for changefeed topic names in the intermediate Kafka cluster.
-If empty, defaults to the value of `topic.prefix`.
-For multi-tenant deployments, consider using a unique prefix per tenant.
+|Prefix prepended to the intermediate changefeed topic names.
+The connector uses the value verbatim, so the resulting topics are named `_prefix__database_._schema_._table_`.
+Include your own separator if you want one: for example, `crdb.` yields `crdb.mydb.public.orders`, and `env-prod-` yields `env-prod-mydb.public.orders`.
+If empty, defaults to the value of `topic.prefix` followed by a dot.
+
+|[[cockroachdb-property-max-tables-per-changefeed]]<<cockroachdb-property-max-tables-per-changefeed, `+cockroachdb.changefeed.max.tables.per.changefeed+`>>
+|`0`
+|Maximum number of tables to include in a single CockroachDB changefeed.
+The default of `0` places all configured tables in one changefeed.
+When set to a positive value, the connector splits the captured tables into multiple changefeeds of at most this many tables each, to avoid the performance coupling that CockroachDB warns about when one changefeed watches very many tables.
+Smaller values reduce coupling but create more changefeed jobs, so balance this against CockroachDB's recommended limit on the number of changefeed jobs per cluster.
 
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default
@@ -1505,9 +1515,6 @@ curl -X PUT -H "Content-Type: application/json" \
 // Title: Current Limitations
 [[cockroachdb-limitations]]
 == Limitations
-
-* **Multi-table changefeed**: The connector creates a single changefeed for all configured tables and consumes all per-table Kafka topics concurrently in a single KafkaConsumer.
-This is the recommended approach to minimize the number of changefeed jobs on the CockroachDB cluster.
 
 * **Kafka sink only**: The connector currently only supports Kafka as the intermediate changefeed sink.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
