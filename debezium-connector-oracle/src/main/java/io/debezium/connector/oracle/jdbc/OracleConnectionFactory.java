@@ -8,6 +8,9 @@ package io.debezium.connector.oracle.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -19,6 +22,8 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
  * @author Chris Cranford
  */
 public abstract class OracleConnectionFactory implements MainConnectionProvidingConnectionFactory<OracleConnection> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectionFactory.class);
 
     /**
      * Get the connection factory that should be used during snapshot.
@@ -34,6 +39,30 @@ public abstract class OracleConnectionFactory implements MainConnectionProviding
      */
     public OracleConnectionFactory streamingConnectionFactory() {
         return this;
+    }
+
+    /**
+     * Validates all connections managed by this factory.
+     *
+     * @param validator the callback to validate each connection
+     */
+    public void validateConnections(ConnectionValidator validator) {
+        validateConnection("primary", this, validator);
+    }
+
+    protected void validateConnection(String name, OracleConnectionFactory factory, ConnectionValidator validator) {
+        try (OracleConnection connection = factory.newConnection()) {
+            connection.getOracleVersion();
+            LOGGER.debug("Successfully tested {} connection with user '{}'", name, connection.username());
+        }
+        catch (Exception e) {
+            validator.onError(name, e);
+        }
+    }
+
+    @FunctionalInterface
+    public interface ConnectionValidator {
+        void onError(String connectionName, Exception error);
     }
 
     /**

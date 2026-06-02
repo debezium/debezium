@@ -53,6 +53,12 @@ public class PhysicalStandbyOracleConnectionFactory extends OracleConnectionFact
     }
 
     @Override
+    public void validateConnections(ConnectionValidator validator) {
+        super.validateConnections(validator);
+        validateConnection("standby", standbyDelegate, validator);
+    }
+
+    @Override
     public OracleConnection mainConnection() {
         // The outer connection factory always uses the primary
         // For standby connections, the streaming factory should be used
