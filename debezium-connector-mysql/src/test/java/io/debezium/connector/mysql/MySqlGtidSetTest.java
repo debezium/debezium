@@ -43,6 +43,18 @@ public class MySqlGtidSetTest {
     }
 
     @Test
+    void shouldCreateSetWithTaggedInterval() {
+        gtids = new MySqlGtidSet(UUID1 + ":debezium_test:1-191");
+        asertIntervalCount(UUID1, 1);
+        asertIntervalExists(UUID1, 1, 191);
+        asertFirstInterval(UUID1, 1, 191);
+        asertLastInterval(UUID1, 1, 191);
+        assertThat(gtids.toString()).isEqualTo(UUID1 + ":debezium_test:1-191");
+        assertThat(gtids.contains(UUID1 + ":debezium_test:42")).isTrue();
+        assertThat(gtids.contains(UUID1 + ":42")).isFalse();
+    }
+
+    @Test
     void shouldCollapseAdjacentIntervals() {
         gtids = new MySqlGtidSet(UUID1 + ":1-191:192-199");
         asertIntervalCount(UUID1, 1);
@@ -133,6 +145,18 @@ public class MySqlGtidSetTest {
         List<String> actualUuids = filtered.getUUIDSets().stream().map(UUIDSet::getUUID).collect(Collectors.toList());
         assertThat(keepers.containsAll(actualUuids)).isTrue();
         assertThat(filtered.forServerWithId("7145bf69-d1ca-11e5-a588-0242ac110004")).isNull();
+    }
+
+    @Test
+    void shouldRetainOnlyKnownTsids() {
+        MySqlGtidSet available = new MySqlGtidSet(UUID1 + ":known:1-5:unknown:1-10");
+        MySqlGtidSet known = new MySqlGtidSet(UUID1 + ":known:1-2");
+
+        MySqlGtidSet filtered = available.retainAllKnownTsids(known);
+
+        assertThat(filtered.toString()).isEqualTo(UUID1 + ":known:1-5");
+        assertThat(filtered.contains(UUID1 + ":known:3")).isTrue();
+        assertThat(filtered.contains(UUID1 + ":unknown:3")).isFalse();
     }
 
     @Test

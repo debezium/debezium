@@ -11,13 +11,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.github.shyiko.mysql.binlog.event.MySqlGtid;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.binlog.gtid.GtidSet;
@@ -40,7 +44,8 @@ public class MySqlGtidSet implements GtidSet {
         if (gtids != null) {
             gtids = gtids.replace("\n", "").replace("\r", "");
             new com.github.shyiko.mysql.binlog.GtidSet(gtids).getUUIDSets().forEach(uuidSet -> {
-                uuidSetsByServerId.put(uuidSet.getUUID(), new UUIDSet(uuidSet));
+                final UUIDSet set = new UUIDSet(uuidSet);
+                uuidSetsByServerId.put(set.getKey(), set);
             });
             StringBuilder sb = new StringBuilder();
             uuidSetsByServerId.values().forEach(uuidSet -> {
@@ -67,7 +72,18 @@ public class MySqlGtidSet implements GtidSet {
         }
         Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
                 .stream()
-                .filter(entry -> sourceFilter.test(entry.getKey()))
+                .filter(entry -> sourceFilter.test(entry.getValue().getUUID()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return new MySqlGtidSet(newSets);
+    }
+
+    public MySqlGtidSet retainAllKnownTsids(MySqlGtidSet knownGtidSet) {
+        if (knownGtidSet == null) {
+            return new MySqlGtidSet(Collections.emptyMap());
+        }
+        Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
+                .stream()
+                .filter(entry -> knownGtidSet.uuidSetsByServerId.containsKey(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return new MySqlGtidSet(newSets);
     }
@@ -82,7 +98,7 @@ public class MySqlGtidSet implements GtidSet {
         }
         final MySqlGtidSet theOther = (MySqlGtidSet) other;
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
-            UUIDSet thatSet = theOther.forServerWithId(uuidSet.getUUID());
+            UUIDSet thatSet = theOther.forServerWithIdAndTag(uuidSet.getUUID(), uuidSet.getTag());
             if (!uuidSet.isContainedWithin(thatSet)) {
                 return false;
             }
@@ -104,14 +120,13 @@ public class MySqlGtidSet implements GtidSet {
 
     @Override
     public boolean contains(String gtid) {
-        String[] split = GTID_DELIMITER.split(gtid);
-        String sourceId = split[0];
-        UUIDSet uuidSet = forServerWithId(sourceId);
+        final MySqlGtid mySqlGtid = MySqlGtid.fromString(gtid);
+        String sourceId = mySqlGtid.getServerId().toString();
+        UUIDSet uuidSet = forServerWithIdAndTag(sourceId, mySqlGtid.getTag());
         if (uuidSet == null) {
             return false;
         }
-        long transactionId = Long.parseLong(split[1]);
-        return uuidSet.contains(transactionId);
+        return uuidSet.contains(mySqlGtid.getTransactionId());
     }
 
     @Override
@@ -122,8 +137,8 @@ public class MySqlGtidSet implements GtidSet {
         final MySqlGtidSet theOther = (MySqlGtidSet) other;
         Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
                 .stream()
-                .filter(entry -> !entry.getValue().isContainedWithin(theOther.forServerWithId(entry.getKey())))
-                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().subtract(theOther.forServerWithId(entry.getKey()))))
+                .filter(entry -> !entry.getValue().isContainedWithin(theOther.uuidSetsByServerId.get(entry.getKey())))
+                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().subtract(theOther.uuidSetsByServerId.get(entry.getKey()))))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return new MySqlGtidSet(newSets);
     }
@@ -144,7 +159,22 @@ public class MySqlGtidSet implements GtidSet {
      * @return the {@link UUIDSet} for the identified server, or {@code null} if there are no GTIDs from that server.
      */
     public UUIDSet forServerWithId(String uuid) {
-        return uuidSetsByServerId.get(uuid);
+        final UUIDSet untagged = uuidSetsByServerId.get(tsidKey(uuid, null));
+        if (untagged != null) {
+            return untagged;
+        }
+        return uuidSetsByServerId.values().stream()
+                .filter(uuidSet -> uuidSet.getUUID().equalsIgnoreCase(uuid))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private UUIDSet forServerWithIdAndTag(String uuid, String tag) {
+        return uuidSetsByServerId.get(tsidKey(uuid, tag));
+    }
+
+    private static String tsidKey(String uuid, String tag) {
+        return uuid.toLowerCase() + '\0' + Objects.toString(tag, "");
     }
 
     @Override
@@ -166,11 +196,39 @@ public class MySqlGtidSet implements GtidSet {
 
     @Override
     public String toString() {
-        List<String> gtids = new ArrayList<String>();
+        final Map<String, List<UUIDSet>> uuidSets = new LinkedHashMap<>();
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
-            gtids.add(uuidSet.toString());
+            uuidSets.computeIfAbsent(uuidSet.getUUID(), uuid -> new ArrayList<>()).add(uuidSet);
+        }
+
+        final List<String> gtids = new ArrayList<>();
+        for (Map.Entry<String, List<UUIDSet>> entry : uuidSets.entrySet()) {
+            final StringBuilder sb = new StringBuilder(entry.getKey()).append(':');
+            final Iterator<UUIDSet> iter = entry.getValue().iterator();
+            if (iter.hasNext()) {
+                appendTaggedIntervals(sb, iter.next());
+            }
+            while (iter.hasNext()) {
+                sb.append(':');
+                appendTaggedIntervals(sb, iter.next());
+            }
+            gtids.add(sb.toString());
         }
         return String.join(",", gtids);
+    }
+
+    private static void appendTaggedIntervals(StringBuilder sb, UUIDSet uuidSet) {
+        if (uuidSet.getTag() != null) {
+            sb.append(uuidSet.getTag()).append(':');
+        }
+        final Iterator<Interval> iter = uuidSet.getIntervals().iterator();
+        if (iter.hasNext()) {
+            sb.append(iter.next());
+        }
+        while (iter.hasNext()) {
+            sb.append(':');
+            sb.append(iter.next());
+        }
     }
 
     /**
@@ -180,10 +238,12 @@ public class MySqlGtidSet implements GtidSet {
     public static class UUIDSet {
 
         private final String uuid;
+        private final String tag;
         private final LinkedList<Interval> intervals = new LinkedList<>();
 
         protected UUIDSet(com.github.shyiko.mysql.binlog.GtidSet.UUIDSet uuidSet) {
-            this.uuid = uuidSet.getUUID();
+            this.uuid = uuidSet.getServerId().toString();
+            this.tag = uuidSet.getTag();
             uuidSet.getIntervals().forEach(interval -> {
                 intervals.add(new Interval(interval.getStart(), interval.getEnd()));
             });
@@ -202,18 +262,28 @@ public class MySqlGtidSet implements GtidSet {
         }
 
         protected UUIDSet(String uuid, Interval interval) {
+            this(uuid, null, interval);
+        }
+
+        protected UUIDSet(String uuid, String tag, Interval interval) {
             this.uuid = uuid;
+            this.tag = tag;
             this.intervals.add(interval);
         }
 
         protected UUIDSet(String uuid, List<Interval> intervals) {
+            this(uuid, null, intervals);
+        }
+
+        protected UUIDSet(String uuid, String tag, List<Interval> intervals) {
             this.uuid = uuid;
+            this.tag = tag;
             this.intervals.addAll(intervals);
         }
 
         public UUIDSet asIntervalBeginning() {
             Interval start = new Interval(intervals.get(0).getStart(), intervals.get(0).getStart());
-            return new UUIDSet(this.uuid, start);
+            return new UUIDSet(this.uuid, this.tag, start);
         }
 
         /**
@@ -223,6 +293,14 @@ public class MySqlGtidSet implements GtidSet {
          */
         public String getUUID() {
             return uuid;
+        }
+
+        public String getTag() {
+            return tag;
+        }
+
+        private String getKey() {
+            return tsidKey(uuid, tag);
         }
 
         /**
@@ -248,6 +326,9 @@ public class MySqlGtidSet implements GtidSet {
             }
             if (!this.getUUID().equalsIgnoreCase(other.getUUID())) {
                 // Not even the same server ...
+                return false;
+            }
+            if (!Objects.equals(this.getTag(), other.getTag())) {
                 return false;
             }
             if (this.intervals.isEmpty()) {
@@ -286,7 +367,7 @@ public class MySqlGtidSet implements GtidSet {
 
         @Override
         public int hashCode() {
-            return uuid.hashCode();
+            return 31 * uuid.hashCode() + (tag == null ? 0 : tag.hashCode());
         }
 
         @Override
@@ -296,7 +377,8 @@ public class MySqlGtidSet implements GtidSet {
             }
             if (obj instanceof UUIDSet) {
                 UUIDSet that = (UUIDSet) obj;
-                return this.getUUID().equalsIgnoreCase(that.getUUID()) && this.getIntervals().equals(that.getIntervals());
+                return this.getUUID().equalsIgnoreCase(that.getUUID()) && Objects.equals(this.getTag(), that.getTag())
+                        && this.getIntervals().equals(that.getIntervals());
             }
             return super.equals(obj);
         }
@@ -305,6 +387,9 @@ public class MySqlGtidSet implements GtidSet {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append(uuid).append(':');
+            if (tag != null) {
+                sb.append(tag).append(':');
+            }
             Iterator<Interval> iter = intervals.iterator();
             if (iter.hasNext()) {
                 sb.append(iter.next());
@@ -320,14 +405,14 @@ public class MySqlGtidSet implements GtidSet {
             if (other == null) {
                 return this;
             }
-            if (!uuid.equals(other.getUUID())) {
-                throw new IllegalArgumentException("UUIDSet subtraction is supported only within a single server UUID");
+            if (!uuid.equals(other.getUUID()) || !Objects.equals(tag, other.getTag())) {
+                throw new IllegalArgumentException("UUIDSet subtraction is supported only within a single TSID");
             }
             List<Interval> result = new ArrayList<>();
             for (Interval interval : intervals) {
                 result.addAll(interval.removeAll(other.getIntervals()));
             }
-            return new UUIDSet(uuid, result);
+            return new UUIDSet(uuid, tag, result);
         }
     }
 

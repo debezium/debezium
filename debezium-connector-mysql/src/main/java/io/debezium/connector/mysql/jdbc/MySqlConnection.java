@@ -176,13 +176,14 @@ public class MySqlConnection extends BinlogConnectorConnection {
         }
         LOGGER.info("GTID set available on server: {}", availableServerGtidSet);
 
-        final GtidSet knownGtidSet = filteredGtidSet;
+        final MySqlGtidSet knownGtidSet = (MySqlGtidSet) filteredGtidSet;
         LOGGER.info("Using first available positions for new GTID channels");
-        final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
+        final MySqlGtidSet relevantAvailableServerGtidSet = (MySqlGtidSet) ((gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter)
+                : availableServerGtidSet);
         LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
 
         GtidSet mergedGtidSet = relevantAvailableServerGtidSet
-                .retainAll(uuid -> ((MySqlGtidSet) knownGtidSet).forServerWithId(uuid) != null)
+                .retainAllKnownTsids(knownGtidSet)
                 .with(purgedServerGtidSet)
                 .with(filteredGtidSet);
 
