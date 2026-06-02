@@ -30,6 +30,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactoryProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -96,7 +98,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        final OracleConnectionFactory connectionFactory = new OracleConnectionFactory(connectorConfig);
+        final OracleConnectionFactory connectionFactory = OracleConnectionFactoryProvider.create(connectorConfig);
 
         jdbcConnection = connectionFactory.mainConnection();
 

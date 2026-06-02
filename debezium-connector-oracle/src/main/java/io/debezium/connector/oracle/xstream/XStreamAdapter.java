@@ -23,6 +23,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -84,7 +85,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
-    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
+    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnectionFactory connectionFactory,
                                                                                       EventDispatcher<OraclePartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
@@ -95,7 +96,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                                                                                       SnapshotterService snapshotterService) {
         return new XstreamStreamingChangeEventSource(
                 connectorConfig,
-                connection,
+                connectionFactory,
                 dispatcher,
                 errorHandler,
                 clock,
