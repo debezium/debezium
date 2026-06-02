@@ -3,8 +3,37 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.5.2.Final
+June 2nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+stable-iteration%3A3.5.2.Final)
+
+### New features since 3.5.1.Final
+
+None
+
+
+### Breaking changes since 3.5.1.Final
+
+None
+
+
+### Fixes since 3.5.1.Final
+
+* Connector context MDC tag is missing in logs produced in ChangeEventSourceCoordinator thread [debezium/dbz#1933](https://github.com/debezium/dbz/issues/1933)
+* SQLServer - Full database snapshot when snapshot mode is 'when_needed' [debezium/dbz#1942](https://github.com/debezium/dbz/issues/1942)
+* [Spanner] NullPointerException in ApproximateStructSizeCalculator when finished-partition cleanup dispatches a null-offset heartbeat (max.queue.size.in.bytes > 0) [debezium/dbz#1944](https://github.com/debezium/dbz/issues/1944)
+* CockroachDB connector: table discovery only scans `cockroachdb.schema.name`, ignores `schema.include.list` and drops tables in `table.include.list` from other schemas [debezium/dbz#1973](https://github.com/debezium/dbz/issues/1973)
+* CockroachDB connector: typed column DEFAULT values rejected because DefaultValueConverter is null [debezium/dbz#1975](https://github.com/debezium/dbz/issues/1975)
+* Oracle STORE-syntax DDL fails to parse due to quoted segment name [debezium/dbz#2005](https://github.com/debezium/dbz/issues/2005)
+
+
+### Other changes since 3.5.1.Final
+
+* Update to Kafka 4.1.2 [debezium/dbz#2008](https://github.com/debezium/dbz/issues/2008)
+
+
+
 ## 3.5.1.Final
-May 14th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.5.1.Final)
+May 14th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+stable-iteration%3A3.5.1.Final)
 
 ### New features since 3.5.0.Final
 
