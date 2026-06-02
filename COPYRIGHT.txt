@@ -261,6 +261,7 @@ Issam El Nasiri
 Jacob Barrieault
 Jacob Falzon
 Jacob Gminder
+Jakub Małek
 Jakub Zalas
 Jan Doms
 Jan Hendrik Dolling
@@ -596,6 +597,7 @@ Sanne Grinovero
 Sarthak Sonagara
 Satyajit Vegesna
 Saulius Valatka
+Saurav Kumar
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
