@@ -66,8 +66,10 @@ public class MariaDbGtidSet implements GtidSet {
         }
 
         final MariaDbGtidSet theOther = (MariaDbGtidSet) other;
+        // MariaDB tracks GTID progress per domain ID only, not also per server ID, so containment
+        // must be compared per domain (see commit message, debezium#1672).
         for (Map.Entry<MariaDbGtidStreamId, MariaDbStreamSet> entry : streamSets.entrySet()) {
-            MariaDbStreamSet thatSet = theOther.forStreamId(entry.getKey());
+            MariaDbStreamSet thatSet = theOther.forDomain(entry.getKey().getDomainId());
             if (!entry.getValue().isContainedWith(thatSet)) {
                 return false;
             }
@@ -148,6 +150,28 @@ public class MariaDbGtidSet implements GtidSet {
 
     public MariaDbStreamSet forStreamId(MariaDbGtidStreamId streamId) {
         return streamSets.get(streamId);
+    }
+
+    /**
+     * Returns the combined set of GTIDs for the given replication {@code domainId}, merging the
+     * GTIDs of every server that has written within that domain.
+     *
+     * <p>MariaDB orders transactions by sequence within a domain regardless of which server wrote
+     * them, so position comparisons must be made per domain rather than per {@code (domain, server)}
+     * stream (see {@link #isContainedWithin(GtidSet)}). Returns {@code null} when no GTIDs exist for
+     * the domain.
+     */
+    public MariaDbStreamSet forDomain(long domainId) {
+        MariaDbStreamSet merged = null;
+        for (Map.Entry<MariaDbGtidStreamId, MariaDbStreamSet> entry : streamSets.entrySet()) {
+            if (entry.getKey().getDomainId() == domainId) {
+                if (merged == null) {
+                    merged = new MariaDbStreamSet();
+                }
+                merged.addAll(entry.getValue());
+            }
+        }
+        return merged;
     }
 
     public static MariaDbGtid parse(String gtid) {
