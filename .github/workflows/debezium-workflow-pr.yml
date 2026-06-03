@@ -472,12 +472,15 @@ jobs:
     name: Oracle
     needs: [ check_style, file_changes, build_core ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
-    steps:
-      - uses: ./.github/workflows/connector-oracle-workflow.yml
-        with:
-          maven-cache-key: maven-debezium-test-build
-      - name: "Oracle Testing Farm"
-        uses: ./.github/workflows/connector-oracle-tf-workflow.yml
+    uses: ./.github/workflows/connector-oracle-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-build
+
+  build_oracle_tf:
+    name: "Oracle Testing Farm"
+    needs: [ check_style, file_changes, build_core ]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    uses: ./.github/workflows/connector-oracle-tf-workflow.yml
     secrets:
       TF_PUBLIC_API_KEY: ${{ secrets.TF_PUBLIC_API_KEY }}
 
