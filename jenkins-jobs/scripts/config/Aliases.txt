@@ -370,3 +370,5 @@ huongcb_dep_trai,Cao Ba Huong
 Matei-Gatin,Matei Alexandru Gatin
 rigadon,Davyd Eliosidze
 Tony N,Tony Nyurkin
+OctoberWithYou,梁嘉成
+Tlinian,林石培
