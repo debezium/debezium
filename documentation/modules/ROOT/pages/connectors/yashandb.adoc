@@ -1,5 +1,3 @@
-// Category: debezium-using
-// Type: assembly
 [id="debezium-connector-for-yashandb"]
 = {prodname} Connector for YashanDB
 
@@ -13,7 +11,6 @@
 :include-list-example: inventory.customers
 :collection-container: database.schema
 
-ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -23,7 +20,6 @@ toc::[]
 
 [[yashandb-overview]]
 == Overview
-endif::community[]
 
 YashanDB is a next-generation database management system independently developed by the Shenzhen Institute of Computing Sciences.
 Based on classical database theory, it integrates original computing paradigms including bounded computation, approximate computation, parallel scalability, and cross-modal fusion computing.
@@ -32,30 +28,11 @@ This enables YashanDB to meet the demanding requirements of core industries such
 {prodname}'s YashanDB connector captures and records row-level changes that occur in databases on a YashanDB server, including tables that are added while the connector is running.
 You can configure the connector to emit change events for specific subsets of schemas and tables, synchronizing the change events to Kafka.
 
-ifdef::community[]
 For information about the YashanDB versions that are compatible with this connector, see the {prodname} release overview.
-endif::community[]
 
 {prodname} can ingest change events from YashanDB by using the native YStream database package.
 For more information about YashanDB and YStream, see the https://www.yashandb.com/[YashanDB official website].
 
-ifdef::product[]
-
-Information and procedures for using a {prodname} YashanDB connector are organized as follows:
-
-  * xref:how-debezium-yashandb-connectors-work[]
-  * xref:descriptions-of-debezium-yashandb-connector-data-change-events[]
-  * xref:how-debezium-yashandb-connectors-map-data-types[]
-  * xref:setting-up-yashandb-to-work-with-debezium[]
-  * xref:deployment-of-debezium-yashandb-connectors[]
-  * xref:descriptions-of-debezium-yashandb-connector-configuration-properties[]
-  * xref:monitoring-debezium-yashandb-connector-performance[]
-  * xref:debezium-yashandb-connector-frequently-asked-questions[]
-endif::product[]
-
-// Type: assembly
-// ModuleID: how-debezium-yashandb-connectors-work
-// Title: How {prodname} YashanDB connectors work
 [[how-the-yashandb-connector-works]]
 == How the YashanDB connector works
 
@@ -81,7 +58,6 @@ The redo logs on a YashanDB server are typically configured to not retain the co
 As a result, the {prodname} YashanDB connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
 
-ifdef::community[]
 [[yashandb-snapshot-mode-options]]
 .Settings for `snapshot.mode` connector configuration property
 [cols="30%a,70%a",options="header"]
@@ -113,17 +89,12 @@ After a restart, the connector runs a snapshot that rebuilds the topic from the 
 * A previously recorded offset specifies a log position that is not available on the server.
 
 |===
-ifdef::community[]
 [[yashandb-custom-snapshotter-spi]]
 === Custom snapshotter SPI
 include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
-endif::community[]
 
 For more information, see xref:yashandb-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
 
-// Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-yashandb-change-event-records
-// Title: Default names of Kafka topics that receive {prodname} YashanDB change event records
 [[yashandb-topic-names]]
 === Topic names
 
@@ -154,9 +125,6 @@ If the default topic name do not meet your requirements, you can configure custo
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
-// Type: concept
-// ModuleID: how-debezium-yashandb-connectors-handle-database-schema-changes
-// Title: How {prodname} YashanDB connectors handle database schema changes
 [[yashandb-schema-history-topic]]
 === Schema history topic
 
@@ -176,9 +144,6 @@ The connector rebuilds the table structures that existed at this point in time b
 This database schema history topic is for internal connector use only.
 Optionally, the connector can also xref:yashandb-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
-// Type: concept
-// ModuleID: how-debezium-yashandb-connectors-expose-database-schema-changes
-// Title: How {prodname} YashanDB connectors expose database schema changes
 [[yashandb-schema-change-topic]]
 === Schema change topic
 
@@ -187,12 +152,10 @@ The connector writes schema change events to a Kafka topic named `_<serverName>_
 
 {prodname} emits a new message to the schema change topic whenever it streams data from a new table, or when the structure of the table is altered.
 
-ifdef::community[]
 [NOTE]
 ====
 Following a change in table structure, you must follow (the xref:surrogate-schema-evolution[schema evolution procedure]).
 ====
-endif::community[]
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 
@@ -256,13 +219,6 @@ To ensure that the topic is not split among partitions, set the partition count 
 * If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
-ifdef::community[]
-[WARNING]
-====
-The schema change topic message format is in an incubating state and might change without notice.
-====
-endif::community[]
-
 
 .Example: Message emitted to the YashanDB connector schema change topic
 The following example shows a typical schema change message in JSON format.
@@ -289,14 +245,11 @@ The message contains a logical representation of the table schema.
       "table": "CUSTOMERS",
       "txId": "131072047",
       "scn": "828249295637925888",
-      "commit_scn": null,
-      "lcr_position": null,
+      "batch_row_id": 0,
       "position_scn": 828249295637925888,
       "group_lsn": 3692924,
       "group_offset": 220,
-      "instance_id": "0",
-      "rs_id": null,
-      "ssn": 0,
+      "instance_id": "0"
     },
     "ts_ms": 1780045807728, // <1>
     "databaseName": "inventory", // <2>
@@ -410,8 +363,6 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 
 |===
 
-In messages that the connector sends to the schema change topic
-
 In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the `databaseName` key:
 
@@ -491,9 +442,6 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-// Type: assembly
-// ModuleID: descriptions-of-debezium-yashandb-connector-data-change-events
-// Title: Descriptions of {prodname} YashanDB connector data change events
 [[yashandb-events]]
 == Data change events
 
@@ -511,24 +459,12 @@ The connector automatically replaces invalid characters with an underscore chara
 Unexpected naming conflicts can result when the only distinguishing characters between multiple logical server names, schema names, or table names are not valid characters, and those characters are replaced with underscores.
 ====
 
-ifdef::community[]
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_.
 However, the structure of these events might change over time, which can be difficult for topic consumers to handle.
 To facilitate the processing of mutable event structures, each event in Kafka Connect is self-contained.
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
-endif::community[]
 
-ifdef::product[]
-The following topics contain more details about data change events:
-
-* xref:about-keys-in-debezium-yashandb-connector-change-events[]
-* xref:about-values-in-debezium-yashandb-connector-change-events[]
-endif::product[]
-
-// Type: concept
-// ModuleID: about-keys-in-debezium-yashandb-connector-change-events
-// Title: About keys in {prodname} YashanDB connector change events
 [[yashandb-change-event-keys]]
 === Change event keys
 
@@ -574,9 +510,6 @@ The value of the key's `payload` field indicates that it is indeed a structure (
 
 Therefore, you can interpret this key as describing the row in the `inventory.customers` table (output from the connector named `server1`) whose `ID` primary key column had a value of `1001`.
 
-// Type: concept
-// ModuleID: about-values-in-debezium-yashandb-connector-change-events
-// Title: About values in {prodname} YashanDB connector change events
 [[yashandb-change-event-values]]
 === Change event values
 
@@ -595,17 +528,18 @@ The structure is described by the same `server1.inventory.customers.Value` Kafka
 In the case of the YashanDB connector, the structure includes the following fields:
 +
 * The {prodname} version.
-* The connector name.
+* The connector type and name.
+* Timestamps (`ts_ms`, `ts_us`, `ts_ns`) that represent when the connector processed the event, based on the system clock of the JVM running the Kafka Connect task.
+  For snapshots, the timestamp indicates when the snapshot occurred.
 * Whether the event is part of an ongoing snapshot or not.
-* The transaction ID (not included for snapshots).
-* The following values related to the SCN (system change number) that the database assigns when a change is committed:
-[horizontal]
-`scn`:: The unique identifier that the database uses to track the transaction.
-`commit_scn`:: The SCN at which the transaction was committed.
-* Timestamps that represent when the connector processed the event, based on the system clock of the JVM running the Kafka Connect task.
-For snapshots, the timestamp indicates when the snapshot occurred. +
-The connector reports the timestamp value with differing precision in the following fields:
-[horizontal]
+* Database and schema names.
+* Table name.
+* The transaction ID (`txId`), not included for snapshots.
+* Row sequence number within a batch operation such as batch insert (`batch_row_id`).
+* Commit SCN of the transaction to which the logical log entry belongs (`position_scn`).
+* SCN of the log group to which the logical log entry belongs (`group_lsn`).
+* Physical offset of the logical log entry within its log group (`group_offset`).
+* Instance identifier of the instance to which the transaction belongs (`instance_id`).
 `ts_ms`:: Provides the timestamp in milliseconds.
 `ts_us`:: Provides the timestamp in microseconds.
 `ts_ns`:: Provides the timestamp in nanoseconds.
@@ -613,16 +547,6 @@ The connector reports the timestamp value with differing precision in the follow
 .Schema of a change event value
 The _schema_ portion of the event message's value contains a schema that describes the envelope structure of the payload and the nested fields within it.
 
-ifdef::product[]
-For more information about change event values, see the following topics:
-
-* xref:yashandb-create-events[_create_ events]
-* xref:yashandb-update-events[_update_ events]
-* xref:yashandb-delete-events[_delete_ events]
-endif::product[]
-
-
-// Type: continue
 [[yashandb-create-events]]
 === _create_ events
 
@@ -694,16 +618,6 @@ The following example shows the value of a _create_ event value from the `custom
                         "field": "ts_ms"
                     },
                     {
-                        "type": "int64",
-                        "optional": true,
-                        "field": "ts_us"
-                    },
-                    {
-                        "type": "int64",
-                        "optional": true,
-                        "field": "ts_ns"
-                    },
-                    {
                         "type": "string",
                         "optional": true,
                         "field": "snapshot"
@@ -712,6 +626,21 @@ The following example shows the value of a _create_ event value from the `custom
                         "type": "string",
                         "optional": true,
                         "field": "db"
+                    },
+                    {
+                        "type": "string",
+                        "optional": true,
+                        "field": "sequence"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "ts_us"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "ts_ns"
                     },
                     {
                         "type": "string",
@@ -726,12 +655,32 @@ The following example shows the value of a _create_ event value from the `custom
                     {
                         "type": "string",
                         "optional": true,
-                        "field": "scn"
+                        "field": "txId"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "batch_row_id"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "position_scn"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "group_lsn"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "group_offset"
                     },
                     {
                         "type": "string",
                         "optional": true,
-                        "field": "commit_scn"
+                        "field": "instance_id"
                     }
                 ],
                 "optional": false,
@@ -781,15 +730,11 @@ The following example shows the value of a _create_ event value from the `custom
             "schema": "DEBEZIUM",
             "table": "CUSTOMERS",
             "txId": "131072047",
-            "scn": "828249295637925888",
-            "commit_scn": null,
-            "lcr_position": null,
+            "batch_row_id": 0,
             "position_scn": 828249295637925888,
             "group_lsn": 3692924,
             "group_offset": 220,
-            "instance_id": "0",
-            "rs_id": null,
-            "ssn": 0,
+            "instance_id": "0"
         },
         "op": "c",
         "ts_ms": 1688252618953,
@@ -872,15 +817,11 @@ The source metadata provides the following information:
 `schema`::: Name of the schema that contains the new row.
 `table`::: Name of the table that contains the new row.
 `txId`::: Transaction identifier.
-`scn`::: System change number.
-`commit_scn`::: System change number at which the transaction was committed.
-`lcr_position`::: Position in the logical change record.
-`position_scn`::: SCN position in the log.
-`group_lsn`::: Group log sequence number.
-`group_offset`::: Group offset.
-`instance_id`::: Instance identifier.
-`rs_id`::: Redo sequence identifier.
-`ssn`::: Session sequence number.
+`batch_row_id`::: Row sequence number within a batch operation such as batch insert.
+`position_scn`::: Commit SCN of the transaction to which the logical log entry belongs.
+`group_lsn`::: SCN of the log group to which the logical log entry belongs.
+`group_offset`::: Physical offset of the logical log entry within its log group.
+`instance_id`::: Instance identifier of the instance to which the transaction belongs.
 
 [[yashandb-update-events]]
 === _update_ events
@@ -913,15 +854,11 @@ The following example shows an _update_ change event that the connector captures
             "schema": "DEBEZIUM",
             "table": "CUSTOMERS",
             "txId": "131072047",
-            "scn": "828249295637925888",
-            "commit_scn": null,
-            "lcr_position": null,
+            "batch_row_id": 0,
             "position_scn": 828249295637925888,
             "group_lsn": 3692924,
             "group_offset": 220,
-            "instance_id": "0",
-            "rs_id": null,
-            "ssn": 0,
+            "instance_id": "0"
         },
         "op": "u",
         "ts_ms": 1688252619000,
@@ -974,15 +911,11 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "schema": "DEBEZIUM",
             "table": "CUSTOMERS",
             "txId": "131072047",
-            "scn": "828249295637925888",
-            "commit_scn": null,
-            "lcr_position": null,
+            "batch_row_id": 0,
             "position_scn": 828249295637925888,
             "group_lsn": 3692924,
             "group_offset": 220,
-            "instance_id": "0",
-            "rs_id": null,
-            "ssn": 0,
+            "instance_id": "0"
         },
         "op": "d",
         "ts_ms": 1688252620000,
@@ -997,7 +930,7 @@ The payload shows a row with the same key as the preceding _create_ and _update_
 * The `op` field is `d`, signifying that this row was deleted.
 * The `before` field contains the values that were present in the row before it was deleted with the database commit.
 * The `after` field is `null`, indicating that the row no longer exists.
-* The structure of the `source` field includes many of the keys that exist in _create_ or _update_ events, but the values in the `ts_ms`, `scn`, and `commit_scn` fields are different.
+* The `source` field has the same structure as the `source` field in _create_ events, but some field values are different.
 * The `ts_ms` shows a timestamp that indicates when {prodname} processed this event.
 
 The _delete_ event provides consumers with the information that they require to process the removal of this row.
@@ -1010,7 +943,6 @@ When a row is deleted, the _delete_ event value shown in the preceding example s
 The message value must be set to `null` to instruct Kafka to remove _all messages_ that share the same key.
 To make this possible, by default, {prodname}'s YashanDB connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
-// Type: continue
 [[yashandb-truncate-events]]
 === _truncate_ events
 
@@ -1037,15 +969,11 @@ The message key is `null` in this case, the message value looks like this:
             "schema": "DEBEZIUM",
             "table": "CUSTOMERS",
             "txId": "131072047",
-            "scn": "828249295637925888",
-            "commit_scn": null,
-            "lcr_position": null,
+            "batch_row_id": 0,
             "position_scn": 828249295637925888,
             "group_lsn": 3692924,
             "group_offset": 220,
-            "instance_id": "0",
-            "rs_id": null,
-            "ssn": 0,
+            "instance_id": "0"
         },
         "op": "t", // <2>
         "ts_ms": 1688252630000, // <3>
@@ -1066,11 +994,16 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 
 * {prodname} version
 * Connector type and name
-* Database and table that contains the new row
-* Schema name
-* If the event was part of a snapshot (always `false` for _truncate_ events)
-* SCN of the operation
-* Timestamp for when the change was made in the database
+* Timestamps (`ts_ms`, `ts_us`, `ts_ns`) for when the change was made in the database
+* Whether the event is part of a snapshot (always `false` for _truncate_ events)
+* Database and schema that contains the table
+* Table name
+* Transaction identifier (`txId`)
+* Row sequence number within a batch operation such as batch insert (`batch_row_id`)
+* Commit SCN of the transaction to which the logical log entry belongs (`position_scn`)
+* SCN of the log group to which the logical log entry belongs (`group_lsn`)
+* Physical offset of the logical log entry within its log group (`group_offset`)
+* Instance identifier of the instance to which the transaction belongs (`instance_id`)
 
 |2
 |`op`
@@ -1097,9 +1030,6 @@ Ordering is guaranteed only for topics that use a single partition.
 
 If you do not want the connector to capture _truncate_ events, use the xref:yashandb-property-skipped-operations[`skipped.operations`] option to filter them out.
 
-// Type: assembly
-// ModuleID: how-debezium-yashandb-connectors-map-data-types
-// Title: How {prodname} YashanDB connectors map data types
 [[yashandb-data-types]]
 == Data type mapping
 
@@ -1420,9 +1350,6 @@ Specify the following in the configuration:
 ----
 
 
-// Type: assembly
-// ModuleID: setting-up-yashandb-to-work-with-debezium
-// Title: Setting up YashanDB to work with {prodname}
 [[setting-up-yashandb]]
 == Setting up YashanDB
 
@@ -1581,9 +1508,6 @@ DBMS_YSTREAM_ADM.START(server_name IN VARCHAR(64));
 
 NOTE: If you need to connect to YStream using a standby database, you must start the YStream service on the standby database node.
 
-// Type: assembly
-// ModuleID: deployment-of-debezium-yashandb-connectors
-// Title: Deployment of {prodname} YashanDB connectors
 [[deploying-yashandb-connector]]
 == Deploying the YashanDB connector
 
@@ -1674,9 +1598,6 @@ To start running a {prodname} YashanDB connector, create a connector configurati
 After the connector starts, it xref:yashandb-snapshots[performs a consistent snapshot] of the YashanDB databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
-// Type: reference
-// ModuleID: descriptions-of-debezium-yashandb-connector-configuration-properties
-// Title: Descriptions of {prodname} YashanDB connector configuration properties
 [[yashandb-properties]]
 == Connector properties
 
@@ -1808,7 +1729,7 @@ To match the name of a table, {prodname} applies the regular expression that you
 |A positive integer value that specifies the maximum size of each batch of events to be processed during each iteration of this connector.
 
 |[[yashandb-property-max-queue-size]]<<yashandb-property-max-queue-size, `+max.queue.size+`>>
-|`9182`
+|`8192`
 |A positive integer value that specifies the maximum number of records that the blocking queue can hold. When Debezium reads the stream of events from the database, it places them in a blocking queue before writing the events to Kafka. The blocking queue prevents data loss in situations where the connector receives messages faster than it can write them to Kafka, or when Kafka is unavailable.
 
 |[[yashandb-property-max-queue-size-in-bytes]]<<yashandb-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
@@ -2017,9 +1938,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
 
-// Type: reference
-// ModuleID: monitoring-debezium-yashandb-connector-performance
-// Title: Monitoring {prodname} YashanDB connector performance
 [[monitoring-yashandb-connector]]
 == Monitoring
 
@@ -2031,16 +1949,10 @@ The {prodname} YashanDB connector provides three metric types in addition to the
 
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
-// Type: concept
-// ModuleID: monitoring-debezium-yashandb-connectors-customized-mbean-names
-// Title: Customized names for YashanDB connector snapshot and streaming MBean objects
 === Customized MBean names
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
-// Type: reference
-// ModuleID: debezium-yashandb-connector-snapshot-metrics
-// Title: {prodname} YashanDB connector snapshot metrics
 [[yashandb-snapshot-metrics]]
 === Snapshot Metrics
 
@@ -2052,9 +1964,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
-// Type: reference
-// ModuleID: debezium-yashandb-connector-streaming-metrics
-// Title: {prodname} YashanDB connector streaming metrics
 [[yashandb-streaming-metrics]]
 === Streaming Metrics
 
@@ -2087,9 +1996,6 @@ The {prodname} YashanDB connector provides the following additional streaming me
 |===
 
 
-// Type: reference
-// ModuleID: debezium-yashandb-connector-schema-history-metrics
-// Title: {prodname} YashanDB connector schema history metrics
 [[yashandb-schema-history-metrics]]
 === Schema History Metrics
 
@@ -2097,9 +2003,6 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
-// Type: assembly
-// ModuleID: debezium-yashandb-connector-frequently-asked-questions
-// Title: {prodname} YashanDB connector frequently asked questions
 [[yashandb-faq]]
 == Frequently Asked Questions
 
