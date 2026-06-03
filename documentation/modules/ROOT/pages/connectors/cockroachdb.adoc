@@ -1295,6 +1295,13 @@ Should be unique per connector instance when multiple connectors share the same 
 |What to do when there is no initial offset in the intermediate Kafka cluster.
 Options: `earliest` (start from beginning), `latest` (start from end).
 
+|[[cockroachdb-property-kafka-consumer-override]]<<cockroachdb-property-kafka-consumer-override, `+cockroachdb.changefeed.kafka.consumer.override.*+`>>
+|No default
+|Properties under this prefix are passed verbatim to the connector's changefeed consumer (a standard Kafka client), with the prefix stripped.
+For example, `cockroachdb.changefeed.kafka.consumer.override.security.protocol=SSL` sets the consumer's `security.protocol`.
+Use this to configure SASL, custom trust or key stores (PEM or JKS), or to override any setting.
+When `cockroachdb.changefeed.sink.tls.*` is set, the consumer's SSL is derived automatically from those PEM files (the CA becomes the consumer's PEM truststore, and the client certificate and key become its PEM keystore), so this passthrough is only needed for additional or different settings.
+
 |===
 
 [id="cockroachdb-connector-configuration-properties"]
