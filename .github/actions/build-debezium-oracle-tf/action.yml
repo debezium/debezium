@@ -39,5 +39,6 @@ runs:
         compose: ${{ inputs.compose }}
         variables: "ORACLE_VERSION=${{ inputs.oracle-version }};ORACLE_REGISTRY=${{ inputs.oracle-registry }};TEST_PROFILE=oracle;ORACLE_PROFILE_ARGS=${{ inputs.oracle-profile-args }};ORACLE_ARG=${{ inputs.oracle-args }}"
         pull_request_status_name: ${{ inputs.pull-request-status-name }}
-        update_pull_request_status: "true"
-        create_github_summary: "true"
+        update_pull_request_status: "false"
+        create_issue_comment: "false"
+        create_github_summary: "false"
