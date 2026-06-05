@@ -35,6 +35,7 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.oracle.jdbc.CaptureMode;
 import io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
@@ -244,30 +245,46 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateDictionaryFromFile)
             .withDescription("This is required when using the connector against a read-only database replica.");
 
-    public static final Field DATABASE_STANDBY_HOSTNAME = Field.create("database.standby.hostname")
-            .withDisplayName("The standby hostname")
+    public static final Field CAPTURE_MODE = Field.create("capture.mode")
+            .withDisplayName("The streaming capture mode")
+            .withEnum(CaptureMode.class, CaptureMode.PRIMARY)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withDescription("Specifies the capture mode used to capture streaming changes from Oracle" +
+                    "'primary' (the default) captures changes from the primary, specified by database.* configurations, " +
+                    "'physical_standby' captures changes from a read-only physical standby, specified by secondary.* configurations.");
+
+    public static final Field SECONDARY_DATABASE = Field.create(OracleJdbcConfiguration.SECONDARY_DATABASE.name())
+            .withDisplayName("The secondary Oracle instance database name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validatePhysicalStandbyStrategy)
-            .withDescription("The standby hostname where changes will be streamed")
+            .withDescription("The secondary Oracle instance database name, if different from primary");
+
+    public static final Field SECONDARY_HOSTNAME = Field.create(OracleJdbcConfiguration.SECONDARY_HOSTNAME.name())
+            .withDisplayName("The secondary Oracle instance host name")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateSecondaryStrategy)
+            .withDescription("The secondary Oracle instance where changes will be streamed")
             .withDeprecatedAliases("log.mining.readonly.hostname");
 
-    public static final Field DATABASE_STANDBY_PORT = Field.create("database.standby.port")
-            .withDisplayName("The standby port")
+    public static final Field SECONDARY_PORT = Field.create(OracleJdbcConfiguration.SECONDARY_PORT.name())
+            .withDisplayName("The secondary Oracle instance port")
             .withDefault(DEFAULT_PORT)
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("The standby port for streaming changes");
+            .withDescription("The secondary Oracle instance port where changes will be streamed");
 
-    public static final Field DATABASE_STANDBY_URL = Field.create("database.standby.url")
-            .withDisplayName("The standby connection string")
+    public static final Field SECONDARY_URL = Field.create(OracleJdbcConfiguration.SECONDARY_URL.name())
+            .withDisplayName("The secondary Oracle instance connection string")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validatePhysicalStandbyStrategy)
-            .withDescription("The connection string to use to connect to the Oracle standby");
+            .withValidation(OracleConnectorConfig::validateSecondaryStrategy)
+            .withDescription("The secondary Oracle instance connection string URL where changes will be streamed");
 
     public static final Field LOB_ENABLED = Field.create("lob.enabled")
             .withDisplayName("Specifies whether the connector supports mining LOB fields and operations")
@@ -899,9 +916,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START,
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS,
                     LOG_MINING_PATH_DICTIONARY,
-                    DATABASE_STANDBY_HOSTNAME,
-                    DATABASE_STANDBY_PORT,
-                    DATABASE_STANDBY_URL,
+                    CAPTURE_MODE,
+                    SECONDARY_DATABASE,
+                    SECONDARY_HOSTNAME,
+                    SECONDARY_PORT,
+                    SECONDARY_URL,
                     LEGACY_DECIMAL_HANDLING_STRATEGY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT,
@@ -935,6 +954,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
+    private CaptureMode captureMode;
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
     private final int queryFetchSize;
@@ -1023,6 +1043,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             throw new DebeziumException("Unable to instantiate the connector adapter implementation");
         }
 
+        this.captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
+
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.snapshotRetryDatabaseErrorsMaxRetries = config.getInteger(SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES);
 
@@ -1069,7 +1091,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             this.logMiningWindowMaxMs = configuredWindowMaxMs;
         }
 
-        this.oracleJdbcConfig = OracleJdbcConfiguration.adapt(super.getJdbcConfig());
+        this.oracleJdbcConfig = OracleJdbcConfiguration.adaptWithSubset(config);
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
@@ -1812,6 +1834,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return the streaming capture mode
+     */
+    public CaptureMode getCaptureMode() {
+        return captureMode;
+    }
+
+    /**
      * @return {@code true} if the legacy decimal handling behavior is used, {@code false} otherwise
      */
     public boolean isUsingLegacyDecimalHandlingStrategy() {
@@ -2183,33 +2212,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * Return the standby database hostname.
-     *
-     * @return the standby hostname
-     */
-    public String getStandbyHostName() {
-        return oracleJdbcConfig.getStandbyHostName();
-    }
-
-    /**
-     * Return the Oracle standby host port number.
-     *
-     * @return the standby connection port number
-     */
-    public Integer getStandbyPort() {
-        return oracleJdbcConfig.getStandbyPort();
-    }
-
-    /**
-     * Get the standby connection string.
-     *
-     * @return the Oracle standby connection string URL
-     */
-    public String getStandbyUrl() {
-        return oracleJdbcConfig.getStandbyUrl();
-    }
-
-    /**
      * Whether deferred LogMiner transaction start behavior is enabled.
      * When enabled, transactions are stored in a lightweight metadata map until a DML event is observed.
      */
@@ -2371,15 +2373,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    public static int validatePhysicalStandbyStrategy(Configuration config, Field field, ValidationOutput problems) {
+    public static int validateSecondaryStrategy(Configuration config, Field field, ValidationOutput problems) {
         if (isLogMiner(config)) {
-            final boolean hasStandbyHost = !Strings.isNullOrBlank(config.getString(DATABASE_STANDBY_HOSTNAME));
-            final boolean hasStandbyUrl = !Strings.isNullOrEmpty(config.getString(DATABASE_STANDBY_URL));
-            if (hasStandbyHost || hasStandbyUrl) {
+            final boolean hasStandbyHost = !Strings.isNullOrBlank(config.getString(SECONDARY_HOSTNAME));
+            final boolean hasStandbyUrl = !Strings.isNullOrEmpty(config.getString(SECONDARY_URL));
+            if (isLogMiner(config) && (hasStandbyHost || hasStandbyUrl)) {
                 final LogMiningStrategy strategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
                 if (!LogMiningStrategy.DICTIONARY_FROM_FILE.equals(strategy)) {
                     problems.accept(LOG_MINING_STRATEGY, config.getString(LOG_MINING_STRATEGY),
-                            String.format("Physical standby deployments currently require '%s' to be set to '%s'.",
+                            String.format("LogMiner secondary streaming currently require '%s' to be set to '%s'.",
                                     LOG_MINING_STRATEGY.name(), LogMiningStrategy.DICTIONARY_FROM_FILE.getValue()));
                     return 1;
                 }

@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.oracle.jdbc;
 
+import static io.debezium.config.ConfigurationNames.DRIVER_CONFIG_PREFIX;
+
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Collect;
@@ -22,18 +25,23 @@ import io.debezium.util.Collect;
  */
 public interface OracleJdbcConfiguration extends JdbcConfiguration {
 
+    String SECONDARY_PREFIX = "secondary.";
+
     Field URL = Field.create("url", "Connection string url");
-    Field STANDBY_URL = Field.create("standby.url", "Connection string url for the Physical Standby");
-    Field STANDBY_HOSTNAME = Field.create("standby.hostname", "Hostname of the Physical Standby");
-    Field STANDBY_PORT = Field.create("standby.port", "Port of the Physical Standby");
+
+    Field SECONDARY_URL = Field.create(SECONDARY_PREFIX + URL.name(), "Connection string url for the Secondary Oracle instance");
+    Field SECONDARY_HOSTNAME = Field.create(SECONDARY_PREFIX + HOSTNAME.name(), "Hostname of the Secondary Oracle instance");
+    Field SECONDARY_PORT = Field.create(SECONDARY_PREFIX + PORT.name(), "Port of the Secondary Oracle instance");
+    Field SECONDARY_DATABASE = Field.create(SECONDARY_PREFIX + DATABASE.name(), "Name of the Secondary Oracle database");
 
     Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(
             JdbcConfiguration.ALL_KNOWN_FIELDS,
             Collect.unmodifiableSet(Field::name,
                     URL,
-                    STANDBY_URL,
-                    STANDBY_HOSTNAME,
-                    STANDBY_PORT).toArray(new String[0]));
+                    SECONDARY_URL,
+                    SECONDARY_HOSTNAME,
+                    SECONDARY_PORT,
+                    SECONDARY_DATABASE).toArray(new String[0]));
 
     interface Builder extends JdbcConfiguration.Builder {
         default Builder withUrl(String url) {
@@ -41,18 +49,23 @@ public interface OracleJdbcConfiguration extends JdbcConfiguration {
             return this;
         }
 
-        default Builder withStandbyUrl(String standbyUrl) {
-            with(STANDBY_URL, standbyUrl);
+        default Builder withSecondaryUrl(String standbyUrl) {
+            with(SECONDARY_URL, standbyUrl);
             return this;
         }
 
-        default Builder withStandbyHostname(String standbyHostname) {
-            with(STANDBY_HOSTNAME, standbyHostname);
+        default Builder withSecondaryHostname(String standbyHostname) {
+            with(SECONDARY_HOSTNAME, standbyHostname);
             return this;
         }
 
-        default Builder withStandbyPort(int standbyPort) {
-            with(STANDBY_PORT, standbyPort);
+        default Builder withSecondaryPort(int standbyPort) {
+            with(SECONDARY_PORT, standbyPort);
+            return this;
+        }
+
+        default Builder withSecondaryDatabaseName(String databaseName) {
+            with(SECONDARY_DATABASE, databaseName);
             return this;
         }
     }
@@ -63,6 +76,12 @@ public interface OracleJdbcConfiguration extends JdbcConfiguration {
 
     static Builder copy(Configuration config) {
         return new OracleJdbcConfigurationBuilder(Configuration.copy(config));
+    }
+
+    static OracleJdbcConfiguration adaptWithSubset(Configuration config) {
+        return OracleJdbcConfiguration.adapt(config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true)
+                .merge(config.subset(DRIVER_CONFIG_PREFIX, true))
+                .merge(config.subset(OracleJdbcConfiguration.SECONDARY_PREFIX, false)));
     }
 
     static OracleJdbcConfiguration adapt(Configuration config) {
@@ -97,16 +116,20 @@ public interface OracleJdbcConfiguration extends JdbcConfiguration {
         return getString(URL);
     }
 
-    default String getStandbyUrl() {
-        return getString(STANDBY_URL);
+    default String getSecondaryUrl() {
+        return getString(SECONDARY_URL);
     }
 
-    default String getStandbyHostName() {
-        return getString(STANDBY_HOSTNAME);
+    default String getSecondaryHostname() {
+        return getString(SECONDARY_HOSTNAME);
     }
 
-    default int getStandbyPort() {
-        return getInteger(STANDBY_PORT);
+    default int getSecondaryPort() {
+        return getInteger(SECONDARY_PORT);
+    }
+
+    default String getSecondaryDatabaseName() {
+        return getString(SECONDARY_DATABASE);
     }
 
     class OracleJdbcConfigurationBuilder implements Builder {
