@@ -1107,12 +1107,11 @@ Transitioning a thread from `PRIVATE` to `PUBLIC` can lead to unexpected results
 If a redo thread transition is required, a re-snapshot of data may be required to avoid data loss and to remain consistent.
 ====
 
-////
 ifdef::community[]
-[[oracle-logminer-mining-database]]
+[[oracle-downstream-mining-database]]
 === Using a downstream mining database
 
-You can use the {prodname} Oracle connector to capture changes from an Oracle Database mining database.
+You can use the {prodname} Oracle connector to capture changes from a real-time Oracle downstream mining database.
 Log mining operations consume system resources and increase the load on a database, which can result in decreased performance.
 Configuring the connector to perform change data capture processing on a secondary mining database, can reduce the load on the primary database.
 
@@ -1124,35 +1123,41 @@ Please let us know your specific requirements or if you encounter any problems w
 
 .Prerequisites
 
-* An Oracle downstream mining database is configured and synchronized with the primary instance.
-* The downstream mining database has access to the external dictionary file that the primary database instance generates.
-* The connector configuration includes following key properties:
-`log.mining.strategy`:: This property is set to `dictionary_from_file`.
-`log.mining.read.only`:: This property is set to `true` to enable capturing changes from a downstream mining database, rather than from the primary instance.
-`secondary.dbname`:: Specifies the database name of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
-`secondary.hostname`:: Specifies the hostname of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
-Because the connector uses this downstream mining instance to capture changes, changes must be replicated from the primary to the downstream instance before {prodname} can emit change events.
-`secondary.port`:: Specifies the port of the downstream mining database, if it differs from the primary instance port.
-`secondary.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
-`log.mining.path.dictionary`:: Specifies the absolute file path on the downstream mining database server where Oracle LogMiner can access the data dictionary file that is exported from the primary Oracle instance.
-The LogMiner process on the downstream database must have access to the specified path.
+* An Oracle downstream mining database is configured as `STANDBY SNAPSHOT` to use real-time synchronization with the primary instance. The using of a flat-file extract dictionary file is not supported, as this mode requires the explicit use of `redo_log_catalog` to function.
+* The use of a `PRIMARY` with `NOREGISTER` for Oracle RFS is not supported.
+* All transaction logs should be automatically registered with the downstream mining database using Oracle RFS for real-time data capture.
+* Database administrators should seed the downstream mining database with its first data dictionary build using the `DBMS_LOGMNR_D.BUILD` PL/SQL package before deploying {prodname}.
+* The {prodname} connector must be deployed using XStream, LogMiner is not currently supported.
+
+[IMPORTANT]
+====
+The Oracle downstream database must be configured as a `STANDBY SNAPSHOT` with auto-registered transaction logs.
+Using a `PRIMARY` downstream database is known as an archive-log-mode downstream database and is not supported.
+====
+
+The connector configuration includes following key properties:
+
+`capture.mode`:: Specifies the capture mode, which should be set to `downstream` to activate downstream mining.
+`secondary.dbname`:: Specifies the database name of the downstream mining database instance.
+`secondary.hostname`:: Specifies the hostname of the downstream mining database instance.
+`secondary.port`:: Specifies the port of the downstream mining database instance.
+`secondary.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname`.
 
 ==== How this works
 
 When {prodname} Oracle connector is configured to capture changes from a downstream mining database, the connector operates as follows:
 
-1. The primary Oracle instance generates an external dictionary file containing the database schema and metadata information.
-2. This dictionary file is made available to the downstream mining database at the specified path.
-3. The connector connects to the downstream mining database and uses LogMiner with the external dictionary file to read transaction logs.
-4. Changes are captured from the downstream mining database without impacting the primary database performance.
+1. Periodically, the primary Oracle instance will be asked to extract its data dictionary to the online redo logs.
+2. The connector connects to the primary to perform the snapshot and/or any write operations required for signals.
+3. The connector connects to the downstream mining database to read the transaction logs.
+4. Changes are captured with minimal impact to the primary database performance.
 
 ==== Important considerations
 
-* Ensure that network and file access settings permit the mining database to access the dictionary file and redo logs on the primary database.
-* Keep the dictionary file on the primary instance updated to ensure that it properly reflects schema changes.
-* To prevent issues with schema change detection, keep the dictionary file on the mining database synchronized with the file on the primary.
+* All transaction logs must be registered with the Oracle downstream database. When Oracle RFS replicates changes, this should happen automatically when using a real-time downstream mining configuration. {prodname} does not perform any log registration.
+* When a log fails to register and a gap in log sequences occurs, the {prodname} connector will pause the capture. A database administrator will be required to review the registered logs and register any missing logs to close the gap. In an ideal deployment, this should only be necessary during the initial set up and synchronization with the primary.
+
 endif::community[]
-////
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -4485,6 +4490,7 @@ Required when `log.mining.strategy` is set to `dictionary_from_file`.
 
 `primary`:: Captures and streams changes from the primary instance.
 `physical_standby`:: Captures and streams changes from a physical standby instance.
+`downstream`:: Captures and streams changes from a downstream mining database.
 
 |[[oracle-property-secondary-hostname]]<<oracle-property-secondary-hostname, `+secondary.hostname+`>>
 |No default

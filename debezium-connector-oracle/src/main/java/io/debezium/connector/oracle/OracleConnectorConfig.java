@@ -250,9 +250,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withEnum(CaptureMode.class, CaptureMode.PRIMARY)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
+            .withValidation(OracleConnectorConfig::validateCaptureMode)
             .withDescription("Specifies the capture mode used to capture streaming changes from Oracle" +
                     "'primary' (the default) captures changes from the primary, specified by database.* configurations, " +
-                    "'physical_standby' captures changes from a read-only physical standby, specified by secondary.* configurations.");
+                    "'physical_standby' captures changes from a read-only physical standby, specified by secondary.* configurations, " +
+                    "'downstream' captures changes from a downstream real-time mining database, specified by secondary.* configurations.");
 
     public static final Field SECONDARY_DATABASE = Field.create(OracleJdbcConfiguration.SECONDARY_DATABASE.name())
             .withDisplayName("The secondary Oracle instance database name")
@@ -2369,6 +2371,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
                 }
             }
+        }
+        return 0;
+    }
+
+    public static int validateCaptureMode(Configuration config, Field field, ValidationOutput problems) {
+        final CaptureMode captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
+        if (CaptureMode.DOWNSTREAM.equals(captureMode) && isLogMiner(config)) {
+            problems.accept(CAPTURE_MODE, config.getString(CAPTURE_MODE), "Downstream mining is currently only supported by XStream");
+            return 1;
         }
         return 0;
     }

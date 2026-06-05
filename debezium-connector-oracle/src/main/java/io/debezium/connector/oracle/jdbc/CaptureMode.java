@@ -21,7 +21,12 @@ public enum CaptureMode implements EnumeratedValue {
     /**
      * Captures changes from a physical standby instance.
      */
-    PHYSICAL_STANDBY("physical_standby");
+    PHYSICAL_STANDBY("physical_standby"),
+
+    /**
+     * Downstream mining instance.
+     */
+    DOWNSTREAM("downstream");
 
     private final String value;
 
