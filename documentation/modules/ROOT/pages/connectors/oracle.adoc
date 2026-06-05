@@ -4435,16 +4435,20 @@ Required when `log.mining.strategy` is set to `dictionary_from_file`.
 `primary`:: Captures and streams changes from the primary instance.
 `physical_standby`:: Captures and streams changes from a physical standby instance.
 
-|[[oracle-property-database-secondary-hostname]]<<oracle-property-database-secondary-hostname, `+secondary.hostname+`>>
+|[[oracle-property-secondary-hostname]]<<oracle-property-secondary-hostname, `+secondary.hostname+`>>
 |No default
 |Specifies the hostname of the secondary database from which the connector streams changes.
 When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the secondary for streaming.
 
-|[[oracle-property-database-secondary-port]]<<oracle-property-database-secondary-port, `+secondary.port+`>>
+|[[oracle-property-secondary-port]]<<oracle-property-secondary-port, `+secondary.port+`>>
 |Same as `database.port`
 |Specifies the port of the secondary database used for streaming, if it differs from the primary instance port.
 
-|[[oracle-property-database-secondary-url]]<<oracle-property-database-secondary-url, `+secondary.url+`>>
+|[[oracle-property-secondary-dbname]]<<oracle-property-secondary-dbname, `+secondary.dbname+`>>
+|No default
+|Specifies the database name of the secondary database used for streaming.
+
+|[[oracle-property-secondary-url]]<<oracle-property-secondary-url, `+secondary.url+`>>
 |No default
 |Specifies the full JDBC connection string to the secondary database used for streaming.
 Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
