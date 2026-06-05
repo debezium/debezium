@@ -8,9 +8,11 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -188,13 +190,34 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         }
     }
 
-    public void initializeTables(List<DataCollection<T>> tables, WorkerFactory<P, T> workerFactory) throws SQLException {
+    public synchronized void initializeTables(List<DataCollection<T>> tables, WorkerFactory<P, T> workerFactory) throws SQLException {
         ensurePoolOpen();
         this.workerFactory = workerFactory;
-        pendingTables.addAll(tables);
+        final Set<T> known = new HashSet<>(activeWorkers.keySet());
+        for (DataCollection<T> dc : pendingTables) {
+            known.add(dc.getId());
+        }
+        for (DataCollection<T> dc : tables) {
+            if (known.add(dc.getId())) {
+                pendingTables.add(dc);
+            }
+        }
         activateNextTables();
         LOGGER.info("Parallel snapshot initialized: {} active, {} pending",
                 activeWorkers.size(), pendingTables.size());
+    }
+
+    public synchronized void ensureInitializedFromContext(IncrementalSnapshotContext<T> context,
+                                                          WorkerFactory<P, T> workerFactory) throws SQLException {
+        if (!activeWorkers.isEmpty() || !pendingTables.isEmpty()) {
+            return;
+        }
+        final List<DataCollection<T>> remaining = context.getDataCollections();
+        if (remaining == null || remaining.isEmpty()) {
+            return;
+        }
+        LOGGER.info("Refilling parallel coordinator from offset context ({} pending tables)", remaining.size());
+        initializeTables(remaining, workerFactory);
     }
 
     private void activateNextTables() {
@@ -212,7 +235,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         return Collections.unmodifiableMap(activeWorkers);
     }
 
-    public void markTableComplete(T tableId) {
+    public synchronized void markTableComplete(T tableId) {
         activeWorkers.remove(tableId);
         activateNextTables();
         if (activeWorkers.isEmpty() && pendingTables.isEmpty()) {

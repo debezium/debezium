@@ -94,7 +94,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected ChunkQueryBuilder<T> chunkQueryBuilder;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     protected final NotificationService<P, ? extends OffsetContext> notificationService;
-    protected ParallelIncrementalSnapshotCoordinator<P, T> parallelCoordinator;
+    protected volatile ParallelIncrementalSnapshotCoordinator<P, T> parallelCoordinator;
+    private final int parallelSnapshotThreads;
+    private boolean parallelInitPermanentlyDisabled;
+    private volatile long lastParallelInitAttemptMs;
+    private static final long PARALLEL_INIT_RETRY_LOG_THROTTLE_MS = 60_000L;
     protected final RetryExecutor retryPolicy;
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -115,30 +119,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         this.dataListener = dataChangeEventListener;
         this.notificationService = notificationService;
 
-        int threads = config.getSnapshotMaxThreads();
-        if (threads > 1) {
-            try {
-                JdbcConnection testConnection = createSnapshotConnection();
-                testConnection.close();
-
-                this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
-                        threads, () -> createSnapshotConnection(), config.getLogicalName(),
-                        config.getIncrementalSnapshotPoolReleaseDelayMs());
-
-                LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
-            }
-            catch (UnsupportedOperationException e) {
-                LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by this connector. " +
-                        "Falling back to single-threaded mode.", threads, e);
-                this.parallelCoordinator = null;
-            }
-            catch (Exception e) {
-                LOGGER.warn("Failed to initialize parallel incremental snapshot. Falling back to single-threaded mode.", e);
-                this.parallelCoordinator = null;
-            }
+        this.parallelSnapshotThreads = config.getSnapshotMaxThreads();
+        this.parallelInitPermanentlyDisabled = false;
+        if (parallelSnapshotThreads > 1) {
+            tryInitializeParallelCoordinator();
         }
         else {
-            this.parallelCoordinator = null;
             LOGGER.info("Incremental snapshot running in single-threaded mode");
         }
 
@@ -196,10 +182,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context == null) {
             return;
         }
-        final T dataCollectionId = context.currentDataCollectionId().getId();
-        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
-
-        if (!context.snapshotRunning() || !context.deduplicationNeeded() || currentWindow.isEmpty()) {
+        // Guard before resolving the window: when the snapshot is not running
+        // currentDataCollectionId() can be null and would NPE on deref.
+        if (!context.snapshotRunning() || !context.deduplicationNeeded()) {
+            return;
+        }
+        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(context.currentDataCollectionId().getId());
+        if (currentWindow.isEmpty()) {
             return;
         }
         currentWindow.clear();
@@ -241,17 +230,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return;
         }
 
-        final T dataCollectionId = context.currentDataCollectionId().getId();
-        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
-
-        LOGGER.debug("Sending {} events from window buffer for table {}",
-                currentWindow.size(), dataCollectionId);
+        // No currentDataCollectionId() deref: it can be null on a window close after the last collection.
+        LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
-        for (Object[] row : currentWindow.values()) {
+        for (Object[] row : window.values()) {
             sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
-        currentWindow.clear();
+        window.clear();
     }
 
     private void sendParallelWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
@@ -392,6 +378,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context.isSnapshotPaused()) {
             LOGGER.info("Incremental snapshot was paused.");
             return;
+        }
+
+        if (parallelCoordinator == null) {
+            tryInitializeParallelCoordinator();
+        }
+
+        if (parallelCoordinator != null) {
+            try {
+                parallelCoordinator.ensureInitializedFromContext(context, createWorkerFactory());
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Failed to re-initialize parallel coordinator on resume", e);
+            }
         }
 
         if (parallelCoordinator != null && parallelCoordinator.hasActiveTables()) {
@@ -818,20 +817,54 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 LOGGER.info("Starting PARALLEL incremental snapshot for {} tables with {} worker threads",
                         newDataCollectionIds.size(), parallelCoordinator.getThreadCount());
                 try {
-                    parallelCoordinator.initializeTables(newDataCollectionIds,
-                            (dc, buffer) -> new TableSnapshotWorker<>(
-                                    new TableSnapshotContext<>(dc),
-                                    connectorConfig,
-                                    databaseSchema,
-                                    chunkQueryBuilder,
-                                    buffer,
-                                    retryPolicy));
+                    parallelCoordinator.initializeTables(newDataCollectionIds, createWorkerFactory());
                 }
                 catch (SQLException e) {
                     throw new DebeziumException("Failed to open parallel snapshot connection pool on signal", e);
                 }
             }
             readChunk(partition, offsetContext);
+        }
+    }
+
+    private ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> createWorkerFactory() {
+        return (dc, buffer) -> new TableSnapshotWorker<>(
+                new TableSnapshotContext<>(dc),
+                connectorConfig,
+                databaseSchema,
+                chunkQueryBuilder,
+                buffer,
+                retryPolicy);
+    }
+
+    private synchronized void tryInitializeParallelCoordinator() {
+        if (parallelCoordinator != null || parallelInitPermanentlyDisabled || parallelSnapshotThreads <= 1) {
+            return;
+        }
+        try {
+            JdbcConnection testConnection = createSnapshotConnection();
+            testConnection.close();
+            this.parallelCoordinator = new ParallelIncrementalSnapshotCoordinator<>(
+                    parallelSnapshotThreads, () -> createSnapshotConnection(),
+                    connectorConfig.getLogicalName(),
+                    connectorConfig.getIncrementalSnapshotPoolReleaseDelayMs());
+            LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", parallelSnapshotThreads);
+        }
+        catch (UnsupportedOperationException e) {
+            parallelInitPermanentlyDisabled = true;
+            LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by this connector. "
+                    + "Falling back to single-threaded mode permanently.", parallelSnapshotThreads, e);
+        }
+        catch (Exception e) {
+            long now = System.currentTimeMillis();
+            boolean shouldLog = (now - lastParallelInitAttemptMs) >= PARALLEL_INIT_RETRY_LOG_THROTTLE_MS;
+            lastParallelInitAttemptMs = now;
+            if (shouldLog) {
+                LOGGER.error("Failed to initialize parallel incremental snapshot (snapshot.max.threads={}). "
+                        + "Connector running single-threaded until init succeeds; will retry on next readChunk. "
+                        + "Cause: {}: {}",
+                        parallelSnapshotThreads, e.getClass().getSimpleName(), e.getMessage(), e);
+            }
         }
     }
 
