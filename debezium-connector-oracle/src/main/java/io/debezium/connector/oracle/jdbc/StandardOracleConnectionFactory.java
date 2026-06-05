@@ -20,7 +20,7 @@ import io.debezium.jdbc.ConnectionFactory;
  */
 public class StandardOracleConnectionFactory extends OracleConnectionFactory {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PhysicalStandbyOracleConnectionFactory.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StandardOracleConnectionFactory.class);
 
     private final ConnectionFactory<OracleConnection> delegate;
     private final OracleConnection connection;

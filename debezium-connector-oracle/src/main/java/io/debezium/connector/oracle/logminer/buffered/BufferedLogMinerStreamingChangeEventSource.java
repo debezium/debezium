@@ -1317,7 +1317,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return;
         }
 
-        final Optional<Scn> lastScnToAbandon = getLastScnToAbandon(getConnection(), retention);
+        final Optional<Scn> lastScnToAbandon = getLastScnToAbandon(getStreamingConnection(), retention);
         if (lastScnToAbandon.isEmpty()) {
             return;
         }

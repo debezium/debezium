@@ -37,8 +37,8 @@ import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.jdbc.DualOracleConnectionFactory;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
-import io.debezium.connector.oracle.jdbc.PhysicalStandbyOracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
 import io.debezium.connector.oracle.logminer.LogFileSessionSelector.SessionLogSelection;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
@@ -934,7 +934,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             result = deviatedScn.get();
         }
 
-        if (!(connectionFactory instanceof PhysicalStandbyOracleConnectionFactory)) {
+        if (!(connectionFactory instanceof DualOracleConnectionFactory)) {
 
             // Retrieve the redo thread state and get the minimum flushed SCN across all open redo threads
             Scn minOpenRedoThreadLastScn = streamingConnection.getRedoThreadState()
