@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.util;
 
+import static io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration.SECONDARY_PREFIX;
+
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -158,6 +160,15 @@ public class TestHelper {
 
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
+
+        // Allows specifying -Dcapture.mode from CLI
+        if (!Strings.isNullOrEmpty(System.getProperty("capture.mode"))) {
+            builder.with(OracleConnectorConfig.CAPTURE_MODE, System.getProperty("capture.mode"));
+        }
+
+        // Allows specifying -Dsecondary.* properties from CLI
+        Configuration.fromSystemProperties(SECONDARY_PREFIX)
+                .forEach((field, value) -> builder.with(SECONDARY_PREFIX + field, value));
 
         if (isXStream()) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");

@@ -1111,10 +1111,11 @@ Please let us know your specific requirements or if you encounter any problems w
 * The connector configuration includes following key properties:
 `log.mining.strategy`:: This property is set to `dictionary_from_file`.
 `log.mining.read.only`:: This property is set to `true` to enable capturing changes from a downstream mining database, rather than from the primary instance.
-`database.standby.hostname`:: Specifies the hostname of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
+`secondary.dbname`:: Specifies the database name of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
+`secondary.hostname`:: Specifies the hostname of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
 Because the connector uses this downstream mining instance to capture changes, changes must be replicated from the primary to the downstream instance before {prodname} can emit change events.
-`database.standby.port`:: Specifies the port of the downstream mining database, if it differs from the primary instance port.
-`database.standby.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `database.standby.hostname` and `database.standby.port` when the connection string requires additional parameters.
+`secondary.port`:: Specifies the port of the downstream mining database, if it differs from the primary instance port.
+`secondary.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
 `log.mining.path.dictionary`:: Specifies the absolute file path on the downstream mining database server where Oracle LogMiner can access the data dictionary file that is exported from the primary Oracle instance.
 The LogMiner process on the downstream database must have access to the specified path.
 
@@ -3082,21 +3083,22 @@ This reduces the load on the primary by offloading LogMiner operations to the st
 log.mining.strategy=dictionary_from_file
 log.mining.path.dictionary=/path/to/dictionary.ora
 log.mining.read.only=true
-database.standby.hostname=standby-host
+secondary.hostname=standby-host
 ```
 +
-Alternatively, you can use `database.standby.url` to specify the full JDBC connection string to the standby:
+Alternatively, you can use `secondary.url` to specify the full JDBC connection string to the standby:
 +
 ```
-database.standby.url=jdbc:oracle:thin:@standby-host:1521/ORCLPDB1
+secondary.url=jdbc:oracle:thin:@standby-host:1521/ORCLPDB1
 ```
 +
-If the standby uses a different port than the primary, you can also set `database.standby.port`.
+If the standby uses a different port than the primary, you can also set `secondary.port`.
+If the standby uses a different database name than the primary, you can also set `secondary.dbname`.
 
 When configured with these properties, the connector:
 
 1. Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
-2. Connects to the standby database (configured via `database.standby.hostname` or `database.standby.url`) in read-only mode for LogMiner streaming operations.
+2. Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
 3. Uses the flat file data dictionary to resolve table and column names during log mining on the standby.
 
 // Type: procedure
@@ -4426,19 +4428,19 @@ ifdef::community[]
 |Specifies the absolute file path on the database server where Oracle LogMiner can access the flat file data dictionary.
 Required when `log.mining.strategy` is set to `dictionary_from_file`.
 
-|[[oracle-property-database-standby-hostname]]<<oracle-property-database-standby-hostname, `+database.standby.hostname+`>>
+|[[oracle-property-database-secondary-hostname]]<<oracle-property-database-secondary-hostname, `+secondary.hostname+`>>
 |No default
-|Specifies the hostname of the physical standby database from which the connector streams changes.
-When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the standby for LogMiner streaming.
+|Specifies the hostname of the secondary database from which the connector streams changes.
+When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the secondary for streaming.
 
-|[[oracle-property-database-standby-port]]<<oracle-property-database-standby-port, `+database.standby.port+`>>
+|[[oracle-property-database-secondary-port]]<<oracle-property-database-secondary-port, `+secondary.port+`>>
 |Same as `database.port`
-|Specifies the port of the standby database, if it differs from the primary instance port.
+|Specifies the port of the secondary database used for streaming, if it differs from the primary instance port.
 
-|[[oracle-property-database-standby-url]]<<oracle-property-database-standby-url, `+database.standby.url+`>>
+|[[oracle-property-database-secondary-url]]<<oracle-property-database-secondary-url, `+secondary.url+`>>
 |No default
-|Specifies the full JDBC connection string to the standby database.
-Use this as an alternative to `database.standby.hostname` and `database.standby.port` when the connection string requires additional parameters.
+|Specifies the full JDBC connection string to the secondary database used for streaming.
+Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
 endif::community[]
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
