@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,6 +32,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -170,6 +172,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private OracleConnection connectAndAttachWithRetries(JdbcConfiguration jdbcConfig, byte[] startPosition) throws Exception {
         OracleConnection connection = null;
+        final DelayStrategy retryStrategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1));
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
             XStreamOut out = null;
             try {
@@ -187,6 +190,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                     }
                     throw e;
                 }
+
+                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}", attempt, DEFAULT_MAX_ATTACH_RETRIES);
+                retryStrategy.sleepWhen(true);
             }
             finally {
                 // If we failed to attach and connection isn't null, close and clear it
