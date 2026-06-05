@@ -8,17 +8,24 @@ package io.debezium.connector.oracle.jdbc;
 import io.debezium.config.EnumeratedValue;
 
 /**
- * Defines the different type of Oracle deployment topology modes that are supported
+ * Defines the different type of Oracle streaming capture modes that are supported
  *
  * @author Chris Cranford
  */
-public enum DeploymentMode implements EnumeratedValue {
-    STANDARD("standard"),
+public enum CaptureMode implements EnumeratedValue {
+    /**
+     * Captures changes from the primary Oracle instance.
+     */
+    PRIMARY("primary"),
+
+    /**
+     * Captures changes from a physical standby instance.
+     */
     PHYSICAL_STANDBY("physical_standby");
 
     private final String value;
 
-    DeploymentMode(String value) {
+    CaptureMode(String value) {
         this.value = value;
     }
 
@@ -27,8 +34,8 @@ public enum DeploymentMode implements EnumeratedValue {
         return value;
     }
 
-    public static DeploymentMode parse(String value) {
-        for (DeploymentMode mode : DeploymentMode.values()) {
+    public static CaptureMode parse(String value) {
+        for (CaptureMode mode : CaptureMode.values()) {
             if (mode.getValue().equalsIgnoreCase(value)) {
                 return mode;
             }
