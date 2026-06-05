@@ -306,9 +306,12 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     @Override
     protected void recoverRecords(Consumer<HistoryRecord> records) throws InterruptedException {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
-            // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
-            LOGGER.debug("Subscribing to database schema history topic '{}'", topicName);
-            historyConsumer.subscribe(Collect.arrayListOf(topicName));
+            // Assign the single partition directly instead of subscribing, so overlapping recovery
+            // instances don't contend for a group assignment.
+            LOGGER.debug("Assigning the partition of database schema history topic '{}'", topicName);
+            TopicPartition topicPartition = new TopicPartition(topicName, PARTITION);
+            historyConsumer.assign(Collect.arrayListOf(topicPartition));
+            historyConsumer.seekToBeginning(Collect.arrayListOf(topicPartition));
 
             // Read all messages in the topic ...
             long lastProcessedOffset = UNLIMITED_VALUE;
