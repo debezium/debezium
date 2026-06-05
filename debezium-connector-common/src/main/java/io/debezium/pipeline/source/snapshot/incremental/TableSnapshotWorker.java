@@ -56,7 +56,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private final RetryExecutor retryPolicy;
 
     private Table currentTable;
-    private boolean keylessTableRead = false;
     private long totalRowsRead = 0;
 
     public TableSnapshotWorker(
@@ -88,17 +87,14 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 return false;
             }
             currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
-
-            final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
-            if (keyColumns == null || keyColumns.isEmpty()) {
-                LOGGER.info("Table '{}' has no key columns, reading as single chunk", tableId);
-                readKeylessTable(conn);
-                return false;
-            }
         }
 
-        if (keylessTableRead) {
-            return false;
+        final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
+        if (keyColumns == null || keyColumns.isEmpty()) {
+            throw new DebeziumException(
+                    "Table '" + tableId + "' has no primary key; incremental snapshot requires a key "
+                            + "for the DBLog watermark window. Restrict this table to initial snapshot, "
+                            + "add a PK, or declare a synthetic key via 'message.key.columns'.");
         }
 
         if (context.maximumKey().isEmpty()) {
@@ -147,31 +143,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             LOGGER.error("Failed to read maximum key for table {}", tableId, e);
             return null;
         }
-    }
-
-    private void readKeylessTable(JdbcConnection conn) throws SQLException {
-        final TableId tableId = (TableId) context.currentDataCollectionId().getId();
-        final TableSchema tableSchema = databaseSchema.schemaFor(tableId);
-
-        final StringBuilder sql = new StringBuilder("SELECT * FROM ")
-                .append(conn.quotedTableIdString(tableId));
-        context.currentDataCollectionId().getAdditionalCondition()
-                .ifPresent(cond -> sql.append(" WHERE ").append(cond));
-
-        LOGGER.info("Keyless table '{}' query: {}", tableId, sql);
-
-        try (PreparedStatement statement = conn.connection().prepareStatement(sql.toString());
-                ResultSet rs = statement.executeQuery()) {
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
-            while (rs.next()) {
-                final Object[] row = conn.rowToArray(currentTable, rs, columnArray);
-                final Struct keyStruct = tableSchema.keyFromColumnData(row);
-                windowBuffer.put(keyStruct, row);
-                totalRowsRead++;
-            }
-        }
-        keylessTableRead = true;
-        LOGGER.info("Keyless table '{}' read {} rows", tableId, totalRowsRead);
     }
 
     private boolean executeChunkQuery(String selectStatement, JdbcConnection conn) throws SQLException {

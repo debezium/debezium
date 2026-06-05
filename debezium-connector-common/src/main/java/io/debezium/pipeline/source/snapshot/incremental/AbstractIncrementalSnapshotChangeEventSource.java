@@ -196,10 +196,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context == null) {
             return;
         }
-        final T dataCollectionId = context.currentDataCollectionId().getId();
-        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
-
-        if (!context.snapshotRunning() || !context.deduplicationNeeded() || currentWindow.isEmpty()) {
+        // Guard before resolving the window: when the snapshot is not running
+        // currentDataCollectionId() can be null and would NPE on deref.
+        if (!context.snapshotRunning() || !context.deduplicationNeeded()) {
+            return;
+        }
+        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(context.currentDataCollectionId().getId());
+        if (currentWindow.isEmpty()) {
             return;
         }
         currentWindow.clear();
@@ -241,17 +244,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return;
         }
 
-        final T dataCollectionId = context.currentDataCollectionId().getId();
-        final Map<Struct, Object[]> currentWindow = getWindowForDataCollection(dataCollectionId);
-
-        LOGGER.debug("Sending {} events from window buffer for table {}",
-                currentWindow.size(), dataCollectionId);
+        // No currentDataCollectionId() deref: it can be null on a window close after the last collection.
+        LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
-        for (Object[] row : currentWindow.values()) {
+        for (Object[] row : window.values()) {
             sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
-        currentWindow.clear();
+        window.clear();
     }
 
     private void sendParallelWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
