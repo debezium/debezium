@@ -56,7 +56,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
+    public static final String PER_TABLE_STATE_KEY = INCREMENTAL_SNAPSHOT_KEY + "_per_table_state";
+    private static final String PER_TABLE_STATE_FIELD_ID = "id";
+    private static final String PER_TABLE_STATE_FIELD_CHUNK_POS = "chunkPos";
+    private static final String PER_TABLE_STATE_FIELD_MAX_KEY = "maxKey";
     private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>(this);
+    private final ObjectMapper perTableStateMapper = new ObjectMapper();
+    private final TypeReference<List<LinkedHashMap<String, String>>> perTableStateTypeRef = new TypeReference<>() {
+    };
 
     /**
      * {@code true} if window is opened and deduplication should be executed
@@ -97,6 +104,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      */
     private final AtomicBoolean paused = new AtomicBoolean(false);
     private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
+
+    private volatile ParallelIncrementalSnapshotCoordinator<?, ?> parallelCoordinator;
+    private Map<T, PerTableStateSnapshot> restoredPerTableState = Map.of();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -204,6 +214,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
+        final var coordinator = parallelCoordinator;
+        if (coordinator != null) {
+            final Map<?, PerTableStateSnapshot> perTableState = coordinator.snapshotPerTableState();
+            if (!perTableState.isEmpty()) {
+                offset.put(PER_TABLE_STATE_KEY, perTableStateAsJsonString(perTableState));
+            }
+        }
         return offset;
     }
 
@@ -293,6 +310,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
+        final String perTableStateStr = (String) offsets.get(PER_TABLE_STATE_KEY);
+        context.restoredPerTableState = perTableStateStr != null
+                ? context.jsonStringToPerTableState(perTableStateStr)
+                : Map.of();
         return context;
     }
 
@@ -382,6 +403,82 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + snapshotDataCollection.getDataCollectionsToSnapshot()
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
                 + Arrays.toString(maximumKey) + "]";
+    }
+
+    public static final class PerTableStateSnapshot {
+        private final Object[] chunkPosition;
+        private final Object[] maximumKey;
+
+        public PerTableStateSnapshot(Object[] chunkPosition, Object[] maximumKey) {
+            this.chunkPosition = chunkPosition;
+            this.maximumKey = maximumKey;
+        }
+
+        public Object[] chunkPosition() {
+            return chunkPosition;
+        }
+
+        public Object[] maximumKey() {
+            return maximumKey;
+        }
+    }
+
+    public void setParallelCoordinator(ParallelIncrementalSnapshotCoordinator<?, ?> coordinator) {
+        this.parallelCoordinator = coordinator;
+    }
+
+    public Map<T, PerTableStateSnapshot> consumeRestoredPerTableState() {
+        final var restored = restoredPerTableState;
+        restoredPerTableState = Map.of();
+        return restored;
+    }
+
+    private String perTableStateAsJsonString(Map<?, PerTableStateSnapshot> state) {
+        try {
+            final List<LinkedHashMap<String, String>> list = new ArrayList<>(state.size());
+            for (Map.Entry<?, PerTableStateSnapshot> entry : state.entrySet()) {
+                final LinkedHashMap<String, String> item = new LinkedHashMap<>();
+                item.put(PER_TABLE_STATE_FIELD_ID, ((TableId) entry.getKey()).toString());
+                item.put(PER_TABLE_STATE_FIELD_CHUNK_POS,
+                        entry.getValue().chunkPosition() != null
+                                ? arrayToSerializedString(entry.getValue().chunkPosition())
+                                : null);
+                item.put(PER_TABLE_STATE_FIELD_MAX_KEY,
+                        entry.getValue().maximumKey() != null
+                                ? arrayToSerializedString(entry.getValue().maximumKey())
+                                : null);
+                list.add(item);
+            }
+            return perTableStateMapper.writeValueAsString(list);
+        }
+        catch (JsonProcessingException e) {
+            throw new DebeziumException("Cannot serialize per-table state");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<T, PerTableStateSnapshot> jsonStringToPerTableState(String json) {
+        try {
+            final List<LinkedHashMap<String, String>> list = perTableStateMapper.readValue(json, perTableStateTypeRef);
+            final Map<T, PerTableStateSnapshot> result = new LinkedHashMap<>();
+            for (LinkedHashMap<String, String> item : list) {
+                final String id = item.get(PER_TABLE_STATE_FIELD_ID);
+                final String chunkPos = item.get(PER_TABLE_STATE_FIELD_CHUNK_POS);
+                final String maxKey = item.get(PER_TABLE_STATE_FIELD_MAX_KEY);
+                final T key = (T) TableId.parse(id, useCatalogBeforeSchema);
+                final Object[] chunk = chunkPos != null
+                        ? serializedStringToArray(PER_TABLE_STATE_FIELD_CHUNK_POS, chunkPos)
+                        : null;
+                final Object[] max = maxKey != null
+                        ? serializedStringToArray(PER_TABLE_STATE_FIELD_MAX_KEY, maxKey)
+                        : null;
+                result.put(key, new PerTableStateSnapshot(chunk, max));
+            }
+            return result;
+        }
+        catch (JsonProcessingException e) {
+            throw new DebeziumException("Cannot de-serialize per-table state: " + json);
+        }
     }
 
     private static class SnapshotDataCollection<T> extends LinkedBlockingQueue<DataCollection<T>> {

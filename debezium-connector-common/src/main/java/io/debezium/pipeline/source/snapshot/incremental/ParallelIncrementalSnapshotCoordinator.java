@@ -8,9 +8,13 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -73,6 +77,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
      */
     private final AtomicLong releaseGeneration = new AtomicLong(0);
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final Map<T, AbstractIncrementalSnapshotContext.PerTableStateSnapshot> pendingRestoredState = new HashMap<>();
     private volatile ScheduledFuture<?> pendingReleaseFuture;
     private volatile WorkerFactory<P, T> workerFactory;
 
@@ -188,13 +193,41 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         }
     }
 
-    public void initializeTables(List<DataCollection<T>> tables, WorkerFactory<P, T> workerFactory) throws SQLException {
+    public synchronized void initializeTables(List<DataCollection<T>> tables, WorkerFactory<P, T> workerFactory) throws SQLException {
         ensurePoolOpen();
         this.workerFactory = workerFactory;
-        pendingTables.addAll(tables);
+        final Set<T> known = new HashSet<>(activeWorkers.keySet());
+        for (DataCollection<T> dc : pendingTables) {
+            known.add(dc.getId());
+        }
+        for (DataCollection<T> dc : tables) {
+            if (known.add(dc.getId())) {
+                pendingTables.add(dc);
+            }
+        }
         activateNextTables();
         LOGGER.info("Parallel snapshot initialized: {} active, {} pending",
                 activeWorkers.size(), pendingTables.size());
+    }
+
+    public synchronized void ensureInitializedFromContext(IncrementalSnapshotContext<T> context,
+                                                          WorkerFactory<P, T> workerFactory)
+            throws SQLException {
+        if (!activeWorkers.isEmpty() || !pendingTables.isEmpty()) {
+            return;
+        }
+        final List<DataCollection<T>> remaining = context.getDataCollections();
+        if (remaining == null || remaining.isEmpty()) {
+            return;
+        }
+        if (context instanceof AbstractIncrementalSnapshotContext<?>) {
+            @SuppressWarnings("unchecked")
+            final var abstractCtx = (AbstractIncrementalSnapshotContext<T>) context;
+            pendingRestoredState.putAll(abstractCtx.consumeRestoredPerTableState());
+        }
+        LOGGER.info("Refilling parallel coordinator from offset context ({} pending tables, {} with restored state)",
+                remaining.size(), pendingRestoredState.size());
+        initializeTables(remaining, workerFactory);
     }
 
     private void activateNextTables() {
@@ -203,21 +236,93 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
             if (dc == null) {
                 break;
             }
-            activeWorkers.put(dc.getId(), workerFactory.create(dc, getWindowBuffer(dc.getId())));
+            final TableSnapshotWorker<P, T> worker = workerFactory.create(dc, getWindowBuffer(dc.getId()));
+            activeWorkers.put(dc.getId(), worker);
+            injectRestoredState(dc.getId(), worker);
             LOGGER.debug("Activated table {} for parallel snapshot", dc.getId());
         }
+    }
+
+    private void injectRestoredState(T tableId, TableSnapshotWorker<P, T> worker) {
+        final AbstractIncrementalSnapshotContext.PerTableStateSnapshot state = pendingRestoredState.remove(tableId);
+        if (state == null) {
+            return;
+        }
+        final TableSnapshotContext<T> ctx = worker.getContext();
+        if (state.maximumKey() != null) {
+            ctx.maximumKey(state.maximumKey());
+        }
+        if (state.chunkPosition() != null) {
+            ctx.nextChunkPosition(state.chunkPosition());
+            // The restored position came from the offset, so it is a proven-safe
+            // restart point; seed it as such or a store() before the first drain
+            // would regress the persisted position to null.
+            ctx.markChunkDrained();
+        }
+        LOGGER.info("Injected restored per-table state for {} on activation: chunkPos={}, maxKey={}",
+                tableId, state.chunkPosition() != null, state.maximumKey() != null);
     }
 
     public Map<T, TableSnapshotWorker<P, T>> getActiveWorkers() {
         return Collections.unmodifiableMap(activeWorkers);
     }
 
-    public void markTableComplete(T tableId) {
+    public synchronized void markTableComplete(T tableId) {
         activeWorkers.remove(tableId);
         activateNextTables();
         if (activeWorkers.isEmpty() && pendingTables.isEmpty()) {
             scheduleReleaseIfNotPending();
         }
+    }
+
+    public synchronized Map<T, AbstractIncrementalSnapshotContext.PerTableStateSnapshot> snapshotPerTableState() {
+        if (activeWorkers.isEmpty() && pendingRestoredState.isEmpty()) {
+            return Map.of();
+        }
+        final Map<T, AbstractIncrementalSnapshotContext.PerTableStateSnapshot> state = new LinkedHashMap<>();
+        for (Map.Entry<T, TableSnapshotWorker<P, T>> entry : activeWorkers.entrySet()) {
+            final TableSnapshotContext<T> ctx = entry.getValue().getContext();
+            state.put(entry.getKey(), new AbstractIncrementalSnapshotContext.PerTableStateSnapshot(
+                    ctx.safeResumePosition(),
+                    ctx.maximumKey().orElse(null)));
+        }
+        // Restored state for tables still awaiting activation must survive the
+        // next offset write, or a second crash in that window would lose it.
+        pendingRestoredState.forEach(state::putIfAbsent);
+        return state;
+    }
+
+    public synchronized boolean rereadTable(T tableId) {
+        final TableSnapshotWorker<P, T> worker = activeWorkers.get(tableId);
+        if (worker == null) {
+            return false;
+        }
+        final Map<Struct, Object[]> buffer = windowBuffers.get(tableId);
+        if (buffer != null) {
+            buffer.clear();
+        }
+        // The discarded events must be re-read: rewind to the last drained
+        // position, mirroring the sequential rereadChunk revert.
+        worker.getContext().revertChunk();
+        worker.invalidateSchemaCache();
+        LOGGER.info("Invalidated schema cache, cleared window buffer and reverted chunk for table {} after schema change", tableId);
+        return true;
+    }
+
+    public synchronized boolean removeTable(T tableId) {
+        final boolean removedPending = pendingTables.removeIf(dc -> dc.getId().equals(tableId));
+        final boolean removedActive = activeWorkers.remove(tableId) != null;
+        windowBuffers.remove(tableId);
+        // A stop signal invalidates any restored resume position: a later
+        // re-signal of the same table is a fresh snapshot request.
+        pendingRestoredState.remove(tableId);
+        if (removedActive) {
+            activateNextTables();
+        }
+        if (activeWorkers.isEmpty() && pendingTables.isEmpty()) {
+            scheduleReleaseIfNotPending();
+        }
+        return removedPending || removedActive;
     }
 
     public void scheduleReleaseIfNotPending() {
@@ -383,6 +488,9 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         activeWorkers.clear();
         pendingTables.clear();
         windowBuffers.clear();
+        synchronized (this) {
+            pendingRestoredState.clear();
+        }
 
         awaitExecutorTerminationQuietly(executor, "snapshot worker executor");
         awaitExecutorTerminationQuietly(releaseScheduler, "release scheduler");
