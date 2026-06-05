@@ -4479,6 +4479,13 @@ ifdef::community[]
 |Specifies the absolute file path on the database server where Oracle LogMiner can access the flat file data dictionary.
 Required when `log.mining.strategy` is set to `dictionary_from_file`.
 
+|[[oracle-property-capture-mode]]<<oracle-property-capture-mode, `+capture.mode+`>>
+|`primary`
+|Specifies the streaming capture mode to be used.
+
+`primary`:: Captures and streams changes from the primary instance.
+`physical_standby`:: Captures and streams changes from a physical standby instance.
+
 |[[oracle-property-database-secondary-hostname]]<<oracle-property-database-secondary-hostname, `+secondary.hostname+`>>
 |No default
 |Specifies the hostname of the secondary database from which the connector streams changes.
