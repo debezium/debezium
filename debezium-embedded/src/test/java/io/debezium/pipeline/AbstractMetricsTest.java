@@ -321,15 +321,20 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         // Check streaming statistics
         Testing.print("****ASSERTIONS****");
-        final Long milliSecondsBehindSourceMinValue = (Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
-                "MilliSecondsBehindSourceMinValue");
-        final Long milliSecondsBehindSourceMaxValue = (Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
-                "MilliSecondsBehindSourceMaxValue");
-        final Double milliSecondsBehindSourceAverageValue = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
-                "MilliSecondsBehindSourceAverageValue");
-        final Double milliSecondsBehindSourceP50 = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP50");
-        final Double milliSecondsBehindSourceP95 = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP95");
-        final Double milliSecondsBehindSourceP99 = (Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP99");
+        // Lag between database and Debezium can be negative (see dbz#2033), possibly when Db time is ahead of local DBZ time.
+        // As the values are compared in the test, compare the absolute values.
+        final Long milliSecondsBehindSourceMinValue = Math.abs((Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
+                "MilliSecondsBehindSourceMinValue"));
+        final Long milliSecondsBehindSourceMaxValue = Math.abs((Long) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
+                "MilliSecondsBehindSourceMaxValue"));
+        final Double milliSecondsBehindSourceAverageValue = Math.abs((Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(),
+                "MilliSecondsBehindSourceAverageValue"));
+        final Double milliSecondsBehindSourceP50 = Math
+                .abs((Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP50"));
+        final Double milliSecondsBehindSourceP95 = Math
+                .abs((Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP95"));
+        final Double milliSecondsBehindSourceP99 = Math
+                .abs((Double) mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "MilliSecondsBehindSourceP99"));
 
         Testing.print("MilliSecondsBehindSourceMinValue: " + milliSecondsBehindSourceMinValue);
         Testing.print("MilliSecondsBehindSourceMaxValue: " + milliSecondsBehindSourceMaxValue);
