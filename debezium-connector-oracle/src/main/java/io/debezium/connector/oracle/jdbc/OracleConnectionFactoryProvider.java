@@ -43,7 +43,11 @@ public final class OracleConnectionFactoryProvider {
         switch (connectorConfig.getCaptureMode()) {
             case PHYSICAL_STANDBY -> {
                 LOGGER.info("Using DUAL connection factory - Streams from Physical Standby");
-                return new DualOracleConnectionFactory(connectorConfig, new PhysicalStandbyConnectionFactory(connectorConfig));
+                return new DualOracleConnectionFactory(connectorConfig, new ReadOnlySecondaryConnectionFactory(connectorConfig));
+            }
+            case DOWNSTREAM -> {
+                LOGGER.info("Using DUAL connection factory - Streams from Downstream Mining Instance");
+                return new DualOracleConnectionFactory(connectorConfig, new ReadOnlySecondaryConnectionFactory(connectorConfig));
             }
             default -> {
                 LOGGER.info("Using STANDARD connection factory - Streams from Primary");
@@ -53,15 +57,15 @@ public final class OracleConnectionFactoryProvider {
     }
 
     /**
-     * An internal factory for Physical Standby databases.
+     * An internal factory for read-only streaming connections.
      * <p>
-     * This creates a connection to the standby instance in read-only mode to stream changes.
+     * This creates a connection to the standby or downstream mining instance in read-only mode to stream changes.
      */
-    private static class PhysicalStandbyConnectionFactory extends AbstractSecondaryConnectionFactory {
+    private static class ReadOnlySecondaryConnectionFactory extends AbstractSecondaryConnectionFactory {
         private final ConnectionFactory<OracleConnection> delegate;
         private final OracleConnection connection;
 
-        PhysicalStandbyConnectionFactory(OracleConnectorConfig connectorConfig) {
+        ReadOnlySecondaryConnectionFactory(OracleConnectorConfig connectorConfig) {
             this.delegate = () -> new ReadOnlyConnectionDecorator(secondaryConfig(connectorConfig), false);
             this.connection = delegate.newConnection();
         }
