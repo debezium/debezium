@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
@@ -56,7 +56,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private final RetryExecutor retryPolicy;
 
     private Table currentTable;
-    private boolean keylessTableRead = false;
     private long totalRowsRead = 0;
 
     public TableSnapshotWorker(
@@ -88,17 +87,14 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 return false;
             }
             currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
-
-            final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
-            if (keyColumns == null || keyColumns.isEmpty()) {
-                LOGGER.info("Table '{}' has no key columns, reading as single chunk", tableId);
-                readKeylessTable(conn);
-                return false;
-            }
         }
 
-        if (keylessTableRead) {
-            return false;
+        final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
+        if (keyColumns == null || keyColumns.isEmpty()) {
+            throw new DebeziumException(
+                    "Table '" + tableId + "' has no primary key; incremental snapshot requires a key "
+                            + "for the DBLog watermark window. Restrict this table to initial snapshot, "
+                            + "add a PK, or declare a synthetic key via 'message.key.columns'.");
         }
 
         if (context.maximumKey().isEmpty()) {
@@ -149,31 +145,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         }
     }
 
-    private void readKeylessTable(JdbcConnection conn) throws SQLException {
-        final TableId tableId = (TableId) context.currentDataCollectionId().getId();
-        final TableSchema tableSchema = databaseSchema.schemaFor(tableId);
-
-        final StringBuilder sql = new StringBuilder("SELECT * FROM ")
-                .append(conn.quotedTableIdString(tableId));
-        context.currentDataCollectionId().getAdditionalCondition()
-                .ifPresent(cond -> sql.append(" WHERE ").append(cond));
-
-        LOGGER.info("Keyless table '{}' query: {}", tableId, sql);
-
-        try (PreparedStatement statement = conn.connection().prepareStatement(sql.toString());
-                ResultSet rs = statement.executeQuery()) {
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
-            while (rs.next()) {
-                final Object[] row = conn.rowToArray(currentTable, rs, columnArray);
-                final Struct keyStruct = tableSchema.keyFromColumnData(row);
-                windowBuffer.put(keyStruct, row);
-                totalRowsRead++;
-            }
-        }
-        keylessTableRead = true;
-        LOGGER.info("Keyless table '{}' read {} rows", tableId, totalRowsRead);
-    }
-
     private boolean executeChunkQuery(String selectStatement, JdbcConnection conn) throws SQLException {
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
         boolean hasData = false;
@@ -215,40 +186,15 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         return isChunkPositionComplete(context.chunkEndPosititon(), context.maximumKey().get());
     }
 
-    /**
-     * Compares a chunk-end position against the table's maximum key. Returns
-     * true when the position has reached or passed the maximum, signalling that
-     * the table has been fully snapshotted. {@link SpecialValueDecimal} keys
-     * are unwrapped to {@code BigDecimal} since the wrapper does not implement
-     * {@link Comparable}.
-     */
-    @SuppressWarnings("unchecked")
     public static boolean isChunkPositionComplete(Object[] currentPos, Object[] maxKey) {
         if (currentPos == null || maxKey == null) {
             return false;
         }
-        for (int i = 0; i < currentPos.length; i++) {
-            Object currVal = currentPos[i];
-            Object maxVal = maxKey[i];
-            if (currVal instanceof SpecialValueDecimal specialValueDecimal) {
-                currVal = specialValueDecimal.getDecimalValue()
-                        .orElseThrow(() -> new DebeziumException(
-                                "Cannot compare special decimal value (NaN/Infinity) as snapshot primary key"));
-            }
-            if (maxVal instanceof SpecialValueDecimal specialValueDecimal) {
-                maxVal = specialValueDecimal.getDecimalValue()
-                        .orElseThrow(() -> new DebeziumException(
-                                "Cannot compare special decimal value (NaN/Infinity) as snapshot primary key"));
-            }
-            final int cmp = ((Comparable<Object>) currVal).compareTo(maxVal);
-            if (cmp < 0) {
-                return false;
-            }
-            if (cmp > 0) {
-                return true;
-            }
-        }
-        return true;
+        return Arrays.equals(currentPos, maxKey);
+    }
+
+    public void invalidateSchemaCache() {
+        this.currentTable = null;
     }
 
     public TableSnapshotContext<T> getContext() {
