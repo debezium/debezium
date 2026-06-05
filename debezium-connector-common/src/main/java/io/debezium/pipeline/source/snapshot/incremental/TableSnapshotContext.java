@@ -30,8 +30,16 @@ import io.debezium.spi.schema.DataCollectionId;
 public class TableSnapshotContext<T extends DataCollectionId> implements IncrementalSnapshotContext<T> {
 
     private final DataCollection<T> dataCollection;
-    private Object[] maximumKey;
-    private Object[] chunkEndPosition;
+    private volatile Object[] maximumKey;
+    private volatile Object[] chunkEndPosition;
+    /**
+     * Last chunk end whose window buffer has been fully drained to the
+     * dispatcher. Unlike {@code chunkEndPosition}, which advances as soon as
+     * the chunk is read into the buffer, this is a safe restart point: a
+     * resume from here can duplicate at most one chunk but never skips
+     * undelivered events.
+     */
+    private volatile Object[] safeResumePosition;
     private int currentChunkId = 0;
     private boolean completed = false;
     private Table schema;
@@ -64,6 +72,14 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
     public void nextChunkPosition(Object[] position) {
         this.chunkEndPosition = position;
         this.currentChunkId++;
+    }
+
+    public void markChunkDrained() {
+        this.safeResumePosition = chunkEndPosition;
+    }
+
+    public Object[] safeResumePosition() {
+        return safeResumePosition;
     }
 
     @Override
@@ -162,6 +178,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public void revertChunk() {
+        chunkEndPosition = safeResumePosition;
         if (currentChunkId > 0) {
             currentChunkId--;
         }

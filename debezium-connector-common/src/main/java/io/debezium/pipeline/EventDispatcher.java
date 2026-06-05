@@ -780,6 +780,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         if (heartbeatsEnabled()) {
             heartbeat.close();
         }
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.shutdown();
+        }
     }
 
     @SuppressWarnings("resource")
