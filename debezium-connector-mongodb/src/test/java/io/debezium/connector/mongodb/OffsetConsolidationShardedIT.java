@@ -25,8 +25,8 @@ import org.assertj.core.api.Assumptions;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.Document;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
@@ -63,8 +63,8 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
      */
     private final List<ChangeStreamDocument<BsonDocument>> shardEvents1 = new ArrayList<>();
 
-    @Before
-    public void setupDatabase() {
+    @BeforeEach
+    void setupDatabase() {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
 
         config = TestHelper.getConfiguration(mongo).edit()
@@ -195,7 +195,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     }
 
     @Test
-    public void shouldConsolidateOffsetsFromRsMode() throws InterruptedException {
+    void shouldConsolidateOffsetsFromRsMode() throws InterruptedException {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
@@ -224,7 +224,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     }
 
     @Test
-    public void shouldUseOffsetsFromShardedMode() throws InterruptedException {
+    void shouldUseOffsetsFromShardedMode() throws InterruptedException {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
         var events = new ArrayList<>(allRouterEvents);
@@ -253,7 +253,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     }
 
     @Test
-    public void shouldFailToConsolidateOffsetsFromRsModeWhenInvalidationIsNotAllowed() throws InterruptedException {
+    void shouldFailToConsolidateOffsetsFromRsModeWhenInvalidationIsNotAllowed() throws InterruptedException {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
@@ -272,7 +272,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     }
 
     @Test
-    public void shouldFailToConsolidateOffsetsFromRsModeWhenOneShardOffsetIsMissing() throws InterruptedException {
+    void shouldFailToConsolidateOffsetsFromRsModeWhenOneShardOffsetIsMissing() throws InterruptedException {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 

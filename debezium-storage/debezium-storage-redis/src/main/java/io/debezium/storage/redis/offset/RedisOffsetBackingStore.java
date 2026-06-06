@@ -35,7 +35,7 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     private RedisOffsetBackingStoreConfig config;
 
-    private RedisClient client;
+    private volatile RedisClient client;
 
     public RedisClient getRedisClient() {
         return client;
@@ -99,6 +99,9 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     void load() {
         // fetch the value from Redis
         Map<String, String> offsets = Uni.createFrom().item(() -> {
+            if (client == null) {
+                throw new RedisClientConnectionException(new RuntimeException("Redis client is null"));
+            }
             return (Map<String, String>) client.hgetAll(config.getRedisKeyName());
         })
                 // handle failures and retry
@@ -142,6 +145,9 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
             byte[] value = (mapEntry.getValue() != null) ? mapEntry.getValue().array() : null;
             // set the value in Redis
             Uni.createFrom().item(() -> {
+                if (client == null) {
+                    throw new RedisClientConnectionException(new RuntimeException("Redis client is null"));
+                }
                 return (Long) client.hset(config.getRedisKeyName().getBytes(), key, value);
             })
                     // handle failures and retry

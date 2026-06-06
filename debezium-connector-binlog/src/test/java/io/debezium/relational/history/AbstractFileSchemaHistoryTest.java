@@ -8,7 +8,7 @@ package io.debezium.relational.history;
 import java.nio.file.Path;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -22,8 +22,8 @@ public abstract class AbstractFileSchemaHistoryTest<C extends SourceConnector> e
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("dbHistory.log");
 
     @Override
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         Testing.Files.delete(TEST_FILE_PATH);
         super.beforeEach();
     }

@@ -29,7 +29,7 @@ public class XStreamStreamingMetricsTest extends OracleStreamingMetricsTest<XStr
                                                                      EventMetadataProvider metadataProvider,
                                                                      OracleConnectorConfig connectorConfig,
                                                                      Clock clock) {
-        return new XStreamStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
+        return new XStreamStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, java.util.Collections::emptyList);
     }
 
 }

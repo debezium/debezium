@@ -17,12 +17,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -63,17 +63,17 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
             .withExposedPorts(PORT)
             .withStartupTimeout(Duration.ofSeconds(180));
 
-    @BeforeClass
+    @BeforeAll
     public static void startDatabase() {
         container.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopDatabase() {
         container.stop();
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws SQLException {
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -88,7 +88,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws SQLException {
         try {
             stopConnector();
@@ -124,7 +124,8 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                         "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
                                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                                 "record_insert_ts TIMESTAMP NOT NULL," +
-                                "record_insert_seq INTEGER NOT NULL" +
+                                "record_insert_seq INTEGER NOT NULL," +
+                                "PRIMARY KEY (id)" +
                                 ")")
                 .with("offset.storage.jdbc.offset.table.select",
                         "SELECT id, offset_key, offset_val FROM %s " +
@@ -158,7 +159,8 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                         "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
                                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                                 "record_insert_ts TIMESTAMP NOT NULL," +
-                                "record_insert_seq INTEGER NOT NULL" +
+                                "record_insert_seq INTEGER NOT NULL," +
+                                "PRIMARY KEY (id)" +
                                 ")")
                 .with("offset.storage.jdbc.table.select",
                         "SELECT id, offset_key, offset_val FROM %s " +
@@ -184,11 +186,11 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldStartCorrectlyWithDeprecatedJdbcOffsetStorage() throws InterruptedException, IOException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -196,7 +198,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         Configuration config = deprecatedConfig(jdbcUrl).build();
 
         // Start the connector ...
@@ -209,11 +211,11 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldStartCorrectlyWithJdbcOffsetStorage() throws InterruptedException, IOException {
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
@@ -221,7 +223,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         Configuration config = config(jdbcUrl).build();
 
         // Start the connector ...
@@ -256,10 +258,10 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                 String recordInsertTimestamp = rs.getString("record_insert_ts");
                 String recordInsertSequence = rs.getString("record_insert_seq");
 
-                Assert.assertFalse(offsetKey.isBlank() && offsetKey.isEmpty());
-                Assert.assertFalse(offsetValue.isBlank() && offsetValue.isEmpty());
-                Assert.assertFalse(recordInsertTimestamp.isBlank() && recordInsertTimestamp.isEmpty());
-                Assert.assertFalse(recordInsertSequence.isBlank() && recordInsertSequence.isEmpty());
+                Assertions.assertFalse(offsetKey.isBlank() && offsetKey.isEmpty());
+                Assertions.assertFalse(offsetValue.isBlank() && offsetValue.isEmpty());
+                Assertions.assertFalse(recordInsertTimestamp.isBlank() && recordInsertTimestamp.isEmpty());
+                Assertions.assertFalse(recordInsertSequence.isBlank() && recordInsertSequence.isEmpty());
 
             }
 

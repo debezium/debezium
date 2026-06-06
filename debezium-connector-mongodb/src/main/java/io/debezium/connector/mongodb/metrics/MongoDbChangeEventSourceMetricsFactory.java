@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb.metrics;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbPartition;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
@@ -35,9 +36,10 @@ public class MongoDbChangeEventSourceMetricsFactory extends DefaultChangeEventSo
     public <T extends CdcSourceTaskContext> MongoDbStreamingChangeEventSourceMetrics getStreamingMetrics(
                                                                                                          T taskContext,
                                                                                                          ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                         EventMetadataProvider eventMetadataProvider) {
+                                                                                                         EventMetadataProvider eventMetadataProvider,
+                                                                                                         CapturedTablesSupplier capturedTablesSupplier) {
         if (streamingMetrics == null) {
-            streamingMetrics = new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+            streamingMetrics = new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
         }
         return streamingMetrics;
     }

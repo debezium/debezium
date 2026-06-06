@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Debezium Connector Descriptor Schema",
+  "description": "Schema for validating Debezium connector descriptor configurations (DDD-13)",
+  "type": "object",
+  "required": ["name", "type", "version", "metadata", "properties"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the connector"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["source-connector", "sink-connector"],
+      "description": "The type of connector (source or sink)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$",
+      "description": "The version of the connector in semantic versioning format, optionally with suffix like -SNAPSHOT, -Alpha"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "A description of the connector's functionality"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags categorizing the connector"
+        }
+      }
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the property"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["string", "number", "boolean", "list", "object"],
+            "description": "The data type of the property"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the property is required"
+          },
+          "display": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Display label for the property"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the property"
+              },
+              "group": {
+                "type": "string",
+                "description": "Group this property belongs to"
+              },
+              "groupOrder": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Order of the property within its group"
+              },
+              "width": {
+                "type": "string",
+                "enum": ["short", "medium", "long"],
+                "description": "Display width for the property"
+              },
+              "importance": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Importance level of the property"
+              }
+            }
+          },
+          "validation": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": ["type", "pattern"],
+                  "properties": {
+                    "type": {
+                      "const": "regex"
+                    },
+                    "pattern": {
+                      "type": "string",
+                      "description": "Regex pattern for validation"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message to display when validation fails"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["type", "values"],
+                  "properties": {
+                    "type": {
+                      "const": "enum"
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Allowed values for enum validation"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message to display when validation fails"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["type", "min"],
+                  "properties": {
+                    "type": {
+                      "const": "min"
+                    },
+                    "min": {
+                      "type": "number",
+                      "description": "Minimum acceptable value"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message to display when validation fails"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["type", "max"],
+                  "properties": {
+                    "type": {
+                      "const": "max"
+                    },
+                    "max": {
+                      "type": "number",
+                      "description": "Maximum acceptable value"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message to display when validation fails"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": ["type", "min", "max"],
+                  "properties": {
+                    "type": {
+                      "const": "range"
+                    },
+                    "min": {
+                      "type": "number",
+                      "description": "Minimum acceptable value"
+                    },
+                    "max": {
+                      "type": "number",
+                      "description": "Maximum acceptable value"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message to display when validation fails"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "valueDependants": {
+            "type": "array",
+            "description": "Array of value-based dependencies",
+            "items": {
+              "type": "object",
+              "required": ["values", "dependants"],
+              "properties": {
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Values that trigger the dependency"
+                },
+                "dependants": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Property names that become relevant when the parent has one of the specified values"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "order"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the configuration group"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Order in which the group should be displayed"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the configuration group"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

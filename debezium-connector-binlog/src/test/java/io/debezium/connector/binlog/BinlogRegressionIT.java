@@ -7,9 +7,9 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -30,16 +30,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -66,19 +63,16 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     private Configuration config;
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
-
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -89,16 +83,17 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-61")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -125,9 +120,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_342_timetest")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(numCreateTables + 1);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -250,22 +245,11 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 assertThat(after.getInt64("c3")).isNull(); // epoch millis
 
                 // '0000-00-00 00:00:00.00'
-                String c4 = after.getString("c4"); // timestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-
-                // Timestamp is stored as UTC
-                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
-
-                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
-                assertThat(c4DateTime.getYear()).isEqualTo(1970);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
-                assertThat(c4DateTime.getHour()).isIn(0, 1);
-                assertThat(c4DateTime.getMinute()).isEqualTo(0);
-                assertThat(c4DateTime.getSecond()).isEqualTo(0);
-                assertThat(c4DateTime.getNano()).isEqualTo(0);
+                // DBZ-1912: nullable zero-date TIMESTAMP collapses to null in the streaming
+                // deserialization path (consistent with the snapshot CONVERT_TO_NULL behavior and
+                // with how DATE/DATETIME zero-dates were already handled). Pre-DBZ-1912 the binlog
+                // wire epochSecond=0 surfaced here as the string "1970-01-01T00:00:00Z".
+                assertThat(after.getString("c4")).isNull(); // timestamp
             }
             else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
@@ -427,14 +411,17 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();
-        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
+        // DBZ-1912: zero-date TIMESTAMP collapses to null in the streaming deserialization
+        // path (previously emitted "1970-01-01T00:00:00.00Z").
+        assertThat(rec1.get("c4")).isNull();
         assertThat(rec1.get("nnc1")).isEqualTo(0);
         assertThat(rec1.get("nnc2")).isEqualTo(0L);
         assertThat(rec1.get("nnc3")).isEqualTo(0L);
         assertThat(rec2.get("c1")).isNull();
         assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("c3")).isNull();
-        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
+        // DBZ-1912: zero-date TIMESTAMP collapses to null (see above).
+        assertThat(rec2.get("c4")).isNull();
         assertThat(rec2.get("nnc1")).isEqualTo(0);
         assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("nnc3")).isEqualTo(0L);
@@ -442,17 +429,19 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-61")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreamingAndConnectTimesTypes() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                 .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -477,9 +466,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_104_customers")).size()).isEqualTo(4);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_147_decimalvalues")).size()).isEqualTo(1);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -594,22 +583,10 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 assertThat(c3).isNull();
 
                 // '0000-00-00 00:00:00.00'
-                String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
-                OffsetDateTime c4DateTime = OffsetDateTime.parse(c4, ZonedTimestamp.FORMATTER);
-
-                // Timestamp is stored as UTC
-                assertThat(c4DateTime.getOffset()).isEqualTo(ZoneOffset.UTC);
-
-                // In case the timestamp string not in our timezone, convert to UTC so we can compare ...
-                c4DateTime = c4DateTime.withOffsetSameInstant(ZoneOffset.of("Z"));
-                assertThat(c4DateTime.getYear()).isEqualTo(1970);
-                assertThat(c4DateTime.getMonth()).isEqualTo(Month.JANUARY);
-                assertThat(c4DateTime.getDayOfMonth()).isEqualTo(1);
-                // Difference depends upon whether the zone we're in is also using DST as it is on the date in question ...
-                assertThat(c4DateTime.getHour()).isIn(0, 1);
-                assertThat(c4DateTime.getMinute()).isEqualTo(0);
-                assertThat(c4DateTime.getSecond()).isEqualTo(0);
-                assertThat(c4DateTime.getNano()).isEqualTo(0);
+                // DBZ-1912: nullable zero-date TIMESTAMP collapses to null in the streaming
+                // deserialization path (see the matching assertion in
+                // shouldConsumeAllEventsFromDatabaseUsingStreaming above).
+                assertThat(after.getString("c4")).isNull(); // MySQL timestamp, so always ZonedTimestamp
             }
             else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
@@ -659,6 +636,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .build();
 
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -985,7 +963,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    public void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeDatesCorrectlyWhenClientTimezonePrecedesServerTimezoneUsingSnapshot() throws SQLException, InterruptedException {
         TimeZone originalTimeZone = TimeZone.getDefault();
         try {
             // Set the timezone of the JVM to an offset that is earlier than the
@@ -1003,6 +981,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                     .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .build();
             // Start the connector ...
+            DATABASE.initialize();
             start(getConnectorClass(), config);
 
             // ---------------------------------------------------------------------------------------------------------------
@@ -1078,17 +1057,18 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-147")
-    public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -1125,11 +1105,13 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -1169,6 +1151,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------

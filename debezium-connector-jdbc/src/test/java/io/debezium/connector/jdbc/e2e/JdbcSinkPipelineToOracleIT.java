@@ -5,12 +5,30 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.sql.Blob;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.OracleSinkDatabaseContextProvider;
+import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.spatial.GeometryBytes;
+import io.debezium.transforms.ExtractNewRecordState;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to Oracle.
@@ -171,37 +189,138 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
-    protected String getTimeType(Source source, boolean key, int precision) {
-        if (key) {
-            return "TIMESTAMP(6)";
-        }
-        // Oracle only permits maximum of 6 digit precision
-        return String.format("TIMESTAMP(%d)", Math.min(6, precision));
+    protected int getDefaultSinkTimePrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
-        return "TIMESTAMP(6) WITH TIME ZONE";
+    protected int getMaxTimestampPrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
+    }
+
+    @Override
+    protected String getTimeType(Source source, boolean key, int precision) {
+        if (!source.getOptions().isColumnTypePropagated() || key) {
+            precision = getDefaultSinkTimePrecision();
+        }
+
+        return String.format("TIMESTAMP(%d)", Math.min(getDefaultSinkTimePrecision(), precision));
+    }
+
+    @Override
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
+        if (!(source.getOptions().isColumnTypePropagated() && !key)) {
+            precision = getMaxTimestampPrecision();
+        }
+        return String.format("TIMESTAMP(%d) WITH TIME ZONE", precision);
     }
 
     @Override
     protected String getTimestampType(Source source, boolean key, int precision) {
-        if (source.getOptions().isColumnTypePropagated() && precision != 6 && !key) {
+        if (source.getOptions().isColumnTypePropagated() && !key) {
             return String.format("TIMESTAMP(%d)", precision);
         }
-        return "TIMESTAMP(6)"; // DATE
+        return "TIMESTAMP(" + getMaxTimestampPrecision() + ")"; // DATE
     }
 
     @Override
     protected String getTimestampWithTimezoneType(Source source, boolean key, int precision) {
-        if (source.getOptions().isColumnTypePropagated() && precision != 6 && !key) {
+        if (source.getOptions().isColumnTypePropagated() && !key) {
             return String.format("TIMESTAMP(%d) WITH TIME ZONE", precision);
         }
-        return "TIMESTAMP(6) WITH TIME ZONE";
+        return "TIMESTAMP(" + getMaxTimestampPrecision() + ") WITH TIME ZONE";
     }
 
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final java.sql.Struct values = (java.sql.Struct) resultSet.getObject(index);
+        final int srid = ((BigDecimal) values.getAttributes()[1]).intValue();
+
+        final String query = "SELECT SDO_UTIL.TO_WKBGEOMETRY(TREAT(? AS SDO_GEOMETRY)) FROM DUAL";
+        try (PreparedStatement statement = resultSet.getStatement().getConnection().prepareStatement(query)) {
+            statement.setObject(1, values);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    // Oracle's TO_WKBGEOMETRY returns EPSG format but in big endian format
+                    final byte[] bytes = rs.getBytes(1);
+                    return new GeometryBytes(bytes, srid).asLittleEndian();
+                }
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to read geometry value for index " + index, e);
+        }
+
+        throw new UnsupportedOperationException("Failed to read Oracle Geometry value");
+    }
+
+    @TestTemplate
+    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.SQLSERVER, SourceType.POSTGRES }, reason = "No BLOB")
+    @FixFor("DBZ-8276")
+    public void testWritingBlob(Source source, Sink sink) throws Exception {
+        final byte[] data = RandomStringUtils.randomAlphanumeric(256).getBytes(StandardCharsets.UTF_8);
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "blob",
+                (ps, index) -> {
+                    final Blob blob = ps.getConnection().createBlob();
+                    blob.setBytes(1, data);
+                    ps.setBlob(index, blob);
+                },
+                // Oracle requires a key when writing LOB columns, hence BigDecimal
+                List.of(BigDecimal.valueOf(1), data),
+                (config) -> {
+                },
+                (properties) -> {
+                    properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
+                    properties.put(JdbcSinkConnectorConfig.INSERT_MODE_FIELD.name(), InsertMode.UPSERT.getValue());
+                },
+                (record) -> assertColumn(sink, record, "data", getBinaryType(source, "BLOB")),
+                (rs, index) -> index == 1 ? rs.getObject(index) : rs.getBytes(index));
+    }
+
+    @TestTemplate
+    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.SQLSERVER, SourceType.POSTGRES }, reason = "No BLOB")
+    @FixFor("DBZ-8276")
+    public void testWritingBlobUsingExtractNewRecordStateTransform(Source source, Sink sink) throws Exception {
+        final byte[] data = RandomStringUtils.randomAlphanumeric(256).getBytes(StandardCharsets.UTF_8);
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "blob",
+                (ps, index) -> {
+                    final Blob blob = ps.getConnection().createBlob();
+                    blob.setBytes(1, data);
+                    ps.setBlob(index, blob);
+                },
+                // Oracle requires a key when writing LOB columns, hence BigDecimal
+                List.of(BigDecimal.valueOf(1), data),
+                (config) -> {
+                    config.with("transforms", "unwrap");
+                    config.with("transforms.unwrap.type", ExtractNewRecordState.class.getName());
+                    config.with("transforms.unwrap.delete.tombstone.handling.mode", "rewrite-with-tombstone");
+                },
+                (properties) -> {
+                    properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
+                    properties.put(JdbcSinkConnectorConfig.INSERT_MODE_FIELD.name(), InsertMode.UPSERT.getValue());
+                },
+                (record) -> assertColumn(sink, record, "data", getBinaryType(source, "BLOB")),
+                (rs, index) -> index == 1 ? rs.getObject(index) : rs.getBytes(index));
     }
 }

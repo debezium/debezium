@@ -46,7 +46,7 @@
     <!-- For debug purpose -->
     <logger
             name="io.debezium.pipeline.ChangeEventSourceCoordinator"
-            level="off" additivity="false">
+            level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
 

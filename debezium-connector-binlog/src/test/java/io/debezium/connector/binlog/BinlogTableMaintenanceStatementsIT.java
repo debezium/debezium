@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -32,16 +32,16 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -52,14 +52,17 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
 
     @Test
     @FixFor("DBZ-253")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -73,9 +76,9 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
-        assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName());
+        assertThat(records.databaseNames()).containsOnly("", DATABASE.getDatabaseName());
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
-                numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
+                numCreateTables + numTableMaintenanceStatements);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

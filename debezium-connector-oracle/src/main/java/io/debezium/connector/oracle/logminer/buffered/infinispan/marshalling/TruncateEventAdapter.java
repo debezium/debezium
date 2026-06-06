@@ -9,16 +9,14 @@ import java.time.Instant;
 
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
-import org.infinispan.protostream.annotations.ProtoField;
 
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
 
 @ProtoAdapter(TruncateEvent.class)
-public class TruncateEventAdapter extends LogMinerEventAdapter {
+public class TruncateEventAdapter extends DmlEventAdapter {
 
     /**
      * A ProtoStream factory that creates {@link TruncateEvent} instances.
@@ -29,22 +27,22 @@ public class TruncateEventAdapter extends LogMinerEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
-     * @param entry the parsed SQL statement entry
+     * @param oldValues old column values
+     * @param newValues new column values
      * @return the constructed DmlEvent
      */
     @ProtoFactory
-    public TruncateEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, LogMinerDmlEntryImpl entry) {
-        return new TruncateEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), entry);
+    public TruncateEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime,
+                                 String[] oldValues, String[] newValues) {
+        return new TruncateEvent(
+                EventType.from(eventType),
+                Scn.valueOf(scn),
+                TableId.parse(tableId),
+                rowId,
+                rsId,
+                Instant.parse(changeTime),
+                oldValues,
+                newValues);
     }
 
-    /**
-     * A ProtoStream handler to extract the {@code entry} field from the {@link TruncateEvent}.
-     *
-     * @param event the event instance, must not be {@code null}
-     * @return the LogMinerDmlEntryImpl instance
-     */
-    @ProtoField(number = 7)
-    public LogMinerDmlEntryImpl getEntry(TruncateEvent event) {
-        return (LogMinerDmlEntryImpl) event.getDmlEntry();
-    }
 }

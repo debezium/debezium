@@ -9,7 +9,7 @@ import java.util.Map;
 
 import io.debezium.config.ConfigurationNames;
 
-public class MongoDbDatasetNamespaceResolver implements InputDatasetNamespaceResolver {
+public class MongoDbDatasetNamespaceResolver implements DatasetNamespaceResolver {
 
     @Override
     public String resolve(Map<String, String> configuration, String connectorName) {

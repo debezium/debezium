@@ -105,7 +105,9 @@ public class ConverterBuilder<R> {
                 if (headerConverter != null) {
                     for (org.apache.kafka.connect.header.Header header : record.headers()) {
                         byte[] rawHeader = headerConverter.fromConnectHeader(topicName, header.key(), header.schema(), header.value());
-                        recordHeaders.add(header.key(), rawHeader);
+                        if (rawHeader != null) {
+                            recordHeaders.add(header.key(), rawHeader);
+                        }
                     }
                 }
 

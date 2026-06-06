@@ -20,15 +20,16 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceConnector;
-import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
-import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.util.Threads;
 
 /**
@@ -38,7 +39,7 @@ import io.debezium.util.Threads;
  * <p>
  * This connector is configured with the set of properties described in {@link io.debezium.connector.mongodb.MongoDbConnectorConfig}.
  */
-public class MongoDbConnector extends BaseSourceConnector {
+public class MongoDbConnector extends BaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
     public static final String DEPRECATED_SHARD_CS_PARAMS_FILED = "mongodb.connection.string.shard.params";
@@ -96,6 +97,11 @@ public class MongoDbConnector extends BaseSourceConnector {
     }
 
     @Override
+    public Field.Set getConfigFields() {
+        return MongoDbConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
     public Config validate(Map<String, String> connectorConfigs) {
         final Configuration config = Configuration.from(connectorConfigs);
 
@@ -134,7 +140,25 @@ public class MongoDbConnector extends BaseSourceConnector {
                 try {
                     // Check base connection by accessing first database name
                     try (MongoClient client = connectionContext.getMongoClient()) {
-                        client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
+                        // only when we try to fetch results a connection gets established
+                        // Verify if users has rights to list databases
+                        var dbNames = new ArrayList<String>();
+                        client.listDatabaseNames().into(dbNames);
+                        if (dbNames.isEmpty()) {
+                            String errorMessage = "User doesn't have rights to list databases. " +
+                                    "Please verify credentials and database permissions.";
+                            LOGGER.error("Could not validate connector config: " + errorMessage);
+                            connectionStringValidation.addErrorMessage(errorMessage);
+                        }
+                    }
+                    catch (MongoCommandException e) {
+                        if (e.getErrorCode() == 13) { // Unauthorized
+                            connectionStringValidation.addErrorMessage(
+                                    "User doesn't have sufficient privileges: " + e.getMessage());
+                        }
+                        else {
+                            connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+                        }
                     }
 
                     // For RS clusters check that replica set name is present
@@ -148,7 +172,7 @@ public class MongoDbConnector extends BaseSourceConnector {
                 catch (MongoException e) {
                     connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
@@ -161,17 +185,6 @@ public class MongoDbConnector extends BaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(MongoDbConnectorConfig.ALL_FIELDS);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<CollectionId> getMatchingCollections(Configuration config) {
-        try (MongoDbConnection connection = MongoDbConnections.create(config)) {
-            return connection.collections();
-        }
-        catch (InterruptedException e) {
-            throw new DebeziumException(e);
-        }
     }
 
     @Override

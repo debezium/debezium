@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,15 +31,14 @@ import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
-import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
-import io.debezium.util.Strings;
 
 import oracle.sql.RAW;
 
@@ -76,7 +75,7 @@ import oracle.sql.RAW;
  *
  * @author Chris Cranford
  */
-public class TransactionCommitConsumer implements AutoCloseable, BlockingConsumer<LogMinerEvent> {
+public class TransactionCommitConsumer implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCommitConsumer.class);
     private static final String NULL_COLUMN = "__debezium_null";
@@ -91,7 +90,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final ConstructionDetails currentExtendedStringDetails = new ConstructionDetails();
     private final ConstructionDetails currentXmlDetails = new ConstructionDetails();
 
-    private int transactionIndex = 0;
+    private long dispatchEventIndex = 0;
+    private long enqueueEventIndex = 0;
     private int totalEvents = 0;
 
     public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
@@ -102,11 +102,12 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @Override
     public void close() throws InterruptedException {
-        // dispatch the remaining events in the order we received them from LogMiner
+        // Dispatch any of the existing events in the order they were received
         List<RowState> pending = new ArrayList<>(rows.values());
-        Collections.sort(pending, (a, b) -> a.transactionIndex - b.transactionIndex);
+        pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
+
         for (final RowState rowState : pending) {
-            prepareAndDispatch(rowState.event);
+            prepareAndDispatch(rowState);
         }
 
         // For situations where the consumer instance is reused, reset internal state
@@ -116,21 +117,21 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         currentXmlDetails.reset();
 
         totalEvents = 0;
+        enqueueEventIndex = 0;
+        dispatchEventIndex = 0;
     }
 
-    @Override
-    public void accept(LogMinerEvent event) throws InterruptedException {
-        // track number of events passed
+    public void accept(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
         totalEvents++;
 
         if (!connectorConfig.isLobEnabled()) {
             // LOB support is not enabled, perform immediate dispatch
-            dispatchChangeEvent(event);
+            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
             return;
         }
 
-        if (event instanceof DmlEvent) {
-            acceptDmlEvent((DmlEvent) event);
+        if (event instanceof DmlEvent dmlEvent) {
+            acceptDmlEvent(dmlEvent, rolledBack, transactionId, transactionSequence);
         }
         else {
             acceptManipulationEvent(event);
@@ -141,8 +142,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         return totalEvents;
     }
 
-    private void acceptDmlEvent(DmlEvent event) throws InterruptedException {
-        transactionIndex++;
+    private void acceptDmlEvent(DmlEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
+        enqueueEventIndex++;
 
         final Table table = schema.tableFor(event.getTableId());
         if (table == null) {
@@ -165,12 +166,16 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             // queue with the logic below. Therefore, there is no need to attempt to dispatch the
             // accumulator as it should be null.
             LOGGER.debug("\tEvent for table {} has no LOB columns, dispatching.", table.id());
-            dispatchChangeEvent(event);
+            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
             return;
         }
 
-        if (!tryMerge(accumulatorEvent, event)) {
-            prepareAndDispatch(accumulatorEvent);
+        if (tryMerge(accumulatorEvent, event)) {
+            rowState.rolledBack = rolledBack;
+            rowState.transactionSequence = transactionSequence;
+        }
+        else {
+            prepareAndDispatch(rowState);
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
@@ -180,7 +185,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             else if (rowId.equals(currentXmlDetails.rowId)) {
                 currentXmlDetails.reset();
             }
-            rows.put(rowId, new RowState(event, transactionIndex));
+            rows.put(rowId, new RowState(event, rolledBack, enqueueEventIndex, transactionId, transactionSequence));
             accumulatorEvent = event;
         }
 
@@ -300,10 +305,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         values[details.columnPosition] = constructor.apply(prevValue);
     }
 
-    private void prepareAndDispatch(DmlEvent event) throws InterruptedException {
-        if (null == event) { // we just added the first event for this row
+    private void prepareAndDispatch(RowState rowState) throws InterruptedException {
+        if (null == rowState) { // we just added the first event for this row
             return;
         }
+        final DmlEvent event = rowState.event;
         Object[] values = newValues(event);
         for (int i = 0; i < values.length; i++) {
             if (values[i] instanceof AbstractUnderConstruction) {
@@ -326,7 +332,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
                 return;
             }
         }
-        dispatchChangeEvent(event);
+        dispatchChangeEvent(event, rowState.rolledBack, rowState.transactionId, rowState.transactionSequence);
     }
 
     private boolean tryMerge(DmlEvent prev, DmlEvent next) {
@@ -501,9 +507,15 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         return BLOB_TYPE.equalsIgnoreCase(column.typeName()) || CLOB_TYPE.equalsIgnoreCase(column.typeName());
     }
 
-    private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {
-        LOGGER.trace("\tEmitting event {} {}", event.getEventType(), event);
-        delegate.accept(event, totalEvents);
+    private void dispatchChangeEvent(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
+        if (rolledBack) {
+            LOGGER.debug("Skipping rolled-back event for table '{}' with row-id '{}'.", event.getTableId(), event.getRowIdAsString());
+            return;
+        }
+        // Must be one based so that START_SCN/START_SCN_TS assignment works in delegate
+        final long eventIndex = ++dispatchEventIndex;
+        LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
+        delegate.accept(event, eventIndex, transactionId, transactionSequence, totalEvents);
     }
 
     private String rowIdFromEvent(Table table, DmlEvent event) {
@@ -530,11 +542,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private Object[] newValues(DmlEvent event) {
-        return event.getDmlEntry().getNewValues();
+        return event.getNewValues();
     }
 
     private Object[] oldValues(DmlEvent event) {
-        return event.getDmlEntry().getOldValues();
+        return event.getOldValues();
     }
 
     private void discardCurrentMergeState(ConstructionDetails details) {
@@ -547,7 +559,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private boolean hasRowId(DmlEvent event) {
-        return !Strings.isNullOrEmpty(event.getRowId()) && !event.getRowId().equalsIgnoreCase("AAAAAAAAAAAAAAAAAA");
+        return event.getRowId() != null && event.getRowId() != RowIdCodec.EMPTY_ROW_ID;
     }
 
     static class ConstructionDetails {
@@ -991,16 +1003,22 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private static class RowState {
         final DmlEvent event;
-        final int transactionIndex;
+        boolean rolledBack;
+        final long transactionIndex;
+        final String transactionId;
+        long transactionSequence;
 
-        RowState(final DmlEvent event, final int transactionIndex) {
+        RowState(final DmlEvent event, boolean rolledBack, final long transactionIndex, String transactionId, long transactionSequence) {
             this.event = event;
+            this.rolledBack = rolledBack;
             this.transactionIndex = transactionIndex;
+            this.transactionId = transactionId;
+            this.transactionSequence = transactionSequence;
         }
     }
 
     @FunctionalInterface
     public interface Handler<T> {
-        void accept(T event, long eventsProcessed) throws InterruptedException;
+        void accept(T event, long eventIndex, String eventTrxId, long eventTrxSeq, long eventsProcessed) throws InterruptedException;
     }
 }

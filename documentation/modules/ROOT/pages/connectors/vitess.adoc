@@ -10,6 +10,7 @@
 :icons: font
 :source-highlighter: highlight.js
 :connector-name: Vitess
+:supports-skipping-unchanged-events:
 
 toc::[]
 
@@ -67,6 +68,11 @@ As a result, the connector is unable to read the entire history of the database 
 For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database.
 You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
++
+When starting from an empty GTID, you can control which tables are copied during the snapshot phase by setting
+the xref:{link-vitess-connector}#vitess-property-snapshot-include-collection-list[`snapshot.include.collection.list` connector
+configuration property] to specify a comma-separated list of table patterns. If this property is not set or is empty,
+all tables are copied during the snapshot phase.
 
 [NOTE]
 ====
@@ -256,6 +262,33 @@ The following example shows a data change event with ordered transaction metadat
   }
 }
 ----
+
+[[vitess-connector-generation]]
+=== Connector Generation
+The {prodname} Vitess connector provides a xref:vitess-property-connector-generation[`connector generation`] property that stores the generation number for transaction ordering semantics.
+
+Certain connector configuration changes can affect the way that the connector computes the `transaction-rank` field.
+After you make such a change, you must increment the value of the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+Incrementing the connector generation provides the connector with the information that it needs to stream change events to Kafka from different shards in the correct sequence.
+
+For example, when you set xref:vitess-property-transaction-chunk-size[`vitess.transaction.chunk.size.bytes`] to enable transaction chunking, the connector computes `transaction_rank` from the VGTID of the previous transaction, rather than the VGTID of the current transaction.
+This behavior results, because for chunked transactions, VStream behavior sends the final committed VGTID for a transaction only after it commits the final chunk of the transaction.
+Events produced before and after you enable transaction chunking therefore use different mechanisms to compute rank.
+After you enable transaction chunking, the connector uses a different mechanism to compute rank than it does when chunking is disabled.
+If you do not increment the connector epoch, consumers that process events that result from these different ranking mechanisms can incorrectly sequence events.
+
+.How the connector applies a generation change
+
+When the connector starts, it compares the value of the generation that is stored in the offset to the value that is configured in the xref:vitess-property-connector-generation[`vitess.connector.generation`] property.
+If the generation values differ, whether the value of the configured generation is higher or lower than the stored value, the connector increments the `transaction_epoch` for all shards by one before it begins streaming.
+When you increment the transaction epoch after a configuration change, events that the connector emits afterward are associated with a later epoch than those emitted before the change.
+The epoch acts as a boundary marker that signals a shift in the connector configuration, enabling  downstream event processing frameworks to reliably distinguish between change events that occur across the transition boundary.
+Because epoch is the primary sort key in the xref:vitess-ordered-transaction-metadata[ordered transaction metadata] comparison logic, consumers can correctly identify post-change events as newer regardless of their `transaction_rank` value.
+
+Increment `vitess.connector.generation` whenever you make any of the following configuration changes that affect transaction ordering semantics:
+
+* Enabling or disabling transaction chunking  (`vitess.transaction.chunk.size.bytes`).
+* Any other change that alters how `transaction_rank` is computed.
 
 [[vitess-efficient-transaction-metadata]]
 === Efficient Transaction Metadata
@@ -1237,9 +1270,11 @@ Because Vitess connector reads change events from the VTGate VStream gRPC server
 [[vitess-deploying-a-connector]]
 == Deployment
 
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Vitess connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:http://kafka.apache.org/[Kafka] and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Vitess connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Vitess connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka and Kafka Connect with the Vitess connector already installed and ready to run.
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 [IMPORTANT]
 ====
@@ -1384,7 +1419,7 @@ When the connector starts, it starts generating data change events for row-level
 [[vitess-monitoring]]
 === Monitoring
 
-The {prodname} Vitess connector provides only one type of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} Vitess connector provides only one type of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:vitess-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
@@ -1652,8 +1687,20 @@ Set the property to one of the following values:
 `initial`::
 When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
 
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
+|[[vitess-property-snapshot-include-collection-list]]<<vitess-property-snapshot-include-collection-list,`+snapshot.include.collection.list+`>>
+|none
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of tables to include in the snapshot when using VStream Copy. +
+
+The connector uses this property to determine which tables should be copied during the snapshot phase (VStream when starting from an empty GTID.
+Table names must be specified in the format `keyspace.table`. You can use regular expressions to match multiple tables. For example:
+`test_keyspace.numeric_.\*,test_keyspace.string_.*`
+
+If this property is not set or is empty, all tables are copied during the snapshot phase.
+
+This property only applies when `snapshot.mode` is set to `initial` or the connector resumes from an empty GTID.
+
+When starting from a non-empty GTID (such as `current`, or a valid binlog position),
+the copy phase is skipped regardless of this setting.
 
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
@@ -1765,7 +1812,27 @@ You can configure the connector to skip the following types of operations:
 * `t` (truncate)
 
 Because the {prodname} Vitess connector never emits `truncate` events to data change topics, setting the default `t` option has the same effect as setting the property to `none`.
-That is, the connector streams all `insert`, `update`, and `delete` operations. 
+That is, the connector streams all `insert`, `update`, and `delete` operations.
+
+|[[vitess-property-statistics-metrics-enabled]]<<vitess-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
+For more information, see xref:vitess-streaming-metrics[Streaming metrics].
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
@@ -1776,6 +1843,15 @@ That is, the connector streams all `insert`, `update`, and `delete` operations.
 |Determines the class that the connector uses to track transaction context and build the data structures and schemas to represent transactions.
 `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory` provides additional transaction metadata that can help consumers to interpret the correct order of two events, regardless of the order in which they are consumed.
 For more information, see xref:vitess-ordered-transaction-metadata[Ordered transaction metadata].
+
+|[[vitess-property-connector-generation]]<<vitess-property-connector-generation, `+vitess.connector.generation+`>>
+|`0`
+|The generation number for transaction ordering semantics.
+When the connector starts, it compares this value against the generation stored in the Kafka Connect offset.
+If the values differ, the connector increments the `transaction_epoch` for all shards before streaming begins.
+Increment this value after you make configuration changes that affect how `transaction_rank` is computed, such as enabling or disabling transaction chunking.
+This property takes effect only when `transaction.metadata.factory` is set to `io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory`.
+For more information, see xref:vitess-connector-generation[Connector Generation].
 
 |[[vitess-property-keepalive-interval-ms]]<<vitess-property-keepalive-interval-ms, `+vitess.keepalive.interval.ms+`>>
 |`Long.MAX_VALUE`
@@ -1849,6 +1925,27 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
+|[[vitess-property-custom-sanitize-pattern]]<<vitess-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
+|`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
+
+By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
+
+For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
+
+----
+"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
+----
+
+If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
+A string of asterisks replaces the original values, for example,  `pass:[********]`.
+
+[IMPORTANT]
+====
+The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
+====
+
 |[[vitess-property-errors-max-retires]]<<vitess-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
 |Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
@@ -1862,6 +1959,17 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[vitess-property-extended-headers-enabled]]<<vitess-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="vitess-pass-through-properties"]

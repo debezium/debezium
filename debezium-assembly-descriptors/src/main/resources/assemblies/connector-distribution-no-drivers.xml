@@ -26,9 +26,9 @@
               <exclude>com.google.guava:listenablefuture:*</exclude>
 
               <!-- Exclude connection drivers -->
-	      <exclude>${assembly.exclude.1}</exclude>
-	      <exclude>${assembly.exclude.2}</exclude>
-	      <exclude>${assembly.exclude.3}</exclude>
+              <exclude>${assembly.exclude.1}</exclude>
+              <exclude>${assembly.exclude.2}</exclude>
+              <exclude>${assembly.exclude.3}</exclude>
 
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>
@@ -50,7 +50,7 @@
       <includes>
         <include>README*</include>
         <include>CHANGELOG*</include>
-        <include>CONTRIBUTE*</include>
+        <include>CONTRIBUTING*</include>
         <include>COPYRIGHT*</include>
         <include>LICENSE*</include>
       </includes>

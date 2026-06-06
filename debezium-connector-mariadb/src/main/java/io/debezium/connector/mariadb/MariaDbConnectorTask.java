@@ -11,21 +11,27 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
@@ -41,6 +47,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -69,6 +76,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     private volatile BinlogConnectorConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile MariaDbDatabaseSchema schema;
+    private MariaDbConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -81,9 +89,18 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new MariaDbConnectorConfig(config);
+        taskContext = new MariaDbTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     protected ChangeEventSourceCoordinator<MariaDbPartition, MariaDbOffsetContext> start(Configuration configuration) {
         final Clock clock = Clock.system();
-        final MariaDbConnectorConfig connectorConfig = new MariaDbConnectorConfig(configuration);
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MariaDbValueConverters valueConverters = getValueConverters(connectorConfig);
@@ -114,8 +131,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MariaDbTaskContext(connectorConfig, schema);
+        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+                taskContext);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -135,6 +152,14 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         // If the binlog position is not available, it is necessary to re-execute the snapshot
         if (validateSnapshotFeasibility(snapshotter, previousOffsets.getTheOnlyOffset(), connection)) {
             previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+        }
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, connection);
         }
 
         LOGGER.info("Closing JDBC connection before starting schema recovery.");
@@ -186,6 +211,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .queueProvider(connectorConfig.getServiceRegistry().tryGetService(QueueProviderService.class).getQueueProvider())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .buffering()
                 .build();
@@ -221,10 +247,19 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
+        // Create the binary log client that will be used for streaming change events
+        final BinaryLogClient binaryLogClient = new BinaryLogClient(
+                connectorConfig.getHostName(),
+                connectorConfig.getPort(),
+                connectorConfig.getUserName(),
+                connectorConfig.getPassword());
+
         final MariaDbStreamingChangeEventSourceMetrics streamingMetrics = new MariaDbStreamingChangeEventSourceMetrics(
                 taskContext,
                 queue,
-                metadataProvider);
+                metadataProvider,
+                schema::dataCollectionIds,
+                binaryLogClient);
 
         NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService = new NotificationService<>(
                 getNotificationChannels(),
@@ -247,7 +282,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                         taskContext,
                         streamingMetrics,
                         queue,
-                        snapshotterService),
+                        snapshotterService,
+                        binaryLogClient),
                 new MariaDbChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
@@ -288,6 +324,10 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         if (schema != null) {
             schema.close();
         }
+
+        if (queue != null) {
+            queue.close();
+        }
     }
 
     @Override
@@ -298,7 +338,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     @Override
     protected Optional<ErrorHandler> getErrorHandler() {
-        return Optional.of(errorHandler);
+        return Optional.ofNullable(errorHandler);
     }
 
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
@@ -314,6 +354,17 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     private BinlogFieldReader getFieldReader(MariaDbConnectorConfig connectorConfig) {
         return new MariaDbFieldReader(connectorConfig);
+    }
+
+    private void validateGuardrailLimits(MariaDbConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
+        try {
+            Set<TableId> allTableIds = connection.getAllTableIds();
+            GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
+            validator.validate(allTableIds);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
 }

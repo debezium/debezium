@@ -16,9 +16,9 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.data.Offset;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -37,12 +37,12 @@ public class EmbeddingsOllamaIT {
 
     private final FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
 
-    @BeforeClass
+    @BeforeAll
     public static void startDatabase() {
         ollama.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopDatabase() {
         ollama.stop();
     }

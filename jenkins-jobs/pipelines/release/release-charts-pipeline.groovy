@@ -26,8 +26,8 @@ HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
 GITHUB_CLI_VERSION= '2.67.0'
 
-// Helm uses the semantic version format 3.1.0-final instead of the one used by Debezium 3.1.0.Final
-RELEASE_SEM_VERSION=RELEASE_VERSION.replaceAll(/\.(?=[^.]*$)/, '-').toLowerCase()
+// Helm uses the semantic version format 3.1.0-cr1/3.1.0 instead of the one used by Debezium 3.1.0.CR1/3.1.0.Final
+RELEASE_SEM_VERSION= common.convertToSemver(RELEASE_VERSION)
 
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 
@@ -111,24 +111,57 @@ node('Slave') {
             echo "=== Downloading Debezium operator chart ==="
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
 
-            dir(TMP_WORKDIR) {
-                if (!DRY_RUN) {
-                    sh(
-                            label: 'Download and verify helm chart',
-                            script: """
-                                echo "Input url: $INPUT_URL"
-                                curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
-                            """
-                    )
+            // Determine chart structure based on version (3.6+ uses new structure)
+            def versionParts = RELEASE_VERSION.tokenize('.')
+            def majorVersion = versionParts[0].toInteger()
+            def minorVersion = versionParts[1].tokenize(/[^0-9]/)[0].toInteger()
+            def useNewStructure = (majorVersion > 3) || (majorVersion == 3 && minorVersion >= 6)
 
-                    sh(label: 'Unzip and repackage',
-                            script: """
-                                tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
-                                helm package debezium-operator-${RELEASE_SEM_VERSION}
-                                cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
+            dir(TMP_WORKDIR) {
+
+                sh(
+                        label: 'Download and verify helm chart',
+                        script: """
+                            echo "Input url: $INPUT_URL"
+                            curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
+                        """
+                )
+
+                sh(label: 'Unzip',
+                        script: """
+                            tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
                             """
-                    )
+                )
+
+                // Set chart path based on structure
+                def chartPath = useNewStructure ?
+                    "debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator" :
+                    "debezium-operator-${RELEASE_SEM_VERSION}"
+
+                dir(chartPath) {
+                    fileUtils.modifyFile("values.yaml", { content ->
+                        // Old structure uses quoted values, new structure uses unquoted
+                        if (useNewStructure) {
+                            return content.replaceAll(
+                                    /(image:\s*[^:]+:)[^\s]+/,
+                                    "\$1${RELEASE_SEM_VERSION}"
+                            )
+                        } else {
+                            return content.replaceAll(
+                                    /(image:\s*"[^:]+:)[^"]+(")/,
+                                    "\$1${RELEASE_SEM_VERSION}\$2"
+                            )
+                        }
+                    })
+
                 }
+
+                sh(label: 'Repackage',
+                        script: """
+                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} ${chartPath}
+                            cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
+                        """
+                )
             }
 
             stage('Create a GH release') {
@@ -192,7 +225,7 @@ node('Slave') {
 
                         return content.replaceAll(
                                 /nightly/,
-                                "${RELEASE_VERSION}"
+                                "${RELEASE_SEM_VERSION}"
                         )
 
                     }

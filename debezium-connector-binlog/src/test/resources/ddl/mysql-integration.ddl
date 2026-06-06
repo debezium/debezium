@@ -6,8 +6,11 @@
 -- 2) 'snapper' - all privileges required by the snapshot reader AND binlog reader
 -- 3) 'mysqluser' - all privileges
 --
-GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator' IDENTIFIED BY 'replpass';
-GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT  ON *.* TO 'snapper'@'%' IDENTIFIED BY 'snapperpass';
+CREATE USER IF NOT EXISTS 'replicator' IDENTIFIED BY 'replpass';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator';
+CREATE USER IF NOT EXISTS 'snapper'@'%' IDENTIFIED BY 'snapperpass';
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'snapper'@'%';
+CREATE USER IF NOT EXISTS 'mysqluser'@'%';
 GRANT ALL PRIVILEGES ON *.* TO 'mysqluser'@'%';
 
 -- ----------------------------------------------------------------------------------------------------------------

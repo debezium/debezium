@@ -107,6 +107,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
             offsetContext.setRowId(""); // specifically reset on each event
             offsetContext.setScn(lcrPosition.getScn());
+            offsetContext.setEventCommitScn(lcrPosition.getCommitScn());
             offsetContext.setEventScn(lcrPosition.getScn());
             offsetContext.setLcrPosition(lcrPosition.toString());
             offsetContext.setTransactionId(lcr.getTransactionId());
@@ -311,11 +312,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
             if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }
-            connection.setAutoCommit(false);
             return connection.getTableMetadataDdl(tableId);
         }
         catch (SQLException e) {
@@ -339,6 +339,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 }
                 eventSource.getXsOut().setProcessedLowWatermark(
                         message.position.getRawPosition(),
+                        message.position.getRawPosition(),
                         XStreamOut.DEFAULT_MODE);
             }
             else if (message.scn != null) {
@@ -346,6 +347,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     LOGGER.debug("Recording position with SCN {}", message.scn);
                 }
                 eventSource.getXsOut().setProcessedLowWatermark(
+                        message.scn,
                         message.scn,
                         XStreamOut.DEFAULT_MODE);
             }

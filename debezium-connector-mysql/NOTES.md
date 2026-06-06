@@ -5,7 +5,7 @@ The [mysql](https://hub.docker.com/r/_/mysql/) images are maintained by Docker, 
 ## Using MySQL Server
 
 As mentioned in the [README.md]() file, our Maven build can be used to start a container using either one of these images. The `container-registry.oracle.com/mysql/community-server:8.2` image is used:
-
+    
     $ mvn docker:start
 
 The command leaves the container running so that you can use the running MySQL server. For example, you can establish a `bash` shell inside the container (named `database`) by using Docker in another terminal:

@@ -11,7 +11,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,12 +36,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.DBRef;
 import com.mongodb.client.ClientSession;
@@ -82,7 +84,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the Mongo server.
      */
     @Test
-    public void shouldNotStartWithInvalidConfiguration() {
+    void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
                 .with(MongoDbConnectorConfig.SSL_ENABLED, "true")
                 .build();
@@ -97,7 +99,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldFailToValidateInvalidConfiguration() {
+    void shouldFailToValidateInvalidConfiguration() {
         Configuration config = Configuration.create().build();
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
@@ -120,7 +122,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldFailToValidateWithReplicaSetModeParams() {
+    void shouldFailToValidateWithReplicaSetModeParams() {
         config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnector.DEPRECATED_SHARD_CS_PARAMS_FILED, "readPreference=primary")
@@ -133,77 +135,77 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
+    void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartIsOnlyProvided() {
+    void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory.collectionA", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartsAreMissing() {
+    void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartsAreMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, ".name", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldExcludeListFieldPartIsMissing() {
+    void shouldThrowExceptionWhenFieldExcludeListFieldPartIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.", 1);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldExcludeListHasLeadingWhiteSpaces() {
+    void shouldNotThrowExceptionWhenFieldExcludeListHasLeadingWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, " *.collectionA.name", 0);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldExcludeListHasWhiteSpaces() {
+    void shouldNotThrowExceptionWhenFieldExcludeListHasWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name ,db2.collectionB.house ", 0);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldExcludeListIsValid() {
+    void shouldNotThrowExceptionWhenFieldExcludeListIsValid() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name1", 0);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
+    void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, ".name=new_name", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
+    void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
+    void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.namenew_name", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
+    void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.=new_name", 1);
     }
 
     @Test
-    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
+    void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name=", 1);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldRenamesHasLeadingWhiteSpaces() {
+    void shouldNotThrowExceptionWhenFieldRenamesHasLeadingWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, " db1.collectionA.name:newname", 0);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldRenamesHasWhiteSpaces() {
+    void shouldNotThrowExceptionWhenFieldRenamesHasWhiteSpaces() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "*.collectionA.name:new_name, db2.collectionB.house:new_house ", 0);
     }
 
     @Test
-    public void shouldNotThrowExceptionWhenFieldRenamesIsValid() {
+    void shouldNotThrowExceptionWhenFieldRenamesIsValid() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name1:new_name1", 0);
     }
 
@@ -223,7 +225,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldValidateAcceptableConfiguration() {
+    void shouldValidateAcceptableConfiguration() {
         config = TestHelper.getConfiguration(mongo);
 
         // Add data to the databases so that the databases will be listed ...
@@ -477,7 +479,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldConsumeFullUpdateWithLookup() throws InterruptedException {
+    void shouldConsumeFullUpdateWithLookup() throws InterruptedException {
         shouldConsumeFullUpdate(FullUpdateType.LOOKUP, "updated", "final");
     }
 
@@ -643,7 +645,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldLogInvalidOffsetWithSnapshotModeInitial() throws InterruptedException {
+    void shouldLogInvalidOffsetWithSnapshotModeInitial() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         // Configuration to capture changes from both databases
@@ -683,7 +685,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
+    void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -868,6 +870,71 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Struct deleteKey = (Struct) deleteRecord.key();
         String deleteId = toObjectId(deleteKey.getString("id")).toString();
         assertThat(deleteId).isEqualTo(id.get());
+    }
+
+    @Test
+    /*
+     * Verifies that streaming starts from the specified timestamp.
+     *
+     * The following procedure is used:
+     * 1) Two documents are inserted,
+     * 2) Capture timestamp is retrieved (insert of the second doc)
+     * 3) Insert additional document
+     *
+     * Connector should capture only second and third insert
+     */
+    public void shouldConsumeEventsFromTimestamp() throws InterruptedException, IOException {
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // insert some data
+        long startOpTime = -1;
+        var expectedDocs = List.of(
+                Document.parse("{\"_id\": 0}"),
+                Document.parse("{\"_id\": 1}"),
+                Document.parse("{\"_id\": 2}"));
+        try (var client = connect()) {
+            var db = client.getDatabase("dbit");
+            // insert two documents
+            db.getCollection("test").insertOne(expectedDocs.get(0));
+            db.getCollection("test").insertOne(expectedDocs.get(1));
+
+            // get capture start timestamps
+            var serverStatus = db.runCommand(new Document("serverStatus", 1), BsonDocument.class);
+            startOpTime = serverStatus.getTimestamp("operationTime").getValue();
+
+            // insert additional document
+            db.getCollection("test").insertOne(expectedDocs.get(2));
+        }
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, startOpTime)
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Check consumed records
+        final SourceRecords records = consumeAvailableRecordsByTopic();
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        var actualDocs = records.allRecordsInOrder()
+                .stream()
+                .map(r -> ((Struct) r.value()).getString("after"))
+                .map(Document::parse)
+                .toList();
+        assertThat(actualDocs.get(0)).isEqualTo(expectedDocs.get(1));
+        assertThat(actualDocs.get(1)).isEqualTo(expectedDocs.get(2));
     }
 
     @Test
@@ -1273,12 +1340,12 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
+    void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
         shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.REGEX);
     }
 
     @Test
-    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
+    void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
         shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.LITERAL);
     }
 
@@ -2083,7 +2150,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldGenerateRecordForInsertEvent() throws Exception {
+    void shouldGenerateRecordForInsertEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2126,7 +2193,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldGenerateRecordForUpdateEvent() throws Exception {
+    void shouldGenerateRecordForUpdateEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2185,7 +2252,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldGeneratorRecordForDeleteEvent() throws Exception {
+    void shouldGeneratorRecordForDeleteEvent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2292,7 +2359,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
+    void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2357,7 +2424,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldSkipNonPipelineRecords() throws Exception {
+    void shouldSkipNonPipelineRecords() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{$match:{'fullDocument.name':'Dennis'}}]")
@@ -2392,7 +2459,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldSupportDbRef2() throws Exception {
+    void shouldSupportDbRef2() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2444,7 +2511,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldReplicateContent() throws Exception {
+    void shouldReplicateContent() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2596,7 +2663,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldNotReplicateSnapshot() throws Exception {
+    void shouldNotReplicateSnapshot() throws Exception {
         // todo: this configuration causes NPE at MongoDbStreamingChangeEventSource.java:143
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
@@ -2706,7 +2773,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @FixFor("DBZ-6522")
     @Test
-    public void shouldConsumeDocumentsWithComplexIds() throws Exception {
+    void shouldConsumeDocumentsWithComplexIds() throws Exception {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -2741,7 +2808,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @FixFor("DBZ-6522")
     @Test
-    public void shouldConsumeEventsFromOffsetWithDataResumeToken() throws InterruptedException {
+    void shouldConsumeEventsFromOffsetWithDataResumeToken() throws InterruptedException {
         LogInterceptor logInterceptor = new LogInterceptor(MongoDbOffsetContext.class);
 
         config = TestHelper.getConfiguration(mongo).edit()
@@ -2800,7 +2867,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldAlwaysSnapshot() throws Exception {
+    void shouldAlwaysSnapshot() throws Exception {
 
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
@@ -2879,7 +2946,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldAllowForCustomSnapshot() throws Exception {
+    void shouldAllowForCustomSnapshot() throws Exception {
 
         final LogInterceptor logInterceptor = new LogInterceptor(CustomTestSnapshot.class);
 
@@ -2945,5 +3012,291 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     private ObjectId toObjectId(String oid) {
         return new ObjectId(oid.substring(10, oid.length() - 2));
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumCollections() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 10 collections
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 10; i++) {
+                String collectionName = String.format("collection%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                collection.insertOne(new Document("_id", new ObjectId()).append("data", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 collections (less than the 10 we created)
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 5)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(MongoDbConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumCollectionsAndFailConnector() throws Exception {
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 10 collections
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 10; i++) {
+                String collectionName = String.format("collection%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                collection.insertOne(new Document("_id", new ObjectId()).append("data", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 collections (less than the 10 we created)
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(MongoDbConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 3 collections (well below the limit of 10)
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 3; i++) {
+                String collectionName = String.format("coll%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                ObjectId objId = new ObjectId();
+                collection.insertOne(new Document("_id", objId).append("name", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 10 collections
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should start successfully
+        context = new MongoDbTaskContext(config);
+        start(MongoDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to be running
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert one more document to verify streaming works
+        insertDocuments("dbit", "coll1", new Document("_id", new ObjectId()).append("name", "streaming_test"));
+
+        // Consume the streaming record to ensure the connector is working properly
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords).isNotNull();
+        assertThat(streamingRecords.allRecordsInOrder().size()).isEqualTo(1);
+
+        // Verify the record
+        SourceRecord record = streamingRecords.allRecordsInOrder().get(0);
+        Struct value = (Struct) record.value();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
+        String after = value.getString(Envelope.FieldName.AFTER);
+        Document doc = Document.parse(after);
+        assertThat(doc.getString("name")).isEqualTo("streaming_test");
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("dbz#1531")
+    public void shouldCorrectlySetSourceCollectionWithMultiThreadedSnapshot() throws Exception {
+        // Use the DB configuration to define the connector's configuration with multiple snapshot threads
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 4) // Use multiple threads to trigger race condition
+                .build();
+
+        // Set up the replication context for connections
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create multiple collections with data to ensure concurrent snapshot threads
+        storeDocuments("dbit", "restaurants1", "restaurants1.json");
+        storeDocuments("dbit", "restaurants2", "restaurants2.json");
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+
+        // Start the connector which will perform initial snapshot with multiple threads
+        start(MongoDbConnector.class, config);
+
+        // Consume all snapshot records
+        SourceRecords records = consumeRecordsByTopic(18); // 6 + 4 + 8 records from the test data files
+        assertThat(records.topics().size()).isEqualTo(3);
+
+        // Verify source.collection field matches the expected collection for each record
+        // This is the key assertion for dbz#1531 - the race condition causes incorrect source.collection values
+        verifySourceCollectionFieldForAllRecords(records.recordsForTopic("mongo.dbit.restaurants1"), "restaurants1");
+        verifySourceCollectionFieldForAllRecords(records.recordsForTopic("mongo.dbit.restaurants2"), "restaurants2");
+        verifySourceCollectionFieldForAllRecords(records.recordsForTopic("mongo.dbit.simpletons"), "simpletons");
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-3126")
+    public void shouldFailToValidateWithInvalidCredentials() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.USER, "invalidUser")
+                .with(MongoDbConnectorConfig.PASSWORD, "invalidPassword")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-3126")
+    public void shouldValidateSuccessfullyWithValidCredentials() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
+    }
+
+    /**
+     * Helper method to verify that all records have the correct source.collection field.
+     * This catches the race condition reported in dbz#1531 where multiple snapshot threads
+     * share a single MongoDbOffsetContext, causing the collectionId to be overwritten by
+     * concurrent threads.
+     */
+    private void verifySourceCollectionFieldForAllRecords(List<SourceRecord> records, String expectedCollection) {
+        assertThat(records).isNotNull();
+        assertThat(records).isNotEmpty();
+
+        for (SourceRecord record : records) {
+            Struct value = (Struct) record.value();
+            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            String sourceCollection = source.getString(SourceInfo.COLLECTION);
+
+            assertThat(sourceCollection)
+                    .describedAs("Record has incorrect source.collection field. Expected=%s, Actual=%s, Topic=%s",
+                            expectedCollection, sourceCollection, record.topic())
+                    .isEqualTo(expectedCollection);
+        }
+    }
+
+    /**
+     * Verify that the connector correctly recovers from an interrupted snapshot.
+     *
+     * Scenario:
+     * 1. Insert many documents and start the connector with throttled batching
+     * 2. Consume only a partial set of snapshot records
+     * 3. Stop the connector mid-snapshot
+     * 4. Restart the connector
+     * 5. Verify the connector logs "previous snapshot was incomplete" and re-snapshots
+     * 6. Verify the connector produces snapshot records (not a crash loop)
+     */
+    @Test
+    @FixFor("DBZ-1708")
+    void shouldRecoverFromInterruptedSnapshot() throws InterruptedException {
+        var documentCount = 500;
+        var dbName = "dbit";
+        var collectionName = "recovery_test";
+        var topic = "mongo.dbit.recovery_test";
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collectionName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 1)
+                .build();
+
+        // Insert enough documents so snapshot takes time
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+            coll.drop();
+            var docs = new ArrayList<Document>();
+            for (int i = 0; i < documentCount; i++) {
+                docs.add(new Document("_id", i).append("name", "item_" + i).append("data", "padding_" + "x".repeat(200)));
+            }
+            coll.insertMany(docs);
+        }
+
+        // Start the connector and stop it as soon as we get the first record,
+        // guaranteeing the snapshot is still in progress
+        start(MongoDbConnector.class, config);
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        // Restart with a log interceptor to verify the incomplete snapshot is detected
+        var logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
+
+        start(MongoDbConnector.class, config);
+
+        // The connector should detect the incomplete snapshot and re-snapshot
+        Awaitility.await()
+                .alias("Connector should detect incomplete snapshot")
+                .atMost(120, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("The previous snapshot was incomplete, so restarting the snapshot"));
+
+        // Verify the connector produces snapshot records from the re-snapshot
+        var records = consumeRecordsByTopic(documentCount);
+        assertThat(records.recordsForTopic(topic)).hasSize(documentCount);
+        records.forEach(record -> validate(record));
+
+        stopConnector();
     }
 }

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.olr;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -59,6 +60,34 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     @Override
     protected Object convertNumeric(Column column, Field fieldDefn, Object value) {
         return super.convertNumeric(column, fieldDefn, toBigDecimal(column, fieldDefn, value));
+    }
+
+    @Override
+    protected Object convertFloat(Column column, Field fieldDefn, Object data) {
+        if (data instanceof Integer intData) {
+            return intData.floatValue();
+        }
+        else if (data instanceof Long longData) {
+            return longData.floatValue();
+        }
+        else if (data instanceof BigDecimal bigDecimalData) {
+            data = bigDecimalData.floatValue();
+        }
+        return super.convertFloat(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertDouble(Column column, Field fieldDefn, Object data) {
+        if (data instanceof Integer intData) {
+            return intData.doubleValue();
+        }
+        else if (data instanceof Long longData) {
+            return longData.doubleValue();
+        }
+        else if (data instanceof BigDecimal bigDecimalData) {
+            data = bigDecimalData.doubleValue();
+        }
+        return super.convertDouble(column, fieldDefn, data);
     }
 
     @Override

@@ -12,9 +12,9 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
@@ -25,8 +25,8 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractAsyncEngineConn
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
 
@@ -39,8 +39,8 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractAsyncEngineConn
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         stopConnector();
 
         if (connection != null) {
@@ -49,14 +49,14 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldAdjustNamesForAvro() throws InterruptedException {
+    void shouldAdjustNamesForAvro() throws InterruptedException {
         Struct data = consume(SchemaNameAdjustmentMode.AVRO);
 
         assertThat(data.schema().name()).contains("name_adjustment");
     }
 
     @Test
-    public void shouldNotAdjustNames() throws InterruptedException {
+    void shouldNotAdjustNames() throws InterruptedException {
         skipAvroValidation();
         Struct data = consume(SchemaNameAdjustmentMode.NONE);
 

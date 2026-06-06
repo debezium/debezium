@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.List;
 
 import io.debezium.DebeziumException;
 
-import oracle.sql.RAW;
+import oracle.sql.CharacterSet;
 import oracle.streams.ChunkColumnValue;
 
 /**
@@ -81,7 +82,16 @@ public class ChunkColumnValues {
         }
         StringBuilder data = new StringBuilder();
         for (ChunkColumnValue value : values) {
-            data.append(new String(RAW.hexString2Bytes(value.getColumnData().stringValue()), StandardCharsets.UTF_8));
+            final int characterSetId = value.getCharSetId();
+            switch (characterSetId) {
+                case CharacterSet.AL16UTF16_CHARSET -> data.append(new String(value.getColumnData().getBytes(), StandardCharsets.UTF_16BE));
+                case CharacterSet.AL16UTF16LE_CHARSET -> data.append(new String(value.getColumnData().getBytes(), StandardCharsets.UTF_16LE));
+                case CharacterSet.AL32UTF8_CHARSET -> data.append(new String(value.getColumnData().getBytes(), StandardCharsets.UTF_8));
+                default -> {
+                    final String characterSet = CharacterSet.make(characterSetId).toString();
+                    data.append(new String(value.getColumnData().getBytes(), Charset.forName(characterSet)));
+                }
+            }
         }
         return data.toString();
     }

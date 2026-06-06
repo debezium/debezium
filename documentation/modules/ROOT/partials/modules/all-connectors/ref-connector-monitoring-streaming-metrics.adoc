@@ -1,6 +1,6 @@
 The following table lists the streaming metrics that are available.
 
-[cols="45%a,25%a,30%a",options="header"]
+[cols="35%a,20%a,45%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -11,6 +11,14 @@ The following table lists the streaming metrics that are available.
 |[[connectors-strm-metric-millisecondssincelastevent_{context}]]<<connectors-strm-metric-millisecondssincelastevent_{context}, `MilliSecondsSinceLastEvent`>>
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
+
+|[[connectors-strm-metric-numberoferroneousevents_{context}]]<<connectors-strm-metric-numberoferroneousevents_{context}, `NumberOfErroneousEvents`>>
+|`long`
+|Records the number of change events that the connector identifies as erroneous during streaming.
+The connector increments this metric each time that it encounters an event that it cannot process during the lifetime of the streaming session.
+Events might fail processing if they are malformed, are incompatible with the schema, or if they encounter failures during transformation.
+The metric value persists for the lifetime of the connector task.
+After a connector restart, the metric count resets to `0`.
 
 |[[connectors-strm-metric-totalnumberofeventsseen_{context}]]<<connectors-strm-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
@@ -33,6 +41,13 @@ Represents the data change workload for {prodname} to process.
 |`long`
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
+|[[connectors-strm-metric-numberofunchangedeventsskipped_{context}]]<<connectors-strm-metric-numberofunchangedeventsskipped_{context}, `NumberOfUnchangedEventsSkipped`>>
+|`long`
+|Number of update events skipped since the last connector start or metrics reset because no monitored columns changed. Defaults to `-1` if xref:{context}-property-skip-messages-without-change[`skip.messages.without.change`] is `false`.
+ifndef::supports-skipping-unchanged-events[]
+May remain `0` for {connector-name} and other connectors that do not support skipping unchanged events, even if the property is set to `true`.
+endif::[]
+
 |[[connectors-strm-metric-capturedtables_{context}]]<<connectors-strm-metric-capturedtables_{context}, `CapturedTables`>>
 |`string[]`
 |The list of tables that are captured by the connector.
@@ -53,6 +68,36 @@ Represents the data change workload for {prodname} to process.
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
 The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
+
+|[[connectors-strm-metric-millisecondsbehindsourceminvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceminvalue_{context}, `MilliSecondsBehindSourceMinValue`>>
+|`long`
+|The minimum lag in milliseconds behind the source that is observed during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourcemaxvalue_{context}, `MilliSecondsBehindSourceMaxValue`>>
+|`long`
+|The maximum lag in milliseconds behind the source that is observed during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}]]<<connectors-strm-metric-millisecondsbehindsourceaveragevalue_{context}, `MilliSecondsBehindSourceAverageValue`>>
+|`double`
+|The average lag in milliseconds behind the source calculated across all observations during the connector's runtime.
+
+|[[connectors-strm-metric-millisecondsbehindsourcep50_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep50_{context}, `MilliSecondsBehindSourceP50`>>
+|`double`
+|The 50th percentile (median) of the lag in milliseconds behind the source.
+This metric provides a more robust measure of typical lag than the average, as it is less affected by outlier values.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
+
+|[[connectors-strm-metric-millisecondsbehindsourcep95_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep95_{context}, `MilliSecondsBehindSourceP95`>>
+|`double`
+|The 95th percentile of the lag in milliseconds behind the source.
+This metric indicates that 95% of lag measurements are below this value, useful for identifying tail latencies and setting SLA thresholds.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
+
+|[[connectors-strm-metric-millisecondsbehindsourcep99_{context}]]<<connectors-strm-metric-millisecondsbehindsourcep99_{context}, `MilliSecondsBehindSourceP99`>>
+|`double`
+|The 99th percentile of the lag in milliseconds behind the source.
+This metric indicates that 99% of lag measurements are below this value, useful for understanding worst-case performance scenarios.
+Available when xref:{context}-property-statistics-metrics-enabled[`statistics.metrics.enabled`] is set to `true` (default).
 
 |[[connectors-strm-metric-numberofcommittedtransactions_{context}]]<<connectors-strm-metric-numberofcommittedtransactions_{context}, `NumberOfCommittedTransactions`>>
 |`long`

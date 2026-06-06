@@ -52,4 +52,12 @@
         ${log.mining.buffer.ehcache.events.config}
     </cache>
 
+    <!-- Setup rollbacks cache -->
+    <cache alias="rollbacks">
+        <!-- Debezium specifically sets the key/value types -->
+        <key-type>java.lang.String</key-type>
+        <value-type>java.lang.Boolean</value-type>
+        ${log.mining.buffer.ehcache.rollbacks.config}
+    </cache>
+
 </config>

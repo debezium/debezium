@@ -16,8 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.mysql.Module;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.SmtManager;
 
 /**
@@ -27,7 +29,7 @@ import io.debezium.transforms.SmtManager;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Anisha Mohanty
  */
-public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadToInsertEvent.class);
 
@@ -78,5 +80,10 @@ public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transforma
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(); // No configuration fields
     }
 }

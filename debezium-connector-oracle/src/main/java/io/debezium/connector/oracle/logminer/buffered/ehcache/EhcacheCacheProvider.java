@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
@@ -50,6 +52,11 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EhcacheCacheProvider.class);
+
+    private static final String FEATURE_DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl";
+    private static final String FEATURE_EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
+    private static final String FEATURE_EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
+    private static final String JDK_DOCUMENT_BUILDER_FACTORY_IMPL = "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl";
 
     private final boolean dropBufferOnStop;
     private final CacheManager cacheManager;
@@ -98,6 +105,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 cacheManager.removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
                 cacheManager.removeCache(SCHEMA_CHANGES_CACHE_NAME);
                 cacheManager.removeCache(EVENTS_CACHE_NAME);
+                cacheManager.removeCache(ROLLBACKS_CACHE_NAME);
             }
 
             LOGGER.info("Shutting down Ehcache embedded caches");
@@ -110,10 +118,17 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
             final Configuration ehcacheConfig = connectorConfig.getLogMiningEhcacheConfiguration();
 
             // Create the full XML configuration based on configuration template
-            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // Explicitly use the JDK built-in parser to avoid Oracle's JXDocumentBuilderFactory
+            // being picked up via service-loader when Oracle XML JARs are on the classpath,
+            // as Oracle's parser does not support the Apache XXE security features below.
+            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance(
+                    JDK_DOCUMENT_BUILDER_FACTORY_IMPL,
+                    EhcacheCacheProvider.class.getClassLoader());
 
             // Required for propagating namespace info
             factory.setNamespaceAware(true);
+
+            enableSecurityFeatures(factory);
 
             final DocumentBuilder builder = factory.newDocumentBuilder();
 
@@ -132,6 +147,13 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         }
     }
 
+    private void enableSecurityFeatures(DocumentBuilderFactory factory) throws ParserConfigurationException {
+        factory.setFeature(FEATURE_DISALLOW_DOCTYPE, true);
+        factory.setFeature(FEATURE_EXTERNAL_GENERAL_ENTITIES, false);
+        factory.setFeature(FEATURE_EXTERNAL_PARAMETER_ENTITIES, false);
+        factory.setExpandEntityReferences(false);
+    }
+
     private String getConfigurationWithSubstitutions(Configuration configuration) {
         return readConfigurationTemplate()
                 .replace("${log.mining.buffer.ehcache.global.config}",
@@ -143,7 +165,9 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 .replace("${log.mining.buffer.ehcache.schemachanges.config}",
                         configuration.getString(LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, ""))
                 .replace("${log.mining.buffer.ehcache.events.config}",
-                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, ""));
+                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, ""))
+                .replace("${log.mining.buffer.ehcache.rollbacks.config}",
+                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, ""));
     }
 
     private String readConfigurationTemplate() {
@@ -171,6 +195,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         return new EhcacheLogMinerTransactionCache(
                 getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
                 getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
+                getCache(ROLLBACKS_CACHE_NAME, String.class, Boolean.class, evictionListener),
                 evictionListener);
     }
 

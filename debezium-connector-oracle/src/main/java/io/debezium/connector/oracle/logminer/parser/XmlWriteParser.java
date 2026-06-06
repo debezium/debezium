@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
-import java.nio.charset.StandardCharsets;
-
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Strings;
 
+import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
 import oracle.sql.RAW;
 
 /**
@@ -34,23 +35,34 @@ public class XmlWriteParser {
     }
 
     /**
-     * Parses the {@code XML_WRITE} redo SQL
+     * Parses a LogMiner {@code XML DOC WRITE} event.
      *
-     * @param redoSql the SQL to be parsed
-     * @return the parsed details
+     * @param event the event, should not be {@code null}
+     * @param databaseCharacterSet the database character set for decoding HEXTORAW values, should not be {@code null}
+     * @return the parsed write event data, never {@code null}
      */
-    public static XmlWrite parse(String redoSql) {
-        if (Strings.isNullOrEmpty(redoSql) || !redoSql.startsWith(XML_WRITE_PREAMBLE)) {
+    public static XmlWrite parse(LogMinerEventRow event, CharacterSet databaseCharacterSet) {
+        final String redoSql = event.getRedoSql();
+        if (XML_WRITE_PREAMBLE_NULL.equals(redoSql) || Strings.isNullOrBlank(redoSql)) {
+            // The XML field is being explicitly set to NULL
+            return new XmlWrite(0, null);
+        }
+
+        if (XmlParserUtils.isXmlSerializedAsBinary(event)) {
+            return parseBinary(redoSql, databaseCharacterSet);
+        }
+
+        return new XmlWrite(redoSql.length(), redoSql);
+    }
+
+    private static XmlWrite parseBinary(String redoSql, CharacterSet databaseCharacterSet) {
+        if (!redoSql.startsWith(XML_WRITE_PREAMBLE)) {
             throw new ParsingException(null, "XML write operation does not start with XML_REDO preamble");
         }
 
         try {
             final String xml;
-            if (XML_WRITE_PREAMBLE_NULL.equals(redoSql)) {
-                // The XML field is being explicitly set to NULL
-                return new XmlWrite(0, null);
-            }
-            else if (redoSql.charAt(XML_WRITE_PREAMBLE.length()) == '\'') {
+            if (redoSql.charAt(XML_WRITE_PREAMBLE.length()) == '\'') {
                 // The XML is not provided as HEXTORAW, which means it was likely stored inline as a
                 // VARCHAR column data type because the text is relatively short, i.e. short CLOB.
                 int lastQuoteIndex = redoSql.lastIndexOf('\'');
@@ -89,7 +101,7 @@ public class XmlWriteParser {
                     }
                 }
 
-                xml = new String(RAW.hexString2Bytes(xmlHex), StandardCharsets.UTF_8);
+                xml = new CHAR(RAW.hexString2Bytes(xmlHex), databaseCharacterSet).toString();
             }
 
             int lastColonIndex = redoSql.lastIndexOf(':');

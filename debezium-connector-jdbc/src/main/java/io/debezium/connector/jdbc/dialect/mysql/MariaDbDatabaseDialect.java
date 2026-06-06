@@ -18,6 +18,9 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.maria.DoubleVectorType;
+import io.debezium.connector.jdbc.dialect.maria.FloatVectorType;
+import io.debezium.connector.jdbc.dialect.maria.JsonType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**
@@ -48,6 +51,15 @@ public class MariaDbDatabaseDialect extends MySqlDatabaseDialect {
 
     private MariaDbDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+    }
+
+    @Override
+    protected void registerTypes() {
+        super.registerTypes();
+
+        registerType(FloatVectorType.INSTANCE);
+        registerType(DoubleVectorType.INSTANCE);
+        registerType(JsonType.INSTANCE);
     }
 
     /*

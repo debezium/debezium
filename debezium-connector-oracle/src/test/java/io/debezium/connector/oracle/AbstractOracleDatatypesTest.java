@@ -23,17 +23,12 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
-import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -310,25 +305,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             DDL_GEOMETRY
     };
 
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-
-    @Rule
-    public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
-
-    @Rule
-    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
-
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         dropTables();
     }
 
-    @AfterClass
-    public static void dropTables() throws SQLException {
+    @AfterAll
+    static void dropTables() throws SQLException {
         if (connection != null) {
             for (String table : ALL_TABLES) {
                 TestHelper.dropTable(connection, table);
@@ -353,15 +339,15 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
     protected abstract void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception;
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void stringTypes() throws Exception {
+    void stringTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
@@ -392,7 +378,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
     }
 
     @Test
-    public void fpTypes() throws Exception {
+    void fpTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
@@ -541,7 +527,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
     }
 
     @Test
-    public void timeTypes() throws Exception {
+    void timeTypes() throws Exception {
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {

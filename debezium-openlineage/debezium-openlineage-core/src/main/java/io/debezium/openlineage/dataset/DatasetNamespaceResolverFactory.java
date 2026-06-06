@@ -5,6 +5,8 @@
  */
 package io.debezium.openlineage.dataset;
 
+import io.debezium.openlineage.dataset.DatasetMetadata.DataStore;
+
 /**
  * Factory interface for creating dataset namespace resolvers.
  * <p>
@@ -19,7 +21,6 @@ package io.debezium.openlineage.dataset;
  */
 public interface DatasetNamespaceResolverFactory {
 
-    InputDatasetNamespaceResolver createInput(String connectorName);
+    DatasetNamespaceResolver create(DataStore dataStore, String connectorName);
 
-    OutputDatasetNamespaceResolver createOutput(String connectorName);
 }

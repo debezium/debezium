@@ -87,4 +87,9 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
     public void currentChunk(SqlServerPartition partition, String chunkId, Object[] chunkFrom, Object[] chunkTo, Object[] tableTo) {
         onPartitionEvent(partition, bean -> bean.currentChunk(chunkId, chunkFrom, chunkTo, tableTo));
     }
+
+    @Override
+    public void chunkProgress(SqlServerPartition partition, TableId tableId, long totalChunks, long completedChunks) {
+        onPartitionEvent(partition, bean -> bean.chunkProgress(tableId, totalChunks, completedChunks));
+    }
 }

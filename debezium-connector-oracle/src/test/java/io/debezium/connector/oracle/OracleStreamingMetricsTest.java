@@ -15,14 +15,12 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -32,15 +30,12 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  */
 public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreamingChangeEventSourceMetrics> {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     protected OracleConnectorConfig connectorConfig;
     protected T metrics;
     protected Clock fixedClock;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         init(TestHelper.defaultConfig());
     }
 
@@ -51,11 +46,13 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                 .build();
 
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);
         Mockito.when(taskContext.getConnectorLogicalName()).thenReturn("connector name");
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
+        Mockito.when(taskContext.getConfig()).thenReturn(this.connectorConfig);
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
         fixedClock = Clock.fixed(Instant.parse("2021-05-15T12:30:00.00Z"), ZoneOffset.UTC);
@@ -68,4 +65,10 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                                        EventMetadataProvider metadataProvider,
                                        OracleConnectorConfig connectorConfig,
                                        Clock clock);
+
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
+    }
 }

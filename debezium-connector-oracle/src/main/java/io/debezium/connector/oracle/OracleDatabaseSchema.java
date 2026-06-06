@@ -9,13 +9,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.relational.Attribute;
@@ -48,7 +50,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private static final TableId NO_SUCH_TABLE = new TableId(null, null, "__NULL");
 
     private final OracleDdlParser ddlParser;
-    private final ConcurrentMap<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
+    private final Map<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
+    private final Map<String, TableId> tableIdCache = new ConcurrentHashMap<>();
     private final OracleValueConverters valueConverters;
     private final LRUCacheMap<Long, TableId> objectIdToTableId;
     private final boolean extendedStringsSupported;
@@ -58,7 +61,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
                                 TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
-                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry) {
+                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry,
+                                CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -68,9 +72,10 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
-                        false),
+                        false,
+                        connectorConfig.getEventConvertingFailureHandlingMode()),
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
-                connectorConfig.getKeyMapper());
+                connectorConfig.getKeyMapper(), taskContext);
 
         this.valueConverters = valueConverters;
         this.ddlParser = new OracleDdlParser(
@@ -126,6 +131,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     protected void removeSchema(TableId id) {
         super.removeSchema(id);
         lobColumnsByTableId.remove(id);
+        tableIdCache.remove(id.identifier());
     }
 
     @Override
@@ -138,7 +144,17 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
             // Cache Object ID to Table ID for performance
             buildAndRegisterTableObjectIdReferences(table);
+
+            tableIdCache.putIfAbsent(table.id().identifier(), table.id());
         }
+    }
+
+    public TableId resolveTableId(String catalogName, String schemaName, String tableName) {
+        // In practice, the tableIdCache should generally be primed with tables via buildAndRegister
+        // or cleaned up by calls to removeSchema. But for performance reasons, we will cache it if
+        // there isn't a table record registered, solely for optimal memory footprint in buffers.
+        final TableId tableId = new TableId(catalogName, schemaName, tableName);
+        return tableIdCache.computeIfAbsent(tableId.identifier(), k -> tableId);
     }
 
     /**

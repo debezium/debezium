@@ -14,9 +14,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -24,6 +24,7 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
@@ -40,16 +41,16 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -59,16 +60,20 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -97,19 +102,26 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         assertThat(thirdMessage.get("white")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(forthMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_EXCLUDE_LIST, getQualifiedColumnName("black"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(0);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -137,19 +149,26 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         assertThat(thirdMessage.get("white")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(forthMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(1);
     }
 
     @Test
-    @FixFor("DBZ-2979")
+    @FixFor({ "DBZ-2979", "DBZ-8520" })
     public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(BinlogConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        DATABASE.initialize();
+
+        long skippedBefore = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedBefore).isEqualTo(-1);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -179,10 +198,16 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         assertThat(forthMessage.get("white")).isEqualTo(2);
         Struct fifthMessage = ((Struct) recordsForTopic.get(4).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(fifthMessage.get("white")).isEqualTo(3);
+
+        long skippedAfter = getNumberOfUnchangedEventsSkipped();
+        assertThat(skippedAfter).isEqualTo(-1);
     }
 
     String getQualifiedColumnName(String column) {
         return String.format("%s.%s", DATABASE.qualifiedTableName("debezium_test"), column);
     }
 
+    private long getNumberOfUnchangedEventsSkipped() {
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), "streaming", "NumberOfUnchangedEventsSkipped");
+    }
 }

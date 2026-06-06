@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.converters;
 
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.function.Predicate;
@@ -15,8 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.function.Predicates;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
@@ -32,22 +34,27 @@ import oracle.sql.RAW;
  *
  * @author Chris Cranford
  */
-public class RawToStringConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class RawToStringConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawToStringConverter.class);
     private static final String FALLBACK = "";
 
-    public static final String SELECTOR_PROPERTY = "selector";
+    public static final String SELECTOR_PROPERTY = RawToStringConverterConfig.SELECTOR.name();
+    public static final String CHARSET_PROPERTY = RawToStringConverterConfig.CHARSET.name();
 
     private Predicate<RelationalColumn> selector = x -> true;
+    private Charset charset = Charset.forName("UTF-8");
 
     @Override
     public void configure(Properties properties) {
         final String selectorConfig = properties.getProperty(SELECTOR_PROPERTY);
-        if (Strings.isNullOrEmpty(selectorConfig)) {
-            return;
+        if (!Strings.isNullOrEmpty(selectorConfig)) {
+            selector = Predicates.includes(selectorConfig.trim(), x -> x.dataCollection() + "." + x.name());
         }
-        selector = Predicates.includes(selectorConfig.trim(), x -> x.dataCollection() + "." + x.name());
+        final String charsetConfig = properties.getProperty(CHARSET_PROPERTY);
+        if (!Strings.isNullOrEmpty(charsetConfig)) {
+            charset = Charset.forName(charsetConfig.trim());
+        }
     }
 
     @Override
@@ -90,11 +97,16 @@ public class RawToStringConverter implements CustomConverter<SchemaBuilder, Rela
                     LOGGER.warn("Cannot convert '{}' to string", x.getClass());
                     return FALLBACK;
                 }
-                return new String((byte[]) x, StandardCharsets.UTF_8);
+                return new String((byte[]) x, charset);
             }
             catch (SQLException e) {
                 throw new DebeziumException("Failed to convert value for column" + field.name(), e);
             }
         });
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(RawToStringConverterConfig.SELECTOR, RawToStringConverterConfig.CHARSET);
     }
 }

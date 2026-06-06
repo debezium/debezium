@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,26 +100,35 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Creates a Postgres connection using the supplied configuration.
-     * If necessary this connection is able to resolve data type mappings.
-     * Such a connection requires a {@link PostgresValueConverter}, and will provide its own {@link TypeRegistry}.
-     * Usually only one such connection per connector is needed.
+     * If the connection needs to resolve data types, it needs to create both {@link TypeRegistry} and {@link PostgresValueConverter}
+     * in advance, and pass them to this constructor.
      *
      * @param config {@link Configuration} instance, may not be null.
+     * @param typeRegistry an already-primed {@link TypeRegistry} instance
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
-    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
+    public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
-        if (Objects.isNull(valueConverterBuilder)) {
+        if (Objects.isNull(typeRegistry) || Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
         }
         else {
-            this.typeRegistry = new TypeRegistry(this);
+            this.typeRegistry = typeRegistry;
 
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+        }
+    }
+
+    public static TypeRegistry createTypeRegistry(JdbcConfiguration config) {
+        try (PostgresConnection connection = new PostgresConnection(config, PostgresConnection.CONNECTION_GENERAL)) {
+            return new TypeRegistry(connection);
+        }
+        catch (DebeziumException e) {
+            throw new DebeziumException("Failed to create TypeRegistry", e);
         }
     }
 
@@ -153,7 +163,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, String connectionUsage) {
-        this(config, null, connectionUsage);
+        this(config, null, null, connectionUsage);
     }
 
     static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration, String connectionUsage) {
@@ -170,6 +180,10 @@ public class PostgresConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
+        String factory = config().getString(JdbcConfiguration.CONNECTION_FACTORY_CLASS);
+        if (factory != null) {
+            return "{" + factory + "}" + connectionString(URL_PATTERN);
+        }
         return connectionString(URL_PATTERN);
     }
 
@@ -282,6 +296,19 @@ public class PostgresConnection extends JdbcConnection {
             Thread.currentThread().interrupt();
             throw new ConnectException("Interrupted while waiting for valid replication slot info", e);
         }
+    }
+
+    /**
+     * Retrieves the catalog xmin value from the replication slot.
+     *
+     * @param slotName the name of the slot
+     * @param pluginName the name of the plugin used for the desired slot
+     * @return the catalog xmin value or null if the slot state is not found
+     * @throws SQLException if a database access error occurs
+     */
+    public Long getSlotXmin(String slotName, String pluginName) throws SQLException {
+        SlotState slotState = getReplicationSlotState(slotName, pluginName);
+        return slotState != null ? slotState.slotCatalogXmin() : null;
     }
 
     /**
@@ -596,7 +623,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public Charset getDatabaseCharset() {
         try {
-            return Charset.forName(((BaseConnection) connection()).getEncoding().name());
+            return Charset.forName(connection().unwrap(BaseConnection.class).getEncoding().name());
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't obtain encoding for database " + database(), e);
@@ -605,7 +632,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public TimestampUtils getTimestampUtils() {
         try {
-            return ((PgConnection) this.connection()).getTimestampUtils();
+            return connection().unwrap(PgConnection.class).getTimestampUtils();
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
@@ -632,6 +659,15 @@ public class PostgresConnection extends JdbcConnection {
         // where resolution of the column's JDBC type needs to be that of the root type instead of
         // the actual column to properly influence schema building and value conversion.
         return getTypeRegistry().get(nativeType).getRootType().getJdbcId();
+    }
+
+    @Override
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
+                                                           String tableName, Tables.TableFilter tableFilter, Tables.ColumnNameFilter columnFilter,
+                                                           DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
+            throws SQLException {
+        return getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds, true);
     }
 
     @Override
@@ -673,7 +709,8 @@ public class PostgresConnection extends JdbcConnection {
 
             // Lookup the column type from the TypeRegistry
             // For all types, we need to set the Native and Jdbc types by using the root-type
-            final PostgresType nativeType = getTypeRegistry().get(column.typeName());
+            String typeName = column.typeName();
+            PostgresType nativeType = getTypeRegistry().get(tableId.schema(), typeName);
             column.nativeType(nativeType.getRootType().getOid());
             column.jdbcType(nativeType.getRootType().getJdbcId());
 
@@ -687,7 +724,7 @@ public class PostgresConnection extends JdbcConnection {
             }
 
             final String defaultValueExpression = columnMetadata.getString(13);
-            if (defaultValueExpression != null && getDefaultValueConverter().supportConversion(column.typeName())) {
+            if (defaultValueExpression != null && getDefaultValueConverter().supportConversion(nativeType.getName())) {
                 column.defaultValueExpression(defaultValueExpression);
             }
 
@@ -813,7 +850,8 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
@@ -825,7 +863,7 @@ public class PostgresConnection extends JdbcConnection {
                             return key + "=?::" + castableType;
                         })
                         .collect(Collectors.joining(" AND ")));
-        return reselectColumns(query, table.id(), columns, keyValues);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
     @Override
@@ -848,8 +886,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+        if (((PostgresConnectorConfig) config).offsetSeekToSlotOnStart()) {
+            return true; // skip validation if configured to seek to slot LSN on start
+        }
 
-        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
+        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCompletelyProcessedLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();
         final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
 
@@ -863,6 +904,28 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public List<Column> getTableColumnsForDecoder(TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        try {
+            final List<Column> readColumns = new ArrayList<>();
+
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+
+            try (ResultSet columnMetadata = databaseMetaData.getColumns(null, schemaNamePattern, tableNamePattern, null)) {
+                while (columnMetadata.next()) {
+                    readColumnForDecoder(columnMetadata, tableId, columnFilter).ifPresent(readColumns::add);
+                }
+            }
+
+            return readColumns;
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
         }
     }
 

@@ -37,7 +37,10 @@ public class BufferedLogMinerOracleOffsetContextLoader implements OffsetContext.
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))
                 .transactionContext(TransactionContext.load(offset))
+                .transactionId(OracleOffsetContext.loadTransactionId(offset))
+                .transactionSequence(OracleOffsetContext.loadTransactionSequence(offset))
                 .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
+                .windowAdvanceEnabled(OracleOffsetContext.loadWindowAdvanceEnabled(offset))
                 .build();
     }
 

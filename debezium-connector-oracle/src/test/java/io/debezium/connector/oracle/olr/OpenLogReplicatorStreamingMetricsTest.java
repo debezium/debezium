@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -34,11 +34,11 @@ public class OpenLogReplicatorStreamingMetricsTest extends OracleStreamingMetric
                                                                                EventMetadataProvider metadataProvider,
                                                                                OracleConnectorConfig connectorConfig,
                                                                                Clock clock) {
-        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
+        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, java.util.Collections::emptyList);
     }
 
     @Test
-    public void testCheckpointDetalisMetrics() {
+    void testCheckpointDetalisMetrics() {
         metrics.setCheckpointDetails(Scn.valueOf("12345"), 98765L);
         assertThat(metrics.getCheckpointScn()).isEqualTo(Scn.valueOf("12345").asBigInteger());
         assertThat(metrics.getCheckpointIndex()).isEqualTo(98765L);

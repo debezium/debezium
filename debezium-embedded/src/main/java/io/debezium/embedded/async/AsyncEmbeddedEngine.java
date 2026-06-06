@@ -41,6 +41,7 @@ import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.rest.entities.ConfigInfo;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -54,6 +55,8 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.apache.kafka.connect.util.ConnectorTaskId;
+import org.apache.kafka.connect.util.LoggingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,11 +85,13 @@ import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.Reflections;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
  * allows to process part or whole record processing pipeline in parallel.
- * For more detail see DDD-7 (TODO link).
+ *
+ * @see <a href="https://github.com/debezium/debezium-design-documents/blob/main/DDD-7.md">DDD-7</a>
  *
  * @author vjuranek
  */
@@ -172,10 +177,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         // Instantiate remaining required objects.
         try {
             this.offsetCommitPolicy = offsetCommitPolicy == null
-                    ? Instantiator.getInstanceWithProperties(this.config.getString(AsyncEngineConfig.OFFSET_COMMIT_POLICY), config)
+                    ? Instantiator.getInstanceWithProperties(this.config.getString(AsyncEngineConfig.OFFSET_COMMIT_POLICY), config, this.classLoader)
                     : offsetCommitPolicy;
-            offsetKeyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-            offsetValueConverter = Instantiator.getInstance(JsonConverter.class.getName());
+            offsetKeyConverter = Instantiator.getInstance(JsonConverter.class.getName(), this.classLoader);
+            offsetValueConverter = Instantiator.getInstance(JsonConverter.class.getName(), this.classLoader);
             transformations = new Transformations(Configuration.from(config));
 
             final Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) this.classLoader
@@ -362,19 +367,27 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private Map<String, String> initializeConnector() throws Exception {
         LOGGER.debug("Preparing connector initialization");
-        final String engineName = config.getString(AsyncEngineConfig.ENGINE_NAME);
-        final String connectorClassName = config.getString(AsyncEngineConfig.CONNECTOR_CLASS);
-        final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
+        // Set the TCCL to the classloader used by engine. This is needed e.g. for Kafka classloaer which uses TCCL.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.classLoader);
+        try {
+            final String engineName = config.getString(AsyncEngineConfig.ENGINE_NAME);
+            final String connectorClassName = config.getString(AsyncEngineConfig.CONNECTOR_CLASS);
+            final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
 
-        LOGGER.debug("Initializing offset store, offset reader and writer");
-        final OffsetBackingStore offsetStore = createAndStartOffsetStore(connectorConfig);
-        final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
-        final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
+            LOGGER.debug("Initializing offset store, offset reader and writer");
+            final OffsetBackingStore offsetStore = createAndStartOffsetStore(connectorConfig);
+            final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
+            final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
 
-        LOGGER.debug("Initializing Connect connector itself");
-        connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
+            LOGGER.debug("Initializing Connect connector itself");
+            connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
 
-        return connectorConfig;
+            return connectorConfig;
+        }
+        finally {
+            Thread.currentThread().setContextClassLoader(originalTccl);
+        }
     }
 
     /**
@@ -400,17 +413,28 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         else {
             LOGGER.debug("Creating {} instance(s) of source task(s)", taskConfigs.size());
         }
-        for (Map<String, String> taskConfig : taskConfigs) {
-            final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-            final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
-                    taskConfig,
-                    connector.context().offsetStorageReader(),
-                    connector.context().offsetStorageWriter(),
-                    offsetCommitPolicy,
-                    clock,
-                    transformations);
-            task.initialize(taskContext); // Initialize Kafka Connect source task
-            tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
+        // Set the TCCL while creating source tasks to properly load other service like e.g. Snapshot service.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.classLoader);
+        try {
+            int taskId = 0;
+            for (Map<String, String> taskConfig : taskConfigs) {
+                final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
+                final ConnectorTaskId connectorTaskId = new ConnectorTaskId(config.getString(ConnectorConfig.NAME_CONFIG), ++taskId);
+                final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
+                        taskConfig,
+                        connector.context().offsetStorageReader(),
+                        connector.context().offsetStorageWriter(),
+                        offsetCommitPolicy,
+                        clock,
+                        transformations,
+                        connectorTaskId);
+                task.initialize(taskContext); // Initialize Kafka Connect source task
+                tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
+            }
+        }
+        finally {
+            Thread.currentThread().setContextClassLoader(originalTccl);
         }
     }
 
@@ -424,9 +448,18 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private void startSourceTasks(final List<EngineSourceTask> tasks) throws Exception {
         LOGGER.debug("Starting source connector tasks.");
         final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
+        // Set the TCCL for the threads while starting the tasks.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
         for (EngineSourceTask task : tasks) {
             taskCompletionService.submit(() -> {
-                task.connectTask().start(task.context().config());
+                LoggingContext.clear();
+                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                    Thread.currentThread().setContextClassLoader(this.classLoader);
+                    task.connectTask().start(task.context().config());
+                }
+                finally {
+                    Thread.currentThread().setContextClassLoader(originalTccl);
+                }
                 return null;
             });
         }
@@ -511,6 +544,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 taskCompletionService.take().get();
             }
             catch (InterruptedException | CancellationException e) {
+                // We may hit here also RejectedExecutionException when the is another batch submitted for processing,
+                // but for now we don't catch it and let pass it to the user in CompletionCallback so the user can react to it.
                 LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
@@ -770,7 +805,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
         if (configInfos.errorCount() > 0) {
-            final String errors = configInfos.values().stream()
+            // TODO Remove the reflection when minimum Kafka version is 4.2. Reflection is necessary to keep
+            // with older Kafka versions
+            @SuppressWarnings("unchecked")
+            final String errors = ((List<ConfigInfo>) Reflections.invokeMethodWithFallbackName(configInfos, "configs", "values", List.class)).stream()
                     .flatMap(v -> v.configValue().errors().stream())
                     .collect(Collectors.joining(" "));
             throw new DebeziumException("Connector configuration is not valid. " + errors);
@@ -836,14 +874,15 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             return false;
         }
 
-        final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
-        });
-        if (flush == null) {
-            LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
-            return false;
-        }
-
         try {
+            final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
+            });
+            if (flush == null) {
+                LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
+                offsetWriter.cancelFlush();
+                return false;
+            }
+
             flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
             task.commit();
         }
@@ -852,7 +891,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             offsetWriter.cancelFlush();
             throw e;
         }
-        catch (ExecutionException | TimeoutException e) {
+        catch (Exception e) {
             LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
             offsetWriter.cancelFlush();
             return false;
@@ -1202,19 +1241,25 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final EngineSourceTask task;
         final RecordProcessor processor;
         final AtomicReference<State> engineState;
+        private final SourceRecordCommitter committer;
 
         PollRecords(final EngineSourceTask task, final RecordProcessor processor, final AtomicReference<State> engineState) {
             super(Configuration.from(task.context().config()).getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES));
             this.task = task;
             this.processor = processor;
             this.engineState = engineState;
+            this.committer = new SourceRecordCommitter(task);
         }
 
         @Override
         public Void doCall() throws Exception {
             while (engineState.get() == State.POLLING_TASKS) {
                 LOGGER.trace("Thread {} running task {} starts polling for records.", Thread.currentThread().getName(), task.connectTask());
-                final List<SourceRecord> changeRecords = task.connectTask().poll(); // blocks until there are values ...
+                LoggingContext.clear();
+                final List<SourceRecord> changeRecords;
+                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                    changeRecords = task.connectTask().poll(); // blocks until there are values ...
+                }
                 LOGGER.trace("Thread {} polled {} records.", Thread.currentThread().getName(), changeRecords == null ? "no" : changeRecords.size());
                 if (changeRecords != null && !changeRecords.isEmpty()) {
                     try {
@@ -1227,6 +1272,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 }
                 else {
                     LOGGER.trace("No records.");
+                    committer.markBatchFinished();
                 }
             }
             return null;

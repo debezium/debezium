@@ -18,6 +18,6 @@ UPDATE items,month SET items.price=month.price WHERE items.id=month.id;
 UPDATE `Table A`,`Table B` SET `Table A`.`text`=concat_ws('',`Table A`.`text`,`Table B`.`B-num`," from ",`Table B`.`date`,'/')
 WHERE `Table A`.`A-num` = `Table B`.`A-num`;
 UPDATE TABLE_1 LEFT JOIN TABLE_2 ON TABLE_1.COLUMN_1= TABLE_2.COLUMN_2 SET TABLE_1.`COLUMN` = EXPR WHERE TABLE_2.COLUMN2 IS NULL;
-UPDATE Groups LEFT JOIN (SELECT GroupId, MIN(ValWithinGroup) AS baseVal FROM Groups GROUP BY GroupId) AS GrpSum USING (GroupId) SET ValWithinGroup=ValWithinGroup-baseVal;
+#NB UPDATE Groups LEFT JOIN (SELECT GroupId, MIN(ValWithinGroup) AS baseVal FROM Groups GROUP BY GroupId) AS GrpSum USING (GroupId) SET ValWithinGroup=ValWithinGroup-baseVal;
 update Table1 t1 join Table2 t2 on t1.ID=t2.t1ID join Table3 t3 on t2.ID=t3.t2ID set t1.Value=12345 where t3.ID=54321;
 #end

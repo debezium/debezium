@@ -1,1 +1,1 @@
-io.debezium.schemagenerator.schema.OpenApiSchema
+io.debezium.schemagenerator.schema.debezium.DebeziumDescriptorSchema

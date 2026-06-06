@@ -11,14 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -27,11 +25,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConne
 
     private OracleConnection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropAllTables();
@@ -53,8 +48,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConne
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         stopConnector();
         if (connection != null) {
             TestHelper.dropAllTables();

@@ -17,11 +17,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bson.conversions.Bson;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -29,7 +29,7 @@ import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
 import io.debezium.data.Envelope;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ChangeStreamPipelineFactoryTest {
 
     private static final List<String> SIZE_PIPELINE = List.of(
@@ -116,31 +116,31 @@ public class ChangeStreamPipelineFactoryTest {
     private FilterConfig filterConfig;
 
     @Test
-    public void testCreateWithInternalFirstAndOversizeHandlingFail() {
+    void testCreateWithInternalFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
         testCreateLiterals(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
-    public void testCreateWithUserFirstAndOversizeHandlingFail() {
+    void testCreateWithUserFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
         testCreateLiterals(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
     }
 
     @Test
-    public void testCreateWithInternalFirstAndOversizeHandlingSkip() {
+    void testCreateWithInternalFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
         testCreateLiteralsWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
-    public void testCreateWithUserFirstAndOversizeHandlingSkip() {
+    void testCreateWithUserFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
         testCreateLiteralsWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
     }
 
     @Test
-    public void testCreateWithUserOnly() {
+    void testCreateWithUserOnly() {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(CursorPipelineOrder.USER_ONLY);
@@ -156,6 +156,121 @@ public class ChangeStreamPipelineFactoryTest {
 
         // Then:
         assertPipelineStagesEquals(pipeline.getStages(), USER_PIPELINE);
+    }
+
+    @Test
+    void testCollectionIncludeListTrimsWhitespace() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(false);
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of("db.col1, db.col2"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pipelineJson = pipelineToString(pipeline);
+        assertThat(pipelineJson).contains("\"pattern\"");
+        assertThat(pipelineJson).contains("db.col1|db.col2");
+    }
+
+    @Test
+    void testCollectionIncludeListTrimsAllWhitespace() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(false);
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of(" db1.col1 ,   db2.col2  ,  db3.col3 "));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pipelineJson = pipelineToString(pipeline);
+        assertThat(pipelineJson).contains("\"pattern\"");
+        assertThat(pipelineJson).contains("db1.col1|db2.col2|db3.col3");
+    }
+
+    @Test
+    void testCollectionExcludeListTrimsWhitespace() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(false);
+        given(filterConfig.getCollectionExcludeList())
+                .willReturn(Optional.of("db1.col1, db2.col2"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pipelineJson = pipelineToString(pipeline);
+        assertThat(pipelineJson).contains("\"pattern\"");
+        assertThat(pipelineJson).contains("(?!db1.col1|db2.col2)");
+    }
+
+    @Test
+    void testDatabaseIncludeListTrimsWhitespace() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(false);
+        given(filterConfig.getDbIncludeList())
+                .willReturn(Optional.of("db1, db2, db3"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pipelineJson = pipelineToString(pipeline);
+        assertThat(pipelineJson).contains("\"pattern\"");
+        assertThat(pipelineJson).contains("db1|db2|db3");
+    }
+
+    @Test
+    void testDatabaseExcludeListTrimsWhitespace() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.INTERNAL_FIRST);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE));
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(false);
+        given(filterConfig.getDbExcludeList())
+                .willReturn(Optional.of("db1, db2 , db3"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[]"));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        var pipelineJson = pipelineToString(pipeline);
+        assertThat(pipelineJson).contains("\"pattern\"");
+        assertThat(pipelineJson).contains("(?!db1|db2|db3)");
     }
 
     @SafeVarargs
@@ -250,5 +365,11 @@ public class ChangeStreamPipelineFactoryTest {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static String pipelineToString(ChangeStreamPipeline pipeline) {
+        return pipeline.getStages().stream()
+                .map(stage -> stage.toBsonDocument().toJson())
+                .collect(Collectors.joining());
     }
 }

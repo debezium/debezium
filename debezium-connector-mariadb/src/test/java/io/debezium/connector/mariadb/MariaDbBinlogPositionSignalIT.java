@@ -1,0 +1,317 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.mariadb;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.file.Path;
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
+import io.debezium.connector.binlog.util.BinlogTestConnection;
+import io.debezium.connector.binlog.util.TestHelper;
+import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.connector.mariadb.signal.SetBinlogPositionSignal;
+import io.debezium.util.Testing;
+
+/**
+ * Integration test for the set-binlog-position signal with MariaDB.
+ *
+ * @author Debezium Authors
+ */
+public class MariaDbBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MariaDbConnector> implements MariaDbCommon {
+
+    private static final String SERVER_NAME = "binlog_signal_test";
+    private static final String SIGNAL_TABLE = "debezium_signal";
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog-signal.txt").toAbsolutePath();
+    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "signal_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    private BinlogTestConnection connection;
+
+    @BeforeEach
+    public void beforeEach() throws SQLException {
+        stopConnector();
+        initializeConnectorTestFramework();
+        Testing.Files.delete(OFFSET_STORE_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        Testing.Print.enable();
+    }
+
+    @AfterEach
+    public void afterEach() throws SQLException {
+        try {
+            stopConnector();
+        }
+        finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    @Test
+    public void shouldSkipToBinlogPositionViaSignal() throws Exception {
+        // Setup database
+        DATABASE.createAndInitialize();
+        connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
+
+        // Start connector - use NO_DATA mode to skip initial snapshot data
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_table"))
+                .with(BinlogConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
+                .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
+                .build();
+
+        start(MariaDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot to complete (schema only with NO_DATA mode)
+        waitForSnapshotToBeCompleted("mariadb", SERVER_NAME);
+
+        // Wait for streaming to be fully running
+        waitForStreamingRunning("mariadb", SERVER_NAME);
+
+        // Insert some data
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
+        connection.commit();
+
+        // Give connector time to process binlog events
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        // Consume the insert events (account for heartbeat messages)
+        SourceRecords records = consumeRecordsByTopic(4);
+        String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        Testing.print("Expected topic: " + expectedTopic);
+        Testing.print("Actual topics: " + records.topics());
+        assertThat(records.recordsForTopic(expectedTopic)).hasSize(2);
+
+        // Insert more data that we'll skip
+        connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
+        connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
+        connection.commit();
+
+        // Wait for connector to process id=3,4 and consume them to ensure
+        // they are fully processed before we capture the binlog position
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        consumeAvailableRecords(record -> {
+        });
+
+        // Get current binlog position AFTER the records we want to skip
+        Map<String, Object> position = getCurrentBinlogPosition();
+        String binlogFile = (String) position.get("file");
+        Long binlogPos = (Long) position.get("position");
+
+        // Send signal to skip to the binlog position after value3 and value4
+        String signalData = String.format(
+                "{\"binlog_filename\": \"%s\", \"binlog_position\": %d}",
+                binlogFile, binlogPos);
+
+        connection.execute(
+                "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-1', '" +
+                        SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
+
+        // Wait for the signal to be processed and offset to be committed
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {
+        });
+
+        // Stop the connector explicitly
+        stopConnector();
+
+        // Insert data we want to capture after the skip
+        connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        connection.commit();
+
+        start(MariaDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to be running
+        waitForStreamingRunning("mariadb", SERVER_NAME);
+
+        // Wait for records to be available after restart
+        waitForAvailableRecords(30, TimeUnit.SECONDS);
+
+        // Consume all available records and filter for test_table
+        String testTableTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        final int[] testTableCount = { 0 };
+        final SourceRecord[] foundRecord = { null };
+
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed record topic: " + record.topic());
+            if (testTableTopic.equals(record.topic())) {
+                testTableCount[0]++;
+                foundRecord[0] = record;
+            }
+        });
+
+        // Verify we got exactly record 5 (skipped 3 and 4)
+        assertThat(testTableCount[0]).as("Expected 1 record for test_table after restart").isEqualTo(1);
+        assertThat(foundRecord[0]).isNotNull();
+
+        Struct value = (Struct) foundRecord[0].value();
+        Struct after = value.getStruct("after");
+        assertThat(after.getInt32("id")).isEqualTo(5);
+        assertThat(after.getString("value")).isEqualTo("value5");
+    }
+
+    @Test
+    public void shouldSkipToGtidSetViaSignal() throws Exception {
+        // Setup database
+        DATABASE.createAndInitialize();
+        connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
+
+        // Start connector - use NO_DATA mode to skip initial snapshot data
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_table"))
+                .with(BinlogConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
+                .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName(SIGNAL_TABLE))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("heartbeat.interval.ms", 1000) // Required for signal offset persistence
+                .build();
+
+        start(MariaDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot to complete (schema only with NO_DATA mode)
+        waitForSnapshotToBeCompleted("mariadb", SERVER_NAME);
+
+        // Wait for streaming to be fully running
+        waitForStreamingRunning("mariadb", SERVER_NAME);
+
+        // Insert some data
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')");
+        connection.commit();
+
+        // Give connector time to process binlog events
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        // Consume the insert events (account for heartbeat messages)
+        SourceRecords records = consumeRecordsByTopic(4);
+        String expectedTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        Testing.print("Expected topic: " + expectedTopic);
+        Testing.print("Actual topics: " + records.topics());
+        assertThat(records.recordsForTopic(expectedTopic)).hasSize(2);
+
+        // Insert more data that we'll skip
+        connection.execute("INSERT INTO test_table VALUES (3, 'value3')");
+        connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
+        connection.commit();
+
+        // Wait for connector to process id=3,4 and consume them to ensure
+        // they are fully processed before we capture the GTID set
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        consumeAvailableRecords(record -> {
+        });
+
+        // Get current GTID set AFTER the records we want to skip
+        // MariaDB uses @@GLOBAL.gtid_binlog_pos for the current binlog GTID position
+        String gtidSet = getCurrentGtidSet();
+
+        // Send signal to skip to the GTID set after value3 and value4
+        String signalData = "{\"gtid_set\": \"" + gtidSet + "\"}";
+
+        connection.execute(
+                "INSERT INTO " + SIGNAL_TABLE + " VALUES ('skip-signal-2', '" +
+                        SetBinlogPositionSignal.NAME + "', '" + signalData + "')");
+
+        // Wait for the signal to be processed and offset to be committed
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
+        // Consume all pending records to ensure signal is processed
+        consumeAvailableRecords(record -> {
+        });
+
+        // Stop the connector explicitly
+        stopConnector();
+
+        // Insert data we want to capture after the skip
+        connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        connection.commit();
+
+        start(MariaDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to be running
+        waitForStreamingRunning("mariadb", SERVER_NAME);
+
+        // Wait for records to be available after restart
+        waitForAvailableRecords(30, TimeUnit.SECONDS);
+
+        // Consume all available records and filter for test_table
+        String testTableTopic = SERVER_NAME + "." + DATABASE.getDatabaseName() + ".test_table";
+        final int[] testTableCount = { 0 };
+        final SourceRecord[] foundRecord = { null };
+
+        consumeAvailableRecords(record -> {
+            Testing.print("Consumed record topic: " + record.topic());
+            if (testTableTopic.equals(record.topic())) {
+                testTableCount[0]++;
+                foundRecord[0] = record;
+            }
+        });
+
+        // Verify we got exactly record 5 (skipped 3 and 4)
+        assertThat(testTableCount[0]).as("Expected 1 record for test_table after restart").isEqualTo(1);
+        assertThat(foundRecord[0]).isNotNull();
+
+        Struct value = (Struct) foundRecord[0].value();
+        Struct after = value.getStruct("after");
+        assertThat(after.getInt32("id")).isEqualTo(5);
+        assertThat(after.getString("value")).isEqualTo("value5");
+    }
+
+    private Map<String, Object> getCurrentBinlogPosition() throws SQLException {
+        // Try SHOW BINARY LOG STATUS first, fall back to SHOW MASTER STATUS
+        try {
+            return connection.queryAndMap("SHOW BINARY LOG STATUS", rs -> {
+                if (rs.next()) {
+                    return Map.of(
+                            "file", rs.getString(1),
+                            "position", rs.getLong(2));
+                }
+                throw new IllegalStateException("Could not get binlog position");
+            });
+        }
+        catch (SQLException e) {
+            // Fall back to legacy command for older MariaDB versions
+            return connection.queryAndMap("SHOW MASTER STATUS", rs -> {
+                if (rs.next()) {
+                    return Map.of(
+                            "file", rs.getString(1),
+                            "position", rs.getLong(2));
+                }
+                throw new IllegalStateException("Could not get binlog position");
+            });
+        }
+    }
+
+    private String getCurrentGtidSet() throws SQLException {
+        return connection.queryAndMap("SELECT @@GLOBAL.gtid_binlog_pos", rs -> {
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+            throw new IllegalStateException("Could not get GTID set");
+        });
+    }
+
+}

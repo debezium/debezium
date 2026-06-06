@@ -1,0 +1,1 @@
+DROP OUTLINE salaries;

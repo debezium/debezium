@@ -17,9 +17,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -42,16 +42,16 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("unsignednumericit", "unsigned_integer_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
-        DATABASE.createAndInitialize();
+        DATABASE.create();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -61,15 +61,18 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE, BinlogConnectorConfig.BigIntUnsignedHandlingMode.PRECISE)
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -93,9 +96,8 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_228_bigint_unsigned")).size())
                 .isEqualTo(3);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
-                numCreateDatabase + numCreateTables);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateTables);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
@@ -128,14 +130,17 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
 
     @Test
     @FixFor("DBZ-363")
-    public void shouldConsumeAllEventsFromBigIntTableInDatabaseUsingBinlogAndNoSnapshotUsingLong() throws SQLException, InterruptedException {
+    public void shouldConsumeAllEventsFromBigIntTableInDatabaseUsingStreamingUsingLong() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER.toString())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE, BinlogConnectorConfig.BigIntUnsignedHandlingMode.LONG)
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
+
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -164,11 +169,12 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig().build();
 
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------

@@ -10,6 +10,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbSnapshotChangeEventSourceMetrics;
@@ -30,7 +32,6 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 /**
  * @author Chris Cranford
@@ -50,6 +51,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     // Based on the DBZ-3113 the code can change in the future, and it will be handled in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final SnapshotterService snapshotterService;
+    private final BinaryLogClient binaryLogClient;
 
     public MariaDbChangeEventSourceFactory(MariaDbConnectorConfig configuration,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -60,7 +62,8 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                            MariaDbTaskContext taskContext,
                                            MariaDbStreamingChangeEventSourceMetrics streamingMetrics,
                                            ChangeEventQueue<DataChangeEvent> queue,
-                                           SnapshotterService snapshotterService) {
+                                           SnapshotterService snapshotterService,
+                                           BinaryLogClient binaryLogClient) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -71,6 +74,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
+        this.binaryLogClient = binaryLogClient;
     }
 
     @Override
@@ -80,7 +84,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MariaDbSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
-                taskContext.getSchema(),
+                schema,
                 dispatcher,
                 clock,
                 (MariaDbSnapshotChangeEventSourceMetrics) snapshotProgressListener,
@@ -93,15 +97,19 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     @Override
     public StreamingChangeEventSource<MariaDbPartition, MariaDbOffsetContext> getStreamingChangeEventSource() {
         queue.disableBuffering();
-        return new MariaDbStreamingChangeEventSource(
+        MariaDbStreamingChangeEventSource streamingSource = new MariaDbStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
                 taskContext,
+                schema,
                 streamingMetrics,
-                snapshotterService);
+                snapshotterService,
+                binaryLogClient);
+
+        return streamingSource;
     }
 
     @Override
@@ -126,7 +134,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         }
 
         // If no data collection id is provided, don't return an instance as the implement requires the table
-        if (Strings.isNullOrBlank(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
 

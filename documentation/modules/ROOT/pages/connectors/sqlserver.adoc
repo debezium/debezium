@@ -13,6 +13,7 @@
 :connector-name: SQL Server
 :include-list-example: dbo.customers
 :collection-container: database.schema
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 
@@ -230,6 +231,10 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
+|`when_needed_no_data`
+|After the connector starts, it performs a snapshot like `when_needed` options. Like `no_data` options, it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+
 ifdef::community[]
 |`configuration_based`
 |Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
@@ -292,7 +297,7 @@ You might still be able to capture data from the table, but you must perform add
 
 * You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
 * No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
-For information about capturing data from a new table that has undergone structural changes, see xref:db2-capturing-data-from-new-tables-with-schema-changes[].
+For information about capturing data from a new table that has undergone structural changes, see xref:sqlserver-capturing-data-from-new-tables-with-schema-changes[].
 
 .Procedure
 
@@ -318,13 +323,13 @@ Snapshots that capture the schema for all tables require more time to complete.
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
 `initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
 If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
-`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+`no_data`:: When you restart the connector, it takes a snapshot that captures only the table schema.
 Unlike a full data snapshot, this option does not capture any table data.
 Use this option if you want to restart the connector more quickly than with a full snapshot.
 
 5. Restart the connector.
 The connector completes the type of snapshot specified by the `snapshot.mode`.
-6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:sqlserver-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+6. (Optional) If the connector performed a `no_data` snapshot, after the snapshot completes, initiate an xref:sqlserver-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
 The connector runs the snapshot while it continues to stream real-time changes from the tables.
 Running an incremental snapshot captures the following data changes:
 +
@@ -370,7 +375,7 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Set values for properties in the connector configuration as described in the following steps:
-.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
 .. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
@@ -576,9 +581,9 @@ The connector uses the stored schema representation to produce change events tha
 When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the SQL Server CDC tables from the last position that it read.
 Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
 
-If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+If you update the schema of a SQL Server table that is in capture mode, it's important that you also update the schema of the corresponding change table.
 You must be a SQL Server database administrator with elevated privileges to update database schema.
-For more information about updating SQL Server database schema in {prodname} environmenbts, see xref:sqlserver-schema-evolution[Database schema evolution].
+For more information about updating SQL Server database schema in {prodname} environments, see xref:sqlserver-schema-evolution[Database schema evolution].
 
 The database schema history topic is for internal connector use only.
 Optionally, the connector can also xref:about-the-debezium-sqlserver-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
@@ -1519,9 +1524,10 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 [WARNING]
 ====
-There is no way for {prodname} to reliably identify when a transaction has ended.
-The transaction `END` marker is thus emitted only after the first event of another transaction arrives.
-This can lead to the delayed delivery of `END` marker in case of a low-traffic system.
+When the {prodname} SQL Server connector captures changes from an Always On read-only replica, it does not reliably emit an `END` transaction marker immediately after a transaction completes.
+In other configurations, the connector can query link:https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/change-data-capture-sys-dm-cdc-log-scan-sessions[sys.dm_cdc_log_scan_sessions] to confirm that the most recent log scan session has concluded, but this dynamic management view (DMV) is not available for Always On read-only replicas.
+When {prodname} captures changes from an Always On read-only replica, the connector emits a transaction `END` event only after it detects the arrival of the first event from a subsequent transaction in the change tables.
+This behavior can cause {prodname} to delay delivery of the `END` markers in environments with low or infrequent traffic.
 ====
 
 The following example shows a typical transaction boundary message:
@@ -1921,11 +1927,8 @@ a|_n/a_
 For {prodname} to capture change events from SQL Server tables, a SQL Server administrator with the necessary privileges must first run a query to enable CDC on the database.
 The administrator must then enable CDC for each table that you want Debezium to capture.
 
-[NOTE]
-====
-By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
-If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of  the `database.encrypt` property in connector configuration to `false`.
-====
+After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDC is enabled.
+The {prodname} connector can then capture these events and emit them to Kafka topics.
 
 ifdef::product[]
 
@@ -1940,8 +1943,38 @@ For details about setting up SQL Server for use with the {prodname} connector, s
 
 endif::product[]
 
-After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDC is enabled.
-The {prodname} connector can then capture these events and emit them to Kafka topics.
+=== Encrypting connections
+
+By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
+If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of the `driver.encrypt` property in connector configuration to `false`.
+
+.Procedure
+
+* To enforce SSL with a valid certificate, set the following JDBC pass-through properties to configure the connection:
++
+[source,json]
+----
+{
+  "driver.encrypt": true,
+  "driver.trustServerCertificate": false,
+  "driver.trustStore": "path/to/trust-store",
+  "driver.trustStorePassword": "password-for-trust-store"
+}
+----
+
+* In non-production environments, if SQL Server is configured to use a known self-signed certificate that you trust, you can enable encryption and bypass certificate path validation by setting the following properties:
++
+[source,json]
+----
+{
+  "driver.encrypt": true,
+  "driver.trustServerCertificate": true
+}
+----
++
+WARNING: Do not enable automatic trust of server certificates in production environments.
+If you disable validation, the connector skips certificate chain and host name validation, which can leave connections vulnerable to man‑in‑the‑middle attacks.
+Use an explicit trust configuration only as a convenience in testing and development environments
 
 // Type: procedure
 // ModuleID: enabling-cdc-on-the-sql-server-database
@@ -1998,7 +2031,8 @@ SQL Server CDC must be enabled for every table that you want to capture.
 . From the *View* menu in SQL Server Management Studio, click *Template Explorer*.
 . In the *Template Browser*, expand *SQL Server Templates*.
 . Expand *Change Data Capture > Configuration*, and then click *Enable Table Specifying Filegroup Option*.
-. In the template, replace the table name in the `USE` statement with the name of the table that you want to capture.
+. In the template, replace the database name in the `USE` statement with the name of the database that you want to capture.
+. Replace the `source_schema`, the `source_name`, the `role_name` and the `filegroup_name` parameters with the table's schema name, the table name, the database user or role name used by {prodname}, and the filegroup name. You can use `CTRL+SHIFT+M` to open a parameters' replacement dialog box.
 . Run the stored procedure `sys.sp_cdc_enable_table`.
 +
 The following example shows how to enable CDC for the table `MyTable`:
@@ -2011,16 +2045,17 @@ GO
 
 EXEC sys.sp_cdc_enable_table
 @source_schema = N'dbo',
-@source_name   = N'MyTable', //<.>
-@role_name     = N'MyRole',  //<.>
-@filegroup_name = N'MyDB_CT',//<.>
+@source_name   = N'MyTable',
+@role_name     = N'MyRole',
+@filegroup_name = N'MyDB_CT',
 @supports_net_changes = 0
 GO
 ----
-<.> Specifies the name of the table that you want to capture.
-<.> Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table.
+
+`@source_name`:: Specifies the name of the table that you want to capture.
+`@role_name`:: Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table.
 Users in the `sysadmin` or `db_owner` role also have access to the specified change tables. If the the value of `@role_name` is explicitly set to `NULL`, no role is used to restrict access to captured information.
-<.> Specifies the `filegroup` where SQL Server places the change table for the captured table.
+`@filegroup_name`:: Specifies the `filegroup` where SQL Server places the change table for the captured table.
 The named `filegroup` must already exist.
 It is best not to locate change tables in the same `filegroup` that you use for source tables.
 
@@ -2152,7 +2187,7 @@ ifdef::community[]
 To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * SQL Server is installed, is xref:setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
 
 .Procedure
@@ -2162,7 +2197,7 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 . xref:sqlserver-example-configuration[Configure the connector] and xref:sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect.
 You can pull the official link:https://hub.docker.com/_/microsoft-mssql-server[container images for Microsoft SQL Server on Linux] from Docker Hub.
 
 [IMPORTANT]
@@ -2368,8 +2403,8 @@ spec:
     table.include.list: dbo.customers // <8>
     schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <9>
     schema.history.internal.kafka.topic: schemahistory.fullfillment // <10>
-    database.ssl.truststore: path/to/trust-store // <11>
-    database.ssl.truststore.password: password-for-trust-store <12>
+    driver.trustStore: path/to/trust-store // <11>
+    driver.trustStorePassword: password-for-trust-store <12>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2409,11 +2444,11 @@ spec:
 
 |11
 |The path to the SSL truststore that stores the server's signer certificates.
-This property is required unless database encryption is disabled (`database.encrypt=false`).
+This property is required unless database encryption is disabled (`driver.encrypt=false`).
 
 |12
 |The SSL truststore password.
-This property is required unless database encryption is disabled (`database.encrypt=false`).
+This property is required unless database encryption is disabled (`driver.encrypt=false`).
 
 |===
 
@@ -2459,8 +2494,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "table.include.list": "dbo.customers", // <9>
         "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
         "schema.history.internal.kafka.topic": "schemahistory.fullfillment", // <11>
-        "database.ssl.truststore": "path/to/trust-store", // <12>
-        "database.ssl.truststore.password": "password-for-trust-store" // <13>
+        "driver.trustStore": "path/to/trust-store", // <12>
+        "driver.trustStorePassword": "password-for-trust-store" // <13>
     }
 }
 ----
@@ -2476,9 +2511,9 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 <11> The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 <12> The path to the SSL truststore that stores the server's signer certificates.
-This property is required unless database encryption is disabled (`database.encrypt=false`).
+This property is required unless database encryption is disabled (`driver.encrypt=false`).
 <13> The SSL truststore password.
-This property is required unless database encryption is disabled (`database.encrypt=false`).
+This property is required unless database encryption is disabled (`driver.encrypt=false`).
 endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see xref:sqlserver-connector-properties[SQL Server connector properties].
@@ -2570,6 +2605,13 @@ endif::community[]
 If both `database.port` and `database.instance` are specified, `database.instance` is ignored.
 See https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url[JDBC driver for SQL server documentation] for more details.
 
+|[[sqlserver-property-driver-authentication]]<<sqlserver-property-driver-authentication, `+driver.authentication+`>>
+|n/a
+|Specifies the authentication mode used by the Microsoft JDBC Driver for SQL Server.
+This maps to the driver's `authentication` connection property and is primarily used for Microsoft Entra authentication when connecting to Azure SQL Database.
+Supported values include `ActiveDirectoryManagedIdentity`.
+The legacy value `ActiveDirectoryMSI` can be used to connect to an Azure SQL Database.
+
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
 |No default
 |Username to use when connecting to the SQL Server database server.
@@ -2578,6 +2620,7 @@ Can be omitted when using Kerberos authentication, which can be configured using
 |[[sqlserver-property-database-password]]<<sqlserver-property-database-password, `+database.password+`>>
 |No default
 |Password to use when connecting to the SQL Server database server.
+Optional when using Microsoft Entra authentication.
 
 |[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
 |No default
@@ -2721,12 +2764,12 @@ This mechanism for recording schema changes is independent of the connector's in
 
 |[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event. +
- +
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
- +
-`false` - only a _delete_ event is emitted. +
- +
+|Controls whether a _delete_ event is followed by a tombstone event.
+
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.
+
+`false` - only a _delete_ event is emitted.
+
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
@@ -2826,7 +2869,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 |[[sqlserver-property-schema-name-adjustment-mode]]<<sqlserver-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -2834,7 +2877,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 |[[sqlserver-property-field-name-adjustment-mode]]<<sqlserver-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
@@ -2908,6 +2951,8 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
+
+`when_needed_no_data`:: After the connector starts, it performs a snapshot like `when_needed` options. Like `no_data` options, it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
 
 ifdef::community[]
 `configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
@@ -3009,7 +3054,7 @@ endif::community[]
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<dbName>_._<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's xref:sqlserver-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:sqlserver-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`. +
 This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -3102,16 +3147,36 @@ For example, if you set `poll.interval.ms` to `100`, set `heartbeat.interval.ms`
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
 This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database.
-Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
- +
-`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
- +
+Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
+
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
+
 This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents offsets from become stale.
 
 |[[sqlserver-property-snapshot-delay-ms]]<<sqlserver-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
+
+|[[sqlserver-property-statistics-metrics-enabled]]<<sqlserver-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
+|`true`
+|Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
+When set to `true`, the connector collects the following statistics:
+
+* Minimum value
+* Maximum value
+* Average value
+* P50 (median) percentile
+* P95 percentile
+* P99 percentile
+
+NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
+
+The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
+When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.
+The connector continues to collect minimum, maximum, and average values.
+Disabling quantile collection reduces memory overhead slightly.
+For more information, see xref:sqlserver-streaming-metrics[Streaming metrics].
 
 |[[sqlserver-property-streaming-delay-ms]]<<sqlserver-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
@@ -3136,33 +3201,47 @@ When set to `0` the connector will fail immediately when it cannot obtain the lo
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
-|Specifies the table rows to include in a snapshot.
-Use the property if you want a snapshot to include only a subset of the rows in a table.
+|Specifies the tables for which the connector uses custom `SELECT` statements to determine which rows to include in a snapshot.
+
 This property affects snapshots only.
-It does not apply to events that the connector reads from the log.
+It does not apply to events that the connector reads from the log during the streaming phase.
 
-The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
- +
-`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
- +
-For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
-The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
-Use the following format to specify the name of this `SELECT` statement property: +
- +
-`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+This property consists of two parts that work together:
+
+Main property::
+A comma-separated list of fully-qualified table names in the format `_<databaseName>.<schemaName>.<tableName>_`.
+This list identifies the tables for which you want to specify custom snapshot queries.
++
 For example,
-`snapshot.select.statement.overrides.customers.orders`. +
- +
-Example:
++
+`+"snapshot.select.statement.overrides": "mydb.inventory.products,mydb.customers.orders"+`
++
+NOTE: If the fully qualified database, schema, or table name contains special characters, such as spaces, square brackets (`[` or `]`), or period characters (`.`),
+enclose the string in double quotes to prevent the connector from interpreting the special characters as delimiters.
+Double quotes around table names are optional if the fully qualified table name does not include spaces or special characters.
 
-From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
-
+Secondary properties::
+For each table that you list in the main property, you must define a corresponding `snapshot.select.statement.overrides._<databaseName>_._<schemaName>_._<tableName>_` property that specifies the custom `SELECT` statement to run during the snapshot.
+The `SELECT` statement determines which rows from the table to include in the snapshot.
++
+For example, to specify a SELECT statement for the `mydb.customer.orders` table, add the following property:
++
+`snapshot.select.statement.overrides.mydb.customers.orders`
++
+[WARNING]
+====
+If a table is listed in the main property, but its corresponding secondary property is missing, the connector logs a warning and uses the default snapshot behavior for that table.
+====
++
+Example configuration::
+The following example shows how to configure the `snapshot.select.statement.overrides` property to perform a snapshot of the `mydb.customers.orders` table that includes only records that are not soft-deleted; that is, the value of the soft-delete field, `delete_flag`, is set to `0`.
+====
 ----
-"snapshot.select.statement.overrides": "customer.orders",
-"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
+"snapshot.select.statement.overrides": "mydb.customer.orders",
+"snapshot.select.statement.overrides.mydb.customer.orders": "SELECT * FROM mydb.customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
 ----
+====
 
-In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
 ifdef::community[]
 |[[sqlserver-property-source-struct-version]]<<sqlserver-property-source-struct-version, `+source.struct.version+`>>
 |v2
@@ -3196,9 +3275,29 @@ Because the {prodname} SQL Server connector does not support `truncate` change e
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector. +
-Use the following format to specify the collection name: +
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
+The collection name is case-sensitive.
+
+Use the following format to specify the collection name:
+
 `_<databaseName>_._<schemaName>_._<tableName>_`
+
+For multi-database deployments, if `tasks.max > 1`, you can configure one signal table per database by providing a comma-separated list of fully-qualified signal table names. For example:
+
+`signal.data.collection=db1.dbo.debezium_signal,db2.dbo.debezium_signal`
+
+Specifying a dedicated signal table for each database, permits each task to process signals for its assigned databases correctly. 
+If you configure only a single signal table for a multi-task connector, signals might not be processed correctly for all databases.
+
+[IMPORTANT]
+====
+Support for using multiple signaling tables with the {prodname} SQL Server connector is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+
 
 |[[sqlserver-property-signal-enabled-channels]]<<sqlserver-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
@@ -3277,7 +3376,19 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`. +
+ +
+This property is ignored if `topic.heartbeat.name` is set.
+
+|[[sqlserver-property-topic-heartbeat-name]]<<sqlserver-property-topic-heartbeat-name, `+topic.heartbeat.name+`>>
+|_empty_
+|Specifies an explicit, full name for the topic to which the connector sends heartbeat messages, overriding the prefix-based naming derived from `topic.heartbeat.prefix` and `topic.prefix`. +
+ +
+When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`. This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. +
+ +
+For example, setting this to `debezium-heartbeat` routes all heartbeat messages to a topic named `debezium-heartbeat`. +
+ +
+If this property is empty or unset, the connector falls back to the default behavior: _topic.heartbeat.prefix_._topic.prefix_.
 
 |[[sqlserver-property-topic-transaction]]<<sqlserver-property-topic-transaction, `topic.transaction`>>
 |`transaction`
@@ -3309,13 +3420,34 @@ If you experience this problem, revert the value of `snapshot.max.threads` to `1
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
 Tags can help you to organize and categorize metrics data.
 You can define tags to identify particular application instances, environments, regions, versions, and so forth.
 For more information, see xref:customized-mbean-names[Customized MBean names].
+
+|[[sqlserver-property-custom-sanitize-pattern]]<<sqlserver-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
+|`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
+
+By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.
+
+For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
+
+----
+"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
+----
+
+If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
+A string of asterisks replaces the original values, for example,  `pass:[********]`.
+
+[IMPORTANT]
+====
+The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
+====
 
 |[[sqlserver-property-errors-max-retires]]<<sqlserver-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
@@ -3331,11 +3463,11 @@ User intervention is required to restart the connector.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
 |[[sqlserver-property-data-query-mode]]<<sqlserver-property-data-query-mode, `data.query.mode`>>
-|`function`
+|`direct`
 |Controls how the connector queries CDC data. The following modes are supported:
 
-* `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function. This is the default mode.
-* `direct`: Makes the connector to query change tables directly.
+* `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function.
+* `direct`: Makes the connector to query change tables directly. This is the default mode.
 
 |[[sqlserver-property-database-query-timeout-ms]]<<sqlserver-property-database-query-timeout-ms, `database.query.timeout.ms`>>
 |`600000` (10 minutes)
@@ -3347,6 +3479,35 @@ Set the value to `0` (zero) to remove the timeout limit.
 |Specifies the maximum number of rows that should be read in one go from each table while streaming.
 The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
 
+|[[sqlserver-property-guardrail-collections-max]]<<sqlserver-property-guardrail-collections-max, `+guardrail.collections.max+`>>
+|`0`
+|Specifies the maximum number of tables that the connector can capture.
+This limit applies not only to tables being captured for data changes but also to any tables whose schemas are tracked as part of schema history.
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
+
+|[[sqlserver-property-guardrail-collections-limit-action]]<<sqlserver-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
+|`warn`
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails and reports an exception.
+
+`warn`::
+The connector logs a warning.
+
+|[[sqlserver-property-extended-headers-enabled]]<<sqlserver-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]
@@ -3461,6 +3622,8 @@ However, offline updates might not be feasible for use with applications that re
 6. Resume the application that you suspended in Step 1.
 7. Start the {prodname} connector.
 8. After the {prodname} connector starts streaming from the new capture table, drop the old capture table by running the stored procedure `sys.sp_cdc_disable_table` with the parameter `@capture_instance` set to the old capture instance name.
+The connector emits a notification after it finishes reading from the old capture instance.
+For more information, see xref:sqlserver-notifications[Notifications].
 
 // Type: procedure
 // ModuleID: debezium-sql-server-connector-running-an-online-update-after-a-schema-change
@@ -3484,7 +3647,9 @@ If your application does not tolerate such a transition period, it is best to us
 .Procedure
 1. Apply all changes to the source table schema.
 2. Create a new capture table for the update source table by running the `sys.sp_cdc_enable_table` stored procedure with a unique value for the parameter `@capture_instance`.
-3. When {prodname} starts streaming from the new capture table, you can drop the old capture table by running the `sys.sp_cdc_disable_table` stored procedure with the parameter `@capture_instance` set to the old capture instance name.
+3. After {prodname} starts streaming from the new capture table, you can drop the old capture table by running the `sys.sp_cdc_disable_table` stored procedure with the parameter `@capture_instance` set to the old capture instance name.
+The connector emits a notification after it finishes reading from the old capture instance.
+For more information, see xref:sqlserver-notifications[Notifications].
 
 
 .Example: Running an online schema update after a database schema change
@@ -3567,13 +3732,43 @@ EXEC sys.sp_cdc_disable_table @source_schema = 'dbo', @source_name = 'dbo_custom
 GO
 ----
 
+// Type: concept
+// ModuleID: debezium-sql-server-connector-status-notification-after-a-schema-change
+// Title: Status notifications that the {prodname} SQL Server connector emits after a schema change.
+[[sqlserver-notifications]]
+== Notifications
+
+If you enable notifications for the connector, after you make a schema change, the connector emits a notification to report the status of the change.
+For more information about notifications and how to enable them, see the {link-prefix}:{link-notification}#debezium-notification[{prodname} notifications documentation].
+
+The following example shows a status notification that {prodname} might emit after a schema evolution change.
+
+[source, json]
+----
+{
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Capture Instance",
+      "type":"COMPLETED",
+      "additional_data":{
+         "connector_name":"my-connector",
+         "capture_instance":"dbo_customers",
+         "server":"server1",
+         "database":"testDB",
+         "start_lsn":"00000027:00000758:0003",
+         "stop_lsn":"00000028:00000759:0004",
+         "commit_lsn":"00000029:00000760:0005"
+      },
+      "timestamp": "1695817046353"
+}
+----
+
 // Type: assembly
 // ModuleID: monitoring-debezium-sql-server-connector-performance
 // Title: Monitoring {prodname} SQL Server connector performance
 [[sqlserver-monitoring]]
 == Monitoring
 
-The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 The connector provides the following metrics:
 
 * xref:sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.

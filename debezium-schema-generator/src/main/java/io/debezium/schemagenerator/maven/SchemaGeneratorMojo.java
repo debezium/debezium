@@ -47,20 +47,26 @@ import io.debezium.schemagenerator.SchemaGenerator;
 @Mojo(name = "generate-api-spec", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 public class SchemaGeneratorMojo extends AbstractMojo {
 
-    @Parameter(defaultValue = "openapi", property = "schema.format")
+    @Parameter(defaultValue = "debezium", property = "schema.format")
     private String format;
 
     @Parameter(defaultValue = "${project.build.directory}${file.separator}generated-sources", required = true)
     private File outputDirectory;
 
-    @Parameter(defaultValue = "false")
-    private boolean groupDirectoryPerConnector;
+    @Parameter(defaultValue = "true")
+    private boolean groupDirectoryPerComponent;
 
     @Parameter(defaultValue = "")
     private String filenamePrefix = "";
 
     @Parameter(defaultValue = "")
     private String filenameSuffix = "";
+
+    /**
+     * Optional JVM arguments to pass to the schema generator process.
+     */
+    @Parameter
+    private List<String> jvmArgs;
 
     /**
      * Gives access to the Maven project information.
@@ -84,9 +90,11 @@ public class SchemaGeneratorMojo extends AbstractMojo {
         String classPath = getClassPath();
 
         try {
-            int result = exec(SchemaGenerator.class.getName(), classPath, Collections.emptyList(),
-                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerConnector),
-                            quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix)));
+            List<String> effectiveJvmArgs = jvmArgs != null ? jvmArgs : Collections.emptyList();
+            int result = exec(SchemaGenerator.class.getName(), classPath, effectiveJvmArgs,
+                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerComponent),
+                            quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix),
+                            project.getArtifact().getFile().getAbsolutePath()));
 
             if (result != 0) {
                 throw new MojoExecutionException("Couldn't generate API spec; please see the logs for more details");

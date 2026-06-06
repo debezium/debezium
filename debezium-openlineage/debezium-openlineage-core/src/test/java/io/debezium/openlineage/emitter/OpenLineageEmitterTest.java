@@ -5,8 +5,8 @@
  */
 package io.debezium.openlineage.emitter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
 
 import java.net.URI;
@@ -14,15 +14,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
@@ -30,11 +31,10 @@ import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobIdentifier;
 import io.debezium.openlineage.dataset.DatasetMetadata;
-import io.debezium.openlineage.dataset.DefaultInputDatasetNamespaceResolver;
-import io.debezium.openlineage.dataset.DefaultOutputDatasetNamespaceResolver;
+import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
 import io.openlineage.client.OpenLineage;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OpenLineageEmitterTest {
 
     @Mock
@@ -45,14 +45,14 @@ public class OpenLineageEmitterTest {
     @Captor
     ArgumentCaptor<OpenLineage.RunEvent> eventCaptor;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
 
         Map<String, String> configMap = new HashMap<>();
         configMap.put("database.hostname", "localhost");
         configMap.put("database.port", "3306");
 
-        ConnectorContext connectorContext = new ConnectorContext("test-connector", "mysql", "0", "3.2.0.Final", configMap);
+        ConnectorContext connectorContext = new ConnectorContext("test-connector", "mysql", "0", "3.2.0.Final", UUID.randomUUID(), configMap);
         emitter = new OpenLineageEmitter(
                 connectorContext,
                 new OpenLineageContext(
@@ -65,14 +65,13 @@ public class OpenLineageEmitterTest {
                                         "description",
                                         Map.of("tag1", "tagValue"),
                                         Map.of("owner1", "ownervalue"))),
-                        new OpenLineageJobIdentifier("namespace", "test-connector")),
+                        new OpenLineageJobIdentifier("namespace", "test-connector"), UUID.randomUUID()),
                 eventEmitter,
-                new DefaultInputDatasetNamespaceResolver(),
-                new DefaultOutputDatasetNamespaceResolver());
+                new DefaultDatasetNamespaceResolverFactory());
     }
 
     @Test
-    public void testEmitInitialState() {
+    void testEmitInitialState() {
         emitter.emit(DebeziumTaskState.INITIAL);
 
         verify(eventEmitter).emit(eventCaptor.capture());
@@ -84,7 +83,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitWithError() {
+    void testEmitWithError() {
         Throwable error = new RuntimeException("Test failure");
 
         emitter.emit(DebeziumTaskState.RESTARTING, error);
@@ -97,10 +96,12 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitWithInputAndOutputDatasets() {
+    void testEmitWithInputAndOutputDatasets() {
         DatasetMetadata.FieldDefinition field = new DatasetMetadata.FieldDefinition("id", "int", "Identifier", Collections.emptyList());
-        DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetType.INPUT, List.of(field));
-        DatasetMetadata outputDataset = new DatasetMetadata("output_table", DatasetMetadata.DatasetType.OUTPUT, List.of(field));
+        DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetKind.INPUT, DatasetMetadata.TABLE_DATASET_TYPE,
+                DatasetMetadata.DataStore.DATABASE, List.of(field));
+        DatasetMetadata outputDataset = new DatasetMetadata("output_table", DatasetMetadata.DatasetKind.OUTPUT, DatasetMetadata.STREAM_DATASET_TYPE,
+                DatasetMetadata.DataStore.KAFKA, List.of(field));
 
         emitter.emit(DebeziumTaskState.RUNNING, List.of(inputDataset, outputDataset));
 
@@ -118,7 +119,7 @@ public class OpenLineageEmitterTest {
     }
 
     @Test
-    public void testEmitComplete() {
+    void testEmitComplete() {
         emitter.emit(DebeziumTaskState.STOPPED);
 
         verify(eventEmitter).emit(eventCaptor.capture());

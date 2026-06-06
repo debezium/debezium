@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.meters.StreamingMeter;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.spi.schema.DataCollectionId;
@@ -23,15 +24,35 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
 
     SqlServerStreamingPartitionMetrics(CdcSourceTaskContext taskContext,
                                        Map<String, String> tags,
-                                       EventMetadataProvider metadataProvider) {
+                                       EventMetadataProvider metadataProvider,
+                                       CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, tags, metadataProvider);
-        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext.getConfig(), capturedTablesSupplier, metadataProvider);
+        if (taskContext.getConfig().skipMessagesWithoutChange()) {
+            streamingMeter.enableUnchangedEventsMetric();
+        }
+    }
+
+    @Override
+    public synchronized void register() {
+        super.register();
+        streamingMeter.start();
+    }
+
+    @Override
+    public synchronized void unregister() {
+        super.unregister();
+        streamingMeter.stop();
     }
 
     @Override
     void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
         super.onEvent(source, offset, key, value, operation);
         streamingMeter.onEvent(source, offset, key, value);
+    }
+
+    public void onUnchangedEventSkipped() {
+        streamingMeter.onUnchangedEventSkipped();
     }
 
     @Override
@@ -57,6 +78,11 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
     @Override
     public String getLastTransactionId() {
         return streamingMeter.getLastTransactionId();
+    }
+
+    @Override
+    public long getNumberOfUnchangedEventsSkipped() {
+        return streamingMeter.getNumberOfUnchangedEventsSkipped();
     }
 
     @Override

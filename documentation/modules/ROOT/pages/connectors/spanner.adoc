@@ -878,9 +878,11 @@ See the following section on how to configure a {prodname} Spanner connector.
 [[spanner-deploying-a-connector]]
 == Deployment
 
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Spanner connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:http://kafka.apache.org/[Kafka] and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Spanner connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Spanner connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka and Kafka Connect with the Spanner connector already installed and ready to run.
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 [IMPORTANT]
 ====
@@ -956,7 +958,7 @@ When the connector starts, it starts generating data change events for row-level
 [[spanner-monitoring]]
 === Monitoring
 
-The {prodname} Spanner connector provides only one type of metric in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} Spanner connector provides only one type of metric in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:spanner-streaming-metrics[Streaming metrics] provide information about connector operations when the connector is capturing changes and streaming change event records.
 
@@ -1272,6 +1274,27 @@ Tags can help you to organize and categorize metrics data.
 You can define tags to identify particular application instances, environments, regions, versions, and so forth.
 For more information, see xref:customized-mbean-names[Customized MBean names].
 
+|[[spanner-property-custom-sanitize-pattern]]<<spanner-property-custom-sanitize-pattern, `custom.sanitize.pattern`>>
+|`.*secret$\|.*password$\|.*sasl\.jaas\.config$\|.*basic\.auth\.user\.info$\|.*registry\.auth\.client-secret`
+|An optional regular expression that specifies a custom pattern for masking sensitive configuration keys.
+
+By default, {prodname} masks the value of configuration keys that match a predefined pattern for commonly known sensitive properties such as passwords and authentication tokens.
+To customize the way that the connector masks configuration key values, set this property to a regular expression that matches specific configuration key values that you want to mask.   
+
+For example, to mask keys the contain the strings `api.key` or `token`, set this property to the following value:
+
+----
+"custom.sanitize.pattern": ".*api\\.key.*\\|.*token.*"
+----
+
+If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
+A string of asterisks replaces the original values, for example,  `pass:[********]`.
+
+[IMPORTANT]
+====
+The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
+====
+
 |[[spanner-property-errors-max-retires]]<<spanner-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
 |Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
@@ -1285,6 +1308,17 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[spanner-property-extended-headers-enabled]]<<spanner-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 For a more complete list of advanced configuration, see link:https://github.com/debezium/debezium-connector-spanner/blob/main/src/main/java/io/debezium/connector/spanner/config/BaseSpannerConnectorConfig.java[Github code].

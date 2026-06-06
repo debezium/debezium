@@ -18,18 +18,15 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -45,13 +42,10 @@ import io.debezium.util.Testing;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "LogMiner specific")
 public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
 
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
-
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeSuperClass() throws SQLException {
+    @BeforeAll
+    static void beforeSuperClass() throws SQLException {
         try (OracleConnection adminConnection = TestHelper.adminConnection(true)) {
             adminConnection.removeAllLogFilesFromLogMinerSession();
         }
@@ -59,15 +53,15 @@ public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.forceFlushOfRedoLogsToArchiveLogs();
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null && connection.isConnected()) {
             connection.close();
         }
     }
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -80,23 +74,23 @@ public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
 
         // case 1 : oldest scn = current scn
         Scn currentScn = connection.getCurrentScn();
-        List<LogFile> redoFiles = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(currentScn);
+        List<LogFile> redoFiles = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(currentScn).logFiles();
         assertThat(redoFiles).hasSize(instances); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(connection);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn);
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn).logFiles();
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
 
-        files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn.subtract(Scn.ONE));
+        files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn.subtract(Scn.ONE)).logFiles();
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
     }
 
     @Test
     @FixFor("DBZ-3561")
     public void shouldOnlyReturnArchiveLogs() throws Exception {
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), true, null).getLogs(Scn.valueOf(0));
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), true, null).getLogs(Scn.valueOf(0)).logFiles();
         files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
     }
 
@@ -111,7 +105,7 @@ public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         // Test environment always has 1 destination at LOG_ARCHIVE_DEST_1
-        List<LogFile> files = getLogFileCollector(Duration.ofHours(1L), true, "LOG_ARCHIVE_DEST_1").getLogs(Scn.valueOf(0));
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(1L), true, "LOG_ARCHIVE_DEST_1").getLogs(Scn.valueOf(0)).logFiles();
         assertThat(files.isEmpty()).isFalse();
         files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
     }

@@ -10,10 +10,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.slf4j.Logger;
@@ -53,9 +55,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private final BinlogFieldReader fieldReader;
 
     public BinlogConnectorConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
-        super(configuration.config(), configuration.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        super(configuration.config(), configuration.factory(), initialOperations(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
         this.fieldReader = fieldReader;
+    }
+
+    private static Operations initialOperations() {
+        return statement -> statement.getConnection().setAutoCommit(false);
     }
 
     @Override
@@ -71,6 +77,25 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     @Override
     public String getQualifiedTableName(TableId tableId) {
         return tableId.catalog() + "." + tableId.table();
+    }
+
+    @Override
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+
+        // Use the connection's getAllTableIds method which also tracks readable databases
+        return getAllTableIdsWithReadableDatabases().getTableIds();
+    }
+
+    @Override
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+        return new StringBuilder("SELECT ")
+                .append(projection)
+                .append(" FROM ")
+                .append(quotedTableIdString(tableId))
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" LIMIT 1 OFFSET ").append(size)
+                .toString();
     }
 
     @Override
@@ -333,6 +358,85 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
+     * Result of getAllTableIds containing both table IDs and readable database names.
+     */
+    public static class TablesWithReadableDatabases {
+        private final Set<TableId> tableIds;
+        private final Set<String> readableDatabaseNames;
+
+        public TablesWithReadableDatabases(Set<TableId> tableIds, Set<String> readableDatabaseNames) {
+            this.tableIds = tableIds;
+            this.readableDatabaseNames = readableDatabaseNames;
+        }
+
+        public Set<TableId> getTableIds() {
+            return tableIds;
+        }
+
+        public Set<String> getReadableDatabaseNames() {
+            return readableDatabaseNames;
+        }
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in all available databases.
+     * This method uses MySQL/MariaDB specific "SHOW FULL TABLES" queries
+     *
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds() throws SQLException {
+        return getAllTableIdsWithReadableDatabases().getTableIds();
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in all available databases along with the list of
+     * databases that were successfully read.
+     * This method uses MySQL/MariaDB specific "SHOW FULL TABLES" queries which are more
+     * accurate than JDBC metadata for these databases.
+     *
+     * @return result containing both table IDs and readable database names
+     * @throws SQLException if a database exception occurred
+     */
+    public TablesWithReadableDatabases getAllTableIdsWithReadableDatabases() throws SQLException {
+        // -------------------
+        // READ DATABASE NAMES
+        // -------------------
+        // Get the list of databases ...
+        LOGGER.info("Read list of available databases");
+        final List<String> databaseNames = availableDatabases();
+        LOGGER.info("\t list of available databases is: {}", databaseNames);
+
+        // -------------------
+        // READ DATABASE NAMES
+        // -------------------
+        // Get the list of databases ...
+        LOGGER.info("Read list of available tables in each database");
+        final Set<TableId> tableIds = new HashSet<>();
+        final Set<String> readableDatabaseNames = new HashSet<>();
+
+        for (String dbName : databaseNames) {
+            try {
+                // MySQL sometimes considers some local files as databases (see DBZ-164),
+                // so we will simply try each one and ignore the problematic ones
+                query("SHOW FULL TABLES IN " + quoteIdentifier(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
+                    while (rs.next()) {
+                        TableId id = new TableId(dbName, null, rs.getString(1));
+                        tableIds.add(id);
+                    }
+                });
+                readableDatabaseNames.add(dbName);
+            }
+            catch (SQLException e) {
+                // We were unable to execute the query or process the results, so skip this
+                LOGGER.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
+            }
+        }
+
+        return new TablesWithReadableDatabases(tableIds, readableDatabaseNames);
+    }
+
+    /**
      * Determine whether the binlog position as set in the offset details is available on the server.
      *
      * @param config the connector configuration; should not be null
@@ -418,9 +522,16 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
-        final String gtidSet = ((BinlogOffsetContext) offset).gtidSet();
-        final String binlogFilename = ((BinlogOffsetContext) offset).getSource().binlogFilename();
-        return isBinlogPositionAvailable((BinlogConnectorConfig) config, gtidSet, binlogFilename);
+        final BinlogConnectorConfig binlogConfig = (BinlogConnectorConfig) config;
+        final BinlogOffsetContext offsetContext = (BinlogOffsetContext) offset;
+        // When the user has opted to ignore GTID during recovery, treat the stored GTID as if it
+        // were absent so that isBinlogPositionAvailable falls through to binlog file/position
+        // validation — consistent with the bypass already applied in shouldRecoverUsingGtid().
+        final String gtidSet = binlogConfig.shouldIgnoreGtidOnRecovery()
+                ? null
+                : offsetContext.gtidSet();
+        final String binlogFilename = offsetContext.getSource().binlogFilename();
+        return isBinlogPositionAvailable(binlogConfig, gtidSet, binlogFilename);
     }
 
     public String binaryLogStatusStatement() {

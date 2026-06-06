@@ -9,11 +9,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +27,8 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,6 +60,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * An abstract implementation of {@link SnapshotChangeEventSource} for binlog-based connectors.
@@ -69,6 +72,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class);
     private static final Logger ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class.getName() + ".RowEstimate");
+    private static final Duration LOCK_HEARTBEAT_INTERVAL = Duration.ofSeconds(30);
 
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogConnectorConnection connection;
@@ -81,6 +85,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private long globalLockAcquiredAt = -1;
     private long tableLockAcquiredAt = -1;
+    private ScheduledExecutorService lockKeepAliveExecutor;
+    /**
+     * Guard object to serialize access to the not-thread-safe {@link #connection} between the
+     * snapshot thread and the keep-alive heartbeat task.
+     */
+    private final Object binlogConnectionMutex = new Object();
 
     public BinlogSnapshotChangeEventSource(BinlogConnectorConfig connectorConfig,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -109,43 +119,16 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<P, O> ctx) throws Exception {
-        // -------------------
-        // READ DATABASE NAMES
-        // -------------------
-        // Get the list of databases ...
-        LOGGER.info("Read list of available databases");
-        final List<String> databaseNames = connection.availableDatabases();
-        LOGGER.info("\t list of available databases is: {}", databaseNames);
 
-        // ----------------
-        // READ TABLE NAMES
-        // ----------------
-        // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
-        // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
-        // we are reading the database names from the database and not taking them from the user ...
-        LOGGER.info("Read list of available tables in each database");
-        final Set<TableId> tableIds = new HashSet<>();
-        final Set<String> readableDatabaseNames = new HashSet<>();
-        for (String dbName : databaseNames) {
-            try {
-                // MySQL sometimes considers some local files as databases (see DBZ-164),
-                // so we will simply try each one and ignore the problematic ones ...
-                connection.query("SHOW FULL TABLES IN " + connection.quoteIdentifier(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
-                    while (rs.next()) {
-                        TableId id = new TableId(dbName, null, rs.getString(1));
-                        tableIds.add(id);
-                    }
-                });
-                readableDatabaseNames.add(dbName);
-            }
-            catch (SQLException e) {
-                // We were unable to execute the query or process the results, so skip this ...
-                LOGGER.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
-            }
-        }
-        final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+        Set<TableId> allTableIds = connection.getAllTableIds(ctx.catalogName);
+        // Log the databases that were readable and are included based on filters
+        final Set<String> includedDatabaseNames = allTableIds.stream()
+                .map(TableId::catalog)
+                .filter(filters.databaseFilter())
+                .collect(Collectors.toSet());
         LOGGER.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
-        return tableIds;
+
+        return allTableIds;
     }
 
     @Override
@@ -525,16 +508,22 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (lockingStatement.isPresent()) {
             connection.executeWithoutCommitting(lockingStatement.get());
             globalLockAcquiredAt = clock.currentTimeInMillis();
+            startLockHeartbeat();
         }
     }
 
     private void globalUnlock() throws SQLException {
-        LOGGER.info("Releasing global read lock to enable MySQL writes");
-        connection.executeWithoutCommitting("UNLOCK TABLES");
+        // Stop the keep-alive first so that no other thread uses the connection while we release the lock.
+        stopLockHeartbeat();
+        synchronized (binlogConnectionMutex) {
+            LOGGER.info("Releasing global read lock to enable MySQL writes");
+            connection.executeWithoutCommitting("UNLOCK TABLES");
+        }
         long lockReleased = clock.currentTimeInMillis();
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - globalLockAcquiredAt));
         globalLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     private void tableLock(RelationalSnapshotContext<P, O> snapshotContext)
@@ -560,15 +549,21 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         }
         tableLockAcquiredAt = clock.currentTimeInMillis();
         metrics.setGlobalLockAcquired();
+        startLockHeartbeat();
     }
 
     private void tableUnlock() throws SQLException {
-        LOGGER.info("Releasing table read lock to enable MySQL writes");
-        connection.executeWithoutCommitting("UNLOCK TABLES");
+        // Stop keep-alive before unlocking tables.
+        stopLockHeartbeat();
+        synchronized (binlogConnectionMutex) {
+            LOGGER.info("Releasing table read lock to enable MySQL writes");
+            connection.executeWithoutCommitting("UNLOCK TABLES");
+        }
         long lockReleased = clock.currentTimeInMillis();
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - tableLockAcquiredAt));
         tableLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     @Override
@@ -689,4 +684,42 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
         super.aborted(snapshotContext);
     }
+
+    private void startLockHeartbeat() {
+        if (lockKeepAliveExecutor == null || lockKeepAliveExecutor.isShutdown()) {
+            LOGGER.info("Starting lock heartbeat");
+            lockKeepAliveExecutor = Threads.newSingleThreadScheduledExecutor(
+                    getClass(),
+                    connectorConfig.getLogicalName(),
+                    "lock-heartbeat",
+                    true);
+            Runnable task = () -> {
+                synchronized (binlogConnectionMutex) {
+                    try {
+                        connection.query("SELECT 1", rs -> {
+                        });
+                    }
+                    catch (SQLException e) {
+                        LOGGER.warn("Snapshot lock heartbeat query failed", e);
+                    }
+                }
+            };
+            lockKeepAliveExecutor.scheduleAtFixedRate(task, LOCK_HEARTBEAT_INTERVAL.toSeconds(), LOCK_HEARTBEAT_INTERVAL.toSeconds(), TimeUnit.SECONDS);
+        }
+    }
+
+    private void stopLockHeartbeat() {
+        if (lockKeepAliveExecutor != null) {
+            lockKeepAliveExecutor.shutdownNow();
+            try {
+                // Wait briefly to ensure any running task has completed/cancelled.
+                lockKeepAliveExecutor.awaitTermination(5, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            lockKeepAliveExecutor = null;
+        }
+    }
+
 }

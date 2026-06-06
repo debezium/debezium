@@ -31,6 +31,11 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
     String EVENTS_CACHE_NAME = "events";
 
     /**
+     * The name for the rollbacks cache
+     */
+    String ROLLBACKS_CACHE_NAME = "rollbacks";
+
+    /**
      * Displays cache statistics
      */
     void displayCacheStatistics();

@@ -47,10 +47,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
+    public static final String CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME = "change.column.filter.override";
+
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
-    private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
     private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     /**
@@ -72,12 +73,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
          * Perform a snapshot of data and schema upon initial startup of a connector but does not transition to streaming.
          */
         INITIAL_ONLY("initial_only"),
-
-        /**
-         * Perform a snapshot of the schema but no data upon initial startup of a connector.
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
@@ -105,7 +100,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
-        CUSTOM("custom");
+        CUSTOM("custom"),
+
+        /**
+         * Combine when_needed + no_data mode
+         */
+        WHEN_NEEDED_NO_DATA("when_needed_no_data");
 
         private final String value;
 
@@ -452,6 +452,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                             + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                             + "snapshot is taken.");
 
+    public static final Field CDC_COLUMN_FILTER_OVERRIDE = Field.createInternal(CDC_COLUMN_FILTER_OVERRIDE_CONFIG_NAME)
+            .withDisplayName("CDC column filter override")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "This property can be used to override the default behavior of only including columns that have been enabled for CDC. Must only be used for snapshot migrations, otherwise columns not enabled for CDC will be missing from change events and would result in inconsistent schemas and possible failures.");
+
     public static final Field INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE = Field.create("incremental.snapshot.option.recompile")
             .withDisplayName("Recompile SELECT statements")
             .withDefault(false)
@@ -470,14 +480,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final Field DATA_QUERY_MODE = Field.create("data.query.mode")
             .withDisplayName("Data query mode")
-            .withEnum(DataQueryMode.class, DataQueryMode.FUNCTION)
+            .withEnum(DataQueryMode.class, DataQueryMode.DIRECT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how the connector queries CDC data. "
-                    + "The default is '" + DataQueryMode.FUNCTION.getValue()
-                    + "', which means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function. "
-                    + "The value of '" + DataQueryMode.DIRECT.getValue()
-                    + "' makes the connector to query the change tables directly.");
+                    + "The default is '" + DataQueryMode.DIRECT.getValue()
+                    + "', which makes the connector to query the change tables directly. "
+                    + "The value of '" + DataQueryMode.FUNCTION.getValue()
+                    + "' means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function.");
 
     public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
             .withDisplayName("Streaming fetch size")
@@ -532,6 +542,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
+    private final boolean overrideCdcColumnFilter;
     private final boolean optionRecompile;
     private final int queryFetchSize;
     private final DataQueryMode dataQueryMode;
@@ -560,7 +571,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
 
-        this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
+        // Check driver.* first (new standard), fall back to database.* (old) for backward compatibility
+        String applicationIntent = config.getString(DRIVER_CONFIG_PREFIX + "applicationIntent");
+        if (applicationIntent == null) {
+            applicationIntent = config.getString(DATABASE_CONFIG_PREFIX + "applicationIntent");
+        }
+        this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(applicationIntent);
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
             LOGGER.info("JDBC connection has set applicationIntent = ReadOnly, switching snapshot isolation mode to {}", SnapshotIsolationMode.SNAPSHOT.name());
@@ -570,6 +586,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
+        this.overrideCdcColumnFilter = config.getBoolean(CDC_COLUMN_FILTER_OVERRIDE);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
             LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
@@ -629,6 +646,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public int getMaxTransactionsPerIteration() {
         return maxTransactionsPerIteration;
+    }
+
+    public boolean isOverrideCdcColumnFilter() {
+        return overrideCdcColumnFilter;
     }
 
     public boolean getOptionRecompile() {

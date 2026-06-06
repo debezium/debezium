@@ -10,7 +10,7 @@ SELECT n FROM cte;
 WITH RECURSIVE cte AS (
   SELECT id, name, manager_id
   FROM employees
-  WHERE id = 1
+  WHERE id = 1 
   UNION ALL
   SELECT e.id, e.name, e.manager_id
   FROM employees e
@@ -30,7 +30,7 @@ WITH RECURSIVE cte AS (
 SELECT * FROM cte;
 #end
 #begin
---Non-recursive Ctes
+-- Non-recursive Ctes #NB space required for some reason.
 WITH cte1 AS (
   SELECT * FROM table1 WHERE col1 = 'value'
 ),
@@ -39,3 +39,4 @@ cte2 AS (
 )
 SELECT cte1.col1, cte2.col2 FROM cte1 JOIN cte2 ON cte1.id = cte2.id;
 #end
+

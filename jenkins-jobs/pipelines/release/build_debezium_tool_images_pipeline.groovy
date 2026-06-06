@@ -8,35 +8,37 @@ QUAYIO_CREDENTIALS_ID = 'debezium-quay'
 
 node('Slave') {
     catchError {
-        stage('Initialize') {
-            dir('.') {
-                deleteDir()
+        timeout(time: 12, unit: 'HOURS') {
+            stage('Initialize') {
+                dir('.') {
+                    deleteDir()
+                }
+                checkout([$class                           : 'GitSCM',
+                        branches                         : [[name: params.IMAGES_BRANCH]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
+                        submoduleCfg                     : [],
+                        userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                ]
+                )
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh """
+                        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                    """
+                }
+                withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
+                    def credentials = USERNAME_PASSWORD.split(':')
+                    sh """
+                        set +x
+                        docker login -u ${credentials[0]} -p ${credentials[1]} quay.io
+                    """
+                }
             }
-            checkout([$class                           : 'GitSCM',
-                      branches                         : [[name: params.IMAGES_BRANCH]],
-                      doGenerateSubmoduleConfigurations: false,
-                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
-                      submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
-            ]
-            )
-            withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                sh """
-                    docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-                """
-            }
-            withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
-                def credentials = USERNAME_PASSWORD.split(':')
-                sh """
-                    set +x
-                    docker login -u ${credentials[0]} -p ${credentials[1]} quay.io
-                """
-            }
-        }
-        stage('master') {
-            echo "Building debezium tool images"
-            dir(IMAGES_DIR) {
-                sh "PUSH_IMAGES=true TAG=$TAG ./build-tool-images.sh"
+            stage('master') {
+                echo "Building debezium tool images"
+                dir(IMAGES_DIR) {
+                    sh "PUSH_IMAGES=true TAG=$TAG ./build-tool-images.sh"
+                }
             }
         }
     }

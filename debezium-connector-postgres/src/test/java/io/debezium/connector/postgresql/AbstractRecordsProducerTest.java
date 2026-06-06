@@ -8,12 +8,12 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -52,8 +51,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
 import org.postgresql.jdbc.PgStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +72,6 @@ import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
 import io.debezium.time.Interval;
@@ -98,9 +94,6 @@ import io.debezium.util.Testing;
 public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRecordsProducerTest.class);
-
-    @Rule
-    public TestRule logTestName = new TestLogger(LOGGER);
 
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
     protected static final Pattern DELETE_TABLE_MATCHING_PATTERN = Pattern.compile("delete from (.*) where .*", Pattern.CASE_INSENSITIVE);
@@ -555,55 +548,79 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
     protected List<SchemaAndValueField> schemaAndValuesForRangeTypes() {
         String unboundedEnd = "infinity";
 
-        // Tstrange type
+        // Tsrange type
         String beginTsrange = "2019-03-31 15:30:00";
         String endTsrange = "2019-04-30 15:30:00";
 
         String expectedUnboundedExclusiveTsrange = String.format("[\"%s\",%s)", beginTsrange, unboundedEnd);
         String expectedBoundedInclusiveTsrange = String.format("[\"%s\",\"%s\"]", beginTsrange, endTsrange);
 
-        // Tstzrange type
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
-        Instant beginTstzrange = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
-        Instant endTstzrange = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+        // Dummy expected values strictly to bypass Debezium's internal Type/Null checks
+        DateTimeFormatter f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSxxx");
+        Instant beginTstz = f.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+        Instant endTstz = f.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
+        String dummyBegin = f.withZone(java.time.ZoneOffset.UTC).format(beginTstz);
+        String dummyEnd = f.withZone(java.time.ZoneOffset.UTC).format(endTstz);
+        String dummyUnbounded = String.format("[\"%s\",)", dummyBegin);
+        String dummyBounded = String.format("[\"%s\",\"%s\"]", dummyBegin, dummyEnd);
 
-        // Acknowledge timezone expectation of the system running the test
-        String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(beginTstzrange);
-        String endSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(endTstzrange);
+        // Tstzrange type - Timezone agnostic condition
+        final SchemaAndValueField.Condition tstzRangeCondition = (fieldName, expectedValue, actualValue) -> {
+            assertNotNull(actualValue);
+            String s = actualValue.toString();
 
-        String expectedUnboundedExclusiveTstzrange = String.format("[\"%s\",)", beginSystemTime);
-        String expectedBoundedInclusiveTstzrange = String.format("[\"%s\",\"%s\"]", beginSystemTime, endSystemTime);
+            Matcher m = Pattern.compile("\"([^\"]+)\"").matcher(s);
+            List<String> parts = new ArrayList<>();
+            while (m.find()) {
+                parts.add(m.group(1));
+            }
+
+            assertTrue(parts.size() == 1 || parts.size() == 2, "Unexpected tstzrange format: " + s);
+
+            String beginStr = parts.get(0).matches(".*[+-]\\d{2}$") ? parts.get(0) + ":00" : parts.get(0);
+            Instant begin = f.parse(beginStr, Instant::from);
+            Instant expectedBegin = f.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+            assertEquals(expectedBegin, begin, "Begin instant mismatch for " + fieldName);
+
+            if (parts.size() == 2) {
+                String endStr = parts.get(1).matches(".*[+-]\\d{2}$") ? parts.get(1) + ":00" : parts.get(1);
+                Instant end = f.parse(endStr, Instant::from);
+                Instant expectedEnd = f.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
+                assertEquals(expectedEnd, end, "End instant mismatch for " + fieldName);
+            }
+        };
 
         // Daterange
         String beginDaterange = "2019-03-31";
         String endDaterange = "2019-04-30";
-
         String expectedUnboundedDaterange = String.format("[%s,%s)", beginDaterange, unboundedEnd);
         String expectedBoundedDaterange = String.format("[%s,%s)", beginDaterange, endDaterange);
 
         // int4range
         String beginrange = "1000";
         String endrange = "6000";
-
         String expectedrange = String.format("[%s,%s)", beginrange, endrange);
 
         // numrange
         String beginnumrange = "5.3";
         String endnumrange = "6.3";
-
         String expectednumrange = String.format("[%s,%s)", beginnumrange, endnumrange);
 
         // int8range
         String beginint8range = "1000000";
         String endint8range = "6000000";
-
         String expectedint8range = String.format("[%s,%s)", beginint8range, endint8range);
 
         return Arrays.asList(
                 new SchemaAndValueField("unbounded_exclusive_tsrange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedExclusiveTsrange),
                 new SchemaAndValueField("bounded_inclusive_tsrange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedInclusiveTsrange),
-                new SchemaAndValueField("unbounded_exclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedExclusiveTstzrange),
-                new SchemaAndValueField("bounded_inclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedInclusiveTstzrange),
+
+                // Pass the dummy strings to bypass Type checking
+                new SchemaAndValueField("unbounded_exclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, dummyUnbounded)
+                        .assertWithCondition(tstzRangeCondition),
+                new SchemaAndValueField("bounded_inclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, dummyBounded)
+                        .assertWithCondition(tstzRangeCondition),
+
                 new SchemaAndValueField("unbounded_exclusive_daterange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedDaterange),
                 new SchemaAndValueField("bounded_exclusive_daterange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedDaterange),
                 new SchemaAndValueField("int4_number_range", Schema.OPTIONAL_STRING_SCHEMA, expectedrange),
@@ -668,7 +685,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             final long expectedMinTsStreaming = -210831897600000001L;
             final long expectedMinTsSnapshot = LocalDateTime.of(-4712, 11, 1, 0, 0, 0).toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000;
             final long ts = (long) actualValue;
-            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue, ts >= expectedMinTsSnapshot && ts < 0);
+            assertTrue(ts >= expectedMinTsSnapshot && ts < 0, "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
         };
         // The same issue is with timezoned timestamp
         // Database: 4714-12-31T23:59:59.999999Z BC
@@ -678,8 +695,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         final SchemaAndValueField.Condition largeNegativeTzTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
             final String expectedMinTsStreaming = "-4713-12-31T23:59:59.999999Z";
             final String expectedMinTsSnapshot = "-4713-11-23T23:59:59.999999Z";
-            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue,
-                    expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue));
+            assertTrue(expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue),
+                    "Negative timestamp don't match for " + fieldName + ", got " + actualValue);
         };
         return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
@@ -794,19 +811,49 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
         varnumArray.add(element);
 
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
-        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
-        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+        // Dummy expected values strictly to bypass Debezium's internal Size/Type checks
+        DateTimeFormatter f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSxxx");
+        Instant beginTstz = f.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+        Instant endTstz = f.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
+        String dummyBegin = f.withZone(java.time.ZoneOffset.UTC).format(beginTstz);
+        String dummyEnd = f.withZone(java.time.ZoneOffset.UTC).format(endTstz);
+        String dummyUnbounded = String.format("[\"%s\",)", dummyBegin);
+        String dummyBounded = String.format("[\"%s\",\"%s\"]", dummyBegin, dummyEnd);
+        List<String> dummyList = Arrays.asList(dummyUnbounded, dummyBounded);
 
-        // Acknowledge timezone expectation of the system running the test
-        String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(begin);
-        String endSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(end);
+        // Timezone agnostic condition for tstzrange arrays
+        final SchemaAndValueField.Condition tstzRangeArrayCondition = (fieldName, expectedValue, actualValue) -> {
+            assertNotNull(actualValue);
+            assertTrue(actualValue instanceof java.util.List, "Actual value is not a list");
+            List<?> actualList = (List<?>) actualValue;
 
-        String expectedFirstTstzrange = String.format("[\"%s\",)", beginSystemTime);
-        String expectedSecondTstzrange = String.format("[\"%s\",\"%s\"]", beginSystemTime, endSystemTime);
+            for (Object item : actualList) {
+                String s = item.toString();
+                Matcher m = Pattern.compile("\"([^\"]+)\"").matcher(s);
+                List<String> parts = new ArrayList<>();
+                while (m.find()) {
+                    parts.add(m.group(1));
+                }
 
-        return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
-                Arrays.asList(1, 2, 3)),
+                assertTrue(parts.size() == 1 || parts.size() == 2, "Unexpected tstzrange format in array: " + s);
+
+                String beginStr = parts.get(0).matches(".*[+-]\\d{2}$") ? parts.get(0) + ":00" : parts.get(0);
+                Instant beginInstant = f.parse(beginStr, Instant::from);
+                Instant expectedBegin = f.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+                assertEquals(expectedBegin, beginInstant, "Begin instant mismatch for array element in " + fieldName);
+
+                if (parts.size() == 2) {
+                    String endStr = parts.get(1).matches(".*[+-]\\d{2}$") ? parts.get(1) + ":00" : parts.get(1);
+                    Instant endInstant = f.parse(endStr, Instant::from);
+                    Instant expectedEnd = f.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
+                    assertEquals(expectedEnd, endInstant, "End instant mismatch for array element in " + fieldName);
+                }
+            }
+        };
+
+        return Arrays.asList(
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
+                        Arrays.asList(1, 2, 3)),
                 new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                         Arrays.asList(1550166368505037572L)),
                 new SchemaAndValueField("text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
@@ -828,25 +875,28 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                                 new BigDecimal("5.60"))),
                 new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(VariableScaleDecimal.builder().optional().build()).optional().build(),
                         varnumArray),
-                new SchemaAndValueField("citext_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("citext_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("four", "five", "six")),
-                new SchemaAndValueField("inet_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("inet_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("192.168.2.0/12", "192.168.1.1", "192.168.0.2/1")),
-                new SchemaAndValueField("cidr_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("cidr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("192.168.100.128/25", "192.168.0.0/25", "192.168.1.0/24")),
-                new SchemaAndValueField("macaddr_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("macaddr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("08:00:2b:01:02:03", "08:00:2b:01:02:03", "08:00:2b:01:02:03")),
-                new SchemaAndValueField("tsrange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("tsrange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("[\"2019-03-31 15:30:00\",infinity)", "[\"2019-03-31 15:30:00\",\"2019-04-30 15:30:00\"]")),
-                new SchemaAndValueField("tstzrange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
-                        Arrays.asList(expectedFirstTstzrange, expectedSecondTstzrange)),
-                new SchemaAndValueField("daterange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+
+                // Pass the dummyList to bypass Type and Size checking
+                new SchemaAndValueField("tstzrange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), dummyList)
+                        .assertWithCondition(tstzRangeArrayCondition),
+
+                new SchemaAndValueField("daterange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("[2019-03-31,infinity)", "[2019-03-31,2019-04-30)")),
-                new SchemaAndValueField("int4range_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("int4range_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("[1,6)", "[1,4)")),
-                new SchemaAndValueField("numerange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("numerange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("[5.3,6.3)", "[10.0,20.0)")),
-                new SchemaAndValueField("int8range_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                new SchemaAndValueField("int8range_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("[1000000,6000000)", "[5000,9000)")),
                 new SchemaAndValueField("uuid_array", SchemaBuilder.array(Uuid.builder().optional().build()).optional().build(),
                         Arrays.asList("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")),
@@ -1094,7 +1144,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             assertThat(content).isNull();
         }
         else {
-            assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
+            assertNotNull(content, "expected there to be content in Envelope under " + envelopeFieldName);
             expectedSchemaAndValuesByColumn.forEach(
                     schemaAndValueField -> schemaAndValueField.assertFor(content));
         }
@@ -1133,18 +1183,18 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             assertEquals(SnapshotType.INITIAL.toString(), snapshot);
         }
         else {
-            assertNull("Snapshot marker not expected, but found", snapshot);
-            assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
+            assertNull(snapshot, "Snapshot marker not expected, but found");
+            assertNull(lastSnapshotRecord, "Last snapshot marker not expected, but found");
         }
         final Struct envelope = (Struct) record.value();
         if (envelope != null && Envelope.isEnvelopeSchema(envelope.schema())) {
             final Struct source = (Struct) envelope.get("source");
             final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
             if (sourceSnapshot != null) {
-                assertEquals("Expected snapshot of type, but found", expectedType, sourceSnapshot);
+                assertEquals(expectedType, sourceSnapshot, "Expected snapshot of type, but found");
             }
             else {
-                assertEquals("Source snapshot marker not expected, but found", expectedType, SnapshotRecord.FALSE);
+                assertEquals(expectedType, SnapshotRecord.FALSE, "Source snapshot marker not expected, but found");
             }
         }
     }
@@ -1172,7 +1222,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
 
     protected static TableId tableIdFromInsertStmt(String statement) {
         Matcher matcher = INSERT_TABLE_MATCHING_PATTERN.matcher(statement);
-        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+        assertTrue(matcher.matches(), "Extraction of table name from insert statement failed: " + statement);
 
         TableId id = TableId.parse(matcher.group(1), false);
 
@@ -1185,7 +1235,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
 
     protected static TableId tableIdFromDeleteStmt(String statement) {
         Matcher matcher = DELETE_TABLE_MATCHING_PATTERN.matcher(statement);
-        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+        assertTrue(matcher.matches(), "Extraction of table name from insert statement failed: " + statement);
 
         TableId id = TableId.parse(matcher.group(1), false);
 
@@ -1207,7 +1257,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         private final String fieldName;
         private Supplier<Boolean> assertValueOnlyIf = null;
         private Condition valueCondition = (fieldName, expectedValue, actualValue) -> {
-            assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
+            assertEquals(expectedValue, actualValue, "Values don't match for " + fieldName);
         };
 
         public SchemaAndValueField(String fieldName, Schema schema, Object value) {
@@ -1237,17 +1287,17 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             }
 
             if (value == null) {
-                assertNull(fieldName + " is present in the actual content", content.get(fieldName));
+                assertNull(content.get(fieldName), fieldName + " is present in the actual content");
                 return;
             }
             Object actualValue = content.get(fieldName);
 
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if (actualValue instanceof List) {
-                assertTrue("Incorrect value type for " + fieldName, value instanceof List);
+                assertTrue(value instanceof List, "Incorrect value type for " + fieldName);
                 final List<?> actualValueList = (List<?>) actualValue;
                 final List<?> valueList = (List<?>) value;
-                assertEquals("List size don't match for " + fieldName, valueList.size(), actualValueList.size());
+                assertEquals(valueList.size(), actualValueList.size(), "List size don't match for " + fieldName);
                 if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
                     for (int i = 0; i < valueList.size(); i++) {
                         assertStruct((Struct) valueList.get(i), (Struct) actualValueList.get(i));
@@ -1256,11 +1306,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                 }
             }
             else {
-                assertEquals("Incorrect value type for " + fieldName, (value != null) ? value.getClass() : null, (actualValue != null) ? actualValue.getClass() : null);
+                assertEquals((value != null) ? value.getClass() : null, (actualValue != null) ? actualValue.getClass() : null, "Incorrect value type for " + fieldName);
             }
 
             if (actualValue instanceof byte[]) {
-                assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
+                assertArrayEquals((byte[]) value, (byte[]) actualValue, "Values don't match for " + fieldName);
             }
             else if (actualValue instanceof Struct) {
                 assertStruct((Struct) value, (Struct) actualValue);
@@ -1274,20 +1324,20 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             expectedStruct.schema().fields().stream().forEach(field -> {
                 final Object expectedValue = expectedStruct.get(field);
                 if (expectedValue == null) {
-                    assertNull(fieldName + " is present in the actual content", actualStruct.get(field.name()));
+                    assertNull(actualStruct.get(field.name()), fieldName + " is present in the actual content");
                     return;
                 }
                 final Object actualValue = actualStruct.get(field.name());
-                assertNotNull("No value found for " + fieldName, actualValue);
-                assertEquals("Incorrect value type for " + fieldName, expectedValue.getClass(), actualValue.getClass());
+                assertNotNull(actualValue, "No value found for " + fieldName);
+                assertEquals(expectedValue.getClass(), actualValue.getClass(), "Incorrect value type for " + fieldName);
                 if (actualValue instanceof byte[]) {
-                    assertArrayEquals("Values don't match for " + fieldName, (byte[]) expectedValue, (byte[]) actualValue);
+                    assertArrayEquals((byte[]) expectedValue, (byte[]) actualValue, "Values don't match for " + fieldName);
                 }
                 else if (actualValue instanceof Struct) {
                     assertStruct((Struct) expectedValue, (Struct) actualValue);
                 }
                 else {
-                    assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
+                    assertEquals(expectedValue, actualValue, "Values don't match for " + fieldName);
                 }
             });
         }
@@ -1298,7 +1348,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             }
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
-            assertNotNull(fieldName + " not found in schema " + SchemaUtil.asString(schema), field);
+            assertNotNull(field, fieldName + " not found in schema " + SchemaUtil.asString(schema));
             VerifyRecord.assertConnectSchemasAreEqual(field.name(), field.schema(), this.schema);
         }
     }

@@ -39,7 +39,7 @@ public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer>
         addEnv("JMXHOST", KAFKA_JMX_HOST);
         addEnv("JMXPORT", String.valueOf(KAFKA_JMX_PORT));
         withHttpMetrics();
-        withStartupTimeout(Duration.ofMinutes(WaitConditions.scaled(1)));
+        withStartupTimeout(Duration.ofMinutes(WaitConditions.scaled(3)));
         withCommand(KAFKA_CONNECT_COMMAND);
     }
 

@@ -8,10 +8,9 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
@@ -26,11 +25,10 @@ import io.debezium.util.Testing;
  */
 public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
-    @Rule
-    public TestName name = new TestName();
+    private TestInfo testInfo;
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         AbstractOracleDatatypesTest.beforeClass();
         createTables();
 
@@ -44,8 +42,9 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         insertGeometryTypes();
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before(TestInfo testInfo) throws Exception {
+        this.testInfo = testInfo;
         init(TemporalPrecisionMode.ADAPTIVE);
     }
 
@@ -73,7 +72,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
     }
 
     private String getTableIncludeList() {
-        switch (name.getMethodName()) {
+        String methodName = testInfo.getTestMethod().get().getName();
+        switch (methodName) {
             case "stringTypes":
                 return "debezium.type_string";
             case "fpTypes":
@@ -92,7 +92,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
             case "geometryTypes":
                 return "debezium.type_geometry";
             default:
-                throw new IllegalArgumentException("Unexpected test method: " + name.getMethodName());
+                throw new IllegalArgumentException("Unexpected test method: " + methodName);
         }
     }
 

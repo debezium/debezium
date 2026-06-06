@@ -39,7 +39,7 @@ A directory named `debezium-server` will be created with these contents:
 debezium-server/
 |-- CHANGELOG.md
 |-- config
-|-- CONTRIBUTE.md
+|-- CONTRIBUTING.md
 |-- COPYRIGHT.txt
 |-- debezium-server-{debezium-version}-runner.jar
 |-- lib
@@ -60,6 +60,15 @@ explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xs
 
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
+
+[NOTE]
+====
+Configuration properties that contain the `$` character are normally interpreted by Quarkus for property expansion.
+If a property value includes a `$` character as a prefix, such as `++${my.property}++`, the Microprofile configuration parser determines that the value is a https://quarkus.io/guides/config-reference#property-expressions[property expression] and attempts to expand it.
+
+To prevent the parser from attempting to expand values that use this syntax, escape the `$` prefix with a second `$` character; that is, provide the value as `++$${my.property}++`.
+The value of the property is then passed to {prodname} as `++${my.property}++`.
+====
 
 The main configuration file is _config/application.properties_.
 There are multiple sections configured:
@@ -287,6 +296,11 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`1000`
 |If using Redis to store offsets, defines the delay of retry on wait for replica failure.
 
+|[[debezium-source-offset-redis-cluster-enabled]]<<debezium-source-offset-redis-cluster-enabled, `debezium.source.offset.storage.redis.cluster.enabled`>>
+|`false`
+|If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
+
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
@@ -388,6 +402,10 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`1000`
 |If using Redis to store schema history, defines the delay of retry on wait for replica failure.
 
+|[[debezium-source-database-history-redis-cluster-enabled]]<<debezium-source-database-history-redis-cluster-enabled, `debezium.source.schema.history.internal.redis.cluster.enabled`>>
+|`false`
+|If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
 |
@@ -431,6 +449,13 @@ data during recovery.
 |[[schema-history-internal-azure-storage-account-name]]<<schema-history-internal-azure-storage-account-name,`debezium.source.schema.history.internal.azure.storage.account.name`>>
 |
 |Azure Blob Storage account name. This should be set if and only if `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is empty, which will then use Azure Active Directory authentication.
+
+|[[schema-history-internal-azure-storage-account-endpoint]]<<schema-history-internal-azure-storage-account-endpoint,`debezium.source.schema.history.internal.azure.storage.account.blob.endpoint`>>
+|
+|An optional Azure Blob Storage account endpoint URL.
+Use this to override the default public endpoint (`https://<account>.blob.core.windows.net`) for sovereign clouds such as Azure Government (`https://<account>.blob.core.usgovcloudapi.net`) or Azure China (`https://<account>.blob.core.chinacloudapi.cn`).
+Only used when `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is not set.
+Should not be set together with `debezium.source.schema.history.internal.azure.storage.account.name`.
 
 |[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`debezium.source.schema.history.internal.azure.storage.account.container.name`>>
 |
@@ -878,7 +903,9 @@ When the alternative implementations are not available then the default ones are
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
 {prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].  The HTTP Client sink supports
-optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication].
+optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication],
+https://oauth.net/2/client-credentials/[OAuth2 client credentials] authentication, and batch mode for sending multiple
+events in a single HTTP request.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -914,12 +941,21 @@ optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authe
 |true
 |Header values will be base64 encoded (defaults to true).
 
+|[[httpclient-batch-enabled]]<<httpclient-batch-enabled, `debezium.sink.http.batch.enabled` >>
+|false
+|When set to `true`, aggregates all change events in a batch into a JSON array and sends them in a single HTTP POST request instead of sending each event individually.
+
+|[[httpclient-batch-max-size]]<<httpclient-batch-max-size, `debezium.sink.http.batch.max-size` >>
+|200
+|The maximum number of events per HTTP request when batch mode is enabled. If the engine delivers more events than this limit, they are chunked into multiple requests.
+
 |[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
 |
 |Specifies the type of authentication the HTTP client sink uses when connecting to an HTTP server.
 Supports one of the following options:
 
 `jwt`:: JSON Web Token (JWT) authentication.
+`oauth2`:: OAuth2 client credentials grant (https://datatracker.ietf.org/doc/html/rfc6749#section-4.4[RFC 6749 Section 4.4]).
 `standard-webhooks`:: link:https://www.standardwebhooks.com/[Standard Webhooks].
 
 If you omit this property, the HTTP client sink does not use authentication headers for the connection
@@ -950,6 +986,38 @@ If you omit this property, the HTTP client sink does not use authentication head
 The secret must be Base64-encoded, with a size from 24 bytes to 64 bytes (192–512 bits).
 Optionally, you can add the prefix `whsec_` to the secret to help distinguish it from other types of keys or tokens.
 For more information about implementing or validating webhook signatures, see the link:https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md[Standard Webhooks specification].
+
+|[[httpclient-authentication-oauth2-client-id]]<<httpclient-authentication-oauth2-client-id, `debezium.sink.http.authentication.oauth2.client_id` >>
+|
+|Specifies the OAuth2 client ID for the client credentials grant.
+
+|[[httpclient-authentication-oauth2-client-secret]]<<httpclient-authentication-oauth2-client-secret, `debezium.sink.http.authentication.oauth2.client_secret` >>
+|
+|Specifies the OAuth2 client secret for the client credentials grant.
+
+|[[httpclient-authentication-oauth2-token-url]]<<httpclient-authentication-oauth2-token-url, `debezium.sink.http.authentication.oauth2.token_url` >>
+|
+|The URL of the OAuth2 token endpoint (e.g., `\https://auth.example.com/oauth/token`).
+
+|[[httpclient-authentication-oauth2-scope]]<<httpclient-authentication-oauth2-scope, `debezium.sink.http.authentication.oauth2.scope` >>
+|
+|Optional space-separated list of OAuth2 scopes to request (e.g., `data:read data:write`).
+
+|[[httpclient-authentication-oauth2-client-auth-method]]<<httpclient-authentication-oauth2-client-auth-method, `debezium.sink.http.authentication.oauth2.client_auth_method` >>
+|client_secret_basic
+|Specifies how client credentials are sent to the token endpoint.
+Supports one of the following options:
+
+`client_secret_basic`:: Sends credentials as an HTTP Basic Authorization header (https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1[RFC 6749 Section 2.3.1]).
+`client_secret_post`:: Sends `client_id` and `client_secret` as form fields in the POST request body.
+
+|[[httpclient-authentication-oauth2-http-method]]<<httpclient-authentication-oauth2-http-method, `debezium.sink.http.authentication.oauth2.token_url.http_method` >>
+|POST
+|The HTTP method to use for token requests. The OAuth2 specification requires `POST`, but some providers accept `GET` with query parameters. Set to `GET` only for providers that do not support the standard `POST` method.
+
+|[[httpclient-authentication-oauth2-params]]<<httpclient-authentication-oauth2-params, `debezium.sink.http.authentication.oauth2.params.*` >>
+|
+|Optional additional parameters to include in the token request. For example, some providers require an `audience` or `resource` parameter. Set these using the `params.` prefix, e.g. `debezium.sink.http.authentication.oauth2.params.audience=\https://my-api.example.com`.
 
 
 |===
@@ -1047,6 +1115,21 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |
 |Name of the Event Hub
 
+
+|[[dynamic-partition-routing]]<<dynamic-partition-routing, `debezium.sink.eventhubs.dynamicpartitionrouting`>>
+|
+| An optional setting that controls the behavior of dynamic partition routing. There are three possible values:
+
+- `default`: If the record key is not null, it is used as the batch partition key. Else, if the record's partition ID is not null, events are batched and routed to the specified partition ID. Otherwise, round-robin routing is applied. This is the default when no value is provided.
+- `key`: If the record key is not null, it is used as the batch partition key. Otherwise, round-robin routing is applied.
+- `partitionid`: If the record's partition ID is not null, events are batched and routed to the specified partition ID. Otherwise, round-robin routing is applied.
+
+The `debezium.sink.eventhubs.dynamicpartitionrouting` configuration is only applied when **both** of the following options are unset:
+
+- `debezium.sink.eventhubs.partitionid`
+- `debezium.sink.eventhubs.partitionkey`
+
+
 |[[partition-id]]<<partition-id, `debezium.sink.eventhubs.partitionid`>>
 |
 |(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
@@ -1058,6 +1141,17 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |[[max-batch-size]]<<max-batch-size, `debezium.sink.eventhubs.maxbatchsize`>>
 |
 |Sets the maximum size for the batch of events, in bytes.
+
+|[[hash-message-key-function]]<<hash-message-key-function, `debezium.sink.eventhubs.hashmessagekeyfunction`>>
+|No default value
+|(Optional) Specifies the hash function that {prodname} uses to encrypt encrypt Azure Event Hubs message keys.
+
+Specify one of the following values:
+
+ *  `java`
+ *  `md5`
+ *  `sha1`
+ * `sha256`
 
 |===
 
@@ -1100,6 +1194,13 @@ When the alternative implementations are not available then the default ones are
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
 The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
 
+{prodname} can use either a single Redis instance or use Redis Cluster mode for sink operations:
+
+Single instance mode:: Connects to a single Redis server instance.
+Cluster mode:: Connects to a Redis Cluster for high availability and horizontal scaling.
+
+To enable Redis Cluster mode, set the `debezium.sink.redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `debezium.sink.redis.address` property.
+
 [cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
@@ -1116,7 +1217,8 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 
 |[[redis-db-index]]<<redis-db-index, `debezium.sink.redis.db.index`>>
 |`0`
-|A number in the range 0..15 used for selecting the database to work with. Default is database 0. This feature is only available for standalone Redis connections; Redis clusters use only database 0.
+|A number in the range 0--15 used that {prodname} uses to select the database to work with.
+This setting is only available to standalone Redis connections; Redis Clusters use only database 0.
 
 |[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
 |
@@ -1226,6 +1328,11 @@ By default it is `0` (disabled).
 |`true`
 |Determines whether heartbeat messages from Debezium connectors should be skipped (not stored in Redis). When set to `true` (default), heartbeat messages are marked as processed but not stored in Redis streams. When set to `false`, heartbeat messages are stored in Redis streams alongside regular CDC events.
 
+|[[redis-cluster-enabled]]<<redis-cluster-enabled, `debezium.sink.redis.cluster.enabled`>>
+|`false`
+|Specifies whether {prodname} uses Redis Cluster mode for sink operations.
+Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
+
 |===
 
 [id="p-redis-message-format"]
@@ -1269,6 +1376,57 @@ By default the same name is used.
 
 |===
 
+==== Redis Configuration Examples
+
+===== Single Instance Mode
+
+[source,properties]
+----
+# Sink configuration
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+debezium.sink.redis.password=password
+debezium.sink.redis.cluster.enabled=false
+
+# Offset storage configuration
+debezium.source.offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+debezium.source.offset.storage.redis.address=localhost:6379
+debezium.source.offset.storage.redis.password=password
+debezium.source.offset.storage.redis.cluster.enabled=false
+
+# Schema history storage configuration
+debezium.source.schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+debezium.source.schema.history.internal.redis.address=localhost:6379
+debezium.source.schema.history.internal.redis.password=password
+debezium.source.schema.history.internal.redis.cluster.enabled=false
+----
+
+===== Cluster Mode
+
+[source,properties]
+----
+# Sink configuration
+debezium.sink.type=redis
+debezium.sink.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.sink.redis.password=password
+debezium.sink.redis.cluster.enabled=true
+
+# Offset storage configuration
+debezium.source.offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+debezium.source.offset.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.source.offset.storage.redis.password=password
+debezium.source.offset.storage.redis.cluster.enabled=true
+
+# Schema history storage configuration
+debezium.source.schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+debezium.source.schema.history.internal.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.source.schema.history.internal.redis.password=password
+debezium.source.schema.history.internal.redis.cluster.enabled=true
+----
+
+NOTE: If you configure {prodname} to use Redis Cluster mode,
+ensure that your Redis Cluster is properly configured and accessible.
+The {prodname} Server instance must be able to communicate with the cluster nodes.
 
 
 ==== NATS Streaming
@@ -1335,6 +1493,10 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 |
 |Must be set to `nats-jetstream`.
 
+|[[nats-jetstream-stream-name]]<<nats-jetstream-stream-name, `debezium.sink.nats-jetstream.stream-name`>>
+|DebeziumStream
+|Optional custom name for the stream that {prodname} creates.
+
 |[[nats-jetstream-url]]<<nats-jetstream-url, `debezium.sink.nats-jetstream.url`>>
 |
 | URL (or comma separated list of URLs) to a node or nodes in the cluster formatted as `nats://host:port`.
@@ -1345,7 +1507,11 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 
 |[[nats-jetstream-subjects]]<<nats-jetstream-subjects, `debezium.sink.nats-jetstream.subjects`>>
 | \*.*.*
-|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.*
+|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.* +
+*Important:* To capture both schema change events and data change events, you must specify both the topic prefix and a wildcard pattern. For example, if your `debezium.source.topic.prefix` is `myapp`, configure subjects as `myapp,myapp.>` or `myapp,myapp.*.*`. +
+- Schema change events (DDL) are published to the exact topic prefix (e.g., `myapp`) and this is rejected by any subject that has a subtopic wildcard +
+- Data change events are published to table-specific subjects (e.g., `myapp.database.table`) +
+- Use `myapp.>` to match any number of subject levels, or `myapp.*.*` to match exactly two levels after the prefix
 
 |[[nats-jetstream-storage]]<<nats-jetstream-storage, `debezium.sink.nats-jetstream.storage`>>
 | memory
@@ -1376,6 +1542,15 @@ Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authen
 |No default value
 |Specifies the password to use when xref:nats-jetstream-auth-user[password authentication] is enabled.
 
+|[[nats-jetstream-async-enabled]]<<nats-jetstream-async-enabled, `debezium.sink.nats-jetstream.async.enabled`>>
+|true
+|(Optional) A Boolean value that specifies whether {prodname} can stream asynchronously to a NATS JetStream server.
+
+|[[nats-jetstream-async-timeout-ms]]<<nats-jetstream-async-timeout-ms, `debezium.sink.nats-jetstream.async.timeout.ms`>>
+|5000
+|(Optional) Specifies the maximum time, in milliseconds, that {prodname} waits for acknowledgment from the NATS server after it sends a batch of messages for asynchronous processing.
+During asynchronous processing, each message is published with a timeout specified by `asyncTimeoutMs`.
+
 |===
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
@@ -1401,6 +1576,83 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 
 |===
+
+==== Apache Fluss
+
+https://fluss.apache.org/[Apache Fluss] is a streaming storage built for real-time analytics, providing unified streaming and batch processing capabilities with high performance, low latency, and strong consistency guarantees.
+{prodname} Server can publish change events to Apache Fluss, supporting both primary key tables for upsert/delete operations and log tables for append-only streaming.
+
+[NOTE]
+====
+Apache Fluss requires connectors to be configured with schemas enabled. Schemaless change events are not supported.
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[fluss-type]]<<fluss-type, `debezium.sink.type`>>
+|
+|Must be set to `fluss`.
+
+|[[fluss-bootstrap-servers]]<<fluss-bootstrap-servers, `debezium.sink.fluss.bootstrap.servers`>>
+|
+|Comma-separated list of Fluss coordinator server addresses in `host:port` format.
+
+|[[fluss-default-database]]<<fluss-default-database, `debezium.sink.fluss.default.database`>>
+|
+|Default Fluss database used when resolving table paths from event destinations.
+
+|[[fluss-primary-key-mode]]<<fluss-primary-key-mode, `debezium.sink.fluss.primary.key.mode`>>
+|`auto`
+|Determines the write mode selection based on primary key presence. Valid values:
+
+`auto`:: Automatically selects between append and upsert mode based on whether the table has a primary key.
+`upsert`:: Requires tables to have a primary key and performs insert/update/delete operations.
+`append`:: Writes all records in append-only mode, regardless of primary key existence.
+
+|[[fluss-table-auto-create]]<<fluss-table-auto-create, `debezium.sink.fluss.table.auto.create`>>
+|`false`
+|When `true`, automatically creates Fluss tables if they do not exist, deriving the schema from the Debezium event schema.
+
+|[[fluss-retries-max]]<<fluss-retries-max, `debezium.sink.fluss.retries.max`>>
+|`5`
+|Maximum number of retry attempts on transient write failures.
+
+|[[fluss-retries-interval-ms]]<<fluss-retries-interval-ms, `debezium.sink.fluss.retries.interval.ms`>>
+|`1000`
+|The initial retry interval in milliseconds.
+
+|[[fluss-retries-max-interval-ms]]<<fluss-retries-max-interval-ms, `debezium.sink.fluss.retries.max.interval.ms`>>
+|`60000`
+|The maximum retry interval in milliseconds.
+
+|[[fluss-retries-backoff-multiplier]]<<fluss-retries-backoff-multiplier, `debezium.sink.fluss.retries.backoff.multiplier`>>
+|`2.0`
+|Multiplier applied to retry intervals during exponential backoff.
+
+|===
+
+===== Injection points
+
+The Fluss sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[fluss-ext-stream-name-mapper]]<<fluss-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Fluss table name.
+By default the same name is used.
+
+|===
+
 
 ==== Apache Kafka
 
@@ -1952,6 +2204,200 @@ For example, if you specify the mapping `header:h1`, when {prodname} detects a h
 Constant::
 If the mapping definition does not include the `header:` or `value:` prefixes, when {prodname} detects instances of the specified value in incoming messages, it treats them as constants, and uses them as-is.
 Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
+
+
+==== JDBC
+
+The JDBC sink writes change events directly to a relational database using JDBC.
+It leverages the xref:connectors/jdbc.adoc[{prodname} JDBC connector] under the hood, supporting a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, and SQL Server.
+
+The sink supports idempotent writes by using upsert semantics, basic schema evolution to automatically create or alter destination tables, and delete propagation.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-type]]<<jdbc-type, `debezium.sink.type`>>
+|
+|Must be set to `jdbc`.
+
+|[[jdbc-props]]<<jdbc-props, `debezium.sink.jdbc.*`>>
+|
+|All JDBC connector configuration properties can be set using the `debezium.sink.jdbc.` prefix.
+For the full list of available properties, including connection, runtime, and dialect-specific options, see the xref:connectors/jdbc.adoc#jdbc-connector-properties[{prodname} JDBC connector configuration properties].
+
+|===
+
+[NOTE]
+====
+The JDBC sink requires the appropriate JDBC driver for the target database to be available on the classpath.
+The {prodname} Server distribution does not include any JDBC drivers for target databases, so you must add the driver for your destination database manually to the `lib/` directory.
+====
+
+[IMPORTANT]
+====
+Although the JDBC sink reuses the {prodname} JDBC sink connector, {prodname} Server does not currently provide the same delivery guarantees that are available when running the connector in other runtimes such as Kafka Connect.
+In particular, features that depend on the runtime for offset management, exactly-once semantics, or automatic error handling and retries may behave differently or may not be available.
+====
+
+.Example JDBC sink configuration
+[source,properties]
+----
+debezium.sink.type=jdbc
+debezium.sink.jdbc.connection.url=jdbc:mysql://localhost:3306/target_db
+debezium.sink.jdbc.connection.username=root
+debezium.sink.jdbc.connection.password=password
+debezium.sink.jdbc.insert.mode=upsert
+debezium.sink.jdbc.primary.key.mode=record_key
+debezium.sink.jdbc.schema.evolution=basic
+debezium.sink.jdbc.delete.enabled=true
+----
+
+
+==== Apache Iceberg
+
+The {prodname} Apache Iceberg connector is a sink that runs in {prodname} Server. It consumes database change events from a source {prodname} connector and writes them to Apache Iceberg tables.
+This allows for direct replication of a Database (Change Data Capture events) to Iceberg tables on cloud storage or HDFS, eliminating the need for intermediate systems like ETL Tool, Spark or other streaming platforms.
+
+The {prodname} Iceberg connector supports both `upsert` and `append` modes for data replication. When event and key schema information is enabled, the destination Iceberg tables are automatically created upon the initial startup.
+
+The connector provides the following features:
+
+* Upsert and Append modes.
+* Optimizing batch size.
+* Customizable table naming.
+* Offset and Schema History storage in Iceberg.
+* Automatic schema evolution.
+
+[NOTE]
+====
+- It is recommended to use `ExtractNewRecordState` transformation (event flattening). Key features like `upsert` mode and automatic primary key detection depend on the flattened event structure produced by this SMT. Without it, the connector can only operate in a more limited append-only mode.
+
+- The Debezium Server sink for Apache Iceberg is a community-maintained, open-source project. Please note that it is maintained in a separate repository, which you can find here: link:https://github.com/memiiso/debezium-server-iceberg[Debezium Server Iceberg GitHub]
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[iceberg-type]]<<iceberg-type, `debezium.sink.type`>>
+|
+|Must be set to `iceberg`.
+
+|[[iceberg-catalog-name]]<<iceberg-catalog-name, `debezium.sink.iceberg.catalog-name`>>
+|`default`
+|User-specified Iceberg catalog name.
+
+|[[iceberg-warehouse]]<<iceberg-warehouse, `debezium.sink.iceberg.warehouse`>>
+|
+|Required. Root path of the Iceberg data warehouse (e.g., `s3a://my-bucket/warehouse`).
+
+|[[iceberg-io-impl]]<<iceberg-io-impl, `debezium.sink.iceberg.io-impl`>>
+|`org.apache.iceberg.io.ResolvingFileIO`
+|Iceberg FileIO implementation used to write data files.
+
+|[[iceberg-table-namespace]]<<iceberg-table-namespace, `debezium.sink.iceberg.table-namespace`>>
+|`default`
+|The namespace within the catalog to use for tables.
+
+|[[iceberg-table-prefix]]<<iceberg-table-prefix, `debezium.sink.iceberg.table-prefix`>>
+|``
+|An optional prefix to add to the names of all created Iceberg tables.
+
+|[[iceberg-destination-regexp]]<<iceberg-destination-regexp, `debezium.sink.iceberg.destination-regexp`>>
+|``
+|A regular expression used to rewrite the destination table name.
+
+|[[iceberg-destination-regexp-replace]]<<iceberg-destination-regexp-replace, `debezium.sink.iceberg.destination-regexp-replace`>>
+|``
+|The replacement string for the `destination-regexp` expression.
+
+|[[iceberg-destination-uppercase-table-names]]<<iceberg-destination-uppercase-table-names, `debezium.sink.iceberg.destination-uppercase-table-names`>>
+|`false`
+|If `true`, creates uppercase Iceberg table names.
+
+|[[iceberg-destination-lowercase-table-names]]<<iceberg-destination-lowercase-table-names, `debezium.sink.iceberg.destination-lowercase-table-names`>>
+|`false`
+|If `true`, creates lowercase Iceberg table names.
+
+|[[iceberg-table-mapper]]<<iceberg-table-mapper, `debezium.sink.iceberg.table-mapper`>>
+|`default-mapper`
+|The mapping strategy for source to destination table names. Only `default-mapper` is currently provided.
+
+|[[iceberg-upsert]]<<iceberg-upsert, `debezium.sink.iceberg.upsert`>>
+|`false`
+|If `true`, enables upsert mode. If `false`, uses append-only mode.
+
+|[[iceberg-upsert-keep-deletes]]<<iceberg-upsert-keep-deletes, `debezium.sink.iceberg.upsert-keep-deletes`>>
+|`true`
+|In upsert mode, if `true`, deleted rows are kept and marked with `__deleted=true` (soft delete). If `false`, they are physically deleted.
+
+|[[iceberg-upsert-dedup-column]]<<iceberg-upsert-dedup-column, `debezium.sink.iceberg.upsert-dedup-column`>>
+|`__source_ts_ns`
+|The column used to deduplicate records in upsert mode. The record with the highest value in this column is kept.
+
+|[[iceberg-upsert-op-field]]<<iceberg-upsert-op-field, `debezium.sink.iceberg.upsert-op-field`>>
+|`__op`
+|The field name that contains the operation type (`c`, `u`, `d`, `r`) for deduplication logic.
+
+|[[iceberg-write-format-default]]<<iceberg-write-format-default, `debezium.sink.iceberg.write.format.default`>>
+|`parquet`
+|Default file format for Iceberg tables. Can be `parquet`, `avro`, or `orc`.
+
+|[[iceberg-nested-as-variant]]<<iceberg-nested-as-variant, `debezium.sink.iceberg.nested-as-variant`>>
+|`false`
+|If `true`, all nested data is stored in Iceberg `variant` fields, allowing schema changes to be absorbed without schema evolution.
+
+|[[iceberg-allow-field-addition]]<<iceberg-allow-field-addition, `debezium.sink.iceberg.allow-field-addition`>>
+|`true`
+|If `true`, allows the connector to automatically add new columns to Iceberg tables when new fields appear in source events.
+
+|[[iceberg-create-identifier-fields]]<<iceberg-create-identifier-fields, `debezium.sink.iceberg.create-identifier-fields`>>
+|`true`
+|If `false`, the connector will not create identifier fields for primary keys in the Iceberg table. Required to be `false` for append-only consumption of nested events.
+
+|[[iceberg-preserve-required-property]]<<iceberg-preserve-required-property, `debezium.sink.iceberg.preserve-required-property`>>
+|`false`
+|If `true`, columns in the Iceberg table will preserve their original `required`/`optional` property from the source. By default, only primary key columns are marked as required.
+
+|[[iceberg-batch-size-wait]]<<iceberg-batch-size-wait, `debezium.sink.batch.batch-size-wait`>>
+|`NoBatchSizeWait`
+|The batch size wait strategy to control commit frequency.
+
+|[[iceberg-concurrent-uploads]]<<iceberg-concurrent-uploads, `debezium.sink.batch.concurrent-uploads`>>
+|`1`
+|The number of parallel threads to use for uploading data to Iceberg.
+
+|[[iceberg-concurrent-uploads-timeout-minutes]]<<iceberg-concurrent-uploads-timeout-minutes, `debezium.sink.batch.concurrent-uploads.timeout-minutes`>>
+|`60`
+|The timeout in minutes to wait for all parallel uploads to complete.
+
+|[[iceberg-offset-storage]]<<iceberg-offset-storage, `debezium.source.offset.storage`>>
+|`io.debezium.server.iceberg.offset.IcebergOffsetBackingStore`
+|Sets the offset backing store to use an Iceberg table.
+
+|[[iceberg-offset-storage-table-name]]<<iceberg-offset-storage-table-name, `debezium.source.offset.storage.iceberg.table-name`>>
+|`_debezium_offset_storage`
+|The name of the Iceberg table used to store connector offsets.
+
+|[[iceberg-schema-history-internal]]<<iceberg-schema-history-internal, `debezium.source.schema.history.internal`>>
+|`io.debezium.server.iceberg.history.IcebergSchemaHistory`
+|Sets the schema history to use an Iceberg table.
+
+|[[iceberg-schema-history-internal-table-name]]<<iceberg-schema-history-internal-table-name, `debezium.source.schema.history.internal.iceberg.table-name`>>
+|`_debezium_database_history_storage`
+|The name of the Iceberg table used to store database schema history.
+
+|[[iceberg-passthrough-properties]]<<iceberg-passthrough-properties, `debezium.sink.iceberg.{iceberg.prop.name}`>>
+|
+|Passes any property prefixed with `debezium.sink.iceberg.` directly to the Iceberg library configuration, removing the prefix. This can be used to configure underlying details like S3 access credentials, catalog properties, etc. See the link:https://iceberg.apache.org/docs/latest/configuration/[Iceberg documentation] for available properties.
+
+|===
+
 
 == Extensions
 

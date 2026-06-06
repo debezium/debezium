@@ -55,4 +55,11 @@ public interface ConnectorMetricsReader {
      * @param connectorName connector name
      */
     void waitForOracleSnapshot(String connectorName);
+
+    /**
+     * Waits until snapshot phase of given Informix connector completes
+     *
+     * @param connectorName connector name
+     */
+    void waitForInformixSnapshot(String connectorName);
 }

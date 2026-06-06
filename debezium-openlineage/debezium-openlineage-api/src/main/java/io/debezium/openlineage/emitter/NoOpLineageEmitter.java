@@ -52,4 +52,9 @@ public class NoOpLineageEmitter implements LineageEmitter {
     public void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
         LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), datasetMetadata, t);
     }
+
+    @Override
+    public void close() {
+        LOGGER.debug("Closing NoOpLineageEmitter");
+    }
 }

@@ -17,11 +17,11 @@ import java.time.Duration;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -60,17 +60,17 @@ public class JdbcSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
             .withExposedPorts(PORT)
             .withStartupTimeout(Duration.ofSeconds(180));
 
-    @BeforeClass
+    @BeforeAll
     public static void startDatabase() {
         container.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopDatabase() {
         container.stop();
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws SQLException {
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -85,7 +85,7 @@ public class JdbcSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws SQLException {
         try {
             stopConnector();

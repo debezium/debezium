@@ -6,7 +6,9 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -22,9 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -33,7 +33,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -47,13 +46,10 @@ import io.debezium.jdbc.JdbcConnection;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogFileCollectorTest {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
     private int currentQueryRow;
 
     @Test
-    public void testStandaloneLogStateWithOneThreadArchiveLogGap() throws Exception {
+    void testStandaloneLogStateWithOneThreadArchiveLogGap() throws Exception {
         // The test scenario is (gap, arc process 2 fell behind)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -68,7 +64,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithNoGaps() throws Exception {
+    void testStandaloneLogStateWithNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs with high volatility)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -84,7 +80,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithJustOnlineLogs() throws Exception {
+    void testStandaloneLogStateWithJustOnlineLogs() throws Exception {
         // The test scenario is (no gaps, just online redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // Expectation: Return true, no wait needed.
@@ -96,7 +92,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testStandaloneLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
+    void testStandaloneLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
@@ -110,7 +106,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithOneThreadArchiveLogGap() throws Exception {
+    void testRacLogStateWithOneThreadArchiveLogGap() throws Exception {
         // The test scenario is (gap, arc process 2 fell behind)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 080 to NOW - SEQ1
@@ -127,7 +123,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithNoGaps() throws Exception {
+    void testRacLogStateWithNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs with one node volatile)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 080 to NOW - SEQ1
@@ -145,7 +141,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithJustOnlineLogs() throws Exception {
+    void testRacLogStateWithJustOnlineLogs() throws Exception {
         // The test scenario is (no gaps, just online redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
@@ -159,7 +155,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
+    void testRacLogStateWithMixOfArchiveAndRedoNoGaps() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
@@ -177,7 +173,7 @@ public class LogFileCollectorTest {
     }
 
     @Test
-    public void testRacLogStateWithMixOfArchiveAndRedoForBothThreadsNoGap() throws Exception {
+    void testRacLogStateWithMixOfArchiveAndRedoForBothThreadsNoGap() throws Exception {
         // The test scenario is (no gaps, mix of archive and redo logs on both threads, both equally active)
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
@@ -1473,10 +1469,10 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401)).logFiles();
         assertThat(result).hasSize(2);
         assertThat(getLogFileWithName(result, "logfile1").getNextScn()).isEqualTo(Scn.valueOf(103700));
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(104000));
     }
 
     @Test
@@ -1493,7 +1489,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401)).logFiles();
         assertThat(result).hasSize(2);
         assertThat(getLogFileWithName(result, "logfile1")).isNull();
     }
@@ -1512,9 +1508,9 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
 
     @Test
@@ -1531,9 +1527,9 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
-        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(TestHelper.SCN_MAX);
     }
 
     @Test
@@ -1552,7 +1548,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
         final LogFileCollector collector = getLogFileCollector(config, connection);
 
-        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301));
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103301)).logFiles();
         assertThat(result).hasSize(3);
         assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(largeScnValue));
     }
@@ -1574,7 +1570,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes and mining from SCN 1, we should get the same log files
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Bump redo thread state
         // No redo thread state changes, no checkpoints or log switches
@@ -1583,7 +1579,7 @@ public class LogFileCollectorTest {
         setConnectionRedoThreadState(connection, redoThreadState);
 
         // Should get the same logs even after state advancement
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1604,7 +1600,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Transition redo thread 1 to CLOSED (offline)
         redoThreadState = transitionRedoThreadToOffline(redoThreadState, 1, 1);
@@ -1619,7 +1615,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo02.log", 50, 2, 2));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1641,7 +1637,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Transition node 1 to OPEN (online)
         redoThreadState = transitionRedoThreadToOnline(redoThreadState, 1);
@@ -1656,7 +1652,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo02.log", 50, 2, 2));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1677,7 +1673,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Add new redo thread 3 in CLOSED state
         RedoThreadState.Builder builder = duplicateState(redoThreadState);
@@ -1716,7 +1712,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo03.log", 1000, 4, 3));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -1737,7 +1733,7 @@ public class LogFileCollectorTest {
         LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
 
         // Since no thread state changes yet, we should get the same logs.
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
 
         // Add new redo thread 3 in CLOSED state
         RedoThreadState.Builder builder = duplicateState(redoThreadState);
@@ -1776,7 +1772,7 @@ public class LogFileCollectorTest {
         files.add(createRedoLog("redo03.log", 1100, 4, 3));
         collector = setCollectorLogFiles(collector, files);
 
-        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+        assertThat(collector.getLogs(Scn.ONE).logFiles()).isEqualTo(files);
     }
 
     @Test
@@ -2104,6 +2100,247 @@ public class LogFileCollectorTest {
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642815621860L), files, redoThreadState)).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithOneArchiveDestination() throws Exception {
+        final String destinationName = "LOG_ARCHIVE_DEST_1";
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>());
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        files.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, List.of(destinationName));
+        assertThat(results).hasSize(3);
+        assertThat(results).containsAll(files);
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestination() throws Exception {
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+            files.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+            files.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        });
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(3);
+        assertThat(results).containsAll(archiveLogsByDestination.get(destinationNames.get(0)));
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestinationWithLogMixtures() throws Exception {
+        final List<LogFile> expected = new ArrayList<>();
+        expected.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        expected.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        expected.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        expected.add(createArchiveLog("thread_2_seq_14690.24371.1193544929", 6642813831998L, 6642813832998L, 14690, 2));
+
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            if (!name.equals("LOG_ARCHIVE_DEST_3")) {
+                files.addAll(expected.subList(0, expected.size() - 1));
+            }
+            else {
+                files.addAll(expected);
+            }
+        });
+
+        // Expects first 3 archive logs from DEST 1 and last one from DEST 3
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(4);
+        assertThat(results).containsAll(expected);
+    }
+
+    @Test
+    @FixFor("dbz#1246")
+    public void testMergeLogsByPrecedenceWithMultipleArchiveDestinationWithLogMixturesAndDuplicates() throws Exception {
+        final List<LogFile> logs = new ArrayList<>();
+        logs.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        logs.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        logs.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        logs.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        logs.add(createArchiveLog("thread_2_seq_14690.24371.1193544929", 6642813831998L, 6642813832998L, 14690, 2));
+
+        final List<LogFile> expected = new ArrayList<>(logs.subList(0, 3));
+        expected.add(logs.get(logs.size() - 1));
+
+        final List<String> destinationNames = List.of("LOG_ARCHIVE_DEST_1", "LOG_ARCHIVE_DEST_3");
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        destinationNames.forEach(name -> {
+            final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(name, k -> new ArrayList<>());
+            if (!name.equals("LOG_ARCHIVE_DEST_3")) {
+                files.addAll(logs.subList(0, logs.size() - 2));
+            }
+            else {
+                files.addAll(logs);
+            }
+        });
+
+        // Expects first 3 archive logs from DEST 1 and last one from DEST 3
+        // The duplicate sequence 14691 in DEST 3 is ignored
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, destinationNames);
+        assertThat(results).hasSize(4);
+        assertThat(results).containsAll(expected);
+    }
+
+    @Test
+    public void testMergeLogsByPrecedenceWithRacOverlappingSequences() throws Exception {
+        // On Oracle RAC, different redo threads share the same sequence numbers.
+        // mergeLogsByPrecedence must use (thread, sequence) as the dedup key,
+        // not just sequence alone. Without this, thread 2's archive logs are dropped.
+        final String destinationName = "LOG_ARCHIVE_DEST_1";
+        final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
+        final List<LogFile> files = archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>());
+
+        // Thread 1 and thread 2 both have seq 29, 30, 31
+        final LogFile t1s29 = createArchiveLog("1_29_1234.arc", 2654481L, 2670191L, 29, 1);
+        final LogFile t2s29 = createArchiveLog("2_29_1234.arc", 2654582L, 2670182L, 29, 2);
+        final LogFile t1s30 = createArchiveLog("1_30_1234.arc", 2670191L, 2702755L, 30, 1);
+        final LogFile t2s30 = createArchiveLog("2_30_1234.arc", 2670182L, 2702770L, 30, 2);
+        final LogFile t1s31 = createArchiveLog("1_31_1234.arc", 2702755L, 2702819L, 31, 1);
+        final LogFile t2s31 = createArchiveLog("2_31_1234.arc", 2702770L, 2702819L, 31, 2);
+
+        files.addAll(List.of(t1s29, t2s29, t1s30, t2s30, t1s31, t2s31));
+
+        final List<LogFile> results = LogFileCollector.mergeLogsByPrecedence(archiveLogsByDestination, List.of(destinationName));
+        assertThat(results).hasSize(6);
+        assertThat(results).containsAll(files);
+    }
+
+    @Test
+    @FixFor("dbz#745")
+    public void testScnIsNotInArchiveStandalone() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814020840L))).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#745")
+    public void testScnIsNotInArchiveRac() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813011749L))
+                .lastRedoScn(Scn.valueOf(6642813838620L))
+                .lastRedoSequenceNumber(14691L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_2_seq_26547.44874.1193544930", 6642813933063L, 6642814010839L, 26547, 2));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+        files.add(createRedoLog("redo02.log", 6642814010839L, 26548, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814010840L))).isFalse();
+    }
+
+    @Test
+    @FixFor("Dbz#745")
+    public void testScnIsInArchiveStandalone() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814020825L))).isTrue();
+    }
+
+    @Test
+    @FixFor("Dbz#745")
+    public void testScnIsInArchiveRac() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813011749L))
+                .lastRedoScn(Scn.valueOf(6642813838620L))
+                .lastRedoSequenceNumber(14691L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_2_seq_26547.44874.1193544930", 6642813933063L, 6642814010839L, 26547, 2));
+        files.add(createRedoLog("redo01.log", 6642814020839L, 16548, 1));
+        files.add(createRedoLog("redo02.log", 6642814010839L, 26548, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814010836L))).isTrue();
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }
@@ -2117,21 +2354,23 @@ public class LogFileCollectorTest {
     }
 
     private static LogFile createRedoLog(String name, String startScn, String endScn, int sequence, boolean current, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), current, threadId, logSize);
     }
 
     private static LogFile createRedoLog(String name, long startScn, long endScn, int sequence, int threadId, boolean current) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn),
-                BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), current, threadId, logSize);
     }
 
     private static LogFile createRedoLogWithNullEndScn(String name, long startScn, int sequence, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), null, BigInteger.valueOf(sequence), LogFile.Type.REDO, true, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forRedo(name, Scn.valueOf(startScn), TestHelper.SCN_MAX, BigInteger.valueOf(sequence), true, threadId, logSize);
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int sequence, int threadId) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn),
-                BigInteger.valueOf(sequence), LogFile.Type.ARCHIVE, false, threadId);
+        final long logSize = 1024 * 1024 * 1024; // 1GB
+        return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), threadId, logSize, false, false);
     }
 
     private LogFile getLogFileWithName(List<LogFile> logs, String fileName) {
@@ -2139,16 +2378,22 @@ public class LogFileCollectorTest {
     }
 
     private static Configuration.Builder getDefaultConfig() {
-        return TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 0);
+        return TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 0);
     }
 
     private OracleConnection getOracleConnectionMock(RedoThreadState state) throws SQLException {
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.getRedoThreadState()).thenReturn(state);
+        Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
         return connection;
     }
 
     private OracleConnection getOracleConnectionMock(RedoThreadState state, List<LogFile> logFileQueryResult) throws SQLException {
+        return getOracleConnectionMock(state, logFileQueryResult, Collections.singletonList("LOG_ARCHIVE_DEST_1"));
+    }
+
+    private OracleConnection getOracleConnectionMock(RedoThreadState state, List<LogFile> logFileQueryResult, List<String> destinationNames) throws SQLException {
         final OracleConnection connection = getOracleConnectionMock(state);
 
         ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -2182,13 +2427,25 @@ public class LogFileCollectorTest {
             return LogFile.Type.ARCHIVE.equals(file.getType()) ? "ARCHIVED" : "ONLINE";
         });
         Mockito.when(resultSet.getString(7)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getSequence().toString());
+        Mockito.when(resultSet.getString(8)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).hasDictionaryStart() ? "YES" : "NO");
+        Mockito.when(resultSet.getString(9)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).hasDictionaryEnd() ? "YES" : "NO");
         Mockito.when(resultSet.getInt(10)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getThread());
+        Mockito.when(resultSet.getLong(11)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getBytes());
+        Mockito.when(resultSet.getString(12)).thenAnswer(it -> destinationNames.get(0));
 
         Mockito.doAnswer(a -> {
             JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);
             consumer.accept(resultSet);
             return null;
         }).when(connection).query(anyString(), Mockito.any(JdbcConnection.ResultSetConsumer.class));
+
+        Mockito.doAnswer(a -> {
+            JdbcConnection.ResultSetMapper<?> consumer = a.getArgument(1);
+            return consumer.apply(resultSet);
+        }).when(connection).queryAndMap(anyString(), any(JdbcConnection.ResultSetMapper.class));
+
+        Mockito.when(connection.isArchiveLogDestinationValid(anyString())).thenAnswer(
+                invocation -> destinationNames.contains((String) invocation.getArgument(0)));
 
         return connection;
     }

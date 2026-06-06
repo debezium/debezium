@@ -167,6 +167,11 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
         return this.currentGtidSet;
     }
 
+    public void resetGtidSet() {
+        this.currentGtidSet = null;
+        this.restartGtidSet = null;
+    }
+
     /**
      * Record that a new GTID transaction has been started and has been included in the set of GTIDs known to the MySQL server.
      *

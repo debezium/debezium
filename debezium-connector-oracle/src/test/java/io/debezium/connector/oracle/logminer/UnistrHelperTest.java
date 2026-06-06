@@ -7,7 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
 
@@ -36,5 +36,11 @@ public class UnistrHelperTest {
         assertThat(UnistrHelper.convert("UNISTR('\\0412\\044B')|| UNISTR('\\0431\\0443')")).isEqualTo("Выбу");
         assertThat(UnistrHelper.convert("UNISTR('\\0412\\044B')||  UNISTR('\\0431\\0443')")).isEqualTo("Выбу");
         assertThat(UnistrHelper.convert("UNISTR('\\0412\\044B')  ||  UNISTR('\\0431\\0443')")).isEqualTo("Выбу");
+    }
+
+    @Test
+    @FixFor("DBZ-9132")
+    public void shouldConvertUnistrValueWithConcatenationCharacterSequence() throws Exception {
+        assertThat(UnistrHelper.convert("UNISTR('\\4E2D\\56FD||\\6B66\\6C49')")).isEqualTo("中国||武汉");
     }
 }

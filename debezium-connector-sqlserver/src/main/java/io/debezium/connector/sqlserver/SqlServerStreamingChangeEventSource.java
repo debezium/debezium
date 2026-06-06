@@ -74,6 +74,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private static final Duration DEFAULT_INTERVAL_BETWEEN_COMMITS = Duration.ofMinutes(1);
     private static final int INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR = 3;
+    private static final int INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR = 2;
 
     /**
      * Connection used for reading CDC tables.
@@ -92,6 +93,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
     private final Duration pollInterval;
+    private final Duration endTransactionTimerDelay;
     private final SnapshotterService snapshotterService;
     private final SqlServerConnectorConfig connectorConfig;
 
@@ -99,6 +101,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
     private final Map<SqlServerPartition, Set<SqlServerChangeTable>> changeTablesWithKnownStopLsn = new HashMap<>();
 
+    private ElapsedTimeStrategy endTransactionTimer;
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
@@ -118,6 +121,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.schema = schema;
         this.notificationService = notificationService;
         this.pollInterval = connectorConfig.getPollInterval();
+        this.endTransactionTimerDelay = metadataConnection.getCdcCapturePollingInterval()
+                .multipliedBy(INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR);
         this.snapshotterService = snapshotterService;
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
         this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
@@ -176,8 +181,19 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             TxLogPosition lastProcessedPosition = streamingExecutionContext.getLastProcessedPosition();
 
             if (context.isRunning()) {
-                commitTransaction();
-                final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                Lsn toLsn;
+                // Recover before iteration state mutates: a connection idle-killed during long schema
+                // recovery surfaces here on the first DB call. Refresh only the broken side and retry
+                // once so streaming resumes instead of failing the task.
+                try {
+                    commitTransaction();
+                    endTransaction(partition, offsetContext.getSourceTime());
+                    toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                }
+                catch (SQLException e) {
+                    recoverStaleConnections(e, databaseName);
+                    toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
+                }
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
@@ -245,6 +261,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         changeTables[i].next();
                     }
 
+                    boolean anyData = false;
+                    resetEndTransactionTimer();
                     for (;;) {
                         SqlServerChangeTablePointer tableWithSmallestLsn = null;
                         for (SqlServerChangeTablePointer changeTable : changeTables) {
@@ -302,6 +320,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             continue;
                         }
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
+                        anyData = true;
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                         if (!schemaChangeCheckpoints.isEmpty()) {
                             if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
@@ -348,6 +367,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
+                    if (!anyData) {
+                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn), 0);
+                        dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                    }
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(databaseName, e, tablesSlot.get()));
@@ -389,6 +412,32 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             dataConnection.commit();
             metadataConnection.commit();
         }
+    }
+
+    private void recoverStaleConnections(SQLException e, String databaseName) throws SQLException {
+        boolean dataValid;
+        boolean metadataValid;
+        try {
+            dataValid = dataConnection.isValid();
+            metadataValid = metadataConnection.isValid();
+        }
+        catch (SQLException probeEx) {
+            e.addSuppressed(probeEx);
+            throw e;
+        }
+        if (dataValid && metadataValid) {
+            throw e;
+        }
+        LOGGER.warn("Stale connection detected at start of streaming iteration for database '{}' (data valid={}, metadata valid={}); refreshing",
+                databaseName, dataValid, metadataValid, e);
+        if (!dataValid) {
+            dataConnection.reconnect();
+        }
+        if (!metadataValid) {
+            metadataConnection.reconnect();
+        }
+        LOGGER.info("Refreshed connections (data refreshed={}, metadata refreshed={}) for database '{}'",
+                !dataValid, !metadataValid, databaseName);
     }
 
     private void migrateTable(SqlServerPartition partition, final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext)
@@ -555,6 +604,27 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 LOGGER.info(
                         "Complete reading from change table {} as the committed change lsn ({}) is greater than the table's stop lsn ({})",
                         table, offset, table.getStopLsn().toString());
+            }
+        }
+    }
+
+    private void resetEndTransactionTimer() {
+        // sys.dm_cdc_log_scan_sessions returns no records if the queried database is in the secondary role of an Always On availability group
+        if (!connectorConfig.isReadOnlyDatabaseConnection()) {
+            endTransactionTimer = ElapsedTimeStrategy.constant(clock, endTransactionTimerDelay);
+        }
+    }
+
+    private void endTransaction(SqlServerPartition partition, Instant sourceTime) {
+        if (endTransactionTimer != null && endTransactionTimer.hasElapsed() && metadataConnection.didTransactionEnd()) {
+            try {
+                dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            finally {
+                endTransactionTimer = null;
             }
         }
     }

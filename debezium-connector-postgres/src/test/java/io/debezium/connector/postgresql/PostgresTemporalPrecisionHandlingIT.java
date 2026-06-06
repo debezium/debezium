@@ -9,17 +9,17 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.AbstractRecordsProducerTest.INSERT_ARRAY_TYPES_STMT;
 import static io.debezium.connector.postgresql.AbstractRecordsProducerTest.INSERT_DATE_TIME_TYPES_STMT;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -36,19 +36,19 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
     static String TOPIC_NAME = topicName("temporaltype.test_data_types");
 
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @Before
-    public void before() {
-        initializeConnectorTestFramework();
+    @BeforeEach
+    void before() {
         createTable();
+        initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -90,7 +90,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldConvertTemporalsToIsoString() throws Exception {
+    void shouldConvertTemporalsToIsoString() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -175,7 +175,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldConvertTemporalsMicroseconds() throws Exception {
+    void shouldConvertTemporalsMicroseconds() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -260,7 +260,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldConvertTemporalsNanoseconds() throws Exception {
+    void shouldConvertTemporalsNanoseconds() throws Exception {
         Testing.Print.disable();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -344,7 +344,57 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldReceiveDeletesWithInfinityDate() throws Exception {
+    void shouldConvertInfinityTimestampsToLongMinMax() throws Exception {
+        Testing.Print.disable();
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "temporaltype")
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.NANOSECONDS)
+                .build());
+        start(PostgresConnector.class, config.getConfig());
+        assertConnectorIsRunning();
+
+        TestHelper.execute("""
+                INSERT INTO temporaltype.test_data_types
+                VALUES (10 , NULL, NULL, NULL, 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', 'infinity', NULL, NULL, NULL, NULL );""");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        SourceRecord insertRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertEquals(TOPIC_NAME, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, "c_id", 10);
+        Struct after = getAfter(insertRecord);
+        assertEquals(after.get("c_id"), 10);
+        assertEquals(after.get("c_timestamp0"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp1"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp2"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp3"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp4"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp5"), Long.MAX_VALUE);
+        assertEquals(after.get("c_timestamp6"), Long.MAX_VALUE);
+
+        TestHelper.execute("""
+                INSERT INTO temporaltype.test_data_types
+                VALUES (11 , NULL, NULL, NULL, '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', '-infinity', NULL, NULL, NULL, NULL );""");
+
+        records = consumeRecordsByTopic(1);
+        insertRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertEquals(TOPIC_NAME, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, "c_id", 11);
+        after = getAfter(insertRecord);
+        assertEquals(after.get("c_id"), 11);
+        assertEquals(after.get("c_timestamp0"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp1"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp2"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp3"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp4"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp5"), Long.MIN_VALUE);
+        assertEquals(after.get("c_timestamp6"), Long.MIN_VALUE);
+
+        stopConnector();
+    }
+
+    @Test
+    void shouldReceiveDeletesWithInfinityDate() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");
@@ -373,7 +423,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     }
 
     @Test
-    public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
+    void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");

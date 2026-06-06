@@ -28,11 +28,6 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getMillisecondsToKeepTransactionsInBuffer();
 
     /**
-     * @return number of milliseconds that the connector sleeps between LogMiner queries
-     */
-    long getSleepTimeInMilliseconds();
-
-    /**
      * @return the current system change number of the database
      */
     BigInteger getCurrentScn();
@@ -77,14 +72,6 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     String[] getMinedLogFileNames();
 
     /**
-     * Specifies the maximum gap between the start and end system change number range used for
-     * querying changes from LogMiner.
-     *
-     * @return the LogMiner query batch size
-     */
-    int getBatchSize();
-
-    /**
      * @return the minimum number of logs used by a mining session
      */
     long getMinimumMinedLogCount();
@@ -93,6 +80,31 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      * @return the maximum number of logs used by a mining session
      */
     long getMaximumMinedLogCount();
+
+    /**
+     * @return the current number of logs used by a mining session
+     */
+    long getCurrentMinedLogCount();
+
+    /**
+     * @return the minimum SCN used for reading the current mined logs.
+     */
+    BigInteger getMiningSessionLowerBounds();
+
+    /**
+     * @return the maximum SCN used for reading the current mined logs
+     */
+    BigInteger getMiningSessionUpperBounds();
+
+    /**
+     * @return the minimum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchLowerBounds();
+
+    /**
+     * @return the maximum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchUpperBounds();
 
     /**
      * Exposes states of redo logs: current, active, inactive, unused ...
@@ -169,6 +181,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      * @return total duration in milliseconds for processing results for all LogMiner queries
      */
     long getTotalBatchProcessingTimeInMilliseconds();
+
+    /**
+     * @return total duration in milliseconds for dispatching committed transactions
+     */
+    long getTotalCommitTimeInMilliseconds();
 
     /**
      * @return average number of committed transactions per second in the transaction buffer
@@ -294,4 +311,8 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      */
     Set<String> getRolledBackTransactionIds();
 
+    /**
+     * @return the number of events currently buffered
+     */
+    long getNumberOfEventsInBuffer();
 }

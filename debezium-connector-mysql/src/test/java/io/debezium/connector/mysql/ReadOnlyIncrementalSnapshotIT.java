@@ -5,41 +5,39 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotIT;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.mysql.jdbc.MySqlBinaryProtocolFieldReader;
 
 @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Read only connection requires GTID_MODE to be ON")
 public class ReadOnlyIncrementalSnapshotIT extends BinlogReadOnlyIncrementalSnapshotIT<MySqlConnector> implements MySqlCommon {
 
-    @Rule
-    public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
-
     @Override
     protected Class<?> getFieldReader() {
         return MySqlBinaryProtocolFieldReader.class;
     }
 
-    @Test(expected = ConnectException.class)
+    @Test
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
-    public void shouldFailIfGtidModeIsOff() throws Exception {
-        // Testing.Print.enable();
-        populateTable();
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        startConnector((success, message, error) -> exception.set(error));
-        waitForEngineShutdown();
-        stopConnector();
-        final Throwable e = exception.get();
-        if (e != null) {
-            throw (RuntimeException) e;
-        }
+    void shouldFailIfGtidModeIsOff() throws Exception {
+        assertThrows(ConnectException.class, () -> {
+            // Testing.Print.enable();
+            populateTable();
+            AtomicReference<Throwable> exception = new AtomicReference<>();
+            startConnector((success, message, error) -> exception.set(error));
+            waitForEngineShutdown();
+            stopConnector();
+            final Throwable e = exception.get();
+            if (e != null) {
+                throw (RuntimeException) e;
+            }
+        });
     }
 }

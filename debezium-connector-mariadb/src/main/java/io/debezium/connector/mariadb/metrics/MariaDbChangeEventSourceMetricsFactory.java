@@ -9,6 +9,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mariadb.MariaDbPartition;
 import io.debezium.connector.mariadb.MariaDbTaskContext;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
@@ -39,7 +40,8 @@ public class MariaDbChangeEventSourceMetricsFactory extends DefaultChangeEventSo
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<MariaDbPartition> getStreamingMetrics(
                                                                                                                     T taskContext,
                                                                                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                                    EventMetadataProvider eventMetadataProvider) {
+                                                                                                                    EventMetadataProvider eventMetadataProvider,
+                                                                                                                    CapturedTablesSupplier capturedTablesSupplier) {
         return streamingMetrics;
     }
 

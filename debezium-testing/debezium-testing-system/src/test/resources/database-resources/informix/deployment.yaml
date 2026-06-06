@@ -1,0 +1,54 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: informix
+  labels:
+    app: informix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: informix
+      deployment: informix
+  template:
+    metadata:
+      labels:
+        app: informix
+        deployment: informix
+    spec:
+      volumes:
+        - name: informix
+          emptyDir: {}
+      containers:
+        - name: informix
+          image: ${ocp.image.informix}
+          ports:
+            - containerPort: 9088
+              protocol: TCP
+          env:
+            - name: LICENSE
+              value: accept
+          volumeMounts:
+            - name: informix
+              mountPath: /opt/ibm/data
+          securityContext:
+            privileged: true
+          resources: {}
+          imagePullPolicy: Always
+          livenessProbe:
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            tcpSocket:
+              port: 9088
+          readinessProbe:
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            tcpSocket:
+              port: 9088
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

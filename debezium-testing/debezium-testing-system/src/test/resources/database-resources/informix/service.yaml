@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: informix
+spec:
+  selector:
+    app: informix
+    deployment: informix
+  ports:
+    - name: db
+      port: 9088
+      targetPort: 9088

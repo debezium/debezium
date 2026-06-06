@@ -5,9 +5,14 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.Types;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -32,7 +37,8 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SqlServerDefaultValueConverter defaultValueConverter,
                                    ValueConverterProvider valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                                   SchemaNameAdjuster schemaNameAdjuster, CustomConverterRegistry customConverterRegistry) {
+                                   SchemaNameAdjuster schemaNameAdjuster, CustomConverterRegistry customConverterRegistry,
+                                   CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,
@@ -41,8 +47,9 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
-                        true),
-                false, connectorConfig.getKeyMapper());
+                        true,
+                        connectorConfig.getEventConvertingFailureHandlingMode()),
+                false, connectorConfig.getKeyMapper(), taskContext);
     }
 
     @Override
@@ -70,6 +77,32 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
     @Override
     protected DdlParser getDdlParser() {
         return null;
+    }
+
+    /**
+     * Returns whether the provided column is a max-type column ({@code varchar(max)},
+     * {@code nvarchar(max)}, or {@code varbinary(max)}) whose NULL value in the CDC
+     * capture table should be replaced by the {@code unavailable.value.placeholder}
+     * when the column was not changed during an UPDATE.
+     *
+     * @param column the relational column model
+     * @return {@code true} if the column is a max-type column
+     */
+    public static boolean isMaxColumn(Column column) {
+        return isMaxColumnJdbcType(column.jdbcType());
+    }
+
+    /**
+     * Returns whether the provided JDBC type represents a max-type column
+     * ({@code varchar(max)}, {@code nvarchar(max)}, or {@code varbinary(max)}).
+     *
+     * @param jdbcType the JDBC type code
+     * @return {@code true} if the JDBC type is a max-type
+     */
+    public static boolean isMaxColumnJdbcType(int jdbcType) {
+        return jdbcType == Types.LONGVARCHAR
+                || jdbcType == Types.LONGNVARCHAR
+                || jdbcType == Types.LONGVARBINARY;
     }
 
 }

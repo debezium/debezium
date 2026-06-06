@@ -16,21 +16,21 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Connector;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 
 public class OracleConnectorTest {
     OracleConnector connector;
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         connector = new OracleConnector();
     }
 
     @Test
-    public void testValidateUnableToConnectNoThrow() {
+    void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
         config.put(CommonConnectorConfig.TOPIC_PREFIX.name(), "dbserver1");
         config.put(OracleConnectorConfig.HOSTNAME.name(), "narnia");
@@ -52,13 +52,20 @@ public class OracleConnectorTest {
     }
 
     @Test
-    public void shouldReturnConfigurationDefinition() {
+    void shouldReturnConfigurationDefinition() {
         assertConfigDefIsValid(connector, OracleConnectorConfig.ALL_FIELDS);
     }
 
     protected static void assertConfigDefIsValid(Connector connector, io.debezium.config.Field.Set fields) {
         ConfigDef configDef = connector.config();
         assertThat(configDef).isNotNull();
+
+        // Collect all field names that are dependents of other fields (via value-based dependencies)
+        java.util.Set<String> dependentFieldNames = new java.util.HashSet<>();
+        fields.forEach(field -> {
+            field.valueDependants().values().forEach(dependentFieldNames::addAll);
+        });
+
         fields.forEach(expected -> {
             assertThat(configDef.names()).contains(expected.name());
             ConfigKey key = configDef.configKeys().get(expected.name());
@@ -76,7 +83,10 @@ public class OracleConnectorTest {
             assertThat(key.group).isNotNull();
             assertThat(key.orderInGroup).isGreaterThan(0);
             assertThat(key.validator).isNull();
-            assertThat(key.recommender).isNull();
+            // Recommenders are allowed for fields that are value-based dependents of other fields
+            if (!dependentFieldNames.contains(expected.name())) {
+                assertThat(key.recommender).isNull();
+            }
         });
     }
 }

@@ -7,36 +7,27 @@ package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.runners.Parameterized.Parameters;
 
-import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import javax.management.JMException;
-import javax.management.MBeanServer;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -49,44 +40,31 @@ import io.debezium.junit.logging.LogInterceptor;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = ANY_LOGMINER, reason = "LogMiner specific")
-@RunWith(Parameterized.class)
 public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private static OracleConnection connection;
 
-    @BeforeClass
-    public static void beforeSuperClass() throws SQLException {
+    @BeforeAll
+    static void beforeSuperClass() throws SQLException {
         connection = TestHelper.testConnection();
     }
 
-    @AfterClass
-    public static void closeConnection() throws SQLException {
+    @AfterAll
+    static void closeConnection() throws SQLException {
         if (connection != null && connection.isConnected()) {
             connection.close();
         }
     }
 
-    @Parameters(name = "{index}: lobEnabled={0}")
-    public static Collection<Object[]> lobEnabled() {
-        return Arrays.asList(new Object[][]{
-                { "false" },
-                { "true" }
-        });
+    static Stream<String> lobEnabled() {
+        return Stream.of("false", "true");
     }
 
-    private final String lobEnabled;
-
-    public UsernameFilterIT(String lobEnabled) {
-        this.lobEnabled = lobEnabled;
-    }
-
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-3978")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Buffered filters at commit time while unbuffered filters at transaction start")
-    public void shouldExcludeEventsByUsernameFilter() throws Exception {
+    public void shouldExcludeEventsByUsernameFilter(String lobEnabled) throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3978");
 
@@ -115,8 +93,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
 
             // There should be at least 2 DML events captured but ignored
-            Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
-            assertThat(totalDmlCount).isGreaterThanOrEqualTo(2L);
+            assertThat(OracleMetricsHelper.getTotalCapturedDmlCount()).isGreaterThanOrEqualTo(2L);
 
         }
         finally {
@@ -124,9 +101,10 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8884")
-    public void shouldIncludeEventsByUsernameFilterTransactionSplitOverMultipleMiningSessionsNoQueryFilter() throws Exception {
+    public void shouldIncludeEventsByUsernameFilterTransactionSplitOverMultipleMiningSessionsNoQueryFilter(String lobEnabled) throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz8884");
             TestHelper.dropTable(connection, "dbz8884b");
@@ -187,9 +165,10 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8884")
-    public void shouldIncludeEventsByUsernameFilterTransactionSplitOverMultipleMiningSessionsWithQueryFilter() throws Exception {
+    public void shouldIncludeEventsByUsernameFilterTransactionSplitOverMultipleMiningSessionsWithQueryFilter(String lobEnabled) throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz8884");
             TestHelper.dropTable(connection, "dbz8884b");
@@ -250,9 +229,10 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8884")
-    public void shouldOnlyCaptureEventsForIncludedUsernames() throws Exception {
+    public void shouldOnlyCaptureEventsForIncludedUsernames(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8884");
         try {
             connection.execute("CREATE TABLE dbz8884 (id numeric(9,0) primary key, data varchar2(50))");
@@ -284,9 +264,10 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("lobEnabled")
     @FixFor("DBZ-8884")
-    public void shouldThrowConfigurationExceptionWhenUsernameIncludeExcludeBothSpecified() throws Exception {
+    public void shouldThrowConfigurationExceptionWhenUsernameIncludeExcludeBothSpecified(String lobEnabled) throws Exception {
         TestHelper.dropTable(connection, "dbz8884");
         try {
             connection.execute("CREATE TABLE dbz8884 (id numeric(9,0) primary key, data varchar2(50))");
@@ -311,14 +292,6 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz8884");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T getStreamingMetric(String metricName) throws JMException {
-        final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-        return (T) server.getAttribute(
-                getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME),
-                metricName);
     }
 
     private static String topicName(String schemaName, String tableName) {

@@ -96,12 +96,11 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         final Table tableBefore = schema.tableFor(tableId);
 
         final OracleDdlParser parser = schema.getDdlParser();
-        final DdlChanges ddlChanges = parser.getDdlChanges();
+        DdlChanges ddlChanges = new DdlChanges();
         try {
-            ddlChanges.reset();
             parser.setCurrentDatabase(sourceDatabaseName);
             parser.setCurrentSchema(objectOwner);
-            parser.parse(ddlText, schema.getTables());
+            ddlChanges = parser.parse(ddlText, schema.getTables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (schema.skipUnparseableDdlStatements()) {

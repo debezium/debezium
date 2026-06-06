@@ -8,21 +8,24 @@ package io.debezium.connector.binlog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 
 /**
  * Tests around {@code DECIMAL} columns. Keep in sync with {@link BinlogNumericColumnIT}.
@@ -40,16 +43,16 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -63,7 +66,7 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
     public void shouldSetPrecisionSchemaParameter() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .build();
 
         // Start the connector ...
@@ -73,10 +76,11 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numCreateDatabase = 1;
-        int numCreateTables = 1;
+        int numSetVariables = 1;
+        int numTables = 1;
+        int numDdlEvents = numTables * 2 + 3;
         int numInserts = 1;
-        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
+        SourceRecords records = consumeRecordsByTopic(numSetVariables + numDdlEvents + numInserts);
         stopConnector();
         assertThat(records).isNotNull();
         records.forEach(this::validate);
@@ -125,5 +129,95 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
 
         assertThat(rating4SchemaParameters).contains(
                 entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "6"));
+    }
+
+    @Test
+    public void testPreciseDecimalHandlingMode() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_751_decimal_column_test"))
+                .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        assertBigDecimalChangeRecord(consumeInsert());
+
+        stopConnector();
+    }
+
+    @Test
+    public void testDoubleDecimalHandlingMode() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_751_decimal_column_test"))
+                .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        assertDoubleChangeRecord(consumeInsert());
+
+        stopConnector();
+    }
+
+    @Test
+    public void testStringDecimalHandlingMode() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_751_decimal_column_test"))
+                .with(BinlogConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        assertStringChangeRecord(consumeInsert());
+
+        stopConnector();
+    }
+
+    private SourceRecord consumeInsert() throws InterruptedException {
+        final int numDatabase = 2;
+        final int numTables = 4;
+        final int numOthers = 1;
+
+        SourceRecords records = consumeRecordsByTopic(numDatabase + numTables + numOthers);
+
+        assertThat(records).isNotNull();
+
+        List<SourceRecord> events = records.recordsForTopic(DATABASE.topicForTable("dbz_751_decimal_column_test"));
+        assertThat(events).hasSize(1);
+
+        return events.get(0);
+    }
+
+    private void assertBigDecimalChangeRecord(SourceRecord record) {
+        assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        assertThat(change.get("rating1")).isEqualTo(new BigDecimal("123"));
+        assertThat(change.get("rating2")).isEqualTo(new BigDecimal("123.4567"));
+        assertThat(change.get("rating3")).isEqualTo(new BigDecimal("235"));
+        assertThat(change.get("rating4")).isEqualTo(new BigDecimal("346"));
+    }
+
+    private void assertDoubleChangeRecord(SourceRecord record) {
+        assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        assertThat(change.getFloat64("rating1")).isEqualTo(123.0);
+        assertThat(change.getFloat64("rating2")).isEqualTo(123.4567);
+        assertThat(change.getFloat64("rating3")).isEqualTo(235.0);
+        assertThat(change.getFloat64("rating4")).isEqualTo(346.0);
+    }
+
+    private void assertStringChangeRecord(SourceRecord record) {
+        assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        assertThat(change.getString("rating1")).isEqualTo("123");
+        assertThat(change.getString("rating2")).isEqualTo("123.4567");
+        assertThat(change.getString("rating3")).isEqualTo("235");
+        assertThat(change.getString("rating4")).isEqualTo("346");
     }
 }

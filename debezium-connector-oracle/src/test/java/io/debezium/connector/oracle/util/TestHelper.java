@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.util;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +43,7 @@ import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -74,6 +76,9 @@ public class TestHelper {
     public static final String OPENLOGREPLICATOR_HOST = System.getProperty("openlogreplicator.host", "localhost");
     public static final String OPENLOGREPLICATOR_PORT = System.getProperty("openlogreplicator.port", "9000");
 
+    // Maximum SCN value from Oracle 19+
+    public static final Scn SCN_MAX = Scn.valueOf("18446744073709551615");
+
     /**
      * Key for schema parameter used to store a source column's type name.
      */
@@ -98,6 +103,7 @@ public class TestHelper {
         cacheMappings.put(CacheProvider.PROCESSED_TRANSACTIONS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
         cacheMappings.put(CacheProvider.SCHEMA_CHANGES_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         cacheMappings.put(CacheProvider.EVENTS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
+        cacheMappings.put(CacheProvider.ROLLBACKS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS);
     }
 
     /**
@@ -161,20 +167,7 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
             builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
-        else if (isUnbufferedLogMiner()) {
-            // Speeds up tests
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
-        }
-        else {
-            // Speeds up tests
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
-            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
-
+        else if (isBufferedLogMiner()) {
             final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
             if (readOnly) {
                 builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);
@@ -199,6 +192,7 @@ public class TestHelper {
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
@@ -393,7 +387,10 @@ public class TestHelper {
      * @return the connection
      */
     private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
-        OracleConnection connection = new OracleConnection(jdbcConfig);
+        // Setting this to true at least keeps existing behavior, expecting tests to set this to false
+        // as needed since this connection is not used in the connector but as part of the test, to
+        // perform required database SQL operations.
+        OracleConnection connection = new OracleConnection(jdbcConfig, true);
         try {
             connection.setAutoCommit(autoCommit);
 
@@ -413,7 +410,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
             if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -428,7 +425,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
             if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -450,11 +447,32 @@ public class TestHelper {
     }
 
     public static void dropTable(OracleConnection connection, String table) {
-        try {
-            connection.execute("DROP TABLE " + table);
-        }
-        catch (SQLException e) {
-            if (!e.getMessage().contains("ORA-00942") || 942 != e.getErrorCode()) {
+        final DelayStrategy strategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofSeconds(30));
+        final int maxAttempts = 10;
+
+        int attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                connection.execute("DROP TABLE " + table);
+                return;
+            }
+            catch (SQLException e) {
+                // ORA-00054 - Resource is busy
+                if (e.getErrorCode() == 54 || e.getMessage().startsWith("ORA-00054")) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                        LOGGER.warn("ORA-00054 table '{}' is busy, drop table will be retried ({} / {}).", table, attempt + 1, maxAttempts);
+                        strategy.sleepWhen(true);
+                        continue;
+                    }
+                    LOGGER.error("ORA-00054 table '{}' is busy, drop table failed.", table);
+                }
+                // ORA-00942 - table or view does not exist
+                else if (e.getErrorCode() == 942 || e.getMessage().startsWith("ORA-00942")) {
+                    LOGGER.warn("ORA-00942 table '{}' does not exist, drop table skipped.", table);
+                    return;
+                }
+
                 throw new RuntimeException(e);
             }
         }
@@ -773,7 +791,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), true)) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();

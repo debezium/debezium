@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.connector.postgresql.TypeId;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
@@ -69,7 +70,26 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
         final String dataType = column.typeName();
 
-        final DefaultValueMapper mapper = defaultValueMappers.get(dataType);
+        // Try to find mapper with the type name as-is first
+        DefaultValueMapper mapper = defaultValueMappers.get(dataType);
+
+        // If not found and the type name contains quotes or dots, try to parse it as a TypeId
+        // and look up using the qualified name without quotes
+        if (mapper == null && (dataType.contains("\"") || dataType.contains("."))) {
+            final var typeId = TypeId.parse(dataType);
+            if (typeId != null) {
+                final var qualifiedName = typeId.schema() != null
+                        ? typeId.schema() + "." + typeId.typeName()
+                        : typeId.typeName();
+                mapper = defaultValueMappers.get(qualifiedName);
+
+                // If still not found, try with just the type name (unqualified)
+                if (mapper == null && typeId.schema() != null) {
+                    mapper = defaultValueMappers.get(typeId.typeName());
+                }
+            }
+        }
+
         if (mapper == null) {
             LOGGER.warn("Mapper for type '{}' not found.", dataType);
             return Optional.empty();
@@ -212,29 +232,100 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     }
 
     private static String extractEnumDefault(String enumTypeName, String defaultValue) {
-        if (defaultValue != null && enumTypeName != null && defaultValue.endsWith("::" + enumTypeName)) {
-            defaultValue = defaultValue.substring(0, defaultValue.length() - ("::" + enumTypeName).length());
-            if (defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
-                return defaultValue.substring(1, defaultValue.length() - 1);
-            }
+        if (defaultValue == null || enumTypeName == null) {
+            return null;
         }
+
+        final var typeId = TypeId.parse(enumTypeName);
+        if (typeId == null) {
+            return null;
+        }
+
+        // Find the type cast suffix (::typename or ::schema.typename)
+        final var castIndex = defaultValue.lastIndexOf("::");
+        if (castIndex == -1) {
+            return null;
+        }
+
+        // Parse the suffix as a TypeId and compare
+        final var suffixString = defaultValue.substring(castIndex + 2);
+        final var suffixTypeId = TypeId.parse(suffixString);
+        if (suffixTypeId == null) {
+            return null;
+        }
+
+        // Compare type names - they match if:
+        // 1. They are exactly equal, OR
+        // 2. The type names match and one has a schema while the other doesn't
+        final boolean typeNamesMatch = typeId.typeName().equals(suffixTypeId.typeName()) &&
+                (typeId.equals(suffixTypeId) ||
+                        typeId.schema() == null ||
+                        suffixTypeId.schema() == null);
+
+        if (!typeNamesMatch) {
+            return null;
+        }
+
+        // Extract the value before the cast
+        final var valueWithoutCast = defaultValue.substring(0, castIndex);
+        if (valueWithoutCast.startsWith("'") && valueWithoutCast.endsWith("'")) {
+            return valueWithoutCast.substring(1, valueWithoutCast.length() - 1);
+        }
+
         return null;
     }
 
     public boolean supportConversion(String typeName) {
+        if (typeName == null) {
+            return false;
+        }
+
+        // Check if we already have a mapper for this exact type name
         if (defaultValueMappers.containsKey(typeName)) {
+            return true;
+        }
+
+        // Try to parse the type name to extract schema and type
+        final var typeId = TypeId.parse(typeName);
+        if (typeId == null) {
+            return false;
+        }
+
+        // Build qualified name if schema is present
+        final var qualifiedName = typeId.schema() != null
+                ? typeId.schema() + "." + typeId.typeName()
+                : null;
+
+        // Check if we have a mapper for the qualified name
+        if (qualifiedName != null && defaultValueMappers.containsKey(qualifiedName)) {
             return true;
         }
 
         // The TypeRegistry is not immutable, enum types can be added over the connector's lifetime.
         // If an enum type is passed here, we need to dynamically check the TypeRegistry and if one
         // exists, we need to register a value mapper for it lazily.
-        final PostgresType postgresType = typeRegistry.get(typeName);
-        if (!postgresType.isEnumType()) {
+        PostgresType postgresType = null;
+        if (typeId.schema() != null) {
+            postgresType = typeRegistry.get(typeId.schema(), typeId.typeName());
+        }
+
+        // If not found with schema, try without schema
+        if (postgresType == null) {
+            postgresType = typeRegistry.get(typeId.typeName());
+        }
+
+        if (postgresType == null || !postgresType.isEnumType()) {
             return false;
         }
 
-        defaultValueMappers.put(typeName, (c, v) -> extractEnumDefault(typeName, v));
+        // Register the mapper with both qualified and unqualified names
+        // This ensures it can be found whether the lookup uses "Status" or "s1.Status"
+        final var mapper = (DefaultValueMapper) (c, v) -> extractEnumDefault(typeName, v);
+        if (qualifiedName != null) {
+            defaultValueMappers.put(qualifiedName, mapper);
+        }
+        defaultValueMappers.put(typeId.typeName(), mapper);
+
         return true;
     }
 }

@@ -6,17 +6,17 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
@@ -31,11 +31,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
 
     private OracleConnection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         dropTables();
@@ -53,8 +50,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         stopConnector();
         if (connection != null) {
             dropTables();
@@ -123,6 +120,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String returnedIdentifierName(String queriedID) {
         return queriedID.toUpperCase();
+    }
+
+    @Override
+    protected Optional<String> physicalRowIdentifierSurrogateKey() {
+        return Optional.of("ROWID");
     }
 
     @Override
@@ -230,5 +232,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         TestHelper.dropTable(connection, "a");
         TestHelper.dropTable(connection, "b");
         TestHelper.dropTable(connection, "a42");
+    }
+
+    @Override
+    protected Duration getWaitDurationInSeconds() {
+        if (TestHelper.isXStream()) {
+            // XStream waits are more temperamental, give it more time
+            return Duration.ofMinutes(5);
+        }
+        return super.getWaitDurationInSeconds();
     }
 }

@@ -5,20 +5,22 @@
  */
 package io.debezium.openlineage;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import java.util.UUID;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.ConfigurationNames;
 
 public class DebeziumOpenLineageConfigurationTest {
 
     @Test
-    public void testFromConfigurationParsesAllFieldsCorrectly() {
+    void testFromConfigurationParsesAllFieldsCorrectly() {
 
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
@@ -28,7 +30,8 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag1=value1,tag2=value2",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner1=teamA,owner2=teamB");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
         assertTrue(result.enabled());
         assertEquals("/etc/debezium/openlineage.yml", result.config().path());
@@ -41,7 +44,7 @@ public class DebeziumOpenLineageConfigurationTest {
     }
 
     @Test
-    public void testFromConfigurationUsesTopicPrefixAsNamespaceFallback() {
+    void testFromConfigurationUsesConnectorLogicalNameAsNamespaceFallback() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml",
@@ -50,28 +53,31 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag=value",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner=value");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
-        assertEquals("fallback-prefix", result.job().namespace());
+        assertEquals("test-connector", result.job().namespace());
     }
 
     @Test
-    public void testEmptyTagsAndOwnersAreParsedAsEmptyMaps() {
+    void testEmptyTagsAndOwnersAreParsedAsEmptyMaps() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "false",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "none",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, "some-namespace",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "");
 
-        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration
+                .from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
 
+        assertEquals("", result.job().description());
         assertFalse(result.enabled());
         assertTrue(result.job().tags().isEmpty());
         assertTrue(result.job().owners().isEmpty());
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    public void testMalformedTagEntryThrowsException() {
+    @Test
+    void testMalformedTagEntryThrowsException() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "file.yml",
@@ -80,6 +86,21 @@ public class DebeziumOpenLineageConfigurationTest {
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tagOnlyNoEquals",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "");
 
-        DebeziumOpenLineageConfiguration.from(config);
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> {
+            DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
+        });
+
+    }
+
+    @Test
+    void testMissingJobDescriptionUsesDefault() {
+        Map<String, String> config = Map.of(
+                OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
+                OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml");
+
+        DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(
+                new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", UUID.randomUUID(), config));
+
+        assertEquals("Debezium CDC job for test-connector", result.job().description());
     }
 }

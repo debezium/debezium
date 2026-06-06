@@ -18,9 +18,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -36,15 +36,15 @@ import io.debezium.junit.logging.LogInterceptor;
 
 public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnectorTest {
 
-    @Before
-    public void before() throws SQLException {
-        initializeConnectorTestFramework();
+    @BeforeEach
+    void before() throws SQLException {
 
         TestHelper.dropAllSchemas();
+        initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
@@ -248,6 +248,59 @@ public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnecto
         VerifyRecord.isValidUpdate(record, "pk", 1);
         assertThat(schema).isEqualTo(SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).build());
         assertThat(after.get("data")).isEqualTo(Map.of("__debezium_unavailable_value", "__debezium_unavailable_value"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1334")
+    public void shouldHandleQuotedEnumTypeDefaultValues() throws Exception {
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TYPE s1.\"Status\" AS ENUM ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED');",
+                "CREATE TABLE s1.rtang_test2 (",
+                "    id int primary key,",
+                "    status s1.\"Status\" NOT NULL DEFAULT 'DRAFT'",
+                ");");
+        TestHelper.execute("INSERT INTO s1.rtang_test2 (id) VALUES (1);");
+
+        final var config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        var records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableRecords = records.recordsForTopic("test_server.s1.rtang_test2");
+
+        assertThat(tableRecords).hasSize(1);
+
+        var record = tableRecords.get(0);
+        var after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+
+        // Verify the default value was captured
+        assertThat(after.get("status")).isEqualTo("DRAFT");
+
+        // Verify the schema includes the default value
+        var statusFieldSchema = after.schema().field("status").schema();
+        assertThat(statusFieldSchema.defaultValue()).isEqualTo("DRAFT");
+
+        TestHelper.execute("INSERT INTO s1.rtang_test2 (id) VALUES (2);");
+
+        records = consumeRecordsByTopic(1);
+        tableRecords = records.recordsForTopic("test_server.s1.rtang_test2");
+
+        assertThat(tableRecords).hasSize(1);
+
+        record = tableRecords.get(0);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+
+        // Verify the default value was captured
+        assertThat(after.get("status")).isEqualTo("DRAFT");
+
+        // Verify the schema includes the default value
+        statusFieldSchema = after.schema().field("status").schema();
+        assertThat(statusFieldSchema.defaultValue()).isEqualTo("DRAFT");
+
     }
 
     private void createTableAndInsertData() {

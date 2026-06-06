@@ -28,13 +28,26 @@ public class DropTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterDropTable(MySqlParser.DropTableContext ctx) {
-        Interval interval = new Interval(ctx.start.getStartIndex(), ctx.tables().start.getStartIndex() - 1);
+        // Get the parent dropStatement context to include "DROP" keyword
+        int startIndex = ctx.getParent().getStart().getStartIndex();
+        Interval interval = new Interval(startIndex, ctx.tableRefList().start.getStartIndex() - 1);
         String prefix = ctx.start.getInputStream().getText(interval);
-        ctx.tables().tableName().forEach(tableNameContext -> {
-            TableId tableId = parser.parseQualifiedTableId(tableNameContext.fullId());
+
+        // Determine if RESTRICT or CASCADE is specified
+        String dropType = null;
+        if (ctx.RESTRICT_SYMBOL() != null) {
+            dropType = "RESTRICT";
+        }
+        else if (ctx.CASCADE_SYMBOL() != null) {
+            dropType = "CASCADE";
+        }
+
+        final String finalDropType = dropType;
+        ctx.tableRefList().tableRef().forEach(tableRefContext -> {
+            TableId tableId = parser.parseQualifiedTableId(tableRefContext);
             parser.databaseTables().removeTable(tableId);
             parser.signalDropTable(tableId, prefix + tableId.toQuotedString('`')
-                    + (ctx.dropType != null ? " " + ctx.dropType.getText() : ""));
+                    + (finalDropType != null ? " " + finalDropType : ""));
         });
         super.enterDropTable(ctx);
     }

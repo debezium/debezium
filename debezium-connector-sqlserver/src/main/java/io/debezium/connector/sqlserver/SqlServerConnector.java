@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -25,11 +24,12 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
+import io.debezium.annotation.SupportsMultiTask;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
 
 /**
@@ -38,7 +38,8 @@ import io.debezium.util.Threads;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnector extends RelationalBaseSourceConnector {
+@SupportsMultiTask
+public class SqlServerConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
 
@@ -116,6 +117,11 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
+    public Field.Set getConfigFields() {
+        return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         if (!configValues.get(DATABASE_NAMES.name()).errorMessages().isEmpty()) {
             return;
@@ -133,20 +139,23 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                             connection.username());
                     LOGGER.info("Checking if user has access to CDC table");
-                    if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
-                        final List<String> noAccessDatabaseNames = new ArrayList<>();
-                        for (String databaseName : sqlServerConfig.getDatabaseNames()) {
+                    final List<String> noAccessDatabaseNames = new ArrayList<>();
+                    for (String databaseName : sqlServerConfig.getDatabaseNames()) {
+                        if (sqlServerConfig.getSnapshotMode() == SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
+                            connection.retrieveRealDatabaseName(databaseName);
+                        }
+                        else {
                             if (!connection.checkIfConnectedUserHasAccessToCDCTable(databaseName)) {
                                 noAccessDatabaseNames.add(databaseName);
                             }
                         }
-                        if (!noAccessDatabaseNames.isEmpty()) {
-                            String errorMessage = String.format(
-                                    "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
-                                    config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
-                            LOGGER.error(errorMessage);
-                            userValue.addErrorMessage(errorMessage);
-                        }
+                    }
+                    if (!noAccessDatabaseNames.isEmpty()) {
+                        String errorMessage = String.format(
+                                "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
+                                config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
+                        LOGGER.error(errorMessage);
+                        userValue.addErrorMessage(errorMessage);
                     }
                 }
                 catch (Exception e) {
@@ -155,7 +164,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                             + e.getMessage());
                 }
-            }, timeout, sqlServerConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, sqlServerConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
@@ -173,33 +182,6 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
         return new SqlServerConnection(sqlServerConfig, null, Collections.emptySet(),
                 sqlServerConfig.useSingleDatabase());
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final List<String> databaseNames = connectorConfig.getDatabaseNames();
-
-        try (SqlServerConnection connection = connect(connectorConfig)) {
-            List<TableId> tables = new ArrayList<>();
-            databaseNames.forEach(databaseName -> {
-                try {
-                    tables.addAll(
-                            connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
-                                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                                    .collect(Collectors.toList()));
-                }
-                catch (SQLException e) {
-                    throw new DebeziumException(e);
-                }
-            });
-
-            return tables;
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve real database name", e);
-        }
     }
 
     @Override

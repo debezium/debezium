@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.doc.FixFor;
@@ -25,8 +25,8 @@ public class PostgresOffsetContextTest {
     private PostgresConnectorConfig connectorConfig;
     private OffsetContext.Loader offsetLoader;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         this.connectorConfig = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         this.offsetLoader = new PostgresOffsetContext.Loader(this.connectorConfig);
     }

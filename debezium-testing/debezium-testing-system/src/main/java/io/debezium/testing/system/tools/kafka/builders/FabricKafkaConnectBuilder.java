@@ -95,6 +95,7 @@ public class FabricKafkaConnectBuilder extends
                 artifactServer.createDebeziumPlugin("postgres"),
                 artifactServer.createDebeziumPlugin("mongodb"),
                 artifactServer.createDebeziumPlugin("sqlserver"),
+                artifactServer.createDebeziumPlugin("informix", List.of("ifx/jdbc")),
                 artifactServer.createDebeziumPlugin("db2", List.of("jdbc/jcc")),
                 // jdbc sink connector, not to be confused with the libraries stored in jdbc directory used in db2 and oracle connectors
                 artifactServer.createDebeziumPlugin("jdbc")));
@@ -118,6 +119,14 @@ public class FabricKafkaConnectBuilder extends
                 .endBuild()
                 .endSpec();
 
+        return self();
+    }
+
+    public FabricKafkaConnectBuilder withVersion(String version) {
+        builder
+                .editSpec()
+                .withVersion(version)
+                .endSpec();
         return self();
     }
 

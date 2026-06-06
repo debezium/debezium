@@ -16,9 +16,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -79,12 +82,22 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(#db.sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
+    private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_begin_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], #, "
+            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
+    private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
+    private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
+    private static final String CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
+    private static final String CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME = "pollinginterval";
+    private static final long DEFAULT_CDC_POLLING_INTERVAL_SECONDS = 5;
+    private static final String GET_START_LSN_FOR_LAST_BATCH_SCANNED = "SELECT TOP 1 start_lsn from sys.dm_cdc_log_scan_sessions ORDER BY session_id DESC";
+    private static final String START_LSN_INDICATING_EMPTY_BATCH = "00000000:00000000:0000\u0000";
 
     /**
      * Queries the list of captured column names and their change table identifiers in the given database.
@@ -92,6 +105,14 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_CAPTURED_COLUMNS = "SELECT object_id, column_name" +
             " FROM #db.cdc.captured_columns" +
             " ORDER BY object_id, column_id";
+
+    /**
+     * Queries the list of all column names and their change table identifiers in the given database.
+     */
+    private static final String GET_ALL_COLUMNS = "SELECT tables.object_id, columns.name" +
+            " FROM #db.sys.columns columns" +
+            " INNER JOIN #db.cdc.change_tables tables ON tables.source_object_id = columns.object_id" +
+            " ORDER BY tables.object_id, columns.column_id";
 
     /**
      * Queries the list of capture instances in the given database.
@@ -176,20 +197,31 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
                                                    Set<Envelope.Operation> skippedOperations) {
-        String result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " ";
+        boolean isDirectMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
+        String result;
         List<String> where = new LinkedList<>();
         switch (dataQueryMode) {
             case FUNCTION:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
+                result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
                 break;
             case DIRECT:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT + " ";
+            default:
+                result = GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT + " ";
                 break;
         }
-        where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
-                "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
-                "OR ([__$start_lsn] > ?))");
-        where.add("[__$start_lsn] <= ?");
+
+        if (isDirectMode) {
+            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] > ?))");
+            where.add("[cdc_data].[__$start_lsn] <= ?");
+        }
+        else {
+            where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
+                    "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
+                    "OR ([__$start_lsn] > ?))");
+            where.add("[__$start_lsn] <= ?");
+        }
 
         if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();
@@ -209,7 +241,8 @@ public class SqlServerConnection extends JdbcConnection {
                         break;
                 }
             });
-            where.add("[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
+            String colPrefix = isDirectMode ? "[cdc_data]." : "";
+            where.add(colPrefix + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
         }
 
         if (!where.isEmpty()) {
@@ -299,6 +332,19 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         return connection;
+    }
+
+    @Override
+    public synchronized void reconnect() throws SQLException {
+        // JdbcConnection#reconnect() bypasses connection(boolean) and would skip setAutoCommit(false).
+        LOGGER.info("Reopening SQL Server JDBC connection");
+        close();
+        connection();
+    }
+
+    @Override
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return super.getAllTableIds(catalogName);
     }
 
     /**
@@ -469,6 +515,24 @@ public class SqlServerConnection extends JdbcConnection {
         final AtomicBoolean userHasAccess = new AtomicBoolean();
         final String query = replaceDatabaseNamePlaceholder("EXEC #db.sys.sp_cdc_help_change_data_capture", databaseName);
         this.query(query, rs -> userHasAccess.set(rs.next()));
+        if (!userHasAccess.get()) {
+            LOGGER.info("No CDC-tracked tables found via sp_cdc_help_change_data_capture for database '{}'. Performing fallback access check via cdc.change_tables.",
+                    databaseName);
+            try {
+                final String cdcTablesQuery = replaceDatabaseNamePlaceholder(
+                        "SELECT COUNT(*) FROM #db.cdc.change_tables", databaseName);
+                queryAndMap(cdcTablesQuery, rs -> {
+                    // query succeeded → user can access the CDC schema
+                    // (0 rows means no tables tracked yet, but access is valid)
+                    userHasAccess.set(true);
+                    return null;
+                });
+            }
+            catch (SQLException e) {
+                // query failed → user cannot access the CDC schema
+                LOGGER.debug("User does not have access to CDC schema in database '{}'", databaseName, e);
+            }
+        }
         return userHasAccess.get();
     }
 
@@ -477,8 +541,10 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public List<SqlServerChangeTable> getChangeTables(String databaseName, Lsn toLsn) throws SQLException {
+        String sqlTemplate = !config.isOverrideCdcColumnFilter() ? GET_CAPTURED_COLUMNS : GET_ALL_COLUMNS;
+
         Map<Integer, List<String>> columns = queryAndMap(
-                replaceDatabaseNamePlaceholder(GET_CAPTURED_COLUMNS, databaseName),
+                replaceDatabaseNamePlaceholder(sqlTemplate, databaseName),
                 rs -> {
                     Map<Integer, List<String>> result = new HashMap<>();
                     while (rs.next()) {
@@ -593,11 +659,30 @@ public class SqlServerConnection extends JdbcConnection {
         try {
             return prepareQueryAndMap(GET_DATABASE_NAME,
                     ps -> ps.setString(1, databaseName),
-                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve exactly one database name"));
+                    singleResultMapper(rs -> rs.getString(1),
+                            "Could not retrieve exactly one database name for '" + databaseName
+                                    + "'. The database may not exist or the name matched more than one entry."));
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain database name", e);
+            throw new RuntimeException("Couldn't obtain database name for '" + databaseName + "'", e);
         }
+    }
+
+    /**
+     * Retrieves all {@code TableId}s across all configured databases.
+     *
+     * @param databaseNames the list of database names to query
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(Collection<String> databaseNames) throws SQLException {
+        final Set<TableId> tableIds = new HashSet<>();
+
+        for (String databaseName : databaseNames) {
+            tableIds.addAll(readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+        }
+
+        return tableIds;
     }
 
     @Override
@@ -684,7 +769,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     @Override
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
-                                           Optional<String> additionalCondition, String orderBy) {
+                                           Optional<String> additionalCondition, String orderBy, Optional<String> tableAlias) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");
         sql
                 .append(limit)
@@ -765,7 +850,7 @@ public class SqlServerConnection extends JdbcConnection {
 
             LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
             LOGGER.info("Stored LSN is '{}'", storedLsn);
-            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
+            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
@@ -774,5 +859,40 @@ public class SqlServerConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    public Duration getCdcCapturePollingInterval() {
+        AtomicLong cdcCapturePollingInterval = new AtomicLong(DEFAULT_CDC_POLLING_INTERVAL_SECONDS);
+        try {
+            call(GET_CDC_JOB_INFO, null, rs -> {
+                while (rs.next()) {
+                    if (rs.getString(CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME).equals(CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE)) {
+                        cdcCapturePollingInterval.set(rs.getLong(CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME));
+                    }
+                }
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Exception caught while calling sys.sp_cdc_help_jobs", e);
+        }
+        long interval = cdcCapturePollingInterval.get();
+        if (interval <= 0) {
+            LOGGER.info("CDC capture polling interval is {} (e.g. Azure SQL Database); using default of {} seconds",
+                    interval, DEFAULT_CDC_POLLING_INTERVAL_SECONDS);
+            interval = DEFAULT_CDC_POLLING_INTERVAL_SECONDS;
+        }
+        return Duration.ofSeconds(interval);
+    }
+
+    public boolean didTransactionEnd() {
+        try {
+            Optional<String> startLsn = queryAndMap(GET_START_LSN_FOR_LAST_BATCH_SCANNED,
+                    rs -> rs.next() ? Optional.of(rs.getString(1)) : Optional.empty());
+            return startLsn.isPresent() && startLsn.get().equals(START_LSN_INDICATING_EMPTY_BATCH);
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Exception caught while querying sys.dm_cdc_log_scan_sessions", e);
+            return false;
+        }
     }
 }

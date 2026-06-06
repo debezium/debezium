@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.3.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -14,7 +14,11 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -41,6 +45,7 @@
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
+            <version>${version.oracle.driver}</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -71,12 +76,10 @@
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xdb</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.xml</groupId>
             <artifactId>xmlparserv2</artifactId>
-            <scope>provided</scope>
         </dependency>
         <!-- Dependencies for OpenLogReplicator -->
         <dependency>
@@ -95,6 +98,17 @@
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>${version.ehcache}</version>
+            <!-- These dependencies are pulled in from old maven.java.net only supports HTTP -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.istack</groupId>
+                    <artifactId>istack-commons-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.xml.fastinfoset</groupId>
+                    <artifactId>FastInfoset</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Ehcache JAXB implementation dependency -->
         <dependency>
@@ -103,10 +117,28 @@
             <version>${version.jaxb.implementation}</version>
         </dependency>
 
+        <!-- Introduce ehcache dependencies on Maven Central -->
+        <dependency>
+            <groupId>com.sun.istack</groupId>
+            <artifactId>istack-commons-runtime</artifactId>
+            <version>${version.istack}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.fastinfoset</groupId>
+            <artifactId>FastInfoset</artifactId>
+            <version>${version.fastinfoset}</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-connector-common</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-util</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -119,6 +151,12 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -127,10 +165,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
@@ -150,21 +189,25 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.platform</groupId>
-                    <artifactId>junit-platform-launcher</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter</artifactId>
-                </exclusion>
-            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-archunit</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
         </dependency>
 
         <!-- Required by VerifyRecord -->
@@ -199,6 +242,13 @@
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
+
+        <!--
+        Ehcache-specific dependency version overrides.
+        These can be removed when ehcache distribution refers to versions published to maven central.
+        -->
+        <version.istack>3.0.7</version.istack>
+        <version.fastinfoset>1.2.15</version.fastinfoset>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
@@ -266,6 +316,14 @@
                     <testExcludes>
                         <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                     </testExcludes>
+                    <!-- necessary for compilers > 22 -->
+                    <annotationProcessorPaths combine.children="append">
+                        <annotationProcessorPath>
+                            <groupId>org.infinispan.protostream</groupId>
+                            <artifactId>protostream-processor</artifactId>
+                            <version>${version.infinispan.protostream}</version>
+                        </annotationProcessorPath>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -315,16 +373,26 @@
             <plugin>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
-                <version>${project.version}</version>
+                <configuration>
+                    <jvmArgs>
+                        <arg>-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</arg>
+                    </jvmArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>generate-connector-metadata</id>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
                         <goals>
-                            <goal>generate-api-spec</goal>
+                            <goal>add-source</goal>
                         </goals>
-                        <phase>prepare-package</phase>
                         <configuration>
-                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/</outputDirectory>
+                            <sources>
+                                <source>${protobuf.output.directory}</source>
+                            </sources>
                         </configuration>
                     </execution>
                 </executions>
@@ -390,6 +458,7 @@
                 <dependency>
                     <groupId>com.oracle.instantclient</groupId>
                     <artifactId>xstreams</artifactId>
+                    <version>${version.oracle.instantclient}</version>
                     <scope>provided</scope>
                 </dependency>
             </dependencies>
@@ -398,14 +467,10 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- Point (2) add the Xstream sources back into the module -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
-                            <testIncludes>
-                                <include>**</include>
-                            </testIncludes>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
@@ -455,10 +520,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                 </plugins>
@@ -481,11 +545,10 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- include xstream back into the module on assembly builds -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                            <excludes combine.self="override" />
+                            <testExcludes combine.self="override" />
                         </configuration>
                     </plugin>
                     <plugin>
@@ -540,11 +603,11 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override">
                                 <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                             </excludes>
-                            <testExcludes>
+                            <testExcludes combine.self="override">
                                 <exclude>**/*IT</exclude>
                             </testExcludes>
                         </configuration>
@@ -860,6 +923,98 @@
                 <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
                 <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
             </properties>
+        </profile>
+        <profile>
+            <id>oracle-26</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
+                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
+            </properties>
+        </profile>
+        <profile>
+            <id>oracle-free</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
+                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
+                <oracle.image.name>container-registry.oracle.com/database/free</oracle.image.name>
+                <oracle.image.version>23.26.0.0</oracle.image.version>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-oracle</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-oracle</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <imagePullPolicy>IfNotPresent</imagePullPolicy>
+                            <images>
+                                <image>
+                                    <name>${oracle.image.name}:${oracle.image.version}</name>
+                                    <alias>oracle</alias>
+                                    <run>
+                                        <ports>
+                                            <port>1521:1521</port>
+                                        </ports>
+                                        <env>
+                                            <ORACLE_PWD>top_secret</ORACLE_PWD>
+                                            <ENABLE_ARCHIVELOG>true</ENABLE_ARCHIVELOG>
+                                        </env>
+                                        <log>
+                                            <prefix>oracle</prefix>
+                                            <enabled>true</enabled>
+                                            <color>blue</color>
+                                        </log>
+                                        <wait>
+                                            <log>.*DONE: Executing user defined scripts.*</log>
+                                            <time>60000</time>
+                                        </wait>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${project.basedir}/src/test/docker/${oracle.image.version}:/opt/oracle/scripts/startup</volume>
+                                            </bind>
+                                        </volumes>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration combine.self="append">
+                            <systemPropertyVariables>
+                                <database.dbname>FREEPDB1</database.dbname>
+                                <database.pdb.name>FREEPDB1</database.pdb.name>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

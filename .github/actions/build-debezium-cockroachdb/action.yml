@@ -1,0 +1,49 @@
+name: "Build CockroachDB"
+description: "Builds the Debezium CockroachDB connector"
+
+inputs:
+  path-core:
+    description: "Debezium core repository checkout path"
+    required: true
+  path-cockroachdb:
+    description: "Debezium CockroachDB repository checkout path"
+    required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Debezium (Core)
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-connector-common,debezium-config,debezium-util,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -am
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    - name: Build CockroachDB
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-cockroachdb }}/pom.xml
+        -Passembly
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DfailFlakyTests=false
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}

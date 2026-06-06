@@ -11,6 +11,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -65,7 +66,8 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
     T getStreamingMetrics(OracleTaskContext taskContext,
                           ChangeEventQueueMetrics changeEventQueueMetrics,
                           EventMetadataProvider metadataProvider,
-                          OracleConnectorConfig connectorConfig);
+                          OracleConnectorConfig connectorConfig,
+                          CapturedTablesSupplier capturedTablesSupplier);
 
     /**
      * Returns whether table names are case sensitive.

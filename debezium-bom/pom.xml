@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>3.3.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -13,7 +13,7 @@
 
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>7.0.1</version.confluent.platform>
+        <version.confluent.platform>7.0.16</version.confluent.platform>
 
         <!-- Connectors -->
         <version.dropwizard>4.0.1</version.dropwizard>
@@ -21,7 +21,7 @@
         <version.jetty>9.4.12.v20180830</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>21.0.2</version.vitess.grpc>
+        <version.vitess.grpc>23.0.0-rc1</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
@@ -29,16 +29,16 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentelemetry>1.23.0</version.opentelemetry>
+        <version.opentelemetry>1.62.0</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
 
         <!-- Scripting -->
         <version.groovy>4.0.17</version.groovy>
-        <version.graalvm.js>23.0.2</version.graalvm.js>
+        <version.graalvm.js>25.0.1</version.graalvm.js>
         <!-- Wasm -->
-        <version.chicory>1.4.0</version.chicory>
+        <version.chicory>1.5.3</version.chicory>
 
         <!-- Storages -->
 
@@ -54,31 +54,33 @@
         <!-- Azure Identity -->
         <version.azure.identity>1.15.4</version.azure.identity>
 
-        <!-- K8s Config Map Storage -->
-        <version.kubernetes.client>6.13.4</version.kubernetes.client>
+        <!-- Chronicle Queue -->
+        <version.chronicle.queue>2026.2</version.chronicle.queue>
+
+        <!-- k8s Config Map Storage -->
+        <version.kubernetes.client>7.6.1</version.kubernetes.client>
 
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
+        <version.docling>0.5.0</version.docling>
 
         <!-- Open Lineage -->
         <version.openlineage>1.31.0</version.openlineage>
 
         <!-- Testing -->
-        <version.junit>4.13.1</version.junit>
-        <version.junit5>5.9.1</version.junit5>
-        <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
-        <version.fest>1.4</version.fest>
-        <version.assertj>3.27.3</version.assertj>
-        <version.jmh>1.21</version.jmh>
-        <version.mockito>5.17.0</version.mockito>
-        <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.20.6</version.testcontainers>
-        <version.jsonpath>2.9.0</version.jsonpath>
-        <version.jsonassert>1.5.0</version.jsonassert>
-        <version.org.reflections>0.9.12</version.org.reflections>
-        <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
-        <version.logback>1.2.13</version.logback>
+        <version.junit>6.0.3</version.junit>
+        <version.junit.platform.launcher>${version.junit}</version.junit.platform.launcher>
+        <version.assertj>3.27.7</version.assertj>
+        <version.jmh>1.37</version.jmh>
+        <version.awaitility>4.3.0</version.awaitility>
+        <version.jsonpath>2.10.0</version.jsonpath>
+        <version.jsonassert>1.5.3</version.jsonassert>
+        <version.json.schema.validator>1.5.3</version.json.schema.validator>
+        <version.org.reflections>0.10.2</version.org.reflections>
+        <version.cassandra.unit>4.3.1.0</version.cassandra.unit>
+        <version.logback>1.2.13</version.logback> <!-- Latest: 1.5.21 Update with SLF4J.-->
         <version.rest-assured>5.5.2</version.rest-assured>
+        <version.archunit>1.4.2</version.archunit>
     </properties>
 
     <dependencyManagement>
@@ -121,8 +123,20 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
-                <version>${version.jackson}</version>
+                <version>${version.jackson.annotations}</version>
                 <optional>true</optional>
+            </dependency>
+
+            <!-- hibernate -->
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${version.hibernate}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate</groupId>
+                <artifactId>hibernate-agroal</artifactId>
+                <version>${version.hibernate}</version>
             </dependency>
 
             <!-- Kafka Connect -->
@@ -293,11 +307,6 @@
                 <artifactId>jdbc</artifactId>
                 <version>${version.informix.driver}</version>
             </dependency>
-            <dependency>
-                <groupId>com.ibm.informix</groupId>
-                <artifactId>ifx-changestream-client</artifactId>
-                <version>${version.informix.changestream.client}</version>
-            </dependency>
 
             <!-- Logging -->
             <dependency>
@@ -329,7 +338,7 @@
             </dependency>
             <dependency>
                 <groupId>org.graalvm.js</groupId>
-                <artifactId>js</artifactId>
+                <artifactId>js-language</artifactId>
                 <version>${version.graalvm.js}</version>
             </dependency>
             <dependency>
@@ -536,6 +545,13 @@
 
 
             <!--Storages -->
+            <!-- Chronicle Queue Storage -->
+            <dependency>
+                <groupId>net.openhft</groupId>
+                <artifactId>chronicle-queue</artifactId>
+                <version>${version.chronicle.queue}</version>
+            </dependency>
+
             <!-- Redis Storage -->
             <dependency>
                 <groupId>redis.clients</groupId>
@@ -596,6 +612,23 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-serve-api</artifactId>
+                <version>${version.docling}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-serve-client</artifactId>
+                <version>${version.docling}</version>
+            </dependency>
+
+            <!-- Statistics dependencies -->
+            <dependency>
+                <groupId>com.datadoghq</groupId>
+                <artifactId>sketches-java</artifactId>
+                <version>${version.datadog.sketches}</version>
+            </dependency>
 
             <!-- Testing utilities -->
             <dependency>
@@ -606,6 +639,12 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>ai.docling</groupId>
+                <artifactId>docling-testcontainers</artifactId>
+                <version>${version.docling}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
                 <version>${version.okhttp}</version>
@@ -613,14 +652,9 @@
 
             <!-- Test dependencies -->
             <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${version.junit}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
-                <version>${version.junit5}</version>
+                <version>${version.junit}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
@@ -631,11 +665,6 @@
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
                 <version>${version.rest-assured}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.easytesting</groupId>
-                <artifactId>fest-assert</artifactId>
-                <version>${version.fest}</version>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
@@ -659,6 +688,11 @@
                 <version>${version.mockito}</version>
             </dependency>
             <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-junit-jupiter</artifactId>
+                <version>${version.mockito}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${version.awaitility}</version>
@@ -669,9 +703,20 @@
                 <version>${version.jsonpath}</version>
             </dependency>
             <dependency>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex</artifactId>
+                <version>${version.jandex}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.skyscreamer</groupId>
                 <artifactId>jsonassert</artifactId>
                 <version>${version.jsonassert}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${version.json.schema.validator}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -693,14 +738,25 @@
             <dependency>
                 <groupId>io.opentelemetry.javaagent</groupId>
                 <artifactId>opentelemetry-testing-common</artifactId>
-                <version>${version.opentelemetry.testing}-alpha</version>
+                <version>${version.opentelemetry.testing}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.opentelemetry.javaagent</groupId>
                 <artifactId>opentelemetry-agent-for-testing</artifactId>
-                <version>${version.opentelemetry.testing}-alpha</version>
+                <version>${version.opentelemetry.testing}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.strimzi</groupId>
+                <artifactId>strimzi-test-container</artifactId>
+                <version>${version.strimzi-test-container}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${version.archunit}</version>
             </dependency>
 
             <dependency>
@@ -724,7 +780,22 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
+                <artifactId>debezium-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-config</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connect-plugins</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -770,6 +841,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-tests</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-chronicle-queue</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -865,6 +941,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cockroachdb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-cassandra-3</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -876,6 +957,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-testing-testcontainers</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-archunit</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -908,17 +994,22 @@
                 <artifactId>debezium-openlineage-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-
             <!-- Debezium test artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
+                <artifactId>debezium-util</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-common</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connect-plugins</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>

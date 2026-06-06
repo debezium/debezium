@@ -24,7 +24,7 @@ public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextP
     public Db2SinkDatabaseContextProvider() {
         super(SinkType.DB2, new Db2Container(IMAGE_NAME)
                 .acceptLicense()
-                .withNetwork(Network.newNetwork())
+                .withNetwork(Network.SHARED)
                 .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 

@@ -85,9 +85,6 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
 
             if (snapshotResult.isCompletedOrSkipped()) {
                 streamingOffsets.getOffsets().put(partition, snapshotResult.getOffset());
-                if (previousOffsets.getOffsets().size() == 1) {
-                    signalProcessor.setContext(snapshotResult.getOffset());
-                }
                 if (snapshotResult.isCompleted()) {
                     delayStreamingIfNeeded(context);
                 }
@@ -96,10 +93,11 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
 
         previousLogContext.set(taskContext.configureLoggingContext("streaming"));
 
-        // TODO: Determine how to do incremental snapshots with multiple partitions
         for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> entry : streamingOffsets) {
             initStreamEvents(entry.getKey(), entry.getValue());
         }
+
+        signalProcessor.setContext(streamingOffsets);
 
         getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
                 eventDispatcher, this, connectorConfig));

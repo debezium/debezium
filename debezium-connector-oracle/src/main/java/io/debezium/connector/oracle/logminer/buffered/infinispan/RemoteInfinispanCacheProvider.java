@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
@@ -95,6 +96,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
             cacheManager.administration().removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
             cacheManager.administration().removeCache(SCHEMA_CHANGES_CACHE_NAME);
             cacheManager.administration().removeCache(EVENTS_CACHE_NAME);
+            cacheManager.administration().removeCache(ROLLBACKS_CACHE_NAME);
         }
         LOGGER.info("Shutting down infinispan remote caches");
         cacheManager.close();
@@ -125,7 +127,8 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerTransactionCache(
                 createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
-                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
+                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS),
+                createCache(ROLLBACKS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS));
     }
 
     private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {

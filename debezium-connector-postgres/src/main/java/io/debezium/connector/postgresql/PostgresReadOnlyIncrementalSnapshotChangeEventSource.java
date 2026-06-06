@@ -102,7 +102,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    protected void emitWindowOpen() {
+    protected void emitWindowOpen(P partition, OffsetContext offsetContext) {
 
         getCurrentSnapshot(getContext()::setLowWatermark);
     }

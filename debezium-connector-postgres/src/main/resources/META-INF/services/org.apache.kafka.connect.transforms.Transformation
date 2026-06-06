@@ -1,1 +1,2 @@
 io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb
+io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent

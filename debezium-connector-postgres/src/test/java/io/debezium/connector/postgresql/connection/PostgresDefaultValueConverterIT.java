@@ -12,10 +12,10 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Optional;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
@@ -32,8 +32,8 @@ public class PostgresDefaultValueConverterIT {
     private PostgresValueConverter postgresValueConverter;
     private PostgresDefaultValueConverter postgresDefaultValueConverter;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.dropAllSchemas();
 
         postgresConnection = TestHelper.create();
@@ -49,8 +49,8 @@ public class PostgresDefaultValueConverterIT {
                 postgresValueConverter, postgresConnection.getTimestampUtils(), typeRegistry);
     }
 
-    @After
-    public void closeConnection() {
+    @AfterEach
+    void closeConnection() {
         if (postgresConnection != null) {
             postgresConnection.close();
         }
@@ -65,7 +65,7 @@ public class PostgresDefaultValueConverterIT {
                 NumericalColumn,
                 NumericalColumn.defaultValueExpression().orElse(null));
 
-        Assert.assertEquals(numericalConvertedValue, Optional.empty());
+        Assertions.assertEquals(numericalConvertedValue, Optional.empty());
     }
 
     @Test
@@ -92,7 +92,7 @@ public class PostgresDefaultValueConverterIT {
                 NumericalColumn,
                 NumericalColumn.defaultValueExpression().orElse(null));
 
-        Assert.assertEquals(numericalConvertedValue, Optional.empty());
+        Assertions.assertEquals(numericalConvertedValue, Optional.empty());
     }
 
     @Test
@@ -103,14 +103,14 @@ public class PostgresDefaultValueConverterIT {
                 NumericalColumn,
                 NumericalColumn.defaultValueExpression().orElse(null));
 
-        Assert.assertEquals(numericalConvertedValue, Optional.of(1));
+        Assertions.assertEquals(numericalConvertedValue, Optional.of(1));
 
         final Column nonNumericalColumn = Column.editor().type("text").jdbcType(Types.VARCHAR).defaultValueExpression(" 1 ").create();
         final Optional<Object> nonNumericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 nonNumericalColumn,
                 NumericalColumn.defaultValueExpression().orElse(null));
 
-        Assert.assertEquals(nonNumericalConvertedValue, Optional.of(" 1 "));
+        Assertions.assertEquals(nonNumericalConvertedValue, Optional.of(" 1 "));
     }
 
 }

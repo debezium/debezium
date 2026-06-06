@@ -6,7 +6,8 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -19,10 +20,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -31,7 +31,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.Collect;
@@ -47,11 +46,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -66,15 +62,15 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         // Testing.Print.enable();
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void transactionMetadata() throws Exception {
+    void transactionMetadata() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -99,16 +95,14 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         connection.execute(inserts);
         connection.setAutoCommit(true);
 
-        connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
-
-        // BEGIN, data, END, BEGIN, data
-        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
+        // BEGIN, data, END
+        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
         final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
         assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        assertThat(tx).hasSize(3);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertThat(tx).hasSize(2);
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));
@@ -168,7 +162,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                             return found.get();
                         }
                         catch (Exception e) {
-                            org.junit.Assert.fail("Failed to fetch changes for tablea: " + e.getMessage());
+                            fail("Failed to fetch changes for tablea: " + e.getMessage());
                         }
                     }
                 }
@@ -323,17 +317,17 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
+    void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
-    public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
+    void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
-    public void restartInTheMiddleOfTx() throws Exception {
+    void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }
 

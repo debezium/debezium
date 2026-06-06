@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb.sink;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -47,18 +48,19 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .required();
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
-            .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
+            .withDisplayName("ColumnNamingStrategy class")
             .withType(ConfigDef.Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultColumnNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
+            .withDescription("The fully qualified name of the class that provide the column naming strategy. It must implement the ColumnNamingStrategy interface.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
+                    COLLECTION_NAMING_STRATEGY_FIELD,
                     COLLECTION_NAME_FORMAT_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
                     BATCH_SIZE_FIELD)
@@ -148,7 +150,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     }
 
     @Override
-    public FieldNameFilter getFieldFilter() {
+    public FieldNameFilter fieldFilter() {
         return fieldsFilter;
     }
 
@@ -180,6 +182,11 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
         return null;
+    }
+
+    @Override
+    public Set<String> getPrimaryKeyFields() {
+        return Set.of();
     }
 
     @Override

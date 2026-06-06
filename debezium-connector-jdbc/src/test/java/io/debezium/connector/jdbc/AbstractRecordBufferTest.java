@@ -17,21 +17,15 @@ class AbstractRecordBufferTest {
     protected DatabaseDialect dialect;
 
     protected @NotNull JdbcKafkaSinkRecord createRecord(KafkaDebeziumSinkRecord record, JdbcSinkConnectorConfig config) {
-        return new JdbcKafkaSinkRecord(
-                record.getOriginalKafkaRecord(),
-                config.getPrimaryKeyMode(),
-                config.getPrimaryKeyFields(),
-                config.getFieldFilter(),
-                config.cloudEventsSchemaNamePattern(),
-                dialect);
+        return new JdbcKafkaSinkRecord(record.getOriginalKafkaRecord(), config);
     }
 
     protected @NotNull JdbcKafkaSinkRecord createRecordNoPkFields(SinkRecordFactory factory, byte i, JdbcSinkConnectorConfig config) {
-        return createRecord(factory.createRecord("topic", i), config);
+        return createRecord(factory.createRecord("topic", i, config), config);
     }
 
     protected @NotNull JdbcKafkaSinkRecord createRecordPkFieldId(SinkRecordFactory factory, byte i, JdbcSinkConnectorConfig config) {
-        return createRecord(factory.createRecord("topic", i), config);
+        return createRecord(factory.createRecord("topic", i, config), config);
     }
 
 }

@@ -76,6 +76,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         registerType(BytesType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override
@@ -86,6 +87,18 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public int getMaxNVarcharLengthInKey() {
         return 2000;
+    }
+
+    @Override
+    public int getMaxTimePrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
     }
 
     @Override

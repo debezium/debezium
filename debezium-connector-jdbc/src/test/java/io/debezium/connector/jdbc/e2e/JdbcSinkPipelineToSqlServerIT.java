@@ -5,14 +5,18 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Properties;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import com.microsoft.sqlserver.jdbc.Geometry;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
@@ -21,6 +25,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipColumnTypePropagation;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.spatial.GeometryBytes;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to SQL Server.
@@ -194,12 +199,17 @@ public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
+    protected int getMaxTimestampPrecision() {
+        return 7;
+    }
+
+    @Override
     protected String getTimeType(Source source, boolean key, int precision) {
         return "TIME";
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
         return "DATETIMEOFFSET";
     }
 
@@ -216,5 +226,21 @@ public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final Geometry geometry = Geometry.deserialize(resultSet.getBytes(index));
+        return new GeometryBytes(geometry.STAsBinary(), geometry.getSrid());
     }
 }

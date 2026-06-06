@@ -36,6 +36,8 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private boolean sessionStarted = false;
     private Duration lastSessionStartTime = Duration.ZERO;
+    private Scn currentSessionStartScn = Scn.NULL;
+    private Scn currentSessionEndScn = Scn.NULL;
 
     public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
@@ -47,6 +49,24 @@ public class LogMinerSessionContext implements AutoCloseable {
     @Override
     public void close() throws Exception {
         endMiningSession();
+    }
+
+    /**
+     * Get the current session starting system change number.
+     *
+     * @return the current starting system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionStartScn() {
+        return currentSessionStartScn;
+    }
+
+    /**
+     * Get the current session ending system change number.
+     *
+     * @return the current ending system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionEndScn() {
+        return currentSessionEndScn;
     }
 
     /**
@@ -68,20 +88,6 @@ public class LogMinerSessionContext implements AutoCloseable {
     }
 
     /**
-     * Add the log file to the LogMiner session.
-     *
-     * @param logFileName the log file to add to the session, should not be {@code null}
-     * @throws SQLException if a database exception occurred registering the log file
-     */
-    public void addLogFile(String logFileName) throws SQLException {
-        Objects.requireNonNull(logFileName);
-
-        LOGGER.trace("Adding log file '{}' to the mining session.", logFileName);
-        connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
-                logFileName + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
-    }
-
-    /**
      * Adds all the given logs to the session.
      *
      * @param logFiles collection of log files
@@ -89,7 +95,12 @@ public class LogMinerSessionContext implements AutoCloseable {
      */
     public void addLogFiles(List<LogFile> logFiles) throws SQLException {
         for (LogFile logFile : logFiles) {
-            addLogFile(logFile.getFileName());
+            Objects.requireNonNull(logFile);
+            Objects.requireNonNull(logFile.getFileName());
+
+            LOGGER.debug("  Adding log file: {}", logFile);
+            connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
+                    logFile.getFileName() + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
         }
     }
 
@@ -134,9 +145,15 @@ public class LogMinerSessionContext implements AutoCloseable {
             connection.executeWithoutCommitting(query.toString());
             lastSessionStartTime = Duration.between(startTime, Instant.now());
             sessionStarted = true;
+
+            currentSessionStartScn = startScn;
+            currentSessionEndScn = endScn;
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
+                throw new RetriableLogMinerException(e);
+            }
+            else if (e.getErrorCode() == 310 || e.getMessage().startsWith("ORA-00310")) {
                 throw new RetriableLogMinerException(e);
             }
             throw e;
@@ -151,6 +168,10 @@ public class LogMinerSessionContext implements AutoCloseable {
     public void endMiningSession() throws SQLException {
         try {
             LOGGER.trace("Ending log mining session");
+
+            currentSessionStartScn = Scn.NULL;
+            currentSessionEndScn = Scn.NULL;
+
             connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
             sessionStarted = false;
         }
@@ -176,12 +197,14 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private List<String> getMiningOptions(boolean committedDataOnly) {
         final List<String> miningOptions = new ArrayList<>();
-        if (strategy.equals(LogMiningStrategy.CATALOG_IN_REDO)) {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
-            miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
-        }
-        else {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
+        switch (strategy) {
+            case CATALOG_IN_REDO:
+                miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
+                miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
+            case DICTIONARY_FROM_FILE:
+                break;
+            default:
+                miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
         }
 
         if (useContinuousMining) {

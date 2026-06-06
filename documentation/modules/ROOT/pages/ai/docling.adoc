@@ -1,0 +1,301 @@
+:page-aliases: transforms/docling.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: docling-transformation
+// Title: Docling Transformation
+[id="docling-transformation"]
+= Docling Transformation
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+One important task in preparing content for use with large language models and AI applications is document parsing and transformation.
+Documents often exist in various formats such as PDF, DOCX, HTML, or other formats that are not easily consumable by LLMs or downstream processing systems.
+Converting these documents into clean and unified, structured text representations is essential for effective content analysis and information extraction.
+
+{prodname} offers a built-in feature to transform document fields into clean and unified, structured text with unified format using link:https://docling-project.github.io/docling/[Docling], a powerful document understanding framework.
+Docling can parse various document formats and convert them to structured output formats such as HTML, Markdown, or plain text, making the content more accessible for LLMs and other AI applications.
+
+{prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to perform Docling transformations.
+The transformation connects to a Docling Serve API that processes the documents and returns the structured output.
+
+[IMPORTANT]
+====
+Docling transformation requires Java 21 or higher.
+====
+
+== Behavior
+
+The Docling transformation takes as input a specific field in the original event record that contains either document content or a URL to a document.
+The SMT sends this input to the configured Docling Serve API for transformation.
+The resulting structured document is then appended to the record or can replace the entire record.
+The original source field is preserved when using the append mode.
+
+The source field must be a string field.
+When using the `text` input source mode, the field should contain the document content directly.
+When using the `link` input source mode, the field should contain a URL to the document.
+
+The Docling field in the resulting record is a structured object with the following schema:
+
+- `type`: The output format type (html, markdown, or text)
+- `content`: The transformed document content
+
+The schema type of the Docling field in the record is `io.debezium.ai.docling.DoclingDocument`.
+
+Both source field and Docling field specifications support nested structures, such as `after.document` or `after.document_parsed`.
+
+== Configuration
+
+To configure a connector to use the Docling transformation, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=docling
+transforms.docling.type=io.debezium.ai.docling.FieldToDocling
+----
+
+You must specify the source field, Docling Serve URL, input source type, and input format:
+
+[source]
+----
+transforms.docling.field.source=after.document
+transforms.docling.serve.url=http://localhost:5001
+transforms.docling.input.source=text
+transforms.docling.input.format=pdf
+----
+
+Optionally, you can specify the destination field for the Docling output.
+If not specified, the record value will contain only the Docling document itself:
+
+[source]
+----
+transforms.docling.field.docling=after.document_parsed
+----
+
+You can also configure the output format and image inclusion:
+
+[source]
+----
+transforms.docling.output.format=markdown
+transforms.docling.include.images=true
+----
+
+The following example shows a complete configuration for transforming PDF documents to Markdown:
+
+[source]
+----
+transforms=docling
+transforms.docling.type=io.debezium.ai.docling.FieldToDocling
+transforms.docling.field.source=after.document
+transforms.docling.field.docling=after.document_parsed
+transforms.docling.serve.url=http://localhost:5001
+transforms.docling.input.source=text
+transforms.docling.input.format=pdf
+transforms.docling.output.format=markdown
+transforms.docling.include.images=true
+----
+
+=== Configuration options
+
+.Descriptions of Docling SMT configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[docling-source-field]]xref:docling-source-field[`field.source`]
+|No default value
+|Specifies the field in the source record to use as input for Docling transformation.
+The data type of the specified field must be `string`.
+When `input.source` is set to `text`, this field should contain the document content.
+When `input.source` is set to `link`, this field should contain a URL to the document.
+Supports nested fields (e.g., `after.document`).
+
+|[[docling-docling-field]]xref:docling-docling-field[`field.docling`]
+|No default value
+|Specifies the name of the field that the SMT adds to the record to contain the Docling document.
+If no value is specified, the resulting record contains only the Docling document value.
+Supports nested fields (e.g., `after.document_parsed`), but the nested structure has to exists (e.g. in case of `after.document_parsed.markdown`, `after.document_parsed` has to exists).
+
+|[[docling-serve-url]]xref:docling-serve-url[`serve.url`]
+|No default value
+|URL of the Docling Serve API server, including protocol and port (e.g., `http://localhost:5001` or `https://docling.example.com`).
+Only HTTP and HTTPS protocols are allowed for security reasons.
+
+|[[docling-input-source]]xref:docling-input-source[`input.source`]
+|`text`
+|Specifies how Docling should interpret the source field.
+Valid values: +
+`text` - The source field contains the document content directly. +
+`link` - The source field contains a URL to the document.
+
+|[[docling-input-format]]xref:docling-input-format[`input.format`]
+|No default value
+|Format of the input document.
+Must match one of the formats supported by the Docling server.
+Common formats include: `pdf`, `docx`, `pptx`, `html`, `asciidoc`, `md` (Markdown), `xlsx`, and others.
+Refer to the link:https://docling-project.github.io/docling/[Docling documentation] for the complete list of supported formats.
+
+|[[docling-include-images]]xref:docling-include-images[`include.images`]
+|`true`
+|Specifies whether images should be included in the resulting document.
+When set to `true`, images from the source document are preserved in the output.
+When set to `false`, images are omitted from the transformation result.
+
+|[[docling-output-format]]xref:docling-output-format[`output.format`]
+|`text`
+|Format of the output document produced by Docling.
+Valid values: +
+`html` - Structured HTML output. +
+`markdown` - Markdown-formatted output. +
+`text` - Plain text output.
+
+|[[docling-simple-schema-lookup]]xref:docling-simple-schema-lookup[`simple.schema.lookup`]
+|`false`
+|Performance optimization for schema caching.
+When set to `true`, schemas are cached by name rather than by full schema structure.
+Only enable this option when you are certain that schema evolution is not happening during the {prodname} connector's execution.
+This can improve performance in stable schema environments.
+|===
+
+== Docling Serve API
+
+The Docling transformation requires a running Docling Serve API instance.
+Docling Serve is a service that provides Docling's document understanding capabilities through a REST API.
+
+To set up a Docling Serve instance, refer to the link:https://docling-project.github.io/docling/[Docling project documentation].
+
+[NOTE]
+====
+For security reasons, the `serve.url` configuration option only accepts HTTP and HTTPS URLs.
+File paths, FTP URLs, or other protocol schemes are not permitted.
+====
+
+== Input Source Modes
+
+The Docling transformation supports two input source modes:
+
+=== Text Mode
+
+When `input.source` is set to `text`, the source field should contain the document content directly.
+This mode is suitable when:
+
+- The document content is already stored in the database
+- You want to transform small documents or text snippets
+- The document is generated dynamically
+
+In text mode, the content is base64-encoded internally before being sent to the Docling Serve API.
+
+Example configuration:
+[source]
+----
+transforms.docling.input.source=text
+transforms.docling.field.source=after.pdf_content
+----
+
+=== Link Mode
+
+When `input.source` is set to `link`, the source field should contain a URL to the document.
+This mode is suitable when:
+
+- Documents are stored externally (e.g., S3, HTTP servers)
+- You want to avoid storing large documents in the database
+- Documents are already accessible via HTTP/HTTPS
+
+In link mode, the URL is validated to ensure it uses HTTP or HTTPS protocol for security reasons.
+
+Example configuration:
+[source]
+----
+transforms.docling.input.source=link
+transforms.docling.field.source=after.document_url
+----
+
+== Output Formats
+
+Docling supports three output formats, each suited for different use cases:
+
+=== Plain Text
+
+The `text` output format produces clean, plain text without any formatting or structure markers.
+This is the default format and is suitable for:
+
+- Simple text analysis
+- Feeding content to LLMs that don't require structure
+- Minimizing output size
+
+=== Markdown
+
+The `markdown` output format produces Markdown-formatted text that preserves document structure.
+This format is suitable for:
+
+- Preserving headings, lists, and basic formatting
+- Human-readable output
+- LLMs that benefit from structured markup
+
+=== HTML
+
+The `html` output format produces structured HTML that preserves the document's visual structure.
+This format is suitable for:
+
+- Preserving complex document layouts
+- Web-based rendering
+- Applications that require detailed structure information
+
+== Example Use Cases
+
+=== Processing PDF Documents from Database
+
+Transform PDF documents stored in a PostgreSQL database:
+
+[source]
+----
+transforms=docling
+transforms.docling.type=io.debezium.ai.docling.FieldToDocling
+transforms.docling.field.source=after.pdf_content
+transforms.docling.field.docling=after.text_content
+transforms.docling.serve.url=http://docling:5001
+transforms.docling.input.source=text
+transforms.docling.input.format=pdf
+transforms.docling.output.format=text
+----
+
+=== Processing Documents from URLs
+
+Transform documents referenced by URLs in a database:
+
+[source]
+----
+transforms=docling
+transforms.docling.type=io.debezium.ai.docling.FieldToDocling
+transforms.docling.field.source=after.document_url
+transforms.docling.field.docling=after.document_content
+transforms.docling.serve.url=https://docling.example.com
+transforms.docling.input.source=link
+transforms.docling.input.format=pdf
+transforms.docling.output.format=markdown
+transforms.docling.include.images=false
+----
+
+=== Replacing Records with Parsed Content
+
+Create a new stream containing only the parsed document content:
+
+[source]
+----
+transforms=docling
+transforms.docling.type=io.debezium.ai.docling.FieldToDocling
+transforms.docling.field.source=after.document
+transforms.docling.serve.url=http://docling:5001
+transforms.docling.input.source=text
+transforms.docling.input.format=docx
+transforms.docling.output.format=html
+# Note: field.docling is not specified, so the record contains only the Docling document
+----

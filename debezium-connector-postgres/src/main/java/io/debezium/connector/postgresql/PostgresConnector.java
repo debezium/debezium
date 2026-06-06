@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -24,11 +23,12 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
 import io.debezium.util.Threads;
 
 /**
@@ -40,7 +40,7 @@ import io.debezium.util.Threads;
  *
  * @author Horia Chiorean
  */
-public class PostgresConnector extends RelationalBaseSourceConnector {
+public class PostgresConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnector.class);
     public static final int READ_ONLY_SUPPORTED_VERSION = 13;
@@ -82,6 +82,11 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
+    public Field.Set getConfigFields() {
+        return PostgresConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
         final ConfigValue slotNameValue = configValues.get(PostgresConnectorConfig.SLOT_NAME.name());
@@ -111,7 +116,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                     }
                 }
-            }, timeout, postgresConfig.getLogicalName(), "connection-validation");
+            }, null, timeout, postgresConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
@@ -180,17 +185,4 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         return config.validate(PostgresConnectorConfig.ALL_FIELDS);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
-            return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
-                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .collect(Collectors.toList());
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
-    }
 }

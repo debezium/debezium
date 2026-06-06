@@ -31,15 +31,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningQueryFilterMode;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -55,26 +52,18 @@ import io.debezium.util.Strings;
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerQueryBuilderTest {
 
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
-    private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
-            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, CLIENT_ID, START_SCN, COMMIT_SCN, " +
-            "START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# FROM V$LOGMNR_CONTENTS WHERE ";
-
     @Test
-    public void testLogMinerQueryFilterNone() {
+    void testLogMinerQueryFilterNone() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.NONE);
     }
 
     @Test
-    public void testLogMinerQueryFilterIn() {
+    void testLogMinerQueryFilterIn() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.IN);
     }
 
     @Test
-    public void testLogMinerQueryFilterRegEx() {
+    void testLogMinerQueryFilterRegEx() {
         testLogMinerQueryFilterMode(LogMiningQueryFilterMode.REGEX);
     }
 
@@ -122,6 +111,47 @@ public class LogMinerQueryBuilderTest {
     @FixFor("DBZ-8884")
     public void testLegacyTransactionStartBufferingBehavior() {
         assertQuery(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START, false).build());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithUsernameNotTracked() {
+        assertQuery(new ConfigBuilder().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, "false"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithRsIdNotTracked() {
+        assertQuery(new ConfigBuilder().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_RS_ID, "false"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithClientIdNotTracked() {
+        assertQuery(new ConfigBuilder().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, "false"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithStartTimestampNotTracked() {
+        assertQuery(new ConfigBuilder().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, "false"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithCommitTimestampNotTracked() {
+        assertQuery(new ConfigBuilder().with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, "false"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1663")
+    public void testLogMinerQueryWithAllOptionalColumnsNotTracked() {
+        assertQuery(new ConfigBuilder()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_USERNAME, "false")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_RS_ID, "false")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, "false")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, "false")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, "false"));
     }
 
     private void testLogMinerQueryFilterMode(LogMiningQueryFilterMode mode) {
@@ -182,10 +212,55 @@ public class LogMinerQueryBuilderTest {
         assertThat(new BufferedLogMinerQueryBuilder(config).getQuery()).isEqualTo(getBufferedQuery(config));
     }
 
+    private String buildSelectColumns(OracleConnectorConfig config) {
+        final List<String> columns = new ArrayList<>();
+        // Mandatory first
+        columns.add("SCN");
+        columns.add("SQL_REDO");
+        columns.add("OPERATION_CODE");
+        columns.add("TIMESTAMP");
+        columns.add("XID");
+        columns.add("CSF");
+        columns.add("TABLE_NAME");
+        columns.add("SEG_OWNER");
+        columns.add("OPERATION");
+        columns.add("ROW_ID");
+        columns.add("ROLLBACK");
+        columns.add("STATUS");
+        columns.add("INFO");
+        columns.add("SSN");
+        columns.add("THREAD#");
+        columns.add("DATA_OBJ#");
+        columns.add("DATA_OBJV#");
+        columns.add("DATA_OBJD#");
+        columns.add("START_SCN");
+        columns.add("COMMIT_SCN");
+        columns.add("SEQUENCE#");
+
+        // Optional added at the end
+        if (config.isLogMiningBufferTrackStartTimestamp()) {
+            columns.add("START_TIMESTAMP");
+        }
+        if (config.isLogMiningBufferTrackCommitTimestamp()) {
+            columns.add("COMMIT_TIMESTAMP");
+        }
+        if (config.isLogMiningBufferTrackRsId()) {
+            columns.add("RS_ID");
+        }
+        if (config.isLogMiningBufferTrackUsername()) {
+            columns.add("USERNAME");
+        }
+        if (config.isLogMiningBufferTrackClientId()) {
+            columns.add("CLIENT_ID");
+        }
+
+        return String.join(", ", columns) + " ";
+    }
+
     private String getBufferedQuery(OracleConnectorConfig config) {
         final String operationDdlPredicate = " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
 
-        String query = LOG_MINER_QUERY_BASE;
+        String query = "SELECT " + buildSelectColumns(config) + "FROM V$LOGMNR_CONTENTS WHERE ";
 
         query += "SCN > ? AND SCN <= ?";
         query += getPdbPredicate(config);
@@ -231,10 +306,11 @@ public class LogMinerQueryBuilderTest {
         final Set<String> excludes = config.getLogMiningUsernameExcludes();
 
         if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(USERNAME) IN ('UNKNOWN'," + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND "
+                    + applyTransactionMarkerExclusions("UPPER(USERNAME) IN ('UNKNOWN'," + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else {
             return "";
@@ -247,14 +323,21 @@ public class LogMinerQueryBuilderTest {
         final Set<String> excludes = config.getLogMiningClientIdExcludes();
 
         if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else {
             return "";
         }
+    }
+
+    private String applyTransactionMarkerExclusions(String fragment) {
+        if (!Strings.isNullOrBlank(fragment)) {
+            return "(CASE WHEN OPERATION_CODE IN (6,7,36) THEN 1 ELSE CASE WHEN " + fragment + " THEN 1 ELSE 0 END END = 1)";
+        }
+        return fragment;
     }
 
     private Set<String> getExcludedSchemas() {
@@ -306,7 +389,7 @@ public class LogMinerQueryBuilderTest {
         final String excludeList = config.tableExcludeList();
         if (config.getLogMiningQueryFilterMode().equals(LogMiningQueryFilterMode.NONE) ||
                 (Strings.isNullOrEmpty(includeList) && Strings.isNullOrEmpty(excludeList))) {
-            return "";
+            return " AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (config.getLogMiningQueryFilterMode().equals(LogMiningQueryFilterMode.IN)) {
             // Use IN-clauses
@@ -318,10 +401,17 @@ public class LogMinerQueryBuilderTest {
                 inClause = getIn(fieldName, getTableIncludeOrExclude(excludeList, false), true, true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
+
+            String result = " AND (TABLE_NAME IS NULL OR ";
             if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
-                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + inClause + ")";
+                result += "TABLE_NAME LIKE 'OBJ#% OR ";
             }
-            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + inClause + ")";
+
+            if (Strings.isNullOrEmpty(includeList)) {
+                result += "TABLE_NAME NOT LIKE 'MLOG$%' OR ";
+            }
+
+            return result + signalDataClause + inClause + ")";
         }
         else {
             // Regular Expressions
@@ -333,16 +423,23 @@ public class LogMinerQueryBuilderTest {
                 regExpLikeClause = getRegexpLike(fieldName, getTableIncludeOrExclude(excludeList, true), true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
+
+            String result = " AND (TABLE_NAME IS NULL OR ";
             if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
-                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + regExpLikeClause + ")";
+                result += "TABLE_NAME LIKE 'OBJ#%' OR ";
             }
-            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + regExpLikeClause + ")";
+
+            if (Strings.isNullOrEmpty(includeList)) {
+                result += "TABLE_NAME NOT LIKE 'MLOG$%' OR ";
+            }
+
+            return result + signalDataClause + regExpLikeClause + ")";
         }
     }
 
     private String getSignalDataCollectionTableClause(OracleConnectorConfig config) {
-        if (!Strings.isNullOrEmpty(config.getSignalingDataCollectionId())) {
-            final TableId tableId = TableId.parse(config.getSignalingDataCollectionId());
+        if (!config.getSignalingDataCollectionIds().isEmpty()) {
+            final TableId tableId = TableId.parse(config.getSignalingDataCollectionIds().get(0));
 
             boolean foundMatch = false;
             final List<Pattern> includeList = Strings.listOfRegex(config.tableIncludeList(), Pattern.CASE_INSENSITIVE);

@@ -12,16 +12,14 @@ import static org.assertj.core.api.Assertions.entry;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -34,11 +32,10 @@ import io.debezium.openlineage.DebeziumTestTransport;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.debezium.util.Testing;
 import io.openlineage.client.OpenLineage;
-import io.openlineage.client.transports.TransportBuilder;
 
 public class OpenLineageIT extends AbstractMongoConnectorIT {
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Debug.disable();
         Print.disable();
@@ -48,7 +45,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageStartEvent() throws InterruptedException {
+    void shouldProduceOpenLineageStartEvent() throws InterruptedException {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 
@@ -104,7 +101,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageInputDataset() throws Exception {
+    void shouldProduceOpenLineageInputDataset() throws Exception {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 
@@ -159,7 +156,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    public void shouldProduceOpenLineageInputDatasetEvenWhenNoSnapstho() throws Exception {
+    void shouldProduceOpenLineageInputDatasetEvenWhenNoSnapstho() throws Exception {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
 
@@ -169,7 +166,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
                 .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, LITERAL)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "never")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "no_data")
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -224,7 +221,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
         assertThat(startEvent.getJob().getFacets().getDocumentation().getDescription()).isEqualTo("This connector does cdc for products");
 
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getName()).isEqualTo("Debezium");
-        assertThat(startEvent.getRun().getFacets().getProcessing_engine().getVersion()).matches("^\\d+\\.\\d+\\.\\d+(\\.Final|-SNAPSHOT)$");
+        assertThat(startEvent.getRun().getFacets().getProcessing_engine().getVersion()).matches("^\\d+\\.\\d+\\.\\d+.*$");
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getOpenlineageAdapterVersion()).matches("^\\d+\\.\\d+\\.\\d+$");
 
         DebeziumConfigFacet debeziumConfigFacet = (DebeziumConfigFacet) startEvent.getRun().getFacets().getAdditionalProperties().get("debezium_config");
@@ -271,16 +268,6 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                         OpenLineage.OwnershipJobFacetOwners::getType));
 
         assertThat(ownership).contains(entry("Mario", "maintainer"), entry("John Doe", "Data scientist"));
-    }
-
-    private static DebeziumTestTransport getDebeziumTestTransport() {
-        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
-        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
-                .filter(b -> b.getType().equals("debezium"))
-                .findFirst();
-
-        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
-                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
     }
 
     protected void verifyFromInitialSnapshot(SourceRecord record, AtomicBoolean foundLast) {

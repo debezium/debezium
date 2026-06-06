@@ -50,6 +50,8 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
 
     public static final String CONTAINER_NAME_CONFIG = "azure.storage.account.container.name";
 
+    public static final String ACCOUNT_BLOB_ENDPOINT_CONFIG = "azure.storage.account.blob.endpoint";
+
     public static final String BLOB_NAME_CONFIG = "azure.storage.blob.name";
 
     public static final Field ACCOUNT_CONNECTION_STRING = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + ACCOUNT_CONNECTION_STRING_CONFIG)
@@ -63,6 +65,15 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH);
+
+    public static final Field ACCOUNT_BLOB_ENDPOINT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + ACCOUNT_BLOB_ENDPOINT_CONFIG)
+            .withDisplayName("blob endpoint")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Azure Blob Storage account endpoint URL. "
+                    + "Use this to override the default public endpoint for sovereign clouds "
+                    + "(e.g., https://<account>.blob.core.usgovcloudapi.net for Azure Government).");
 
     public static final Field CONTAINER_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONTAINER_NAME_CONFIG)
             .withDisplayName("container name")
@@ -78,7 +89,7 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
             .withImportance(ConfigDef.Importance.HIGH)
             .required();
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(ACCOUNT_CONNECTION_STRING, ACCOUNT_NAME, CONTAINER_NAME, BLOB_NAME);
+    public static final Field.Set ALL_FIELDS = Field.setOf(ACCOUNT_CONNECTION_STRING, ACCOUNT_NAME, ACCOUNT_BLOB_ENDPOINT, CONTAINER_NAME, BLOB_NAME);
 
     private static final String ENDPOINT_FORMAT = "https://%s.blob.core.windows.net";
 
@@ -97,14 +108,26 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
 
         container = config.getString(CONTAINER_NAME);
         blobName = config.getString(BLOB_NAME);
+
+        if (isNullOrEmpty(config.getString(ACCOUNT_CONNECTION_STRING))
+                && !isNullOrEmpty(config.getString(ACCOUNT_BLOB_ENDPOINT))
+                && !isNullOrEmpty(config.getString(ACCOUNT_NAME))) {
+            throw new DebeziumException(
+                    "Only one of '" + ACCOUNT_BLOB_ENDPOINT.name() + "' or '" + ACCOUNT_NAME.name()
+                            + "' should be set, but not both.");
+        }
     }
 
     @Override
     protected void doPreStart() {
         if (blobServiceClient == null) {
             if (isNullOrEmpty(config.getString(ACCOUNT_CONNECTION_STRING))) {
+                String endpoint = config.getString(ACCOUNT_BLOB_ENDPOINT);
+                if (isNullOrEmpty(endpoint)) {
+                    endpoint = format(ENDPOINT_FORMAT, config.getString(ACCOUNT_NAME));
+                }
                 blobServiceClient = new BlobServiceClientBuilder()
-                        .endpoint(format(ENDPOINT_FORMAT, config.getString(ACCOUNT_NAME)))
+                        .endpoint(endpoint)
                         .credential(new DefaultAzureCredentialBuilder().build())
                         .buildClient();
             }

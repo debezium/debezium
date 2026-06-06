@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   profile:
     description: "The profiles to use to run tests with"
     required: false
@@ -36,4 +40,5 @@ runs:
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -DfailFlakyTests=false       
+        -DfailFlakyTests=false
+        ${{ inputs.only-build == 'true' && '-DskipTests=true' || '' }}       

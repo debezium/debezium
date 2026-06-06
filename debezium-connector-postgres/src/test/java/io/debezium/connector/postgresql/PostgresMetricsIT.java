@@ -15,16 +15,14 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.SkipWhenJavaVersion;
 import io.debezium.pipeline.AbstractMetricsTest;
 
 /**
@@ -86,21 +84,20 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
         return false;
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
 
         TestHelper.execute(INIT_STATEMENTS);
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         stopConnector();
     }
 
     @Test
-    @SkipWhenJavaVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, value = 16, description = "Deep reflection not allowed by default on this Java version")
     public void oneRecordInQueue() throws Exception {
         // Testing.Print.enable();
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();

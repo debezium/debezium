@@ -17,13 +17,13 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        server-version: [ "5.0", "8.0" ]
+        server-version: [ "7.0", "8.0" ]
     name: MongoDB - ${{ matrix.server-version }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build MongoDB - ${{ matrix.server-version }}
         uses: ./.github/actions/build-debezium-mongodb

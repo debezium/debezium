@@ -55,7 +55,7 @@ VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 CANDIDATE_BRANCH = "candidate-$RELEASE_VERSION"
 
-POSTGRES_TAGS = ['12', '12-alpine', '13', '13-alpine', '14', '14-alpine', '15', '15-alpine', '16', '16-alpine']
+POSTGRES_TAGS = ['14', '14-alpine', '15', '15-alpine', '16', '16-alpine', '17', '17-alpine', '18', '18-alpine']
 CONNECTORS_PER_VERSION = [
     '0.8' : ['mongodb', 'mysql', 'postgres', 'oracle'],
     '0.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
@@ -80,7 +80,8 @@ CONNECTORS_PER_VERSION = [
     '2.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb'],
     '3.0' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb'],
     '3.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb'],
-    '3.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb']
+    '3.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb'],
+    '3.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb', 'cockroachdb']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -99,7 +100,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each { item ->
     }
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'platform-conductor', 'platform-stage']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'operator', 'platform-conductor', 'platform-stage']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 STAGING_REPO = 'http://%s'
@@ -398,7 +399,7 @@ node('release-node') {
                 }
                 sh "git commit -a -m '[release] Stable $RELEASE_VERSION for testing module deps'"
             }
-            mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY_URL, CANDIDATE_BRANCH, '-Poracle-all')
+            mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY_URL, CANDIDATE_BRANCH, '-Poracle-all -Dmaven.wagon.http.retryHandler.count=5')
             dir(DEBEZIUM_DIR) {
                 modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
@@ -415,7 +416,7 @@ node('release-node') {
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 // Additional repositories (like Debezium Server) can have their own BOM
                 def repoBom = "debezium-${id}-bom/pom.xml"
-                def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
+                def buildArgs = "-Dversion.debezium=$RELEASE_VERSION -Dmaven.wagon.http.retryHandler.count=5"
                 dir("$id/${repo.subDir}") {
                     sh "git checkout -b $CANDIDATE_BRANCH"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
@@ -609,13 +610,12 @@ node('release-node') {
                 """
             }
             sh """
-                docker rm -f connect zookeeper kafka mysql || true
+                docker rm -f connect kafka mysql || true
                 docker run -it -d --name mysql -p 53306:3306 -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/example-mysql:$IMAGE_TAG
-                docker run -it -d --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/zookeeper:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name kafka -p 9092:9092 --link zookeeper:zookeeper $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG
+                docker run -it -d --name kafka -p 9092:9092 $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect:$IMAGE_TAG
+                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link kafka:kafka --link mysql:mysql $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect:$IMAGE_TAG
                 sleep 30
     
                 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '
@@ -640,9 +640,9 @@ node('release-node') {
                 sleep 10
             """
             timeout(time: 2, unit: java.util.concurrent.TimeUnit.MINUTES) {
-                def watcherlog = sh(script: "docker run --name watcher --rm --link zookeeper:zookeeper --link kafka:kafka $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
+                def watcherlog = sh(script: "docker run --name watcher --rm --link kafka:kafka $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
                 echo watcherlog
-                sh 'docker rm -f connect zookeeper kafka mysql maven'
+                sh 'docker rm -f connect kafka mysql maven'
                 if (!watcherlog.contains('Processed a total of 2 messages')) {
                     error 'Tutorial watcher did not reported messages'
                 }

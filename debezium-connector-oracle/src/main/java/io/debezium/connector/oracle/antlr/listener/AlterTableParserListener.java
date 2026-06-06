@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.antlr.listener;
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
@@ -106,6 +107,10 @@ public class AlterTableParserListener extends BaseParserListener {
     @Override
     public void enterAdd_column_clause(PlSqlParser.Add_column_clauseContext ctx) {
         parser.runIfNotNull(() -> {
+            if (!ctx.virtual_column_definition().isEmpty()) {
+                throw new ParsingException(null, "trying to add a virtual column in "
+                        + tableEditor.tableId().toString() + " table: virtual columns are not supported.");
+            }
             List<PlSqlParser.Column_definitionContext> columns = ctx.column_definition();
             columnEditors = new ArrayList<>(columns.size());
             for (PlSqlParser.Column_definitionContext column : columns) {
@@ -243,7 +248,7 @@ public class AlterTableParserListener extends BaseParserListener {
                     }
                 }
                 if (!primaryKeyColumns.isEmpty()) {
-                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                    parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
                 }
             }
             else if (ctx.MODIFY() != null && ctx.PRIMARY() != null && ctx.KEY() != null) {
@@ -253,10 +258,20 @@ public class AlterTableParserListener extends BaseParserListener {
                     primaryKeyColumns.add(getColumnName(columnNameContext));
                 }
                 if (!primaryKeyColumns.isEmpty()) {
-                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                    parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
                 }
             }
         }, tableEditor);
         super.enterConstraint_clauses(ctx);
+    }
+
+    @Override
+    public void enterDrop_constraint_clause(PlSqlParser.Drop_constraint_clauseContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.PRIMARY() != null) {
+                parser.setTablePrimaryKeyColumns(tableEditor, Collections.emptyList());
+            }
+        }, tableEditor);
+        super.enterDrop_constraint_clause(ctx);
     }
 }

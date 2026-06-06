@@ -32,7 +32,7 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -68,25 +68,35 @@ You must explicitly configure signaling for each connector that you want to use 
 
 . For source databases such as Db2 or SQL Server that implement a native change data capture (CDC) mechanism, enable CDC for the signaling table.
 
-. Add the name of the signaling data collection to the {prodname} connector configuration. +
-  In the connector configuration, add the property `signal.data.collection`, and set its value to the fully-qualified name of the signaling data collection that you created in Step 1. +
- +
-For example, `signal.data.collection = inventory.debezium_signals`. +
- +
-The format for the fully-qualified name of the signaling collection depends on the connector. +
-The following example shows the naming formats to use for each connector:
+. Add the name of the signaling data collection to the {prodname} connector configuration:
++
+In the connector configuration, add the property `signal.data.collection`, and set its value to the fully-qualified name of the signaling data collection that you created in Step 1.
+The name of the data collection is case-sensitive.
++
+For example,
++
+ signal.data.collection = inventory.debezium_signals
++
+For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
 
-.Fully qualified table names
+NOTE: If you use the `table.include.list` property, you do not need to include the signaling data collection in it. However, if you use the `column.include.list` property, you must include the signaling table columns (`id`, `type`, and `data`).
+
+.Additional resources
+* xref:format-for-specifying-fully-qualified-names-for-data-collections[Formats for specifying fully qualified names for data collections].
+
+// Type: reference
 [id="format-for-specifying-fully-qualified-names-for-data-collections"]
+=== Formats for specifying fully qualified names for data collections
+
+[horizontal]
 Db2:: `_<schemaName>_._<tableName>_`
-MariaDB (Technology Preview):: `_<databaseName>_._<tableName>_`
+MariaDB:: `_<databaseName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
 MySQL:: `_<databaseName>_._<tableName>_`
 Oracle:: `_<databaseName>_._<schemaName>_._<tableName>_`
 PostgreSQL:: `_<schemaName>_._<tableName>_`
-SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
- +
-For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
+SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_`
+
 
 // Type: reference
 // ModuleID: debezium-signaling-required-structure-of-a-signaling-data-collection
@@ -168,6 +178,8 @@ The following example shows a `CREATE TABLE` command that creates a three-column
 CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
 ----
 
+NOTE: The {prodname} database user must have the `INSERT` privilege on the `debezium_signal` table.
+
 // Type: procedure
 // Title: Enabling the {prodname} Kafka signaling channel
 [id="debezium-signaling-enabling-kafka-signaling-channel"]
@@ -178,21 +190,14 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 
 .Additional configuration available for the consumer
 
-* {link-prefix}:{link-db2-connector}#debezium-db2-connector-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
-* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-connector-kafka-signals-configuration-properties[MariaDB connector Kafka signal configuration properties]
-* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
-* {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
-* {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
-* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
-* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
-
-[NOTE]
-====
-To use Kafka signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
-The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
-Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
-For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
-====
+* {link-prefix}:{link-db2-connector}#debezium-db2-connector-pass-through-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
+* {link-prefix}:{link-informix-connector}#debezium-informix-connector-pass-through-kafka-signals-configuration-properties[Informix connector Kafka signal configuration properties]
+* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-connector-pass-through-kafka-signals-configuration-properties[MariaDB connector Kafka signal configuration properties]
+* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
+* {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-pass-through-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-pass-through-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
+* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-pass-through-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-pass-through-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
 
 === Message format
 
@@ -380,21 +385,31 @@ For example:
 ----
 public interface SignalChannelReader {
 
-    String name(); // <1>
+    String name();
 
-    void init(CommonConnectorConfig connectorConfig); // <2>
+    void init(CommonConnectorConfig connectorConfig);
 
-    List<SignalRecord> read(); // <3>
+    List<SignalRecord> read();
 
-    void close(); // <4>
+    void close();
 }
 ----
-<1> The name of the reader.
+
+The following list describes the purpose of the lines in the preceding example:
+
+`String name();`::
+The name of the reader.
 To enable {prodname} to use the channel, specify this name in the connector's `signal.enabled.channels` property.
-<2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Reads signal from the channel.
+
+`void init(CommonConnectorConfig connectorConfig);`::
+Initializes specific configuration, variables, or connections that the channel requires.
+
+`List<SignalRecord> read();`::
+Reads signal from the channel.
 The `SignalProcessor` class calls this method to retrieve the signal to process.
-<4> Closes all allocated resources.
+
+`void close();`::
+Closes all allocated resources.
 {prodname} calls this methods when the connector is stopped.
 
 //   Type: concept
@@ -408,11 +423,12 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 ----
 <dependency>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-core</artifactId>
-    <version>${version.debezium}</version> // <1>
+    <artifactId>debezium-connector-common</artifactId>
+    <version>${version.debezium}</version>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+In the preceding excerpt from `pom.xml`, `${version.debezium}` represents the version of the {prodname} connector.
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
 
@@ -451,6 +467,14 @@ You can use signaling to initiate the following actions:
 * xref:debezium-signaling-resume-incremental-snapshots[Resume incremental snapshots].
 * xref:debezium-signaling-ad-hoc-blocking-snapshots[Trigger ad hoc blocking snapshot].
 * xref:debezium-signaling-custom-action[Custom action].
+
+[NOTE]
+====
+To use signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
+The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
+Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
+For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
+====
 
 Some signals are not compatible with all connectors.
 
@@ -499,7 +523,7 @@ You can initiate ad hoc snapshots at any time.
 Ad hoc snapshots are available for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -565,7 +589,7 @@ After processing the signal, the connector will stop the current in-progress sna
 You can stop ad hoc snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -623,7 +647,7 @@ Therefor it's not possible to specify the data collection as the snapshot proces
 You can pause incremental snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -656,7 +680,7 @@ After processing the signal, the connector will resume previously paused snapsho
 You can resume incremental snapshots for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 * MongoDB
 * MySQL
 * Oracle
@@ -705,7 +729,7 @@ You can initiate ad hoc blocking snapshots at any time.
 Blocking snapshots are available for the following {prodname} connectors:
 
 * Db2
-* MariaDB (Technology Preview)
+* MariaDB
 ifdef::community[]
 * MongoDB
 endif::community[]
@@ -826,7 +850,7 @@ Include the following compile dependencies in your project's `pom.xml` file:
 ----
 <dependency>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-core</artifactId>
+    <artifactId>debezium-connector-common</artifactId>
     <version>${version.debezium}</version>
 </dependency>
 ----

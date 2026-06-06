@@ -3,12 +3,16 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-openlineage</artifactId>
-        <version>3.3.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>debezium-openlineage-core</artifactId>
     <name>Debezium OpenLineage Core</name>
     <packaging>jar</packaging>
+
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -18,9 +22,20 @@
         </dependency>
 
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-config</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-api</artifactId>
         </dependency>
 
         <dependency>
@@ -34,8 +49,8 @@
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -49,8 +64,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage-api</artifactId>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

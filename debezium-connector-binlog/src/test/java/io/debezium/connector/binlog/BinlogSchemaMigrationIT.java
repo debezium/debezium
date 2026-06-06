@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -34,8 +34,8 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
 
@@ -43,8 +43,8 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -54,9 +54,9 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldCorrectlyMigrateTable() throws SQLException, InterruptedException {
+    void shouldCorrectlyMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        // Breaks if table whitelist does not contain both tables
+        // Breaks if table include list does not contain both tables
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -94,7 +94,7 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldProcessAndWarnOnNonWhitelistedMigrateTable() throws SQLException, InterruptedException {
+    void shouldProcessAndWarnOnNonIncludedMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         final LogInterceptor logInterceptor = new LogInterceptor(getRenameTableParserListenerClass());
 
@@ -144,7 +144,7 @@ public abstract class BinlogSchemaMigrationIT<C extends SourceConnector> extends
     }
 
     @Test
-    public void shouldWarnOnInvalidMigrateTable() throws SQLException, InterruptedException {
+    void shouldWarnOnInvalidMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         final LogInterceptor logInterceptor = new LogInterceptor(getRenameTableParserListenerClass());
 

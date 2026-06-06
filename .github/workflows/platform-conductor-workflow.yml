@@ -1,0 +1,38 @@
+name: Platform Conductor Build
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-platform-conductor:
+    name: "Build Debezium Platform - Conductor"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Checkout Debezium Platform
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-platform
+          path: platform-conductor
+          ref: main
+
+      - uses: ./core/.github/actions/setup-java
+
+      - name: Build Debezium Platform Conductor
+        uses: ./core/.github/actions/build-platform-conductor
+        with:
+          path-conductor: platform-conductor/debezium-platform-conductor
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('core/**/pom.xml') }}

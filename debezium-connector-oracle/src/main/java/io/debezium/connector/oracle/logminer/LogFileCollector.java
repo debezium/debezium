@@ -8,10 +8,13 @@ package io.debezium.connector.oracle.logminer;
 import static io.debezium.function.Predicates.not;
 
 import java.math.BigInteger;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +35,6 @@ import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.Strings;
 
 /**
  * A collector that is responsible for fetching, deduplication, and supplying Debezium with a set of
@@ -44,7 +46,6 @@ public class LogFileCollector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogFileCollector.class);
     private static final String STATUS_CURRENT = "CURRENT";
-    private static final String ONLINE_LOG_TYPE = "ONLINE";
     private static final String ARCHIVE_LOG_TYPE = "ARCHIVED";
 
     private final Duration initialDelay;
@@ -52,7 +53,7 @@ public class LogFileCollector {
     private final int maxAttempts;
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
-    private final String archiveLogDestinationName;
+    private final List<String> archiveLogDestinationNames;
     private final OracleConnection connection;
 
     public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
@@ -61,7 +62,7 @@ public class LogFileCollector {
         this.maxAttempts = connectorConfig.getMaximumNumberOfLogQueryRetries();
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
-        this.archiveLogDestinationName = connectorConfig.getArchiveLogDestinationName();
+        this.archiveLogDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
         this.connection = connection;
     }
 
@@ -69,11 +70,11 @@ public class LogFileCollector {
      * Get a list of all log files that should be mined given the specified system change number.
      *
      * @param offsetScn minimum system change number to start reading changes from, should not be {@code null}
-     * @return list of log file instances that should be added to the mining session, never {@code null}
+     * @return a {@link LogFilesResult} that provides the logs and redo thread state used, never {@code null}
      * @throws SQLException if there is a database failure during the collection
      * @throws LogFileNotFoundException if we were unable to collect logs due to a non-SQL related failure
      */
-    public List<LogFile> getLogs(Scn offsetScn) throws SQLException, LogFileNotFoundException {
+    public LogFilesResult getLogs(Scn offsetScn) throws SQLException, LogFileNotFoundException {
         LOGGER.debug("Collecting logs based on the read SCN position {}.", offsetScn);
         final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay, maxRetryDelay);
         for (int attempt = 0; attempt <= maxAttempts; ++attempt) {
@@ -91,50 +92,104 @@ public class LogFileCollector {
                 continue;
             }
 
-            return files;
+            return new LogFilesResult(files, currentRedoThreadState);
         }
         throw new LogFileNotFoundException(offsetScn);
     }
 
+    /**
+     * Checks whether the specified system change number is present in the archive log files. For Oracle RAC,
+     * this check explicitly requires that all redo thread active current logs start after the given SCN.
+     *
+     * @param scn the minimum system change number to start reading changes from, should not be {@code null}
+     * @return {@code true} if the change number is in the archive logs, otherwise {@code false}
+     * @throws SQLException if there is a database failure during the collection
+     */
+    public boolean isScnInArchiveLogs(Scn scn) throws SQLException {
+        try {
+            final List<LogFile> allLogs = getLogs(scn).logFiles();
+            final Map<Integer, List<LogFile>> threadLogs = allLogs.stream()
+                    .collect(Collectors.groupingBy(LogFile::getThread));
+
+            return threadLogs.entrySet().stream()
+                    .allMatch(e -> e.getValue().stream()
+                            .filter(LogFile::isCurrent)
+                            .allMatch(log -> log.getFirstScn().compareTo(scn) > 0));
+        }
+        catch (LogFileNotFoundException e) {
+            // It is safe to ignore this because we used consistency checks
+            return false;
+        }
+    }
+
     @VisibleForTesting
     public List<LogFile> getLogsForOffsetScn(Scn offsetScn) throws SQLException {
-        final Set<LogFile> onlineRedoLogs = new LinkedHashSet<>();
-        final Set<LogFile> archiveLogs = new LinkedHashSet<>();
+        return connection.queryAndMap(getLogsQuery(offsetScn), rs -> {
+            final Set<LogFile> onlineRedoLogs = new LinkedHashSet<>();
+            final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
 
-        connection.query(getLogsQuery(offsetScn), rs -> {
             while (rs.next()) {
-                final String fileName = rs.getString(1);
-                final Scn firstScn = getScnFromString(rs.getString(2));
-                final Scn nextScn = getScnFromString(rs.getString(3));
-                final String status = rs.getString(5);
-                final String type = rs.getString(6);
-                final BigInteger sequence = new BigInteger(rs.getString(7));
-                final int thread = rs.getInt(10);
-                if (ARCHIVE_LOG_TYPE.equals(type)) {
-                    final LogFile log = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
-                    if (log.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} to be added.",
-                                fileName, firstScn, nextScn, sequence);
-                        archiveLogs.add(log);
-                    }
+                final LogFile logFile = createLogFileFromResultSetRow(rs);
+
+                final String destinationName = rs.getString(12);
+                if (logFile.isArchive() && logFile.getNextScn().compareTo(offsetScn) >= 0) {
+                    LOGGER.debug(
+                            "Archive log {} Seq# {} Thread# {} SCN [{} - {} (delta {})] Size {} bytes Dictionary {}/{} in destination {} to be added.",
+                            logFile.getFileName(),
+                            logFile.getSequence(),
+                            logFile.getThread(),
+                            logFile.getFirstScn(),
+                            logFile.getNextScn(),
+                            logFile.getNextScn().subtract(logFile.getFirstScn()),
+                            String.format("%,d", logFile.getBytes()),
+                            logFile.hasDictionaryStart() ? "Y" : "N",
+                            logFile.hasDictionaryEnd() ? "Y" : "N",
+                            destinationName);
+
+                    archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>()).add(logFile);
                 }
-                else if (ONLINE_LOG_TYPE.equals(type)) {
-                    final LogFile log = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO,
-                            STATUS_CURRENT.equalsIgnoreCase(status), thread);
-                    if (log.isCurrent() || log.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.",
-                                fileName, firstScn, nextScn, status, sequence);
-                        onlineRedoLogs.add(log);
-                    }
-                    else {
-                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.",
-                                fileName, firstScn, nextScn, status, sequence);
+                else if (logFile.isRedo()) {
+                    final boolean logShouldBeAdded = logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0;
+
+                    LOGGER.debug("Online log {} Seq# {} Thread# {} SCN [{} - {}] Size {} bytes Status {} to be {}.",
+                            logFile.getFileName(),
+                            logFile.getSequence(),
+                            logFile.getThread(),
+                            logFile.getFirstScn(),
+                            logFile.getNextScn(),
+                            String.format("%,d", logFile.getBytes()),
+                            rs.getString(5),
+                            logShouldBeAdded ? "added" : "excluded");
+
+                    if (logShouldBeAdded) {
+                        onlineRedoLogs.add(logFile);
                     }
                 }
             }
-        });
 
-        return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
+            final Set<LogFile> archiveLogs = new LinkedHashSet<>(
+                    mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames));
+            return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
+        });
+    }
+
+    private LogFile createLogFileFromResultSetRow(ResultSet rs) throws SQLException {
+        final String fileName = rs.getString(1);
+        final Scn firstScn = getScnFromString(rs.getString(2));
+        final Scn nextScn = getScnFromString(rs.getString(3));
+        final boolean isCurrent = STATUS_CURRENT.equalsIgnoreCase(rs.getString(5));
+        final String type = rs.getString(6);
+        final BigInteger sequence = new BigInteger(rs.getString(7));
+        final boolean dictStart = isYes(rs.getString(8));
+        final boolean dictEnd = isYes(rs.getString(9));
+        final int thread = rs.getInt(10);
+        final long size = rs.getLong(11);
+
+        if (ARCHIVE_LOG_TYPE.equals(type)) {
+            return LogFile.forArchive(fileName, firstScn, nextScn, sequence, thread, size, dictStart, dictEnd);
+        }
+
+        return LogFile.forRedo(fileName, firstScn, nextScn, sequence, isCurrent, thread, size);
     }
 
     @VisibleForTesting
@@ -142,11 +197,16 @@ public class LogFileCollector {
         // DBZ-3563
         // To avoid duplicate log files (ORA-01289 cannot add duplicate logfile)
         // Remove the archive log which has the same sequence number and redo thread number.
-        for (LogFile redoLog : onlineLogFiles) {
-            archiveLogFiles.removeIf(archiveLog -> {
-                if (archiveLog.equals(redoLog)) {
-                    LOGGER.debug("Removing redo thread {} archive log {} with duplicate sequence {} with redo log {}",
-                            archiveLog.getThread(), archiveLog.getFileName(), archiveLog.getSequence(), redoLog.getFileName());
+        // - 2025/11/09
+        // The SQL query previously deduplicated the data set during the join, favoring archive logs
+        // instead of redo logs, therefore there was rarely a reason for this deduplication. But,
+        // with the recent change to minimize query costs, the deduplication was removed, and should
+        // now apply that here again, thus lets favor archive over redo with the same sequences.
+        for (LogFile archiveLog : archiveLogFiles) {
+            onlineLogFiles.removeIf(redoLog -> {
+                if (redoLog.equals(archiveLog)) {
+                    LOGGER.debug("Removing redo thread {} redo log {} with duplicate sequence {} with archive log {}",
+                            redoLog.getThread(), redoLog.getFileName(), redoLog.getSequence(), archiveLog.getFileName());
                     return true;
                 }
                 return false;
@@ -213,6 +273,35 @@ public class LogFileCollector {
                 .forEach(this::logThreadCheckSkippedNotInDatabase);
 
         return true;
+    }
+
+    /**
+     * Given a list of logs by archive destination names and a list of destinations in precedence order, the map
+     * is filtered and converted into a list of logs, favoring logs in earlier destinations.
+     *
+     * @param logs map of logs by destination name
+     * @param destinationNames destination names in priority order
+     * @return merged list of logs based on precedence order
+     */
+    @VisibleForTesting
+    public static List<LogFile> mergeLogsByPrecedence(Map<String, List<LogFile>> logs, List<String> destinationNames) {
+        final List<LogFile> result = new ArrayList<>();
+        final Set<LogFile.ThreadSequence> seen = new HashSet<>();
+
+        for (String destinationName : destinationNames) {
+            final List<LogFile> destinationLogs = logs.get(destinationName);
+            if (destinationLogs == null) {
+                continue;
+            }
+
+            for (LogFile logFile : destinationLogs) {
+                if (seen.add(logFile.getThreadSequence())) {
+                    result.add(logFile);
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -473,19 +562,23 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames),
                 rs -> {
-                    final List<LogFile> logs = new ArrayList<>();
+                    final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
                     while (rs.next()) {
-                        logs.add(new LogFile(
-                                rs.getString(1),
-                                Scn.valueOf(rs.getString(3)),
-                                Scn.valueOf(rs.getString(4)),
-                                BigInteger.valueOf(rs.getLong(2)),
-                                LogFile.Type.ARCHIVE,
-                                threadId));
+                        String destinationName = rs.getString(8);
+                        archiveLogsByDestination.computeIfAbsent(destinationName, k -> new ArrayList<>())
+                                .add(LogFile.forArchive(
+                                        rs.getString(1),
+                                        Scn.valueOf(rs.getString(3)),
+                                        Scn.valueOf(rs.getString(4)),
+                                        BigInteger.valueOf(rs.getLong(2)),
+                                        threadId,
+                                        rs.getLong(5),
+                                        isYes(rs.getString(6)),
+                                        isYes(rs.getString(7))));
                     }
-                    return logs;
+                    return mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames);
                 });
     }
 
@@ -505,7 +598,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames);
     }
 
     /**
@@ -515,7 +608,7 @@ public class LogFileCollector {
      * @return the system change number for the specified value
      */
     private Scn getScnFromString(String value) {
-        return Strings.isNullOrBlank(value) ? Scn.MAX : Scn.valueOf(value);
+        return Scn.valueOf(value);
     }
 
     /**
@@ -550,25 +643,25 @@ public class LogFileCollector {
         return new SequenceRange(min, max);
     }
 
-    /**
-     * Get the minimum sequence from a list of redo thread logs.
-     *
-     * @param redoThreadLogs the redo logs collection, should not be {@code empty} or {@code null}.
-     * @return the minimum sequence
-     */
-    private BigInteger getMinRedoThreadLogSequence(List<LogFile> redoThreadLogs) {
-        if (redoThreadLogs == null || redoThreadLogs.isEmpty()) {
-            throw new DebeziumException("Cannot calculate minimum sequence on a null or empty list of logs");
-        }
-        return redoThreadLogs.stream().map(LogFile::getSequence).min(BigInteger::compareTo).get();
-    }
-
     private static void logException(String message) {
-        LOGGER.info("{}", message, new DebeziumException(message));
+        logExceptionInternal(new DebeziumException(message));
     }
 
     private static void logException(String message, Throwable cause) {
-        LOGGER.info("{}", message, new DebeziumException(message, cause));
+        logExceptionInternal(new DebeziumException(message, cause));
+    }
+
+    private static void logExceptionInternal(Throwable t) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("{}", t.getMessage(), t);
+        }
+        else {
+            LOGGER.debug("{}", t.getMessage());
+        }
+    }
+
+    private static boolean isYes(String value) {
+        return "YES".equalsIgnoreCase(value);
     }
 
     /**
@@ -593,4 +686,12 @@ public class LogFileCollector {
         }
     }
 
+    /**
+     * A result object when collecting Oracle logs.
+     *
+     * @param logFiles the logs that were fetched, never {@code null}
+     * @param redoThreadState the redo thread state used when fetching logs, never {@code null}
+     */
+    public record LogFilesResult(List<LogFile> logFiles, RedoThreadState redoThreadState) {
+    }
 }

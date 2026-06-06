@@ -13,7 +13,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
 import io.debezium.function.Predicates;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Collect;
@@ -29,14 +31,14 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  * @author Chris Cranford
  */
-public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuilder, RelationalColumn>, ConfigDescriptor {
 
     private static final Boolean FALLBACK = Boolean.FALSE;
 
-    public static final String SELECTOR_PROPERTY = "selector";
+    public static final String SELECTOR_PROPERTY = TinyIntOneToBooleanConverterConfig.SELECTOR.name();
     // recommend disabling this option for mysql8 since "show create table" not showing length of tinyint unsigned type,
     // and specify the columns that need to be converted to "selector" property instead of converting all columns based on type.
-    public static final String LENGTH_CHECKER = "length.checker";
+    public static final String LENGTH_CHECKER = TinyIntOneToBooleanConverterConfig.LENGTH_CHECKER.name();
 
     private static final List<String> TINYINT_FAMILY = Collect.arrayListOf("TINYINT", "TINYINT UNSIGNED");
 
@@ -90,5 +92,12 @@ public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuild
             LOGGER.warn("Cannot convert '{}' to boolean", x.getClass());
             return FALLBACK;
         });
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(
+                TinyIntOneToBooleanConverterConfig.SELECTOR,
+                TinyIntOneToBooleanConverterConfig.LENGTH_CHECKER);
     }
 }

@@ -55,8 +55,8 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
         sourceInfo.updateLastCommit(lastCommitLsn);
+        sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
@@ -138,6 +138,20 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.updateLastCommit(lsn);
     }
 
+    /**
+     * Updates the origin information in the source info.
+     *
+     * @param originName the name of the origin server
+     * @param originLsn the LSN on the origin server
+     */
+    public void updateOrigin(String originName, Lsn originLsn) {
+        sourceInfo.updateOrigin(originName, originLsn);
+    }
+
+    public void clearOrigin() {
+        sourceInfo.clearOrigin();
+    }
+
     boolean hasLastKnownPosition() {
         return sourceInfo.lsn() != null;
     }
@@ -150,7 +164,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.lsn();
     }
 
-    Lsn lastCompletelyProcessedLsn() {
+    public Lsn lastCompletelyProcessedLsn() {
         return lastCompletelyProcessedLsn;
     }
 

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Debezium Community Support
+    url: https://debezium.io/community/
+    about: Please ask and answer questions here.

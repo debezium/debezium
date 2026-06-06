@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.integration.postgres;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -29,12 +30,14 @@ import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider;
+import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
@@ -65,9 +68,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     @WithPostgresExtension("postgis")
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6637")
-    public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory) throws SQLException {
+    public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
@@ -75,6 +78,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -101,9 +105,10 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", Base64.getDecoder().decode("AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes()))
                 .put("srid", 4326);
 
-        final KafkaDebeziumSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("geometry", "point", "geography", "p"), List.of(geometrySchema, pointSchema, geographySchema, pointSchema),
-                Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }));
+                Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }), config);
         consume(createGeometryRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createGeometryRecord));
@@ -134,14 +139,17 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     @WithPostgresExtension("postgis")
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-8221")
-    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory) throws SQLException {
+    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+        properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "true");
+        // Disable UNNEST as geometry types not supported with it
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "false");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -149,7 +157,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord recordA = factory.createInsertSchemaAndValue(
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord recordA = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
                 List.of(
@@ -160,16 +169,18 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                                         Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
                                         3857)),
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
-                0);
+                0,
+                config);
 
-        final KafkaDebeziumSinkRecord recordB = factory.createInsertSchemaAndValue(
+        final JdbcKafkaSinkRecord recordB = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
                 List.of(new SchemaAndValueField("gis_area", Geometry.schema(), null),
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
-                1);
+                1,
+                config);
 
-        final KafkaDebeziumSinkRecord recordC = factory.createInsertSchemaAndValue(
+        final JdbcKafkaSinkRecord recordC = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
                 List.of(
@@ -180,9 +191,10 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                                         Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
                                         3857)),
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
-                0);
+                0,
+                config);
 
-        final List<KafkaDebeziumSinkRecord> records = List.of(recordA, recordB, recordC);
+        final List<JdbcKafkaSinkRecord> records = List.of(recordA, recordB, recordC);
         consume(records);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(recordA));
@@ -190,9 +202,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6682")
-    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithQuotedIdentifiers(SinkRecordFactory factory) {
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithQuotedIdentifiers(SinkRecordFactory factory, PostgresInsertMode insertMode) {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
@@ -200,6 +212,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
         properties.put(JdbcSinkConnectorConfig.QUOTE_IDENTIFIERS, "true");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -207,8 +220,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
-        final KafkaDebeziumSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
+        final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
@@ -222,15 +236,16 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-6682")
-    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithoutQuotedIdentifiers(SinkRecordFactory factory) {
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithoutQuotedIdentifiers(SinkRecordFactory factory, PostgresInsertMode insertMode) {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -238,8 +253,9 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
-        final KafkaDebeziumSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase, config);
+        final JdbcKafkaSinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase, config);
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
@@ -253,15 +269,16 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("DBZ-7920")
-    public void testInsertModeInsertInfinityValues(SinkRecordFactory factory) throws SQLException {
+    public void testInsertModeInsertInfinityValues(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -275,10 +292,11 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         Schema rangeSchema = SchemaBuilder.string().build();
 
-        final KafkaDebeziumSinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("timestamp_infinity-", "timestamp_infinity+", "range_with_infinity"),
                 List.of(zonedTimestampSchema, zonedTimestampSchema, rangeSchema),
-                Arrays.asList(new Object[]{ "-infinity", "infinity", "[2010-01-01 14:30, infinity)" }));
+                Arrays.asList(new Object[]{ "-infinity", "infinity", "[2010-01-01 14:30, infinity)" }), config);
         consume(createInfinityRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createInfinityRecord));
@@ -290,6 +308,108 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         getSink().assertColumnType(tableAssert, "timestamp_infinity+", Timestamp.class, new Timestamp(PGStatement.DATE_POSITIVE_INFINITY));
         getSink().assertColumnType(tableAssert, "range_with_infinity", String.class, "[2010-01-01 14:30, infinity)");
 
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("dbz#1658")
+    public void testInsertModeInsertBatchWithNormalAndInfinityTimestamps(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final Schema zonedTimestampSchema = SchemaBuilder.string()
+                .name("io.debezium.time.ZonedTimestamp")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord normalTimestampRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "2024-01-15T10:30:00Z" }), config);
+
+        final JdbcKafkaSinkRecord negativeInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 2,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "-infinity" }), config);
+
+        final JdbcKafkaSinkRecord positiveInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 3,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "infinity" }), config);
+
+        consume(List.of(normalTimestampRecord, negativeInfinityRecord, positiveInfinityRecord));
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(normalTimestampRecord));
+        tableAssert.exists().hasNumberOfRows(3).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2, (byte) 3);
+        tableAssert.column("timestamptz_col").isOfClass(Timestamp.class, false)
+                .hasValues(
+                        Timestamp.from(Instant.parse("2024-01-15T10:30:00Z")),
+                        new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY),
+                        new Timestamp(PGStatement.DATE_POSITIVE_INFINITY));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("dbz#1658")
+    public void testInsertModeInsertBatchWithInfinityAndNormalTimestamps(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final Schema zonedTimestampSchema = SchemaBuilder.string()
+                .name("io.debezium.time.ZonedTimestamp")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord negativeInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "-infinity" }), config);
+
+        final JdbcKafkaSinkRecord positiveInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 2,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "infinity" }), config);
+
+        final JdbcKafkaSinkRecord normalTimestampRecord = factory.createRecordWithSchemaValue(topicName, (byte) 3,
+                List.of("timestamptz_col"),
+                List.of(zonedTimestampSchema),
+                Arrays.asList(new Object[]{ "2024-01-15T10:30:00Z" }), config);
+
+        consume(List.of(negativeInfinityRecord, positiveInfinityRecord, normalTimestampRecord));
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(negativeInfinityRecord));
+        tableAssert.exists().hasNumberOfRows(3).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2, (byte) 3);
+        tableAssert.column("timestamptz_col").isOfClass(Timestamp.class, false)
+                .hasValues(
+                        new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY),
+                        new Timestamp(PGStatement.DATE_POSITIVE_INFINITY),
+                        Timestamp.from(Instant.parse("2024-01-15T10:30:00Z")));
     }
 
     private static Schema buildGeoTypeSchema(String type) {
@@ -306,5 +426,91 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         }
         return schemaBuilder
                 .build();
+    }
+
+    /**
+     * Test INSERT mode with UNNEST optimization enabled.
+     * This test verifies that the UNNEST batch optimization works correctly for PostgreSQL.
+     * UNNEST provides 5-10x performance improvement for batch inserts.
+     * All other tests in this class implicitly test UNNEST when run with the config enabled.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-1525")
+    public void testInsertModeWithUnnestBatchOptimization(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        var config = new JdbcSinkConnectorConfig(properties);
+        // Insert multiple records to trigger batch UNNEST
+        final JdbcKafkaSinkRecord record1 = factory.createRecord(topicName, (byte) 1, config);
+        final JdbcKafkaSinkRecord record2 = factory.createRecord(topicName, (byte) 2, config);
+        final JdbcKafkaSinkRecord record3 = factory.createRecord(topicName, (byte) 3, config);
+
+        consume(record1);
+        consume(record2);
+        consume(record3);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(record1));
+        tableAssert.exists().hasNumberOfRows(3).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2, (byte) 3);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe", "John Doe", "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$", "John Doe$", "John Doe$");
+    }
+
+    /**
+     * Test UPSERT mode with UNNEST optimization enabled.
+     * This test verifies that UNNEST works correctly with PostgreSQL ON CONFLICT clause.
+     * UNNEST provides 5-10x performance improvement for batch upserts.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-1525")
+    public void testUpsertModeWithUnnestBatchOptimization(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        var config = new JdbcSinkConnectorConfig(properties);
+        // Initial insert
+        final JdbcKafkaSinkRecord createRecord1 = factory.createRecord(topicName, (byte) 1, config);
+        final JdbcKafkaSinkRecord createRecord2 = factory.createRecord(topicName, (byte) 2, config);
+        consume(createRecord1);
+        consume(createRecord2);
+
+        // Verify initial insert
+        TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+
+        // Update - should use UPSERT with ON CONFLICT
+        // Sending same records again will trigger ON CONFLICT due to primary key
+        consume(createRecord1);
+        consume(createRecord2);
+
+        // Verify still only 2 rows (upserted, not duplicated)
+        tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
     }
 }

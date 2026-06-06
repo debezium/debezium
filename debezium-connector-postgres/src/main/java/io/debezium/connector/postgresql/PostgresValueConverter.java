@@ -59,6 +59,7 @@ import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.TsVector;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Geography;
@@ -233,6 +234,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return numericSchema(column);
             case PgOid.BYTEA:
                 return binaryMode.getSchema();
+            case PgOid.TSVECTOR_OID:
+                return TsVector.builder();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -336,7 +339,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
-
                 if (resolvedType.isEnumType()) {
                     return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
@@ -454,6 +456,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.TSVECTOR_OID:
             case PgOid.BPCHAR:
                 return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
@@ -549,6 +552,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
                 if (resolvedType.isArrayType()) {
                     return createArrayConverter(column, fieldDefn);
+                }
+
+                // Enum types don't have a JDBC converter, but we need to return a converter that passes through the string value
+                if (resolvedType.isEnumType()) {
+                    return data -> convertString(column, fieldDefn, data);
                 }
 
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
@@ -1175,6 +1183,33 @@ public class PostgresValueConverter extends JdbcValueConverters {
         final Instant instant = timestamp.toInstant();
 
         return LocalDateTime.ofInstant(instant, ZoneOffset.systemDefault());
+    }
+
+    @Override
+    protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
+        if (data == null) {
+            return null;
+        }
+
+        if (data instanceof Instant instant) {
+            if (POSITIVE_INFINITY_INSTANT.equals(instant)) {
+                return Long.MAX_VALUE;
+            }
+            else if (NEGATIVE_INFINITY_INSTANT.equals(instant)) {
+                return Long.MIN_VALUE;
+            }
+        }
+
+        if (data instanceof LocalDateTime localDateTime) {
+            if (POSITIVE_INFINITY_LOCAL_DATE_TIME.equals(localDateTime)) {
+                return Long.MAX_VALUE;
+            }
+            else if (NEGATIVE_INFINITY_LOCAL_DATE_TIME.equals(localDateTime)) {
+                return Long.MIN_VALUE;
+            }
+        }
+
+        return super.convertTimestampToEpochNanos(column, fieldDefn, data);
     }
 
     @Override

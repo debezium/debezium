@@ -57,7 +57,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
-    private final String xStreamServerName;
+    private final String xstreamOutboundServerName;
     private volatile XStreamOut xsOut;
     private final int posVersion;
     /**
@@ -81,7 +81,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.clock = clock;
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
-        this.xStreamServerName = connectorConfig.getXoutServerName();
+        this.xstreamOutboundServerName = connectorConfig.getXStreamOutboundServerName();
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
     }
 
@@ -133,7 +133,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                         xsOut.detach(XStreamOut.DEFAULT_MODE);
                     }
                     catch (StreamsException e) {
-                        LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
+                        LOGGER.error("Couldn't detach from XStream outbound server " + xstreamOutboundServerName, e);
                     }
                 }
             }
@@ -173,8 +173,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
             XStreamOut out = null;
             try {
-                connection = new OracleConnection(jdbcConfig);
-                out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xStreamServerName,
+                connection = new OracleConnection(connectorConfig, jdbcConfig, true);
+                out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xstreamOutboundServerName,
                         startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
                 xsOut = out;
@@ -203,6 +203,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return e.getErrorCode() == 26653
                 || e.getErrorCode() == 23656
                 || e.getErrorCode() == 26928
+                || e.getErrorCode() == 26812 // An active session currently attached to XStream server
                 || e.getMessage().contains("did not start properly and is currently in state")
                 || e.getMessage().contains("Timeout occurred while starting XStream process")
                 || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");
@@ -241,7 +242,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
         final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
-        if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMaintenance() < 2)) {
+        if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMinor() < 2)) {
             return XStreamUtility.POS_VERSION_V1;
         }
         return XStreamUtility.POS_VERSION_V2;

@@ -26,7 +26,7 @@ public class LogMinerEventSerdesProvider<T extends LogMinerEvent> implements Ser
         stream.writeInt(event.getEventType().getValue());
         stream.writeScn(event.getScn());
         stream.writeTableId(event.getTableId());
-        stream.writeString(event.getRowId());
+        stream.writeString(event.getRowIdAsString());
         stream.writeString(event.getRsId());
         stream.writeInstant(event.getChangeTime());
     }

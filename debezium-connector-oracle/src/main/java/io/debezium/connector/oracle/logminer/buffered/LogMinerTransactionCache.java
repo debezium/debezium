@@ -122,12 +122,14 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Apply a predicate over all cached events associated with the specified transaction.
      * The events will be supplied in insertion order.
+     * As its second parameter the predicate receives a boolean indicating
+     * whether the event has been marked as rolled back via a savepoint rollback.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param predicate the consumer, should not be {@code null}
      * @throws InterruptedException thrown if the thread is interrupted
      */
-    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
+    void forEachEvent(T transaction, LogMinerEventPredicate predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
@@ -146,13 +148,13 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void removeTransactionEvents(T transaction);
 
     /**
-     * Removes a specific transaction event by unique row identifier.
+     * Marks as rolled back a specific transaction event by unique row identifier.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param rowId the event's unique row identifier
      * @return {@code true} if the event was found and removed, {@code false} if it was not found
      */
-    boolean removeTransactionEventWithRowId(T transaction, String rowId);
+    boolean rollbackTransactionEventWithRowId(T transaction, String rowId);
 
     /**
      * Checks whether a specific transaction's event with the event key is cached.
@@ -231,7 +233,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     }
 
     @FunctionalInterface
-    interface InterruptiblePredicate<T> {
-        boolean test(T t) throws InterruptedException;
+    interface LogMinerEventPredicate {
+        boolean test(LogMinerEvent event, boolean rolledBack) throws InterruptedException;
     }
 }

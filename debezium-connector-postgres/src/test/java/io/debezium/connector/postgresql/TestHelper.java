@@ -6,8 +6,8 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
@@ -160,9 +162,11 @@ public final class TestHelper {
      */
     public static PostgresConnection createWithTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        final TypeRegistry typeregistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
 
         return new PostgresConnection(
                 config.getJdbcConfig(),
+                typeregistry,
                 getPostgresValueConverterBuilder(config),
                 CONNECTION_TEST);
     }
@@ -245,45 +249,47 @@ public final class TestHelper {
 
     /**
      * Drops all the public non system schemas from the DB.
-     *
      * @throws SQLException if anything fails.
      */
     public static void dropAllSchemas() throws SQLException {
         String lineSeparator = System.lineSeparator();
-        Set<String> schemaNames = schemaNames();
-        if (!schemaNames.contains(PostgresSchema.PUBLIC_SCHEMA_NAME)) {
-            schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
-        }
-        String dropStmts = schemaNames.stream()
-                .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
-                .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
-                .collect(Collectors.joining(lineSeparator));
-        TestHelper.execute(dropStmts);
+        String initDatabaseDdl = "";
         try {
-            TestHelper.executeDDL("init_database.ddl");
+            initDatabaseDdl = readDDLStatements("init_database.ddl");
         }
         catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize database", e);
+            LOGGER.warn("Failed to read init_database.ddl, continuing without it", e);
+        }
+        try (PostgresConnection connection = create()) {
+            Set<String> schemaNames = connection.readAllSchemaNames(
+                    ((Predicate<String>) Arrays.asList("pg_catalog", "information_schema")::contains).negate());
+            if (!schemaNames.contains(PostgresSchema.PUBLIC_SCHEMA_NAME)) {
+                schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
+            }
+            String dropStmts = schemaNames.stream()
+                    .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
+                    .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
+                    .collect(Collectors.joining(lineSeparator));
+            connection.execute(dropStmts, initDatabaseDdl);
         }
     }
 
     public static TypeRegistry getTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
-            return connection.getTypeRegistry();
-        }
+        return PostgresConnection.createTypeRegistry(config.getJdbcConfig());
     }
 
     public static PostgresDefaultValueConverter getDefaultValueConverter() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
+        final TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), typeRegistry, getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getDefaultValueConverter();
         }
     }
 
     public static Charset getDatabaseCharset() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), CONNECTION_TEST)) {
             return connection.getDatabaseCharset();
         }
     }
@@ -294,7 +300,7 @@ public final class TestHelper {
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         return new PostgresSchema(
-                config,
+                new CdcSourceTaskContext<>(config.getConfig(), config, Map.of()),
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
                 getPostgresValueConverter(typeRegistry, config), new CustomConverterRegistry(Collections.emptyList()));
@@ -348,14 +354,17 @@ public final class TestHelper {
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {
+        try (PostgresConnection connection = create()) {
+            connection.execute(readDDLStatements(ddlFile));
+        }
+    }
+
+    public static String readDDLStatements(String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
-        assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
-        String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
+        assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
+        return Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
-        try (PostgresConnection connection = create()) {
-            connection.execute(statements);
-        }
     }
 
     public static String topicName(String suffix) {
@@ -497,8 +506,33 @@ public final class TestHelper {
         }
     }
 
+    protected static int setAndGetWalSenderTimeout(int seconds) throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute("ALTER SYSTEM SET wal_sender_timeout = '" + seconds + "s';", "SELECT pg_reload_conf();");
+            return connection.queryAndMap(
+                    "SELECT setting FROM pg_settings WHERE name = 'wal_sender_timeout';",
+                    rs -> {
+                        if (rs.next()) {
+                            String valueInMs = rs.getString(1);
+                            LOGGER.info("wal_sender_timeout has been set to `{}` milliseconds", valueInMs);
+                            return Integer.parseInt(valueInMs) / 1000;
+                        }
+                        throw new SQLException("Could not query wal_sender_timeout from pg_settings");
+                    });
+        }
+    }
+
+    protected static void resetWalSenderTimeout() {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.execute("ALTER SYSTEM RESET wal_sender_timeout;", "SELECT pg_reload_conf();");
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not reset wal_sender_timeout to default value", e);
+        }
+    }
+
     private static List<String> getOpenIdleTransactions(PostgresConnection connection) throws SQLException {
-        int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
+        int connectionPID = (connection.connection().unwrap(PgConnection.class)).getBackendPID();
         return connection.queryAndMap(
                 "SELECT state FROM pg_stat_activity WHERE state like 'idle in transaction' AND pid <> " + connectionPID,
                 rs -> {

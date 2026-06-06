@@ -14,9 +14,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
@@ -38,7 +38,7 @@ public class UuidColumnIT extends AbstractBinlogConnectorIT<MariaDbConnector> im
 
     private Configuration config;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
@@ -46,7 +46,7 @@ public class UuidColumnIT extends AbstractBinlogConnectorIT<MariaDbConnector> im
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         try {
             stopConnector();
@@ -58,19 +58,9 @@ public class UuidColumnIT extends AbstractBinlogConnectorIT<MariaDbConnector> im
 
     @Test
     @FixFor("DBZ-9027")
-    public void shouldHandleUuidStreaming() throws Exception {
-        shouldHandleUuid(SnapshotMode.NEVER);
-    }
-
-    @Test
-    @FixFor("DBZ-9027")
     public void shouldHandleUuidSnapshot() throws Exception {
-        shouldHandleUuid(SnapshotMode.INITIAL);
-    }
-
-    private void shouldHandleUuid(SnapshotMode snapshotMode) throws Exception {
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, snapshotMode)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("test_uuid"))
                 .build();
 

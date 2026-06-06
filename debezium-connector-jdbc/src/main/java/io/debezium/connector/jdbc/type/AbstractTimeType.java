@@ -34,7 +34,7 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         if (precision > 0 && precision <= dialect.getDefaultTimestampPrecision()) {
             return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
         }
-        return dialect.getJdbcTypeName(Types.TIME);
+        return dialect.getJdbcTypeName(Types.TIME, Size.precision(dialect.getDefaultTimePrecision()));
     }
 
     protected int getTimePrecision(Schema schema) {

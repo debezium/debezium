@@ -9,3 +9,4 @@ Because the sink connector applies a consistent structure to the event data that
 Currently, {prodname} provides the following sink connectors:
 
 * xref:connectors/jdbc.adoc[JDBC]
+* xref:connectors/mongodb-sink.adoc[MongoDB Sink]

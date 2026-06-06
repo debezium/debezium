@@ -5,9 +5,9 @@ metadata:
   name: testsuite-storage-claim
   namespace: debezium-testsuite
 spec:
+  volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
-  volumeMode: Filesystem
   resources:
     requests:
       storage: 20Gi

@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.mariadb;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.connector.mariadb.jdbc.MariaDbDefaultValueConverter;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
@@ -26,13 +28,14 @@ public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition
 
     public MariaDbDatabaseSchema(MariaDbConnectorConfig connectorConfig, MariaDbValueConverters valueConverter,
                                  TopicNamingStrategy<TableId> topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                 boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry) {
+                                 boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry,
+                                 CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig,
                 valueConverter,
                 new MariaDbDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
-                tableIdCaseInsensitive, converterRegistry);
+                tableIdCaseInsensitive, converterRegistry, taskContext);
     }
 
     @Override

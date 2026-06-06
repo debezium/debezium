@@ -13,6 +13,7 @@
 :include-list-example: inventory.*
 :MARIADB:
 :collection-container: database
+:supports-skipping-unchanged-events:
 
 ifdef::community[]
 :toc:
@@ -286,6 +287,11 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
 
+[id="mariadb-vector-types"]
+=== Vector types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=vector-data-types]
+
 // Type: concept
 // Title: Custom converters for mapping {connector-name} data to alternative data types
 [id="debezium-mariadb-connector-converters"]
@@ -300,6 +306,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 === JDBC sink data types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=jdbc-sink-data-types]
+
+=== Zero-date fallback
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=zero-date-fallback]
 
 
 // Type: assembly
@@ -318,6 +328,11 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=creating-a-db-user]
 
+[id="permissions-explained-mariadb-connector"]
+==== Descriptions of user permissions
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=permissions-explained]
+
 // Type: procedure
 // ModuleID: enabling-the-mariadb-binlog-for-debezium
 // Title: Enabling the MariaDB binlog for {prodname}
@@ -326,11 +341,21 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
 
+[id="binlog-configuration-properties-mariadb-connector"]
+==== Descriptions of MariaDB binlog configuration properties
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=binlog-config-props]
+
+
 [IMPORTANT]
 ====
 A new binary log format was introduced in MariaDB 11.4.
 When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB server variable https://mariadb.com/kb/en/replication-and-binary-log-system-variables/#binlog_legacy_event_pos[`binlog_legacy_event_pos`] to `1` (ON) to ensure that the connector can consume events in the new format.
 If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
+
+The {prodname} {connector-name} connector currently does not support link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/compressing-events-to-reduce-size-of-the-binary-log[binary
+log compression].
+To enable the connector to consume all events, you must set the MariaDB server configuration option `log_bin_compress` to `0`.
 ====
 
 // Type: procedure

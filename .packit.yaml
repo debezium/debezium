@@ -226,51 +226,6 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "oracle-21"
-    targets:
-      centos-stream-8-x86_64:
-        distros: ["debezium-tf-2130"]
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - oracle
-      - oracle-logminer
-    tf_extra_params:
-      test:
-        tmt:
-          name: oracle
-      environments:
-        - variables:
-            ORACLE_VERSION: 21.3.0
-            TEST_PROFILE: oracle
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
-    identifier: "oracle-21-xs"
-    targets:
-      centos-stream-8-x86_64:
-        distros: [ "debezium-tf-2130-xs" ]
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - oracle
-      - oracle-xstream
-    tf_extra_params:
-      test:
-        tmt:
-          name: oracle
-      environments:
-        - variables:
-            ORACLE_VERSION: 21.3.0-xs
-            TEST_PROFILE: oracle
-            ORACLE_ARG: "-Poracle-xstream"
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
     identifier: "oracle-19"
     targets:
       centos-stream-8-x86_64:
@@ -279,6 +234,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-19
       - oracle-logminer
     tf_extra_params:
       test:
@@ -287,6 +243,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
 
   ###############################################################################################
@@ -301,6 +258,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-19
       - oracle-logminer
       - oracle-logminer-unbuffered
     tf_extra_params:
@@ -310,6 +268,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
             ORACLE_PROFILE_ARGS: "-Poracle-logminer-unbuffered -pl debezium-connector-oracle"
 
@@ -325,6 +284,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-19
       - oracle-xstream
     tf_extra_params:
       test:
@@ -333,8 +293,134 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 19.3.0-xs
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             TEST_PROFILE: oracle
             ORACLE_ARG: "-Poracle-xstream"
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ispn"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-19
+      - oracle-logminer
+      - oracle-infinispan
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ehcache"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-19
+      - oracle-logminer
+      - oracle-ehcache
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-se"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930-se" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-19
+      - oracle-logminer
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0-se
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-se-xs"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930-se-xs" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-19
+      - oracle-xstream
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0-se-xs
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            TEST_PROFILE: oracle
+            ORACLE_ARG: "-Poracle-xstream"
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-21"
+    targets:
+      centos-stream-8-x86_64:
+        distros: ["debezium-tf-2130"]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-21
+      - oracle-logminer
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 21.3.0
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            TEST_PROFILE: oracle
 
   ###############################################################################################
   - job: tests
@@ -357,6 +443,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 23.3.0.0
+            ORACLE_REGISTRY: "container-registry.oracle.com/database/free"
             ORACLE_PROFILE_ARGS: "-Poracle-23 -pl debezium-connector-oracle"
             TEST_PROFILE: oracle
 
@@ -364,46 +451,49 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "oracle-19-ispn"
+    identifier: "oracle-26"
     targets:
       centos-stream-8-x86_64:
-        distros: [ "debezium-tf-1930" ]
+        distros: [ "debezium-tf-2326" ]
     skip_build: true
     manual_trigger: true
     labels:
       - oracle
+      - oracle-26
       - oracle-logminer
-      - oracle-infinispan
     tf_extra_params:
       test:
         tmt:
           name: oracle
       environments:
         - variables:
-            ORACLE_VERSION: 19.3.0
-            ORACLE_PROFILE_ARGS: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
+            ORACLE_VERSION: 23.26.1
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-26"
             TEST_PROFILE: oracle
 
   ###############################################################################################
   - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "oracle-19-ehcache"
+    identifier: "oracle-26-xs"
     targets:
       centos-stream-8-x86_64:
-        distros: [ "debezium-tf-1930" ]
+        distros: [ "debezium-tf-2326-xs" ]
     skip_build: true
     manual_trigger: true
     labels:
       - oracle
-      - oracle-logminer
-      - oracle-ehcache
+      - oracle-26
+      - oracle-xstream
     tf_extra_params:
       test:
         tmt:
           name: oracle
       environments:
         - variables:
-            ORACLE_VERSION: 19.3.0
-            ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
+            ORACLE_VERSION: 23.26.1-xs
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-26,oracle-xstream"
+            ORACLE_ARG: "-Poracle-xstream,oracle-26"
             TEST_PROFILE: oracle

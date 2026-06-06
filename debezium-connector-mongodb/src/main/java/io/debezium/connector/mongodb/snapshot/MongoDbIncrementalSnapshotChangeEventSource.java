@@ -48,6 +48,7 @@ import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -63,7 +64,6 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -115,8 +115,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.clock = clock;
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
-        this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
-                : CollectionId.parse(connectorConfig.getSignalingDataCollectionId());
+        this.signallingCollectionId = connectorConfig.getSignalingDataCollectionIds().isEmpty() ? null
+                : CollectionId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         this.notificationService = notificationService;
         this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
                 "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
@@ -209,7 +209,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     /**
      * Update low watermark for the incremental snapshot chunk
      */
-    protected void emitWindowOpen() throws InterruptedException {
+    protected void emitWindowOpen(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-open";
 
@@ -231,7 +231,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     /**
      * Update high watermark for the incremental snapshot chunk
      */
-    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
+    protected void emitWindowClose(MongoDbPartition partition, OffsetContext offsetContext) throws Exception {
 
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, mongo, signallingCollectionId);
 
@@ -250,7 +250,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = taskContext.getConnection(dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -288,7 +288,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         try {
             preReadChunk(context);
             context.startNewChunk();
-            emitWindowOpen();
+            emitWindowOpen(partition, offsetContext);
             while (context.snapshotRunning()) {
                 final CollectionId currentDataCollectionId = context.currentDataCollectionId().getId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
@@ -341,7 +341,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             emitWindowClose(partition, offsetContext);
         }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+            warnAndSkip(partition, offsetContext,
+                    "Error while executing incremental snapshot for collection '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
         }
         finally {
             postReadChunk(context);
@@ -349,6 +352,18 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 postIncrementalSnapshotCompleted();
             }
         }
+    }
+
+    private void warnAndSkip(MongoDbPartition partition, OffsetContext offsetContext, String formattedReason, Throwable t) {
+        if (t != null) {
+            LOGGER.warn(formattedReason, t);
+        }
+        else {
+            LOGGER.warn(formattedReason);
+        }
+        notificationService.incrementalSnapshotNotificationService()
+                .notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, UNKNOWN_SCHEMA);
+        nextDataCollection(partition, offsetContext);
     }
 
     private void nextDataCollection(MongoDbPartition partition, OffsetContext offsetContext) {

@@ -7,6 +7,7 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -16,10 +17,9 @@ import javax.xml.bind.DatatypeConverter;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -45,21 +45,21 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
 
     private Configuration config;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         databaseDifferences = databaseGeoDifferences(isMySQL5() || isMariaDb());
 
         DATABASE = TestHelper.getUniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        DATABASE.createAndInitialize();
+        DATABASE.create();
 
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -69,14 +69,16 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
         start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -92,9 +94,8 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(databaseDifferences.geometryPointTableRecords());
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_507_geometry")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
-        assertThat(records.databaseNames().size()).isEqualTo(1);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
-                numCreateDatabase + numCreateTables);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(numCreateTables);
         assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
@@ -115,11 +116,12 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig().build();
 
         // Start the connector ...
+        DATABASE.initialize();
         start(getConnectorClass(), config);
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -181,7 +183,7 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
             databaseDifferences.geometryAssertPoints(expectedX, expectedY, point.getX(), point.getY());
         }
         else if (expectedX != null) {
-            Assert.fail("Got a null geometry but didn't expect to");
+            fail("Got a null geometry but didn't expect to");
         }
     }
 

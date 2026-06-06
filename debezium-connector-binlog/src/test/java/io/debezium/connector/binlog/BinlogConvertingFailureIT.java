@@ -7,7 +7,7 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
@@ -46,16 +46,16 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
     // 4 meta events (set character_set etc.) and then 2 tables with 2 events each (drop DDL, create DDL)
     private static final int INITIAL_EVENT_COUNT = 4 + (2 * 2);
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(DB_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -68,7 +68,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
     @FixFor("DBZ-7143")
     public void shouldRecoverToSyncSchemaWhenFailedValueConvertByDdlWithSqlLogBinIsOff() throws Exception {
         // Use the DB configuration to define the connector's configuration to use the "replica"
-        // which may be the same as the "master" ...
+        // which may be the same as the "primary" ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
@@ -82,15 +82,15 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7143 MODIFY COLUMN age VARCHAR(200);", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7143 MODIFY COLUMN age VARCHAR(200);", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -199,15 +199,15 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
 
-        String masterPort = System.getProperty("database.port", "3306");
+        String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
-        boolean replicaIsMaster = masterPort.equals(replicaPort);
-        if (!replicaIsMaster) {
-            // Give time for the replica to catch up to the master ...
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
             Thread.sleep(5000L);
         }
 
-        alterTableWithSqlBinLogOff("ALTER TABLE dbz7143 MODIFY COLUMN age VARCHAR(200);", replicaIsMaster);
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7143 MODIFY COLUMN age VARCHAR(200);", replicaIsPrimary);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -349,7 +349,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         assertValueField(insertEvent, "after/C", null);
     }
 
-    private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsMaster) throws SQLException {
+    private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsPrimary) throws SQLException {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("SET SQL_LOG_BIN=OFF;");
@@ -359,8 +359,8 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
             }
         }
 
-        if (!replicaIsMaster) {
-            // if it has replica, also apply the DDL because master didn't record DDL at binlog
+        if (!replicaIsPrimary) {
+            // if it has replica, also apply the DDL because primary didn't record DDL at binlog
             try (BinlogTestConnection db = getTestReplicaDatabaseConnection(DATABASE.getDatabaseName())) {
                 try (JdbcConnection connection = db.connect()) {
                     connection.execute("SET SQL_LOG_BIN=OFF;");

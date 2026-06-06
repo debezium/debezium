@@ -1,5 +1,5 @@
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium-parent/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22)
+[![Maven Central](https://img.shields.io/maven-central/v/io.debezium/debezium-connector-common?color=bright-green)](https://central.sonatype.com/search?q=io.debezium)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://debezium.zulipchat.com/#narrow/stream/302529-users)
 [![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://debezium.zulipchat.com/#narrow/stream/302533-dev)
 [![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
@@ -63,7 +63,7 @@ See the links above for installation instructions on your platform. You can veri
 
     $ git --version
     $ javac -version
-    $ mvn -version
+    $ ./mvnw -version
     $ docker --version
 
 ### Why Docker?
@@ -100,37 +100,7 @@ In order to run testcontainers against [colima](https://github.com/abiosoft/coli
 
 #### Docker Desktop on Apple Silicon
 
-When running on Apple Silicon, the Docker Maven Plugin needs to be configured to use the `linux/amd64` platform. Additionally, it should be pointed to the Docker socket created by Docker Desktop using the `docker.host` system property.
-
-For example:
-
-```shell
-mvn docker:start \
-  -Ddocker.host=unix://$HOME/.docker/run/docker.sock \
-  -Ddocker.platform=linux/amd64 \
-  -pl debezium-connector-sqlserver
-```
-
-To avoid repetition in CLI commands, these system properties can be defined in the user's Maven profile.
-Here's an example `~/.m2/settings.xml` profile:
-
-```xml
-<settings>
-  <profiles>
-    <profile>
-      <id>default</id>
-      <properties>
-        <docker.host>unix://${user.home}/.docker/run/docker.sock</docker.host>
-        <docker.platform>linux/amd64</docker.platform>
-      </properties>
-    </profile>
-  </profiles>
-
-  <activeProfiles>
-    <activeProfile>default</activeProfile>
-  </activeProfiles>
-</settings>
-```
+When running on Apple Silicon, the Docker Maven Plugin needs to be configured to use the `linux/amd64` platform through the x86_64/amd64 emulation on Apple Silicon.
 
 ### Building the code
 
@@ -141,7 +111,7 @@ First obtain the code by cloning the Git repository:
 
 Then build the code using Maven:
 
-    $ mvn clean verify
+    $ ./mvnw clean verify
 
 The build starts and uses several Docker containers for different DBMSes. Note that if Docker is not running or configured, you'll likely get an arcane error -- if this is the case, always verify that Docker is running, perhaps by using `docker ps` to list the running containers.
 
@@ -149,13 +119,13 @@ The build starts and uses several Docker containers for different DBMSes. Note t
 
 You can skip the integration tests and docker-builds with the following command:
 
-    $ mvn clean verify -DskipITs
+    $ ./mvnw clean verify -DskipITs
 
 ### Building just the artifacts, without running tests, CheckStyle, etc.
 
 You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
 
-    $ mvn clean verify -Dquick
+    $ ./mvnw clean verify -Dquick
 
 This provides the fastest way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
 This comes in handy for producing connector JARs and/or archives as quickly as possible, e.g. for manual testing in Kafka Connect.
@@ -165,11 +135,11 @@ This comes in handy for producing connector JARs and/or archives as quickly as p
 The Postgres connector supports three logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default), wal2json, and pgoutput.
 To run the integration tests of the PG connector using wal2json, enable the "wal2json-decoder" build profile:
 
-    $ mvn clean install -pl :debezium-connector-postgres -Pwal2json-decoder
+    $ ./mvnw clean install -pl :debezium-connector-postgres -Pwal2json-decoder
     
 To run the integration tests of the PG connector using pgoutput, enable the "pgoutput-decoder" and "postgres-10" build profiles:
 
-    $ mvn clean install -pl :debezium-connector-postgres -Ppgoutput-decoder,postgres-10
+    $ ./mvnw clean install -pl :debezium-connector-postgres -Ppgoutput-decoder,postgres-10
 
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
@@ -177,7 +147,7 @@ Look for references to the types defined in `io.debezium.connector.postgresql.De
 ### Running tests of the Postgres connector with specific Apicurio Version
 To run the tests of PG connector using wal2json or pgoutput logical decoding plug-ins with a specific version of Apicurio, a test property can be passed as:
 
-    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder 
+    $ ./mvnw clean install -pl debezium-connector-postgres -Pwal2json-decoder 
           -Ddebezium.test.apicurio.version=1.3.1.Final
 
 In absence of the property the stable version of Apicurio will be fetched.
@@ -186,7 +156,7 @@ In absence of the property the stable version of Apicurio will be fetched.
 Please note if you want to test against a *non-RDS* cluster, this test requires `<your user>` to be a superuser with not only `replication` but permissions
 to login to `all` databases in `pg_hba.conf`.  It also requires `postgis` packages to be available on the target server for some of the tests to pass.
 
-    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder \
+    $ ./mvnw clean install -pl debezium-connector-postgres -Pwal2json-decoder \
          -Ddocker.skip.build=true -Ddocker.skip.run=true -Dpostgres.host=<your PG host> \
          -Dpostgres.user=<your user> -Dpostgres.password=<your password> \
          -Ddebezium.test.records.waittime=10
@@ -197,11 +167,11 @@ See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details o
 
 ### Running tests of the Oracle connector using Oracle XStream
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path-to-instantclient>
+    $ ./mvnw clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path-to-instantclient>
 
 ### Running tests of the Oracle connector with a non-CDB database
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle-tests -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+    $ ./mvnw clean install -pl debezium-connector-oracle -Poracle-tests -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
 
 ### Running the tests for MongoDB with oplog capturing from an IDE
 
@@ -209,7 +179,7 @@ When running the test without maven, please make sure you pass the correct param
 append them to the JVM execution parameters, prefixing them with `debezium.test`. As the execution will happen outside of the lifecycle execution, you need to start the MongoDB container manually
 from the MongoDB connector directory
 
-    $ mvn docker:start -B -am -Passembly -Dcheckstyle.skip=true -Dformat.skip=true -Drevapi.skip -Dcapture.mode=oplog -Dversion.mongo.server=3.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dcapture.mode=oplog -Dmongo.server=3.6
+    $ ./mvnw docker:start -B -am -Passembly -Dcheckstyle.skip=true -Dformat.skip=true -Drevapi.skip -Dcapture.mode=oplog -Dversion.mongo.server=3.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dcapture.mode=oplog -Dmongo.server=3.6
 
 The relevant portion of the line will look similar to the following:
 
@@ -217,7 +187,7 @@ The relevant portion of the line will look similar to the following:
 
 ## Contributing
 
-The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.
+The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTING.md) for details.
 
 A big thank you to all the Debezium contributors!
 

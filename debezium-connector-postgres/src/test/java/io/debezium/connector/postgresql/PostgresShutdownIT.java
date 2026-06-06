@@ -10,9 +10,9 @@ import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -71,22 +71,22 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
 
     private String oldContainerPort;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         postgresContainer.start();
         oldContainerPort = System.getProperty("database.port", "5432");
         System.setProperty("database.port", String.valueOf(postgresContainer.getMappedPort(5432)));
         try {
             TestHelper.dropAllSchemas();
+            initializeConnectorTestFramework();
         }
         catch (SQLException exception) {
             throw new RuntimeException(exception);
         }
-        initializeConnectorTestFramework();
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         stopConnector();
         postgresContainer.stop();
         System.setProperty("database.port", oldContainerPort);
@@ -134,8 +134,12 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
                         postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info")));
 
         logger.info("Execute Postgres shutdown...");
+        // Query PostgreSQL for its data directory to avoid hardcoding version-specific paths
+        String dataDirectory = postgresConnection.queryAndMap(
+                "SHOW data_directory;",
+                postgresConnection.singleResultMapper(rs -> rs.getString(1), "Could not fetch data directory"));
         Container.ExecResult result = postgresContainer
-                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/*/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
+                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/*/bin/pg_ctl -m fast -D " + dataDirectory + " stop");
         logger.info(result.toString());
 
         logger.info("Waiting for Postgres to shut down...");

@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
+
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -12,8 +15,10 @@ import java.util.function.Consumer;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.c3p0.internal.C3P0ConnectionProvider;
+import org.hibernate.agroal.internal.AgroalConnectionProvider;
+import org.hibernate.cfg.AgroalSettings;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.DialectSpecificSettings;
 import org.hibernate.tool.schema.Action;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +33,6 @@ import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
-import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.util.Strings;
 
@@ -49,17 +53,16 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String CONNECTION_PASSWORD = "connection.password";
     public static final String CONNECTION_POOL_MIN_SIZE = "connection.pool.min_size";
     public static final String CONNECTION_POOL_MAX_SIZE = "connection.pool.max_size";
-    public static final String CONNECTION_POOL_ACQUIRE_INCREMENT = "connection.pool.acquire_increment";
     public static final String CONNECTION_POOL_TIMEOUT = "connection.pool.timeout";
     public static final String INSERT_MODE = "insert.mode";
     public static final String TRUNCATE_ENABLED = "truncate.enabled";
-    public static final String PRIMARY_KEY_FIELDS = "primary.key.fields";
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String COLLECTION_TABLE_FORMAT = "collection.table.format";
 
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
+    public static final String POSTGRES_UNNEST_INSERT = "dialect.postgres.unnest.insert.enabled";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
@@ -74,8 +77,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(C3P0ConnectionProvider.class.getName())
-            .withDescription("Fully qualified class name of the connection provider, defaults to " + C3P0ConnectionProvider.class.getName());
+            .withDefault(AgroalConnectionProvider.class.getName())
+            .withDescription("Fully qualified class name of the connection provider, defaults to " + AgroalConnectionProvider.class.getName());
 
     public static final Field CONNECTION_URL_FIELD = Field.create(CONNECTION_URL)
             .withDisplayName("Hostname")
@@ -121,15 +124,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault(32)
             .withDescription("Maximum number of connection in the connection pool");
 
-    public static final Field CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD = Field.create(CONNECTION_POOL_ACQUIRE_INCREMENT)
-            .withDisplayName("Connection pool acquire increment")
-            .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(32)
-            .withDescription("Connection pool acquire increment");
-
     public static final Field CONNECTION_POOL_TIMEOUT_FIELD = Field.create(CONNECTION_POOL_TIMEOUT)
             .withDisplayName("Connection pool timeout")
             .withType(Type.LONG)
@@ -154,15 +148,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final Field DELETE_ENABLED_FIELD = SinkConnectorConfig.DELETE_ENABLED_FIELD
             .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled);
 
-    public static final Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
-            .withDisplayName("Comma-separated list of primary key field names")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 5))
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("A comma-separated list of primary key field names. " +
-                    "This is interpreted differently depending on " + PRIMARY_KEY_MODE + ".");
-
     public static final Field SCHEMA_EVOLUTION_FIELD = Field.create(SCHEMA_EVOLUTION)
             .withDisplayName("Controls how schema evolution is handled by the sink connector")
             .withEnum(SchemaEvolutionMode.class, SchemaEvolutionMode.NONE)
@@ -181,6 +166,18 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDescription("When enabled, table, column, and other identifiers are quoted based on the database dialect. " +
                     "When disabled, only explicit cases where the dialect requires quoting will be used, such as names starting with an underscore.");
 
+    public static final String DEFAULT_TIME_ZONE = "UTC";
+    public static final String USE_TIME_ZONE = "use.time.zone";
+    public static final String DEPRECATED_DATABASE_TIME_ZONE = "database.time_zone";
+    public static final Field USE_TIME_ZONE_FIELD = Field.create(USE_TIME_ZONE)
+            .withDisplayName("The timezone used when inserting temporal values.")
+            .withDefault(DEFAULT_TIME_ZONE)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 6))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("The timezone used when inserting temporal values. Defaults to UTC.")
+            .withDeprecatedAliases(DEPRECATED_DATABASE_TIME_ZONE);
+
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
             .withType(Type.CLASS)
@@ -198,6 +195,21 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("public")
             .withDescription("Name of the schema where postgis extension is installed. Default is public");
+
+    public static final Field POSTGRES_UNNEST_INSERT_FIELD = Field.create(POSTGRES_UNNEST_INSERT)
+            .withDisplayName("Enable UNNEST-based batch inserts for PostgreSQL")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription(
+                    "When enabled, uses PostgreSQL UNNEST() for batch inserts which can significantly improve performance by reducing the number of SQL statements executed. "
+                            +
+                            "This optimization is compatible with INSERT and UPSERT modes. " +
+                            "Instead of executing multiple INSERT statements with JDBC batching, a single INSERT statement with UNNEST is used to insert all records at once. "
+                            +
+                            "This can provide 5-10x performance improvement for high-throughput scenarios. Default is false.");
 
     public static final Field SQLSERVER_IDENTITY_INSERT_FIELD = Field.create(SQLSERVER_IDENTITY_INSERT)
             .withDisplayName("Allowing to insert explicit value for identity column in table for SQLSERVER.")
@@ -265,7 +277,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     CONNECTION_PASSWORD_FIELD,
                     CONNECTION_POOL_MIN_SIZE_FIELD,
                     CONNECTION_POOL_MAX_SIZE_FIELD,
-                    CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD,
                     CONNECTION_POOL_TIMEOUT_FIELD,
                     INSERT_MODE_FIELD,
                     DELETE_ENABLED_FIELD,
@@ -280,6 +291,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
+                    POSTGRES_UNNEST_INSERT_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
                     BATCH_SIZE_FIELD,
                     FIELD_INCLUDE_LIST_FIELD,
@@ -386,22 +398,23 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean deleteEnabled;
     private final boolean truncateEnabled;
     private final String collectionNameFormat;
-    private final PrimaryKeyMode primaryKeyMode;
-    private final Set<String> primaryKeyFields;
     private final SchemaEvolutionMode schemaEvolutionMode;
     private final boolean quoteIdentifiers;
     private final CollectionNamingStrategy collectionNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final String databaseTimezone;
     private final String postgresPostgisSchema;
+    private final boolean postgresUnnestInsert;
     private final boolean sqlServerIdentityInsert;
     private final int flushMaxRetries;
     private final long flushRetryDelayMs;
-    private final FieldNameFilter fieldsFilter;
     private final int batchSize;
     private final boolean useReductionBuffer;
     private final boolean connectionRestartOnErrors;
     private final String cloudEventsSchemaNamePattern;
+    private final PrimaryKeyMode primaryKeyMode;
+    private final Set<String> primaryKeyFields;
+    private final FieldNameFilter fieldsFilter;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -409,15 +422,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
         this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
-        this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
-        this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = resolveCollectionNamingStrategy(config, props);
-        this.columnNamingStrategy = resolveColumnNamingStrategy(config, props);
-
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
+        this.postgresUnnestInsert = config.getBoolean(POSTGRES_UNNEST_INSERT_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
@@ -425,9 +434,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
         this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
-
-        String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST_FIELD);
-        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST_FIELD);
+        this.collectionNamingStrategy = resolveCollectionNamingStrategy(config, props);
+        this.columnNamingStrategy = resolveColumnNamingStrategy(config, props);
+        this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
+        this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
+        String fieldIncludeList = config.getString(SinkConnectorConfig.FIELD_INCLUDE_LIST_FIELD);
+        String fieldExcludeList = config.getString(SinkConnectorConfig.FIELD_EXCLUDE_LIST_FIELD);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
     }
 
@@ -449,24 +461,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
             throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
         }
-
     }
 
     public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
         return config.validateAndRecord(fields, problems);
-    }
-
-    private static int validateColumnNamingStyle(Configuration config, Field field, ValidationOutput problems) {
-        String namingStyle = config.getString(field);
-        Set<String> validStyles = Set.of("snake_case", "camel_case", "kebab_case", "upper_case", "lower_case", "default");
-
-        if (!validStyles.contains(namingStyle)) {
-            problems.accept(field, namingStyle, "Invalid column naming style: " + namingStyle +
-                    ". Valid options are: " + validStyles);
-            return 1; // Validation fail
-        }
-
-        return 0; // Validation success
     }
 
     protected static ConfigDef configDef() {
@@ -497,6 +495,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return primaryKeyMode;
     }
 
+    @Override
     public Set<String> getPrimaryKeyFields() {
         return primaryKeyFields;
     }
@@ -528,7 +527,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     @Override
-    public FieldNameFilter getFieldFilter() {
+    public FieldNameFilter fieldFilter() {
         return fieldsFilter;
     }
 
@@ -543,6 +542,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public String getPostgresPostgisSchema() {
         return postgresPostgisSchema;
+    }
+
+    public boolean isPostgresUnnestInsertEnabled() {
+        return postgresUnnestInsert;
     }
 
     public int getFlushMaxRetries() {
@@ -568,18 +571,37 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
      */
     public org.hibernate.cfg.Configuration getHibernateConfiguration() {
         org.hibernate.cfg.Configuration hibernateConfig = new org.hibernate.cfg.Configuration();
-        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, config.getString(CONNECTION_PROVIDER_FIELD));
+
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_URL, config.getString(CONNECTION_URL_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_USER, config.getString(CONNECTION_USER_FIELD));
         String password = config.getString(CONNECTION_PASSWORD_FIELD);
         if (password != null && !password.isEmpty()) {
             hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, password);
         }
-        hibernateConfig.setProperty(AvailableSettings.C3P0_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.C3P0_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));
+
+        // Connection Pool Settings
+        final String connectionProvider = config.getString(CONNECTION_PROVIDER_FIELD);
+        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, connectionProvider);
+        // With some connection pool systems, the initial size starts at the min size; however Agroal does not
+        // use this pattern. So to make the behavior consistent with C3P0, we initially set the pool size to
+        // be equal to the min size.
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_INITIAL_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT, Duration.ofMillis(config.getInteger(CONNECTION_POOL_TIMEOUT_FIELD)).toString());
+
+        // Unless we explicitly set the connectionValidator as default, which checks if the connection is valid
+        // the validation on borrow from the pool is not triggered.
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_VALIDATE_ON_BORROW, Boolean.TRUE);
+        hibernateConfig.setProperty(AgroalSettings.AGROAL_CONFIG_PREFIX + ".connectionValidator", "default");
+
         hibernateConfig.setProperty(AvailableSettings.GLOBALLY_QUOTED_IDENTIFIERS, Boolean.toString(config.getBoolean(QUOTE_IDENTIFIERS_FIELD)));
         hibernateConfig.setProperty(AvailableSettings.JDBC_TIME_ZONE, useTimeZone());
+
+        // Hibernate 7 changes the behavior for double/float types for Oracle, expressly using the binary
+        // variants by default. To avoid this behavior change in Debezium, we expressly set this feature
+        // to false. If a user wants this behavior, they can re-enable this in the connector configuration.
+        hibernateConfig.setProperty(DialectSpecificSettings.ORACLE_USE_BINARY_FLOATS, false);
 
         if (LOGGER.isDebugEnabled()) {
             hibernateConfig.setProperty(AvailableSettings.SHOW_SQL, Boolean.toString(true));

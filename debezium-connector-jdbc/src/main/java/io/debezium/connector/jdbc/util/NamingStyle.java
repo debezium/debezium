@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.util;
 import java.util.stream.Stream;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.EnumeratedValue;
 
 /**
  * Enum representing different naming styles for transforming string values.
@@ -15,10 +16,10 @@ import io.debezium.DebeziumException;
  *
  * @author Gustavo Lira
  */
-public enum NamingStyle {
+public enum NamingStyle implements EnumeratedValue {
     SNAKE_CASE("snake_case"),
     CAMEL_CASE("camel_case"),
-    UPPER_CASE("UPPER_CASE"), // Alterado para refletir o nome correto
+    UPPER_CASE("UPPER_CASE"),
     LOWER_CASE("lower_case"),
     DEFAULT("default");
 
@@ -36,8 +37,12 @@ public enum NamingStyle {
      * @throws DebeziumException if the value does not match any naming style
      */
     public static NamingStyle from(String value) {
+        NamingStyle style = EnumeratedValue.parse(NamingStyle.class, value);
+        if (style != null) {
+            return style;
+        }
         return Stream.of(values())
-                .filter(style -> style.value.equalsIgnoreCase(value) || style.name().equalsIgnoreCase(value))
+                .filter(option -> option.name().equalsIgnoreCase(value))
                 .findFirst()
                 .orElseThrow(() -> new DebeziumException(
                         "Invalid naming style: " + value + ". Allowed styles are: " + String.join(", ", valuesAsString())));
@@ -48,6 +53,7 @@ public enum NamingStyle {
      *
      * @return the string value of the naming style
      */
+    @Override
     public String getValue() {
         return value;
     }

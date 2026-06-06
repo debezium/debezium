@@ -1,0 +1,3 @@
+CREATE DISKGROUP dgroup_01
+  EXTERNAL REDUNDANCY
+  DISK '/devices/disks/c*';

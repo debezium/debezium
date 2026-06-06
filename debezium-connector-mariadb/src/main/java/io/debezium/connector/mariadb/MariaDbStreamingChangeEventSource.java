@@ -6,7 +6,6 @@
 package io.debezium.connector.mariadb;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.source.SourceConnector;
@@ -24,7 +23,6 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
-import io.debezium.connector.binlog.BinlogTaskContext;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.ErrorHandler;
@@ -32,7 +30,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 /**
  * @author Chris Cranford
@@ -51,11 +48,21 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
                                              ErrorHandler errorHandler,
                                              Clock clock,
                                              MariaDbTaskContext taskContext,
+                                             MariaDbDatabaseSchema schema,
                                              MariaDbStreamingChangeEventSourceMetrics metrics,
-                                             SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, taskContext.getSchema(), metrics, snapshotterService);
+                                             SnapshotterService snapshotterService,
+                                             BinaryLogClient binaryLogClient) {
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = getSignalDataCollectionId(connectorConfig);
+
+        // MariaDB-specific configuration
+        if (connectorConfig.isSqlQueryIncluded()) {
+            // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the MariaDB
+            // equivalent of ROWS_QUERY for MySQL. This must be done ahead of the connection to make sure that
+            // the right negotiation bits are set during the handshake.
+            binaryLogClient.setUseSendAnnotateRowsEvent(true);
+        }
     }
 
     @Override
@@ -66,21 +73,6 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     @Override
     protected Class<? extends SourceConnector> getConnectorClass() {
         return MariaDbConnector.class;
-    }
-
-    @Override
-    protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
-                                                    BinlogConnectorConfig connectorConfig,
-                                                    Map<String, Thread> clientThreads,
-                                                    BinlogConnectorConnection connection) {
-        final BinaryLogClient client = super.createBinaryLogClient(taskContext, connectorConfig, clientThreads, connection);
-        if (connectorConfig.isSqlQueryIncluded()) {
-            // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the MariaDB
-            // equivalent of ROWS_QUERY for MySQL. This must be done ahead of the connection to make sure that
-            // the right negotiation bits are set during the handshake.
-            client.setUseSendAnnotateRowsEvent(true);
-        }
-        return client;
     }
 
     @Override
@@ -177,8 +169,8 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     }
 
     private static TableId getSignalDataCollectionId(MariaDbConnectorConfig connectorConfig) {
-        if (!Strings.isNullOrBlank(connectorConfig.getSignalingDataCollectionId())) {
-            return TableId.parse(connectorConfig.getSignalingDataCollectionId());
+        if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            return TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         }
         return null;
     }

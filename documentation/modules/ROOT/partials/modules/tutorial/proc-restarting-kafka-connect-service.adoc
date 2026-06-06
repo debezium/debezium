@@ -67,7 +67,7 @@ This command starts Kafka Connect using the same options you used when you initi
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
+$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
 ----
 
 The Kafka Connect service starts, connects to Kafka, reads the previous service's configuration, and starts the registered connectors that will resume where they last left off.

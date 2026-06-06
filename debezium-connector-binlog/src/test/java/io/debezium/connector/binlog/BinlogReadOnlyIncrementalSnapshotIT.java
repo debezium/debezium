@@ -8,10 +8,10 @@ package io.debezium.connector.binlog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.io.File;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -25,60 +25,53 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.kafka.KafkaCluster;
+import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
-import io.debezium.util.Testing;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
 
-    private static KafkaCluster kafka;
-    private static final int PARTITION_NO = 0;
     public static final String EXCLUDED_TABLE = "b";
 
-    @Rule
-    public ConditionalFail conditionalFail = new ConditionalFail();
+    private static final int PARTITION_NO = 0;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws Exception {
         super.before();
-        kafka.createTopic(getSignalsTopic(), 1, 1);
+        KafkaClusterUtils.createTopic(getSignalsTopic(), 1, (short) 1, kafkaCluster.getBootstrapServers());
     }
 
-    @BeforeClass
-    public static void startKafka() throws Exception {
-        File dataDir = Testing.Files.createTestingDirectory("signal_cluster");
-        Testing.Files.delete(dataDir);
-        kafka = new KafkaCluster().usingDirectory(dataDir)
-                .deleteDataPriorToStartup(true)
-                .deleteDataUponShutdown(true)
-                .addBrokers(1)
-                .withKafkaConfiguration(Collect.propertiesOf(
-                        "auto.create.topics.enable", "false",
-                        "zookeeper.session.timeout.ms", "20000"))
-                .startup();
+    @BeforeAll
+    static void startKafka() {
+        Map<String, String> props = new HashMap<>();
+        props.put("auto.create.topics.enable", "false");
+
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withAdditionalKafkaConfiguration(props)
+                .withSharedNetwork()
+                .build();
+        kafkaCluster.start();
     }
 
-    @AfterClass
-    public static void stopKafka() {
-        if (kafka != null) {
-            kafka.shutdown();
+    @AfterAll
+    static void stopKafka() {
+        if (kafkaCluster != null) {
+            kafkaCluster.stop();
         }
     }
 
@@ -87,7 +80,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 .with(BinlogConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(BinlogConnectorConfig.READ_ONLY_CONNECTION, true)
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers())
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
@@ -131,7 +124,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), PARTITION_NO, SERVER_NAME, signalValue);
 
         final Configuration signalProducerConfig = Configuration.create()
-                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers())
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "signals")
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
@@ -142,7 +135,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    public void emptyHighWatermark() throws Exception {
+    void emptyHighWatermark() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -158,7 +151,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    public void filteredEvents() throws Exception {
+    void filteredEvents() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -197,7 +190,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    public void inserts4Pks() throws Exception {
+    void inserts4Pks() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -219,7 +212,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    public void inserts4PksWithSignalFile() throws Exception {
+    void inserts4PksWithSignalFile() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -243,7 +236,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
 
     @FixFor("DBZ-7441")
     @Test
-    public void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
+    void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
         // Testing.Print.enable();
 
         populate4PkTable();
@@ -303,7 +296,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     @Test
-    public void testPauseDuringSnapshotKafkaSignal() throws Exception {
+    void testPauseDuringSnapshotKafkaSignal() throws Exception {
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
         waitForConnectorToStart();

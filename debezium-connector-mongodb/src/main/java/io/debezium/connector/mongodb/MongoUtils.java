@@ -211,7 +211,7 @@ public class MongoUtils {
      * @return change stream iterable
      */
     public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
-        var config = taskContext.getConnectorConfig();
+        var config = taskContext.getConfig();
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.getFilters().getConfig()).create();
 
         // capture scope is database

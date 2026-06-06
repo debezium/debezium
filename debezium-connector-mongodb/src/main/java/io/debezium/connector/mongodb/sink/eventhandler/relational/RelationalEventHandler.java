@@ -93,8 +93,8 @@ public class RelationalEventHandler extends EventHandler {
         return new BsonDocument(ID_FIELD, pk);
     }
 
-    static BsonDocument generateUpsertOrReplaceDoc(final BsonDocument keyDoc, final BsonDocument valueDoc, final BsonDocument filterDoc,
-                                                   ColumnNamingStrategy columnNamingStrategy) {
+    public static BsonDocument generateUpsertOrReplaceDoc(final BsonDocument keyDoc, final BsonDocument valueDoc, final BsonDocument filterDoc,
+                                                          ColumnNamingStrategy columnNamingStrategy) {
 
         if (!valueDoc.containsKey(JSON_DOC_AFTER_FIELD)
                 || valueDoc.get(JSON_DOC_AFTER_FIELD).isNull()

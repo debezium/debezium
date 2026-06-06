@@ -224,7 +224,10 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         public MongoDbOffsetContext load(Map<String, ?> offset) {
             var sourceInfo = new SourceInfo(connectorConfig);
 
-            if (!booleanOffsetValue(offset, INITIAL_SYNC)) {
+            if (booleanOffsetValue(offset, INITIAL_SYNC)) {
+                sourceInfo.startInitialSnapshot();
+            }
+            else {
                 var position = positionFromOffset(offset);
                 sourceInfo.setPosition(position);
             }

@@ -19,9 +19,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -63,8 +63,8 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.number_negative_scale");
@@ -77,8 +77,8 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
         TestHelper.streamTable(connection, "debezium.number_negative_scale");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "debezium.number_negative_scale");
             connection.close();

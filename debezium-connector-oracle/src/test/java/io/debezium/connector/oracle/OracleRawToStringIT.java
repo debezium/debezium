@@ -14,9 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.converters.RawToStringConverter;
@@ -35,8 +35,8 @@ public class OracleRawToStringIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.raw_to_string_test");
@@ -49,8 +49,8 @@ public class OracleRawToStringIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.streamTable(connection, "debezium.raw_to_string_test");
     }
 
-    @After
-    public void after() throws Exception {
+    @AfterEach
+    void after() throws Exception {
         stopConnector();
 
         if (connection != null && connection.isConnected()) {

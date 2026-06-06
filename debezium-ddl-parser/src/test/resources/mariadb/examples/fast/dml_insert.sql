@@ -44,3 +44,5 @@ insert INTO `wptests_posts` (`post_author`, `post_date`, `post_date_gmt`, `post_
 #end
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user,now());
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user(),now());
+INSERT INTO VECTOR_TABLE VALUES (1, x'e360d63ebe554f3fcdbc523f4522193f5236083d')
+INSERT INTO VECTOR_TABLE VALUES (11,Vec_FromText('[0.418708,0.809902,0.823193,0.598179,0.0332549]'));

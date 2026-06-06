@@ -18,12 +18,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,6 @@ import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
@@ -62,9 +61,9 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     protected static MongoDbReplicaSet mongo;
 
-    @BeforeClass
-    public static void beforeAll() {
-        Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
+    @BeforeAll
+    static void beforeAll() {
+        Assumptions.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.dockerAuthReplicaSet();
         LOGGER.info("Starting {}...", mongo);
@@ -74,22 +73,22 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
         mongo.createUser(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE2);
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         DockerUtils.disableFakeDns();
         if (mongo != null) {
             mongo.stop();
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         stopConnector();
         initializeConnectorTestFramework();
         cleanDatabase(mongo, TEST_DATABASE);
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         stopConnector();
     }
@@ -126,7 +125,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseWithPermissions() throws InterruptedException {
+    void shouldConsumeAllEventsFromDatabaseWithPermissions() throws InterruptedException {
         var documentCount = 0;
         var topic = String.format("%s.%s.%s", TOPIC_PREFIX, TEST_DATABASE, TEST_COLLECTION);
 
@@ -158,8 +157,8 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
     }
 
     @Test
-    public void shouldFailWithoutPermissions() {
-        var logInterceptor = new LogInterceptor(ErrorHandler.class);
+    void shouldFailWithoutPermissions() {
+        var logInterceptor = new LogInterceptor(MongoDbConnector.class);
 
         // Populate collection
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
@@ -172,7 +171,36 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
         // Connector should fail after 2 retries
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
+        Assertions.assertThat(logInterceptor
+                .containsMessage("Could not validate connector config: User doesn't have rights to list databases. Please verify credentials and database permissions."))
+                .isTrue();
+    }
+
+    @Test
+    void shouldFailInGuardRailValidationWhenCollectionLimitExceeded() {
+        var logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
+
+        // Create two collections to guarantee guardrail limit of 1 is exceeded
+        populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
+        populateCollection(TEST_DATABASE, "items2", INIT_DOCUMENT_COUNT);
+
+        // Use a valid user - guardrail failure is triggered by collection count exceeding the limit
+        var config = connectorConfiguration(TEST_ALLOWED_USER, TEST_ALLOWED_PWD);
+        // Set the guardrail to 1 collection, which should enforce the guardrail validation check
+        config = Configuration.create().with(config)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // Connector should fail during guardrail validation
+        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        Assertions
+                .assertThat(logInterceptor.containsErrorMessage(
+                        "Failed to validate guardrail limits! Guardrail limit exceeded: 2 tables/collections configured for capture, but maximum allowed is 1."))
+                .isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {

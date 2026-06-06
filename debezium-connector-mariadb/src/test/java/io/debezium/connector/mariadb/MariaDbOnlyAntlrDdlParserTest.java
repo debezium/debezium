@@ -6,17 +6,18 @@
 package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
@@ -70,7 +71,7 @@ public class MariaDbOnlyAntlrDdlParserTest {
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
                 BinlogConnectorConfig.BigIntUnsignedHandlingMode.PRECISE,
                 CommonConnectorConfig.BinaryHandlingMode.BYTES,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                EventConvertingFailureHandlingMode.WARN);
     }
 
     protected MariaDbDefaultValueConverter getDefaultValueConverters(MariaDbValueConverters valueConverters) {
@@ -100,7 +101,7 @@ public class MariaDbOnlyAntlrDdlParserTest {
         }
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         listener = new SimpleDdlParserListener();
         converters = getValueConverters();
@@ -110,7 +111,8 @@ public class MariaDbOnlyAntlrDdlParserTest {
                 converters,
                 getDefaultValueConverters(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
         properties = new Properties();
         properties.put("topic.prefix", "test");
     }

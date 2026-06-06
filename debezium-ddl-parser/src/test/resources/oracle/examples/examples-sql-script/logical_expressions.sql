@@ -1,0 +1,17 @@
+DECLARE
+    FOO NUMBER := 1;
+    BAR NUMBER := 2;
+BEGIN
+    IF FOO = 1 AND BAR IS NOT NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'FOO is 1 and BAR is not null');
+    END IF;
+
+    IF FOO = 1 OR NOT BAR IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20002, 'FOO is 1 or BAR is not null');
+    END IF;
+
+    IF FOO = 1 AND BAR IS NOT NULL AND BAR IS NOT NAN THEN
+        RAISE_APPLICATION_ERROR(-20003, 'FOO is 1 and BAR is not null and BAR is not nan');
+    END IF;
+END;
+/

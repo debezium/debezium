@@ -158,29 +158,14 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * Perform a snapshot only upon initial startup of a connector.
          */
         INITIAL("initial"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
-         * This should be used with care, but it is very useful when the change event consumers need only the changes
-         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        SCHEMA_ONLY("schema_only"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
         NO_DATA("no_data"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
-         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
-         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
-         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #RECOVERY}}
-         */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
          * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
@@ -188,11 +173,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
         RECOVERY("recovery"),
-        /**
-         * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
-         * databases and tables that will be captured.
-         */
-        NEVER("never"),
         /**
          * Perform a snapshot and then stop before attempting to read the binlog.
          */
@@ -426,6 +406,30 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Whether to use `socket.setSoLinger(true, 0)` when BinaryLogClient"
                     + " keepalive thread triggers a disconnect for a stale connection.");
 
+    public static final Field BINLOG_NET_WRITE_TIMEOUT = Field.create("binlog.net.write.timeout")
+            .withDisplayName("Binlog Net Write Timeout")
+            .withType(ConfigDef.Type.LONG)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 6))
+            .withDescription("The number of seconds to wait for a write to the binlog connection to complete "
+                    + "before the server times out. A value of 0 means use the MySQL server default. "
+                    + "May need to be increased when large data volumes cause EOFException during streaming.");
+
+    public static final Field BINLOG_NET_READ_TIMEOUT = Field.create("binlog.net.read.timeout")
+            .withDisplayName("Binlog Net Read Timeout")
+            .withType(ConfigDef.Type.LONG)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withDescription("The number of seconds to wait for a read from the binlog connection to complete "
+                    + "before the server times out. A value of 0 means use the MySQL server default. "
+                    + "May need to be increased in high-latency network environments to prevent EOFException during streaming.");
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
             .withDisplayName("Stream result set of size")
             .withType(ConfigDef.Type.INT)
@@ -485,9 +489,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the binlog.; "
                     + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions back to streaming. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
                     + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the binlog.; "
-                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.; "
-                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the binlog. "
-                    + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.");
 
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
             .withDisplayName("The time precision mode to be used")
@@ -608,6 +610,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "server with matching GTIDs defined by the `gtid.source.includes` or `gtid.source.excludes`, "
                     + "if they were specified.");
 
+    public static final Field IGNORE_GTID_ON_RECOVERY = Field.create("gtid.ignore.on.recovery")
+            .withDisplayName("Ignore GTID on recovery")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 8))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Whether the connector should ignore GTID during recovery and restart from the binlog file and position instead. "
+                    + "GTID mode on the server remains enabled, and GTID tracking resumes normally after recovery.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -632,6 +644,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     KEEP_ALIVE,
                     KEEP_ALIVE_INTERVAL_MS,
                     USE_NONGRACEFUL_DISCONNECT,
+                    BINLOG_NET_WRITE_TIMEOUT,
+                    BINLOG_NET_READ_TIMEOUT,
                     SNAPSHOT_MODE,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
@@ -652,7 +666,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES,
-                    GTID_SOURCE_FILTER_DML_EVENTS)
+                    GTID_SOURCE_FILTER_DML_EVENTS,
+                    IGNORE_GTID_ON_RECOVERY)
             .create();
 
     private final Configuration config;
@@ -662,6 +677,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
+    private final boolean ignoreGtidOnRecovery;
 
     /**
      * Create a binlog-based connector configuration.
@@ -687,6 +703,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.connectionTimeout = Duration.ofMillis(config.getLong(CONNECTION_TIMEOUT_MS));
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
+        this.ignoreGtidOnRecovery = config.getBoolean(IGNORE_GTID_ON_RECOVERY);
     }
 
     @Override
@@ -822,6 +839,19 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public abstract GtidSetFactory getGtidSetFactory();
 
     /**
+     * Returns whether the connector should ignore GTID during recovery and fall back to binlog
+     * file/position instead. GTID mode on the server remains enabled; GTID tracking resumes normally
+     * after recovery.
+     *
+    * <p>The default implementation returns the value of {@code gtid.ignore.on.recovery}.
+     *
+     * @return {@code true} if GTID should be ignored on recovery; {@code false} otherwise
+     */
+    public boolean shouldIgnoreGtidOnRecovery() {
+        return ignoreGtidOnRecovery;
+    }
+
+    /**
      * @return the SSL connection mode to use
      */
     public abstract SecureConnectionMode getSslMode();
@@ -914,4 +944,19 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public boolean usesNonGracefulDisconnect() {
         return config.getBoolean(USE_NONGRACEFUL_DISCONNECT);
     }
+
+    /**
+     * @return the net_write_timeout in seconds, 0 means use server default
+     */
+    public long getBinlogNetWriteTimeout() {
+        return config.getLong(BINLOG_NET_WRITE_TIMEOUT);
+    }
+
+    /**
+     * @return the net_read_timeout in seconds, 0 means use server default
+     */
+    public long getBinlogNetReadTimeout() {
+        return config.getLong(BINLOG_NET_READ_TIMEOUT);
+    }
+
 }

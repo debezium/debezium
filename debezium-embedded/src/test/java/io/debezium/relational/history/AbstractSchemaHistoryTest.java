@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
@@ -32,13 +32,13 @@ public abstract class AbstractSchemaHistoryTest extends AbstractAsyncEngineConne
 
     private MemorySchemaHistory schemaHistory;
 
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         this.schemaHistory = new MemorySchemaHistory();
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         if (this.schemaHistory != null) {
             this.schemaHistory.stop();
         }
@@ -46,7 +46,7 @@ public abstract class AbstractSchemaHistoryTest extends AbstractAsyncEngineConne
 
     @Test
     @FixFor("DBZ-4451")
-    public void shouldRecoverRenamedTableWithOnlyTheRenamedEntry() throws Exception {
+    void shouldRecoverRenamedTableWithOnlyTheRenamedEntry() throws Exception {
         // Record records
         record(getRenameCreateHistoryRecord(), getRenameAlterHistoryRecord());
 

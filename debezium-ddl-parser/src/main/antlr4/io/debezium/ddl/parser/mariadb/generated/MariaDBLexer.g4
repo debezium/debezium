@@ -175,6 +175,7 @@ OVER                          : 'OVER';
 PARTITION                     : 'PARTITION';
 PRIMARY                       : 'PRIMARY';
 PACKAGE                       : 'PACKAGE';
+PERIOD                        : 'PERIOD';
 PROCEDURE                     : 'PROCEDURE';
 PURGE                         : 'PURGE';
 RANGE                         : 'RANGE';
@@ -289,6 +290,7 @@ LONGTEXT   : 'LONGTEXT';
 ENUM       : 'ENUM';
 VARYING    : 'VARYING';
 SERIAL     : 'SERIAL';
+VECTOR     : 'VECTOR';
 
 // Interval type Keywords
 

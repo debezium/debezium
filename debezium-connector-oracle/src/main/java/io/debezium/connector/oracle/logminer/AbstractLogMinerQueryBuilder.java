@@ -39,32 +39,110 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
 
     protected final OracleConnectorConfig connectorConfig;
+    protected final boolean useCteQuery;
 
     public AbstractLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
+        this.useCteQuery = connectorConfig.isLogMiningUseCteQuery();
     }
 
     @Override
     public String getQuery() {
-        final String whereClause = getPredicates();
+        final String whereClause = getPredicates(false);
 
         final StringBuilder query = new StringBuilder(1024);
-        return query.append("SELECT ")
-                .append("SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ")
-                .append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, ")
-                .append("CLIENT_ID, START_SCN, COMMIT_SCN, START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# ")
+        if (useCteQuery) {
+            final String cteWhereClause = getPredicates(true);
+            query.append("WITH relevant_xids AS (")
+                    .append("SELECT DISTINCT XID as RXID FROM V$LOGMNR_CONTENTS ")
+                    .append(!Strings.isNullOrBlank(cteWhereClause) ? "WHERE " + cteWhereClause : "")
+                    .append(") ");
+        }
+
+        query.append("SELECT ");
+
+        if (useCteQuery) {
+            // Preserves the join hash order based on LOGMNR_CONTENTS_VIEW and not the CTE
+            query.append("/*+ ORDERED USE_NL(R) */ ");
+        }
+
+        query.append(buildColumnList())
                 .append("FROM ")
-                .append(LOGMNR_CONTENTS_VIEW).append(" ")
-                .append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "")
-                .toString();
+                .append(LOGMNR_CONTENTS_VIEW).append(" ");
+
+        if (useCteQuery) {
+            query.append("V JOIN relevant_xids R ON R.RXID = V.XID ");
+        }
+
+        return query.append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "").toString();
+    }
+
+    /**
+     * Builds the comma-separated list of columns for the SELECT clause. Optional tracking columns
+     * are included only when their corresponding configuration flag is enabled. When a tracking flag
+     * is disabled, the column is omitted from the query entirely, reducing query bandwidth.
+     *
+     * <p><strong>IMPORTANT:</strong> The column ordering here is the single source of truth for the
+     * LogMiner query projection. {@link LogMinerColumnIndexes#fromConfig(io.debezium.connector.oracle.OracleConnectorConfig)}
+     * mirrors this ordering exactly to pre-compute the 1-based JDBC {@link java.sql.ResultSet} ordinal
+     * for every column. Any change to column order, addition, or removal here <em>must</em> be
+     * reflected in {@link LogMinerColumnIndexes} and its tests.
+     *
+     * @return the column list string, ending with a trailing space
+     */
+    private String buildColumnList() {
+        final List<String> columns = new ArrayList<>();
+
+        // NOTE: Mandatory columns (positions 1-21, always present), and should be placed before optional columns
+        columns.add("SCN");
+        columns.add("SQL_REDO");
+        columns.add("OPERATION_CODE");
+        columns.add("TIMESTAMP");
+        columns.add("XID");
+        columns.add("CSF");
+        columns.add("TABLE_NAME");
+        columns.add("SEG_OWNER");
+        columns.add("OPERATION");
+        columns.add("ROW_ID");
+        columns.add("ROLLBACK");
+        columns.add("STATUS");
+        columns.add("INFO");
+        columns.add("SSN");
+        columns.add("THREAD#");
+        columns.add("DATA_OBJ#");
+        columns.add("DATA_OBJV#");
+        columns.add("DATA_OBJD#");
+        columns.add("START_SCN");
+        columns.add("COMMIT_SCN");
+        columns.add("SEQUENCE#");
+
+        // NOTE: Optional columns should be added here
+        if (connectorConfig.isLogMiningBufferTrackStartTimestamp()) {
+            columns.add("START_TIMESTAMP");
+        }
+        if (connectorConfig.isLogMiningBufferTrackCommitTimestamp()) {
+            columns.add("COMMIT_TIMESTAMP");
+        }
+        if (connectorConfig.isLogMiningBufferTrackRsId()) {
+            columns.add("RS_ID");
+        }
+        if (connectorConfig.isLogMiningBufferTrackUsername()) {
+            columns.add("USERNAME");
+        }
+        if (connectorConfig.isLogMiningBufferTrackClientId()) {
+            columns.add("CLIENT_ID");
+        }
+
+        return String.join(", ", columns) + " ";
     }
 
     /**
      * Provides a way for various implementations to create their query predicate clauses.
      *
+     * @param isCteQuery whether the predicates should be built for the CTE query
      * @return a series of predicates.
      */
-    protected abstract String getPredicates();
+    protected abstract String getPredicates(boolean isCteQuery);
 
     /**
      * Get the multi-tenant predicate based on the configured pluggable database name.
@@ -73,7 +151,11 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      */
     protected String getMultiTenantPredicate() {
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-            return "SRC_CON_NAME = '" + connectorConfig.getPdbName() + "'";
+            String pdbName = connectorConfig.getPdbName();
+            if (pdbName.startsWith("\"") && pdbName.endsWith("\"") && pdbName.length() > 2) {
+                pdbName = pdbName.substring(1, pdbName.length() - 1);
+            }
+            return "SRC_CON_NAME = '" + pdbName + "'";
         }
         return EMPTY;
     }
@@ -136,12 +218,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
         final LogMiningQueryFilterMode queryFilterMode = connectorConfig.getLogMiningQueryFilterMode();
         if (LogMiningQueryFilterMode.NONE.equals(queryFilterMode)) {
-            // No filters get applied
-            return EMPTY;
+            return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (Strings.isNullOrEmpty(includeList) && Strings.isNullOrEmpty(excludeList)) {
-            // No table filters provided, nothing to apply
-            return EMPTY;
+            return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'MLOG$%')";
         }
         else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
             final List<String> includeTableList = getTableIncludeExcludeListAsInValueList(includeList);
@@ -152,6 +232,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             predicate.append("(TABLE_NAME IS NULL OR ");
             if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
+
+            if (includeTableList.isEmpty()) {
+                predicate.append("TABLE_NAME NOT LIKE 'MLOG$%' OR ");
             }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
@@ -185,6 +269,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             predicate.append("(TABLE_NAME IS NULL OR ");
             if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
+
+            if (includeTableList.isEmpty()) {
+                predicate.append("TABLE_NAME NOT LIKE 'MLOG$%' OR ");
             }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
@@ -293,8 +381,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     }
 
     private static Optional<TableId> getSignalDataCollectionId(OracleConnectorConfig connectorConfig) {
-        if (!Strings.isNullOrEmpty(connectorConfig.getSignalingDataCollectionId())) {
-            return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionId()));
+        if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0)));
         }
         return Optional.empty();
     }

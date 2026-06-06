@@ -1,0 +1,1 @@
+line 29:94 no viable alternative at input 'select *, sqrt(a), lower(substring(str, 'a', length(str)/2)) as col3 from tab1 where a is not \N'

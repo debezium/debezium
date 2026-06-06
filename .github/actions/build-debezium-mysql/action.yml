@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   version-mysql-server:
     description: "The MySQL server version to use"
     required: false
@@ -40,3 +44,4 @@ runs:
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DfailFlakyTests=false
         -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}

@@ -18,14 +18,15 @@ jobs:
       # Checkout so that this contributor check passes if the contributor details are part of the pull request
       # If we don't do this, then we are only
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Check if COPYRIGHT.txt has author name?
         id: check
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
-        run: |        
+        run: |
+          USER_NOT_FOUND=false
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/COPYRIGHT.txt >> COPYRIGHT_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES_MAIN.txt
@@ -41,20 +42,23 @@ jobs:
               if ! grep -qi "$AUTHOR" ALIASES_CHECK.txt; then
                 if ! grep -qi "$AUTHOR" FILTEREDNAMES_CHECK.txt; then
                   echo "USER_NOT_FOUND=true"
+                  USER_NOT_FOUND=true
+                  break
                 fi
               fi
             fi
           done < AUTHOR_NAME.txt
+          echo "USER_NOT_FOUND=$USER_NOT_FOUND" >> $GITHUB_OUTPUT
       - name: Create comment
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Welcome as a new contributor to Debezium, @${{ github.event.pull_request.user.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/main/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/main/jenkins-jobs/scripts/config/Aliases.txt) respectively.
       - name: Check failure
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         continue-on-error: false
         with:
           script: |

@@ -1,0 +1,262 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.common;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTaskContext;
+import org.apache.kafka.connect.util.ConnectorTaskId;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
+import io.debezium.util.LoggingContext;
+import io.debezium.util.LoggingContext.RootLoggingContext;
+
+class BaseSourceTaskTest {
+
+    private final MyBaseSourceTask baseSourceTask = new MyBaseSourceTask();
+
+    @BeforeEach
+    void setup() {
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+    }
+
+    @Test
+    void verifyTaskStartsAndStops() throws InterruptedException {
+
+        baseSourceTask.start(new HashMap<>());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.poll();
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
+        verify(baseSourceTask.coordinator).stop();
+    }
+
+    @Test
+    void verifyStartAndStopWithoutPolling() {
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        baseSourceTask.start(new HashMap<>());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
+    }
+
+    @Test
+    void verifyContainsChangeDataMessages() {
+        assertFalse(baseSourceTask.containsChangeDataMessages(null));
+        assertFalse(baseSourceTask.containsChangeDataMessages(List.of()));
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat.Envelope")
+                .field("name", Schema.STRING_SCHEMA)
+                .build();
+        SourceRecord sourceRecord = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "dummy",
+                valueSchema, new Struct(valueSchema).put("name", "test"));
+
+        assertTrue(baseSourceTask.containsChangeDataMessages(List.of(sourceRecord)));
+    }
+
+    @Test
+    void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
+
+        baseSourceTask.start(new HashMap<>());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+        baseSourceTask.start(new HashMap<>());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+
+        assertEquals(2, baseSourceTask.startCount.get());
+        assertEquals(2, baseSourceTask.stopCount.get());
+        verify(baseSourceTask.coordinator, times(2)).stop();
+    }
+
+    @Test
+    void verifyTaskRestartsSuccessfully() throws InterruptedException {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                ChangeEventSourceCoordinator<Partition, OffsetContext> result = super.start(config);
+                if (startCount.get() < 4) {
+                    throw new RetriableException("Retry " + startCount.get());
+                }
+
+                return result;
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        Map<String, String> config = Map.of(
+                CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1" // wait 1ms between restarts
+        );
+        baseSourceTask.start(config);
+        sleep(1); // wait 1ms in order to satisfy retriable wait
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        pollAndIgnoreRetryException(baseSourceTask);
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        sleep(1); // wait 1ms in order to satisfy retriable wait
+        pollAndIgnoreRetryException(baseSourceTask);
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        sleep(1); // wait 1ms in order to satisfy retriable wait
+        baseSourceTask.poll();
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+
+        assertEquals(4, baseSourceTask.startCount.get());
+        assertEquals(3, baseSourceTask.stopCount.get());
+        verify(baseSourceTask.coordinator, times(1)).stop();
+    }
+
+    @Test
+    void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
+        baseSourceTask.start(new HashMap<>());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
+        baseSourceTask.stop();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+        baseSourceTask.poll();
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
+
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
+    }
+
+    @Test
+    void verifyRootLoggingMdcContext() throws InterruptedException {
+        org.apache.kafka.connect.util.LoggingContext.clear();
+        final var connectorTaskId = new ConnectorTaskId("foo-connector", 0);
+        final var taskConfig = Map.of(CommonConnectorConfig.TOPIC_PREFIX.name(), "foo");
+        final var expectedStartRootLogging = Map.of(
+                org.apache.kafka.connect.util.LoggingContext.CONNECTOR_CONTEXT, "[foo-connector|task-0] ");
+        final var expectedRootLogging = Map.of(
+                org.apache.kafka.connect.util.LoggingContext.CONNECTOR_CONTEXT, "[foo-connector|task-0] ",
+                LoggingContext.CONNECTOR_NAME, "foo",
+                LoggingContext.CONNECTOR_CONTEXT, "lifecycle",
+                LoggingContext.CONNECTOR_TYPE, "");
+        try (var kafkaLoggingContext = org.apache.kafka.connect.util.LoggingContext.forTask(connectorTaskId)) {
+            baseSourceTask.start(taskConfig);
+            baseSourceTask.poll();
+            baseSourceTask.stop();
+
+            assertThat(baseSourceTask.startRootLoggingContext).isEqualTo(expectedStartRootLogging);
+            assertThat(baseSourceTask.pollRootLoggingContext).isEqualTo(expectedRootLogging);
+        }
+    }
+
+    private static void pollAndIgnoreRetryException(BaseSourceTask<Partition, OffsetContext> baseSourceTask) throws InterruptedException {
+        try {
+            baseSourceTask.poll();
+        }
+        catch (RetriableException e) {
+            // nothing to do
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException();
+        }
+    }
+
+    static class MyBaseSourceTask extends BaseSourceTask<Partition, OffsetContext> {
+        final List<SourceRecord> records = new ArrayList<>();
+        final AtomicInteger startCount = new AtomicInteger();
+        final AtomicInteger stopCount = new AtomicInteger();
+        final Map<String, String> startRootLoggingContext = new HashMap<>();
+        final Map<String, String> pollRootLoggingContext = new HashMap<>();
+
+        @SuppressWarnings("unchecked")
+        final ChangeEventSourceCoordinator<Partition, OffsetContext> coordinator = mock(ChangeEventSourceCoordinator.class);
+
+        @Override
+        public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+            return new CdcSourceTaskContext<>(config, new TestRelationalDatabaseConfig(config, null, null, 1), "0", Map.of());
+        }
+
+        @Override
+        protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+            startCount.incrementAndGet();
+            startRootLoggingContext.putAll(RootLoggingContext.valueCopy());
+            return coordinator;
+        }
+
+        @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
+        protected List<SourceRecord> doPoll() {
+            pollRootLoggingContext.putAll(RootLoggingContext.valueCopy());
+            return records;
+        }
+
+        @Override
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
+        }
+
+        @Override
+        protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
+            // do nothing as we don't have a coordinator mocked
+        }
+
+        @Override
+        protected void doStop() {
+            stopCount.incrementAndGet();
+        }
+
+        @Override
+        protected Iterable<Field> getAllConfigurationFields() {
+            return List.of(Field.create("f1"));
+        }
+
+        @Override
+        public String version() {
+            return "1.0";
+        }
+    }
+}

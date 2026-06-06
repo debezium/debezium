@@ -142,12 +142,16 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
         if (value == null) {
             return null;
         }
-        else if (value.startsWith("-")) {
-            final String negativeMoney = "(" + value.substring(1) + ")";
-            return new BigDecimal(removeCurrencySymbol(negativeMoney));
-        }
-        else {
+        try {
+            if (value.startsWith("-")) {
+                final String negativeMoney = "(" + value.substring(1) + ")";
+                return new BigDecimal(removeCurrencySymbol(negativeMoney));
+            }
             return new BigDecimal(removeCurrencySymbol(value));
+        }
+        catch (final Exception e) {
+            LOGGER.error("Failed to parse money value '{}': {}", value, e.getMessage());
+            throw new ConnectException("Failed to parse money value: " + value, e);
         }
     }
 
@@ -223,10 +227,14 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
 
         negative = (currency.charAt(0) == '(');
 
-        // Remove any () (for negative) & currency symbol
-        s1 = PGtokenizer.removePara(currency).substring(1);
+        // Remove any surrounding parentheses (for negative accounting format)
+        s1 = PGtokenizer.removePara(currency);
 
-        // Strip out any , in currency
+        if (s1.length() > 0 && !Character.isDigit(s1.charAt(0)) && s1.charAt(0) != '.') {
+            s1 = s1.substring(1);
+        }
+
+        // Strip out any thousands-separator commas in currency
         int pos = s1.indexOf(',');
         while (pos != -1) {
             s1 = s1.substring(0, pos) + s1.substring(pos + 1);

@@ -24,7 +24,6 @@ import javax.management.remote.JMXServiceURL;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
@@ -37,6 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -77,7 +77,6 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-
         return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, lazilyRetrieveAndCacheLatestStable()));
     }
 
@@ -112,8 +111,9 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         withExposedPorts(KAFKA_CONNECT_PORT);
     }
 
-    public DebeziumContainer withKafka(final KafkaContainer kafkaContainer) {
-        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getNetworkAliases().get(0) + ":9092");
+    public DebeziumContainer withKafka(final StrimziKafkaCluster kafkaCluster) {
+        final GenericContainer<?> kafkaContainer = kafkaCluster.getNodes().stream().findFirst().get();
+        return withKafka(kafkaContainer.getNetwork(), kafkaCluster.getNetworkBootstrapServers());
     }
 
     public DebeziumContainer withKafka(final Network network, final String bootstrapServers) {

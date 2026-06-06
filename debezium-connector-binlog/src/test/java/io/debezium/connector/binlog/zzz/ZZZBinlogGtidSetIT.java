@@ -18,18 +18,14 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -58,13 +54,8 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
 
     private Configuration config;
 
-    @Rule
-    public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
-    @Rule
-    public TestRule skipTest2 = new SkipTestDependingOnDatabaseRule();
-
-    @Before
-    public void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
         RO_DATABASE.createAndInitialize();
@@ -72,8 +63,8 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         Files.delete(SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() {
+    @AfterEach
+    void afterEach() {
         try {
             stopConnector();
         }
@@ -102,7 +93,10 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
 
         // Use the DB configuration to define the connector's configuration ...
         config = ro_database.defaultConfig()
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CONFIGURATION_BASED)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, Boolean.FALSE)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA, Boolean.FALSE)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, Boolean.TRUE)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, ro_database.qualifiedTableName("customers"))
                 .build();

@@ -12,6 +12,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
@@ -121,6 +123,92 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public Optional<String> getBatchInsertStatement(TableDescriptor table, List<JdbcSinkRecord> records) {
+        if (records.isEmpty() || !getConfig().isPostgresUnnestInsertEnabled()) {
+            return Optional.empty();
+        }
+
+        // Skip batch mode for single record (standard INSERT is simpler and just as fast)
+        if (records.size() == 1) {
+            return Optional.empty();
+        }
+
+        // Get first record for schema information
+        JdbcSinkRecord firstRecord = records.get(0);
+
+        final SqlStatementBuilder builder = new SqlStatementBuilder();
+
+        builder.append("INSERT INTO ");
+        builder.append(getQualifiedTableName(table.getId()));
+        builder.append(" (");
+        builder.appendLists(",", firstRecord.keyFieldNames(), firstRecord.nonKeyFieldNames(),
+                (name) -> columnNameFromField(name, firstRecord));
+        builder.append(") SELECT * FROM UNNEST(");
+
+        // Create ordered list of all field names
+        List<String> allFields = new ArrayList<>();
+        allFields.addAll(firstRecord.keyFieldNames());
+        allFields.addAll(firstRecord.nonKeyFieldNames());
+
+        // For each column, use a single ? placeholder (will be bound as SQL array via setArray())
+        // This ensures the same SQL string regardless of batch size -> single query plan
+        builder.appendList(",", allFields, (fieldName) -> {
+            final io.debezium.sink.field.FieldDescriptor field = firstRecord.allFields().get(fieldName);
+            final Schema fieldSchema = field.getSchema();
+            final String columnType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
+
+            // Single placeholder per column - the array will be passed via setArray()
+            return "?::" + columnType + "[]";
+        });
+
+        builder.append(") AS t(");
+        builder.appendLists(",", firstRecord.keyFieldNames(), firstRecord.nonKeyFieldNames(),
+                (name) -> columnNameFromField(name, firstRecord));
+        builder.append(")");
+
+        return Optional.of(builder.build());
+    }
+
+    @Override
+    public Optional<String> getBatchUpsertStatement(TableDescriptor table, List<JdbcSinkRecord> records) {
+        if (records.isEmpty() || !getConfig().isPostgresUnnestInsertEnabled()) {
+            return Optional.empty();
+        }
+
+        // Skip batch mode for single record
+        if (records.size() == 1) {
+            return Optional.empty();
+        }
+
+        Optional<String> batchInsert = getBatchInsertStatement(table, records);
+        if (batchInsert.isEmpty()) {
+            return Optional.empty();
+        }
+
+        JdbcSinkRecord firstRecord = records.get(0);
+        final SqlStatementBuilder builder = new SqlStatementBuilder();
+
+        builder.append(batchInsert.get());
+
+        // Add ON CONFLICT clause
+        builder.append(" ON CONFLICT (");
+        builder.appendList(",", firstRecord.keyFieldNames(), (name) -> columnNameFromField(name, firstRecord));
+
+        if (firstRecord.nonKeyFieldNames().isEmpty()) {
+            builder.append(") DO NOTHING");
+        }
+        else {
+            builder.append(") DO UPDATE SET ");
+            builder.appendList(",", firstRecord.nonKeyFieldNames(), (name) -> {
+                final String columnName = columnNameFromField(name, firstRecord);
+                return columnName + "=EXCLUDED." + columnName;
+            });
+        }
+
+        return Optional.of(builder.build());
+    }
+
+    @Override
     public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type) {
         if (schema.type() == Schema.Type.STRING) {
             final String typeName = column.getTypeName().toLowerCase();
@@ -196,6 +284,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(SparseDoubleVectorType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
         registerType(DoubleVectorType.INSTANCE);
+        registerType(TsvectorType.INSTANCE);
     }
 
     @Override
@@ -229,4 +318,5 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     public String getTimestampNegativeInfinityValue() {
         return NEGATIVE_INFINITY;
     }
+
 }

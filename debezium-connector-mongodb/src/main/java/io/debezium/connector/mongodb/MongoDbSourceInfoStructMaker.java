@@ -35,8 +35,9 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
+        String collectionName = sourceInfo.collectionId() != null ? sourceInfo.collectionId().name() : null;
         Struct struct = super.commonStruct(sourceInfo)
-                .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
+                .put(SourceInfo.COLLECTION, collectionName)
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc());
 
         if (sourceInfo.position().getChangeStreamSessionTxnId() != null) {

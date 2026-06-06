@@ -34,12 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-server
           path: server
@@ -52,7 +52,7 @@ jobs:
       # GitHub actions seem to struggle returning actions/cache cache-hit
       # Directly use the cache action here to control whether to fetch dependencies
       - id: maven-cache-check
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
@@ -101,16 +101,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/checkstyle-format
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
+  # Approx 2m
+  build_core:
+    name: "Core Components Testing"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/build-debezium-core
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          only-build: 'false'
+
   # Approx 40m each
   build_mongodb:
     name: "MongoDB"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-mongodb-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
@@ -119,7 +133,7 @@ jobs:
   # Approx 40m each
   build_mysql:
     name: "MySQL"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-mysql-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
@@ -128,7 +142,7 @@ jobs:
   # Approx 40m each
   build_mariadb:
     name: "MariaDB"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-mariadb-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
@@ -137,7 +151,7 @@ jobs:
   # Approx 40m each
   build_postgresql:
     name: "PostgreSQL"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-postgresql-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
@@ -146,11 +160,11 @@ jobs:
   # Approx 1h 45m
   build_sqlserver:
     name: "SQL Server"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
@@ -159,45 +173,20 @@ jobs:
   # Approx 6m
   build_oracle:
     name: "Oracle"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-oracle-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
       max-parallel: 1
 
   # Approx 2m
-  build_outbox:
-    name: "Quarkus Outbox Extension"
-    needs: [ check_style, build_oracle ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-outbox
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-
-  build_extensions:
-    name: "Debezium Quarkus Extensions"
-    needs: [ check_style, build_postgresql ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-quarkus-extensions
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-
-  # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-schema-generator
         with:
@@ -206,11 +195,12 @@ jobs:
   # Approx 5m
   build_debezium_testing:
     name: "Testing Module"
-    needs: [ check_style, build_schema_generator ]
+    needs: [ check_style, build_core, build_schema_generator ]
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-testing
         with:
@@ -219,11 +209,12 @@ jobs:
   # Approx 3m
   build_storage:
     name: "Storage Module"
-    needs: [ check_style, build_debezium_testing ]
+    needs: [ check_style, build_core, build_debezium_testing ]
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-storage
         with:
@@ -232,16 +223,17 @@ jobs:
   # Approx 25m
   build_cassandra:
     name: "Cassandra"
-    needs: [ check_style, build_debezium_server ]
+    needs: [ check_style, build_core, build_debezium_server ]
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Cassandra)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -262,16 +254,16 @@ jobs:
   # Approx 1h
   build_db2:
     name: "Db2"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Db2)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -292,7 +284,7 @@ jobs:
   # Approx 45m
   build_informix:
     name: "Informix"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     uses: ./.github/workflows/connector-informix-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
@@ -301,16 +293,16 @@ jobs:
 
   build_ibmi:
     name: "IBMi"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (IBMi)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
@@ -328,19 +320,46 @@ jobs:
           path-core: core
           path-ibmi: ibmi
 
-  # Approx 20m
-  build_vitess:
-    name: "Vitess"
-    needs: [ check_style, build_storage ]
+  build_ingres:
+    name: "Ingres"
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Checkout Action (Ingres)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-ingres
+          path: ingres
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-ingres
+        with:
+          path-core: core
+          path-ingres: ingres
+
+  # Approx 20m
+  build_vitess:
+    name: "Vitess"
+    needs: [ check_style, build_core, build_storage ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Vitess)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -358,19 +377,50 @@ jobs:
           path-core: core
           path-vitess: vitess
 
-  # Approx 7m
-  build_spanner:
-    name: "Spanner"
-    needs: [ check_style, build_vitess ]
+  # Approx 5m
+  build_cockroachdb:
+    name: "CockroachDB"
+    needs: [ check_style, build_core, build_storage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          path: core
+
+      - name: Checkout Action (CockroachDB)
+        uses: actions/checkout@v6
+        with:
+          repository: debezium/debezium-connector-cockroachdb
+          path: cockroachdb
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-cockroachdb
+        with:
+          path-core: core
+          path-cockroachdb: cockroachdb
+
+  # Approx 7m
+  build_spanner:
+    name: "Spanner"
+    needs: [ check_style, build_core, build_storage ]
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Spanner)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -391,24 +441,26 @@ jobs:
   # Approx 1m
   build_jdbc:
     name: "JDBC"
-    needs: [ check_style, build_spanner ]
+    needs: [ check_style, build_core, build_spanner ]
     uses: ./.github/workflows/connector-jdbc-workflow.yml
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     with:
       maven-cache-key: maven-debezium-test-push-build
 
   # Approx 26m
   build_debezium_server:
     name: "Debezium Server"
-    needs: [ check_style, build_jdbc ]
+    needs: [ check_style, build_core, build_jdbc ]
+    if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium-server
           path: server
@@ -428,11 +480,11 @@ jobs:
 
   build_ai:
     name: "Debezium AI module"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-ai
         with:
@@ -440,12 +492,19 @@ jobs:
 
   build_openlineage:
     name: "Debezium OpenLineage module"
-    needs: [ check_style ]
+    needs: [ check_style, build_core ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: ./.github/actions/build-debezium-openlineage
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  build_platform_conductor:
+    name: "Debezium Platform - conductor"
+    needs: [ check_style, build_core ]
+    uses: ./.github/workflows/platform-conductor-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build

@@ -7,11 +7,11 @@ package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.AbstractShardedMongoConnectorIT;
 import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
@@ -31,14 +31,14 @@ public class SinkConnectorShardedClusterIT extends AbstractShardedMongoConnector
         return mongo;
     }
 
-    @BeforeClass
-    public static void beforeAll() {
+    @BeforeAll
+    static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
         mongo = new NetworkIsolatedMongoDbDatabaseProvider(TestInfrastructureHelper.getNetwork()).mongoDbShardedCluster();
         mongo.start();
     }
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         sendSourceData();
 
@@ -50,19 +50,19 @@ public class SinkConnectorShardedClusterIT extends AbstractShardedMongoConnector
         });
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         cleanDatabase(mongo, DATABASE_NAME);
     }
 
-    @AfterClass
-    public static void afterAll() {
+    @AfterAll
+    static void afterAll() {
         SinkConnectorIT.stopContainers(mongo);
         DockerUtils.disableFakeDns();
     }
 
     @Test
-    public void testSinkConnectorWritesRecordsToShardedCluster() {
+    void testSinkConnectorWritesRecordsToShardedCluster() {
         checkSinkConnectorWritesRecords();
     }
 }

@@ -5,10 +5,14 @@
  */
 package io.debezium.connector.jdbc.dialect.oracle;
 
+import java.sql.Types;
+import java.util.List;
+
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractBytesType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link JdbcType} for {@code BYTES} column types.
@@ -31,5 +35,14 @@ class BytesType extends AbstractBytesType {
     public String getDefaultValueBinding(Schema schema, Object value) {
         // Cannot bind default value to BLOB columns
         return null;
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        if (value instanceof byte[]) {
+            // Enforce binding as BLOB
+            return List.of(new ValueBindDescriptor(index, value, Types.BLOB));
+        }
+        return super.bind(index, schema, value);
     }
 }

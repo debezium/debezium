@@ -107,7 +107,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         try {
             this.partition = partition;
             this.offsetContext = offsetContext;
-            this.jdbcConnection.setAutoCommit(false);
 
             final Scn startScn = connectorConfig.getAdapter().getOffsetScn(offsetContext);
             final Long startScnIndex = offsetContext.getScnIndex();
@@ -417,6 +416,10 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 "This may indicate a potential error in your configuration.", tableId);
         final String tableDdl;
         try {
+            // Ensure auto-commit is disabled before calling getTableMetadataDdl().
+            // The JDBC connection may have been re-established (e.g., due to timeout),
+            // and new connections default to autoCommit=true.
+            // See: https://issues.redhat.com/browse/DBZ-1480
             tableDdl = jdbcConnection.getTableMetadataDdl(tableId);
         }
         catch (NonRelationalTableException e) {

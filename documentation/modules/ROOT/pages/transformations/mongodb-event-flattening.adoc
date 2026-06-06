@@ -562,6 +562,16 @@ For a struct specification, the SMT also inserts an underscore between the struc
  +
 If you specify a field that is not present in the original change event message, the SMT still adds the specified field to the `value` element of the modified message.
 
+|[[mongodb-extract-new-record-state-field-name-adjustment-mode]]xref:mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`]
+|`none`
+|Specifies how the SMT adjusts field and schema names for compatibility with different message converters.
+Set one of the following options:
+
+`none` (default):: No adjustment is performed.
+
+`avro`:: The SMT replaces any character that is invalid for Avro field names with an underscore character (`_`). It also adjusts the dot-separated segments of the output schema name individually, replacing invalid initial characters with an underscore to prevent Avro `SchemaParseException` errors when collection names begin with a digit.
+
+`avro_unicode`:: Similar to `avro`, but replaces invalid characters with their Unicode equivalent (e.g., `_u0031` for a leading `1`).
 |===
 
 [id="debezium-event-flattening-smt-for-mongodb-known-limitations"]

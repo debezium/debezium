@@ -10,6 +10,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -27,7 +29,6 @@ import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
@@ -46,11 +47,12 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final ChangeEventQueue<DataChangeEvent> queue;
 
     private final SnapshotterService snapshotterService;
+    private final BinaryLogClient binaryLogClient;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
                                          ErrorHandler errorHandler, MysqlEventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
-                                         ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService) {
+                                         ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService, BinaryLogClient binaryLogClient) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -61,6 +63,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
+        this.binaryLogClient = binaryLogClient;
     }
 
     @Override
@@ -69,7 +72,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         return new MySqlSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
-                taskContext.getSchema(),
+                schema,
                 dispatcher,
                 clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener,
@@ -92,15 +95,19 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     public StreamingChangeEventSource<MySqlPartition, MySqlOffsetContext> getStreamingChangeEventSource() {
 
         queue.disableBuffering();
-        return new MySqlStreamingChangeEventSource(
+        MySqlStreamingChangeEventSource streamingSource = new MySqlStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
                 taskContext,
+                schema,
                 streamingMetrics,
-                snapshotterService);
+                snapshotterService,
+                binaryLogClient);
+
+        return streamingSource;
     }
 
     @Override
@@ -126,7 +133,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         }
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
-        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(

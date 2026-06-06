@@ -19,9 +19,9 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -36,8 +36,8 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
+    @BeforeEach
+    void before() throws SQLException {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         connection = TestHelper.multiPartitionTestConnection();
 
@@ -75,15 +75,15 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void jmxSignals() throws Exception {
+    void jmxSignals() throws Exception {
         // Testing.Print.enable();
 
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);

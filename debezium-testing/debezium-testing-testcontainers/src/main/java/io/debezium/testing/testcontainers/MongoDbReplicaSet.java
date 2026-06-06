@@ -21,15 +21,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
+import org.testcontainers.images.ImagePullPolicy;
 import org.testcontainers.lifecycle.Startable;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -37,6 +35,7 @@ import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 import io.debezium.testing.testcontainers.util.PortResolver;
 import io.debezium.testing.testcontainers.util.RandomPortResolver;
+import io.debezium.util.Strings;
 
 /**
  * A MongoDB replica set.
@@ -60,6 +59,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     private final String rootUser;
     private final String rootPassword;
     private final Duration startupTimeout;
+    private final ImagePullPolicy imagePullPolicy;
     private final Supplier<MongoDbContainer.Builder> nodeSupplier;
 
     private boolean started = false;
@@ -93,6 +93,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         private String rootUser = "root";
         private String rootPassword = "secret";
         private Duration startupTimeout;
+        private ImagePullPolicy imagePullPolicy;
         private Supplier<MongoDbContainer.Builder> nodeSupplier = MongoDbContainer::node;
 
         public Builder nodeSupplier(Supplier<MongoDbContainer.Builder> nodeSupplier) {
@@ -156,6 +157,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             return this;
         }
 
+        public Builder withImagePullPolicy(ImagePullPolicy imagePullPolicy) {
+            this.imagePullPolicy = imagePullPolicy;
+            return this;
+        }
+
         public MongoDbReplicaSet build() {
             return new MongoDbReplicaSet(this);
         }
@@ -173,6 +179,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         this.rootUser = builder.rootUser;
         this.rootPassword = builder.rootPassword;
         this.startupTimeout = builder.startupTimeout;
+        this.imagePullPolicy = builder.imagePullPolicy;
 
         for (int i = 1; i <= memberCount; i++) {
             MongoDbContainer mongoDbContainer = nodeSupplier.get()
@@ -183,13 +190,15 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                     .skipDockerDesktopLogWarning(true)
                     .imageName(imageName)
                     .authEnabled(authEnabled)
+                    .withImagePullPolicy(imagePullPolicy)
                     .build();
             if (startupTimeout != null) {
                 mongoDbContainer.withStartupTimeout(startupTimeout);
             }
+            // This environment variable is necessary for 6.19+ host Linux machine ref: https://jira.mongodb.org/browse/SERVER-121912
+            mongoDbContainer.withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
             members.add(mongoDbContainer);
         }
-
         logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
@@ -286,8 +295,6 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         // Create rootUser
         LOGGER.info("[{}] Creating root user...", name);
         createRootUser();
-        // Make sure RS status is available to root user
-        awaitReplicaPrimary();
 
         started = true;
     }
@@ -364,23 +371,15 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     }
 
     public Optional<MongoDbContainer> tryPrimary() {
-        return stream(getStatus().path("members"))
-                .filter(memberStatus -> "PRIMARY".equals(memberStatus.path("stateStr").textValue()))
-                .findFirst()
-                .flatMap(this::findMember);
-    }
-
-    private Optional<MongoDbContainer> findMember(JsonNode memberStatus) {
-        var name = memberStatus.path("name").textValue();
+        var hello = members.get(0).eval("rs.hello()");
+        var primaryAddress = hello.path("primary").textValue();
+        if (Strings.isNullOrEmpty(primaryAddress)) {
+            return Optional.empty();
+        }
         return members.stream()
-                .filter(node -> node.getNamedAddress().toString().equals(name) || // Match by name or possibly IP
-                        node.getClientAddress().toString().equals(name))
+                .filter(node -> node.getNamedAddress().toString().equals(primaryAddress)
+                        || node.getClientAddress().toString().equals(primaryAddress))
                 .findFirst();
-    }
-
-    private JsonNode getStatus() {
-        var arbitraryNode = members.get(0);
-        return arbitraryNode.eval("rs.status()");
     }
 
     public List<String> getHostNames() {
@@ -400,10 +399,6 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 ", members=" + members +
                 ", started=" + started +
                 '}';
-    }
-
-    private static <T> Stream<T> stream(Iterable<T> iterable) {
-        return StreamSupport.stream(iterable.spliterator(), false);
     }
 
 }

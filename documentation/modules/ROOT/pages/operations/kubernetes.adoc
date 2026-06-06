@@ -143,13 +143,31 @@ Next, deploy a (single-node) Kafka cluster:
 [source,bash]
 ----
 $ cat << EOF | kubectl create -n debezium-example -f -
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: debezium-cluster-node-pool
+  labels:
+    strimzi.io/cluster: debezium-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+    - controller
+  storage:
+    type: ephemeral
+---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: debezium-cluster
-spec:
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:   
   kafka:
-    replicas: 1
+    version: "3.9.0"
     listeners:
       - name: plain
         port: 9092
@@ -165,28 +183,16 @@ spec:
         port: 9094
         type: nodeport
         tls: false
-    storage:
-      type: jbod
-      volumes:
-      - id: 0
-        type: persistent-claim
-        size: 100Gi
-        deleteClaim: false
     config:
-      offsets.topic.replication.factor: 1
-      transaction.state.log.replication.factor: 1
-      transaction.state.log.min.isr: 1
-      default.replication.factor: 1
-      min.insync.replicas: 1
-  zookeeper:
-    replicas: 1
-    storage:
-      type: persistent-claim
-      size: 100Gi
-      deleteClaim: false
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
   entityOperator:
     topicOperator: {}
     userOperator: {}
+---
 EOF
 ----
 

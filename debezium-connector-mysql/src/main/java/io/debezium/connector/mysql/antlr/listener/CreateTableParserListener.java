@@ -29,16 +29,41 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
-        TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+    public void enterCreateTable(MySqlParser.CreateTableContext ctx) {
+        TableId tableId = parser.parseQualifiedTableId(ctx.tableName());
+
+        // Check if it's a LIKE statement (copy table)
+        if (ctx.LIKE_SYMBOL() != null) {
+            // This is handled in exitCreateTable for LIKE
+            return;
+        }
+
         if (parser.databaseTables().forTable(tableId) == null) {
             tableEditor = parser.databaseTables().editOrCreateTable(tableId);
-            super.enterColumnCreateTable(ctx);
+            super.enterCreateTable(ctx);
         }
     }
 
     @Override
-    public void exitColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
+    public void exitCreateTable(MySqlParser.CreateTableContext ctx) {
+        TableId tableId = parser.parseQualifiedTableId(ctx.tableName());
+
+        // Handle LIKE (copy table)
+        if (ctx.LIKE_SYMBOL() != null && ctx.tableRef() != null) {
+            TableId originalTableId = parser.parseQualifiedTableId(ctx.tableRef());
+            Table original = parser.databaseTables().forTable(originalTableId);
+            if (original != null) {
+                parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(),
+                        original.attributes());
+                parser.signalCreateTable(tableId, ctx.getParent());
+            }
+            super.exitCreateTable(ctx);
+            // Clear tableEditor to prevent stale state from affecting subsequent statements
+            tableEditor = null;
+            return;
+        }
+
+        // Handle regular CREATE TABLE
         parser.runIfNotNull(() -> {
             // Make sure that the table's character set has been set ...
             if (!tableEditor.hasDefaultCharsetName()) {
@@ -60,43 +85,37 @@ public class CreateTableParserListener extends TableCommonParserListener {
                     .map(ColumnEditor::create)
                     .collect(Collectors.toList()));
             parser.databaseTables().overwriteTable(tableEditor.create());
-            parser.signalCreateTable(tableEditor.tableId(), ctx);
+            parser.signalCreateTable(tableEditor.tableId(), ctx.getParent());
         }, tableEditor);
-        super.exitColumnCreateTable(ctx);
+        super.exitCreateTable(ctx);
+        // Clear tableEditor to prevent stale state from affecting subsequent statements
+        tableEditor = null;
     }
 
     @Override
-    public void exitCopyCreateTable(MySqlParser.CopyCreateTableContext ctx) {
-        TableId tableId = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
-        TableId originalTableId = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
-        Table original = parser.databaseTables().forTable(originalTableId);
-        if (original != null) {
-            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(), original.attributes());
-            parser.signalCreateTable(tableId, ctx);
-        }
-        super.exitCopyCreateTable(ctx);
-    }
-
-    @Override
-    public void enterTableOptionCharset(MySqlParser.TableOptionCharsetContext ctx) {
+    public void enterDefaultCharset(MySqlParser.DefaultCharsetContext ctx) {
         parser.runIfNotNull(() -> {
             if (ctx.charsetName() != null) {
-                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
+                String charsetName = parser.withoutQuotes(ctx.charsetName());
+                if ("default".equalsIgnoreCase(charsetName)) {
+                    charsetName = parser.charsetForTable(tableEditor.tableId());
+                }
+                tableEditor.setDefaultCharsetName(charsetName);
             }
         }, tableEditor);
-        super.enterTableOptionCharset(ctx);
+        super.enterDefaultCharset(ctx);
     }
 
     @Override
-    public void enterTableOptionComment(MySqlParser.TableOptionCommentContext ctx) {
+    public void enterCreateTableOption(MySqlParser.CreateTableOptionContext ctx) {
         if (!parser.skipComments()) {
             parser.runIfNotNull(() -> {
-                if (ctx.COMMENT() != null) {
-                    tableEditor.setComment(parser.withoutQuotes(ctx.STRING_LITERAL().getText()));
+                if (ctx.option != null && ctx.option.getType() == MySqlParser.COMMENT_SYMBOL && ctx.textStringLiteral() != null) {
+                    tableEditor.setComment(parser.withoutQuotes(ctx.textStringLiteral().getText()));
                 }
             }, tableEditor);
         }
-        super.enterTableOptionComment(ctx);
+        super.enterCreateTableOption(ctx);
     }
 
 }

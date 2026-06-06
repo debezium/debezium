@@ -33,6 +33,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -69,8 +70,9 @@ public abstract class AbstractLogMinerStreamingAdapter
     public LogMinerStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
                                                                          ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                          EventMetadataProvider metadataProvider,
-                                                                         OracleConnectorConfig connectorConfig) {
-        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig);
+                                                                         OracleConnectorConfig connectorConfig,
+                                                                         CapturedTablesSupplier capturedTablesSupplier) {
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, capturedTablesSupplier);
     }
 
     @Override
@@ -100,8 +102,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
         // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
         // point as well. A separate connection is necessary to preserve the save point.
-        try (OracleConnection conn = new OracleConnection(connection.config(), false)) {
-            conn.setAutoCommit(false);
+        try (OracleConnection conn = new OracleConnection(connectorConfig, connection.config(), false)) {
             if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();
@@ -216,8 +217,8 @@ public abstract class AbstractLogMinerStreamingAdapter
 
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
-        final String archiveLogDestinationName = config.getArchiveLogDestinationName();
-        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
+        final List<String> archiveLogDestinationNames = config.getArchiveDestinationNameResolver().getDestinationNames(connection);
+        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationNames),
                 rs -> {
                     if (rs.next()) {
                         final String value = rs.getString(1);
@@ -231,7 +232,7 @@ public abstract class AbstractLogMinerStreamingAdapter
 
     protected List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
         final LogFileCollector collector = new LogFileCollector(config, connection);
-        return collector.getLogs(sinceScn)
+        return collector.getLogs(sinceScn).logFiles()
                 .stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.toList());

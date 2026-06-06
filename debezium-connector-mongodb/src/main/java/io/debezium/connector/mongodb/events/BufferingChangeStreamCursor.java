@@ -338,7 +338,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                                                                               MongoDbTaskContext taskContext,
                                                                               MongoDbStreamingChangeEventSourceMetrics metrics,
                                                                               Clock clock) {
-        var config = taskContext.getConnectorConfig();
+        var config = taskContext.getConfig();
 
         return new BufferingChangeStreamCursor<>(
                 new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),

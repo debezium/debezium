@@ -15,15 +15,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipOnDatabaseParameter;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseParameterRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -38,13 +35,10 @@ import io.debezium.util.Testing;
 @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
 public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
 
-    @Rule
-    public TestRule skipOnDatabaseParameter = new SkipTestDependingOnDatabaseParameterRule();
-
     private OracleConnection connection;
 
-    @Before
-    public void beforeEach() throws Exception {
+    @BeforeEach
+    void beforeEach() throws Exception {
         this.connection = TestHelper.testConnection();
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -52,8 +46,8 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
-    @After
-    public void afterEach() throws Exception {
+    @AfterEach
+    void afterEach() throws Exception {
         stopConnector();
         if (connection != null) {
             connection.close();

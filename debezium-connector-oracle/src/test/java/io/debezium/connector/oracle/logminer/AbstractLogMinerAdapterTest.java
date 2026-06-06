@@ -16,7 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
@@ -41,7 +41,7 @@ public abstract class AbstractLogMinerAdapterTest<T extends AbstractLogMinerStre
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final AbstractLogMinerStreamingAdapter adapter = createAdapter(connectorConfig);
-        final List<LogFile> logs = List.of(new LogFile("abc", Scn.valueOf(20798000), Scn.MAX, BigInteger.valueOf(12345L), LogFile.Type.REDO, 1));
+        final List<LogFile> logs = List.of(LogFile.forRedo("abc", Scn.valueOf(20798000), TestHelper.SCN_MAX, BigInteger.valueOf(12345L), true, 1, 1024));
 
         // Mock up adapter methods
         Mockito.doReturn(Scn.valueOf(20798000)).when(adapter).getOldestScnAvailableInLogs(Mockito.any(), Mockito.any());

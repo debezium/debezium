@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static io.debezium.config.CommonConnectorConfig.MULTI_PARTITION_MODE;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_NAME;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_TRANSACTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Properties;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -28,7 +29,7 @@ import io.debezium.schema.SchemaUnicodeTopicNamingStrategy;
 public class BinlogTopicNamingStrategyTest {
 
     @Test
-    public void testSanitizedTopicName() {
+    void testSanitizedTopicName() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.delimiter", ".");
@@ -49,7 +50,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testDataChangeTopic() {
+    void testDataChangeTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180");
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
@@ -73,7 +74,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testSchemaChangeTopic() {
+    void testSchemaChangeTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -88,7 +89,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testTransactionTopic() {
+    void testTransactionTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -99,7 +100,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testHeartbeatTopic() {
+    void testHeartbeatTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -110,7 +111,59 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testLogicTableTopic() {
+    void testHeartbeatTopicWithExplicitName() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("shared-heartbeat");
+    }
+
+    @Test
+    void testHeartbeatTopicNameOverridesPrefixBehavior() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.prefix", "custom-hb-prefix");
+        props.put("topic.heartbeat.name", "my-shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("my-shared-heartbeat");
+    }
+
+    @Test
+    void testHeartbeatTopicFallsBackWhenNameIsEmpty() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-1";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    void testHeartbeatTopicFallsBackWhenNameNotSet() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-2");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-2";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    void testHeartbeatTopicNameReconfigure() {
+        final Properties props = new Properties();
+        props.put("topic.prefix", "mysql-server-1");
+        props.put("topic.heartbeat.name", "shared-heartbeat");
+        final DefaultTopicNamingStrategy strategy = new DefaultTopicNamingStrategy(props);
+        assertThat(strategy.heartbeatTopic()).isEqualTo("shared-heartbeat");
+
+        props.remove("topic.heartbeat.name");
+        strategy.configure(props);
+        String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-1";
+        assertThat(strategy.heartbeatTopic()).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    void testLogicTableTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180_01");
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
@@ -126,7 +179,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testValidateRelativeTopicNames() {
+    void testValidateRelativeTopicNames() {
         String errorMessageSuffix = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
         Configuration config = Configuration.create().with(TOPIC_DELIMITER, "&").build();
         List<String> errorList = config.validate(Field.setOf(TOPIC_DELIMITER)).get(TOPIC_DELIMITER.name()).errorMessages();
@@ -143,10 +196,14 @@ public class BinlogTopicNamingStrategyTest {
         config = Configuration.create().with(TOPIC_TRANSACTION, "*transaction*").build();
         errorList = config.validate(Field.setOf(TOPIC_TRANSACTION)).get(TOPIC_TRANSACTION.name()).errorMessages();
         assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_TRANSACTION, "*transaction*" + errorMessageSuffix));
+
+        config = Configuration.create().with(TOPIC_HEARTBEAT_NAME, "invalid@topic!name").build();
+        errorList = config.validate(Field.setOf(TOPIC_HEARTBEAT_NAME)).get(TOPIC_HEARTBEAT_NAME.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_HEARTBEAT_NAME, "invalid@topic!name" + errorMessageSuffix));
     }
 
     @Test
-    public void testDefaultUnicodeTopicNamingStrategy() {
+    void testDefaultUnicodeTopicNamingStrategy() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);
@@ -174,7 +231,7 @@ public class BinlogTopicNamingStrategyTest {
     }
 
     @Test
-    public void testSchemaUnicodeTopicNamingStrategy() {
+    void testSchemaUnicodeTopicNamingStrategy() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.prefix", logicalName);

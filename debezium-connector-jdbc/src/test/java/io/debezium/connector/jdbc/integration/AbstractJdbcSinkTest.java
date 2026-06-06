@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Collections;
@@ -24,9 +24,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mchange.v2.c3p0.DataSources;
-
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.agroal.api.AgroalDataSource;
+import io.agroal.api.configuration.supplier.AgroalDataSourceConfigurationSupplier;
+import io.agroal.api.security.NamePrincipal;
+import io.agroal.api.security.SimplePassword;
+import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
@@ -59,16 +61,7 @@ public abstract class AbstractJdbcSinkTest {
     @AfterEach
     public void afterEach() {
         stopSinkConnector();
-
-        if (dataSource != null) {
-            try {
-                DataSources.destroy(DataSources.pooledDataSource(dataSource));
-                LOGGER.info("Closed data source");
-            }
-            catch (SQLException e) {
-                LOGGER.error("Failed to close data source", e);
-            }
-        }
+        closeDataSource();
     }
 
     protected Sink getSink() {
@@ -102,17 +95,38 @@ public abstract class AbstractJdbcSinkTest {
     protected DataSource dataSource() {
         try {
             if (dataSource == null) {
-                LOGGER.info("Creating data source");
-                final Map<String, String> config = getDefaultSinkConfig();
-                dataSource = DataSources.unpooledDataSource(
-                        config.get(JdbcSinkConnectorConfig.CONNECTION_URL),
-                        config.get(JdbcSinkConnectorConfig.CONNECTION_USER),
-                        config.get(JdbcSinkConnectorConfig.CONNECTION_PASSWORD));
+                dataSource = createDataSource();
             }
             return dataSource;
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to create data source", e);
+        }
+    }
+
+    private DataSource createDataSource() throws SQLException {
+        final Map<String, String> config = getDefaultSinkConfig();
+
+        LOGGER.info("Creating data source");
+        return AgroalDataSource.from(new AgroalDataSourceConfigurationSupplier()
+                .connectionPoolConfiguration(cp -> cp
+                        .minSize(0)
+                        .maxSize(5)
+                        .connectionFactoryConfiguration(cf -> cf
+                                .jdbcUrl(config.get(JdbcSinkConnectorConfig.CONNECTION_URL))
+                                .principal(new NamePrincipal(config.get(JdbcSinkConnectorConfig.CONNECTION_USER)))
+                                .credential(new SimplePassword(config.get(JdbcSinkConnectorConfig.CONNECTION_PASSWORD))))));
+    }
+
+    private void closeDataSource() {
+        if (dataSource != null) {
+            try {
+                dataSource.unwrap(AgroalDataSource.class).close();
+                LOGGER.info("Closed data source");
+            }
+            catch (SQLException e) {
+                LOGGER.error("Failed to close data source", e);
+            }
         }
     }
 
@@ -136,7 +150,6 @@ public abstract class AbstractJdbcSinkTest {
         sinkConnector.start(properties);
         try {
             sinkTask = (SinkTask) sinkConnector.taskClass().getConstructor().newInstance();
-
             // Initialize sink task with a mock context
             sinkTask.initialize(new JdbcSinkTaskTestContext(properties));
             sinkTask.start(properties);
@@ -165,7 +178,7 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(KafkaDebeziumSinkRecord record) {
+    protected void consume(JdbcKafkaSinkRecord record) {
         if (record != null) {
             consume(Collections.singletonList(record));
         }
@@ -174,8 +187,8 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided collection of {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(List<KafkaDebeziumSinkRecord> records) {
-        List<SinkRecord> kafkaRecords = records.stream().map(KafkaDebeziumSinkRecord::getOriginalKafkaRecord).toList();
+    protected void consume(List<JdbcKafkaSinkRecord> records) {
+        List<SinkRecord> kafkaRecords = records.stream().map(JdbcKafkaSinkRecord::getOriginalKafkaRecord).toList();
         sinkTask.put(kafkaRecords);
     }
 
@@ -186,7 +199,7 @@ public abstract class AbstractJdbcSinkTest {
         return randomTableNameGenerator.randomName();
     }
 
-    protected String destinationTableName(KafkaDebeziumSinkRecord record) {
+    protected String destinationTableName(JdbcKafkaSinkRecord record) {
         // todo: pass the configuration in from the test
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getDefaultSinkConfig());
         return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(record, config.getCollectionNameFormat()));

@@ -33,17 +33,63 @@ public class MySqlConnection extends BinlogConnectorConnection {
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
 
+        this.binaryLogStatusStatement = resolveBinaryLogStatusStatement();
+    }
+
+    public static boolean isNetworkError(SQLException e) {
+        String sqlState = e.getSQLState();
+        if (sqlState == null) {
+            return false;
+        }
+
+        return sqlState.equals("08001") // Cannot connect to server
+                || sqlState.equals("08003") // Connection does not exist
+                || sqlState.equals("08004") // Connection rejected by server
+                || sqlState.equals("08006") // Connection failure
+                || sqlState.equals("08S01"); // Communication link failure
+    }
+
+    private String resolveBinaryLogStatusStatement() {
         try {
             query(BINARY_LOG_STATUS_STATEMENT, rs -> {
             });
+            LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
+            return BINARY_LOG_STATUS_STATEMENT;
         }
         catch (SQLException e) {
-            LOGGER.info("Using '{}' to get binary log status", MASTER_STATUS_STATEMENT);
-            binaryLogStatusStatement = MASTER_STATUS_STATEMENT;
-            return;
+            if (isNetworkError(e)) {
+                throw new DebeziumException("Failed to establish connection with the database: ", e);
+            }
+
+            try {
+                String version = queryAndMap("SELECT VERSION()", rs -> {
+                    return rs.next() ? rs.getString(1) : "unknown";
+                });
+
+                String[] parts = version.split("\\.");
+                if (parts.length < 2) {
+                    LOGGER.warn("Unexpected MySQL version format: {}. Proceeding with fallback.", version);
+                    return MASTER_STATUS_STATEMENT;
+                }
+
+                int major = Integer.parseInt(parts[0]); // 8
+                int minor = Integer.parseInt(parts[1]); // 4
+
+                if (major > 8 || (major == 8 && minor >= 4)) {
+                    throw new DebeziumException("MySQL version " + version +
+                            " should support SHOW BINARY LOG STATUS but it failed. Check database permissions or connectivity.", e);
+                }
+
+                LOGGER.info("MySQL version {} detected, falling back to '{}'", version, MASTER_STATUS_STATEMENT);
+            }
+            catch (SQLException ve) {
+                LOGGER.warn("Could not determine MySQL version during fallback detection: {}", ve.getMessage());
+            }
+            catch (NumberFormatException nfe) {
+                LOGGER.warn("Could not parse MySQL version string during fallback detection: {}", nfe.getMessage());
+            }
+            return MASTER_STATUS_STATEMENT;
         }
-        LOGGER.info("Using '{}' to get binary log status", BINARY_LOG_STATUS_STATEMENT);
-        binaryLogStatusStatement = BINARY_LOG_STATUS_STATEMENT;
     }
 
     public String binaryLogStatusStatement() {

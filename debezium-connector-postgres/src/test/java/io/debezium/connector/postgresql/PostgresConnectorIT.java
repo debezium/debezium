@@ -10,16 +10,15 @@ import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.getDefaultReplicationSlot;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import javax.management.InstanceNotFoundException;
 
@@ -51,14 +51,15 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,13 +73,13 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.PostgresDatabaseVersionResolver;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.spi.SlotState;
@@ -87,6 +88,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -103,6 +105,8 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.engine.DebeziumEngine}
@@ -126,28 +130,26 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
     private PostgresConnector connector;
 
-    @Rule
-    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @BeforeClass
-    public static void beforeClass() throws SQLException {
+    @BeforeAll
+    static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
     }
 
-    @Before
-    public void before() {
+    @BeforeEach
+    void before() {
         initializeConnectorTestFramework();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
+        TestHelper.resetWalSenderTimeout();
     }
 
     @Test
-    public void shouldValidateConnectorConfigDef() {
+    void shouldValidateConnectorConfigDef() {
         connector = new PostgresConnector();
         ConfigDef configDef = connector.config();
         assertThat(configDef).isNotNull();
@@ -155,7 +157,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotStartWithInvalidConfiguration() throws Exception {
+    void shouldNotStartWithInvalidConfiguration() throws Exception {
         // use an empty configuration which should be invalid because of the lack of DB connection details
         Configuration config = Configuration.create().build();
 
@@ -169,15 +171,15 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateMinimalConfiguration() throws Exception {
+    void shouldValidateMinimalConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig().build();
         Config validateConfig = new PostgresConnector().validate(config.asMap());
-        validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
-                configValue.errorMessages().isEmpty()));
+        validateConfig.configValues().forEach(configValue -> assertTrue(configValue.errorMessages().isEmpty(),
+                "Unexpected error for: " + configValue.name()));
     }
 
     @Test
-    public void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
+    void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
         // Start with a clean slate and create database objects
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication();
@@ -206,13 +208,13 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         validatedConfig.forEach(
                 configValue -> {
                     if (!invalidProperties.contains(configValue.name())) {
-                        assertTrue("Unexpected error for \"" + configValue.name() + "\": " + configValue.errorMessages(), configValue.errorMessages().isEmpty());
+                        assertTrue(configValue.errorMessages().isEmpty(), "Unexpected error for \"" + configValue.name() + "\": " + configValue.errorMessages());
                     }
                 });
     }
 
     @Test
-    public void shouldValidateConfiguration() throws Exception {
+    void shouldValidateConfiguration() throws Exception {
         // use an empty configuration which should be invalid because of the lack of DB connection details
         Configuration config = Configuration.create().build();
         PostgresConnector connector = new PostgresConnector();
@@ -256,7 +258,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldValidateReplicationSlotName() throws Exception {
+    void shouldValidateReplicationSlotName() throws Exception {
         Configuration config = Configuration.create()
                 .with(PostgresConnectorConfig.SLOT_NAME, "xx-aa")
                 .build();
@@ -267,7 +269,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldSupportSSLParameters() throws Exception {
+    void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SSL_MODE,
@@ -293,7 +295,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceEventsWithInitialSnapshot() throws Exception {
+    void shouldProduceEventsWithInitialSnapshot() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
@@ -370,7 +372,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldConsumeMessagesFromSnapshotOld() throws Exception {
+    void shouldConsumeMessagesFromSnapshotOld() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         final int recordCount = 100;
 
@@ -490,7 +492,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReceiveChangesForChangeColumnDefault() throws Exception {
+    void shouldReceiveChangesForChangeColumnDefault() throws Exception {
         // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         TestHelper.create().dropReplicationSlot(slotName);
@@ -646,7 +648,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
+    void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
         // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         try (PostgresConnection conn = TestHelper.create()) {
@@ -840,7 +842,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldIgnoreViews() throws Exception {
+    void shouldIgnoreViews() throws Exception {
         TestHelper.execute(
                 SETUP_TABLES_STMT +
                         "CREATE VIEW s1.myview AS SELECT * from s1.a;");
@@ -876,7 +878,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldLimitDecoderLog() throws Exception {
+    void shouldLimitDecoderLog() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(AbstractMessageDecoder.class);
         TestHelper.execute(
                 SETUP_TABLES_STMT +
@@ -911,8 +913,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         assertRecordsAfterInsert(2, 3, 3);
 
-        assertEquals("There should be at most one log message every 10 seconds",
-                1, interceptor.countOccurrences("identified as already processed"));
+        assertEquals(1, interceptor.countOccurrences("identified as already processed"),
+                "There should be at most one log message every 10 seconds");
     }
 
     @Test
@@ -927,18 +929,22 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        SourceRecords actualRecords = consumeRecordsByTopic(6);
+        // JdbcConnection#connection() is called multiple times during connector start-up,
+        // so the given statements will be executed multiple times, resulting in multiple
+        // records. Note that the required number of records can vary if the number of
+        // connection() invocations changes due to future implementation updates.
+        SourceRecords actualRecords = consumeRecordsByTopic(7);
         assertKey(actualRecords.allRecordsInOrder().get(0), "pk", 1);
         assertKey(actualRecords.allRecordsInOrder().get(1), "pk", 2);
 
-        // JdbcConnection#connection() is called multiple times during connector start-up,
-        // so the given statements will be executed multiple times, resulting in multiple
-        // records; here we're interested just in the first insert for s2.a
-        assertValueField(actualRecords.allRecordsInOrder().get(5), "after/bb", "hello; world");
+        // Here we're interested just in the first insert for s2.a.
+        // Note that the index passed to get() may also need to be updated if the number
+        // of generated records changes in the future.
+        assertValueField(actualRecords.allRecordsInOrder().get(6), "after/bb", "hello; world");
     }
 
     @Test
-    public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
+    void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
         // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -960,7 +966,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
+    void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
         // Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
@@ -981,7 +987,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceEventsWhenAlwaysTakingSnapshots() throws InterruptedException {
+    void shouldProduceEventsWhenAlwaysTakingSnapshots() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
@@ -1009,7 +1015,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldResumeSnapshotIfFailingMidstream() throws Exception {
+    void shouldResumeSnapshotIfFailingMidstream() throws Exception {
         // insert another set of rows so we can stop at certain point
         CountDownLatch latch = new CountDownLatch(1);
         String setupStmt = SETUP_TABLES_STMT + INSERT_STMT;
@@ -1081,7 +1087,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentity() throws Exception {
+    void shouldUpdateReplicaIdentity() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1113,7 +1119,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityWithRegExp() throws Exception {
+    void shouldUpdateReplicaIdentityWithRegExp() throws Exception {
 
         TestHelper.executeDDL("postgres_create_multiple_tables.ddl");
 
@@ -1144,7 +1150,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotUpdateReplicaIdentityWithRegExpDuplicated() throws Exception {
+    void shouldNotUpdateReplicaIdentityWithRegExpDuplicated() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1172,7 +1178,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
+    void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1201,7 +1207,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
+    void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1238,7 +1244,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
+    void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnection.class);
@@ -1266,7 +1272,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
+    void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
 
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
@@ -1300,7 +1306,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTakeExcludeListFiltersIntoAccount() throws Exception {
+    void shouldTakeExcludeListFiltersIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
@@ -1340,7 +1346,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
+    void shouldTakeExcludeListFiltersIntoAccountLegacy() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
@@ -1413,14 +1419,14 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
 
-        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+        String tableIncludeListWithWhitespace = "s1.a, s1.b";
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeListWithWhitespace);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -1438,19 +1444,19 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldRemoveWhiteSpaceCharsOld() throws Exception {
+    void shouldRemoveWhiteSpaceCharsOld() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
 
-        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+        String tableIncludeListWithWhitespace = "s1.a, s1.b";
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeListWithWhitespace);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -2085,8 +2091,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .until(() -> {
                     // Required due to DBZ-3158, creates empty transaction
                     TestHelper.create().execute("vacuum full").close();
-                    return (boolean) ManagementFactory.getPlatformMBeanServer()
-                            .getAttribute(getSnapshotMetricsObjectName("postgres", TestHelper.TEST_SERVER), "SnapshotCompleted");
+                    return MetricsHelper.getSnapshotMetric("postgres", TestHelper.TEST_SERVER, "SnapshotCompleted");
                 });
 
         // wait for the second streaming phase
@@ -2143,12 +2148,37 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    void shouldNotWarnAboutMissingSelectSelectStatementForSignalDataCollection() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
+
+        TestHelper.execute(SETUP_TABLES_STMT + "CREATE TABLE s1.debezium_signal (id varchar(32), type varchar(32), data varchar(2048));");
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        assertThat(consumeRecordsByTopic(1).recordsForTopic(topicName("s2.a")).size()).isEqualTo(1);
+        assertThat(logInterceptor.containsWarnMessage("For table 's1.debezium_signal' the select statement was not provided, skipping table"))
+                .as("There should be no warning that the signal data collection is skipped").isFalse();
+    }
+
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
+        return getConfirmedFlushLsn(
+                connection,
+                TestHelper.decoderPlugin(),
+                ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+    }
+
+    private String getConfirmedFlushLsn(PostgresConnection connection, LogicalDecoder decoder, String slotName) throws SQLException {
         final String lsn = connection.prepareQueryAndMap(
-                "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                    statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+                "select confirmed_flush_lsn from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                    statement.setString(1, slotName);
                     statement.setString(2, "postgres");
-                    statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                    statement.setString(3, decoder.getPostgresPluginName());
                 },
                 rs -> {
                     if (rs.next()) {
@@ -2175,7 +2205,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void testStreamingPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2210,7 +2240,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void testSnapshotPerformance() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2233,7 +2263,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws InterruptedException {
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws InterruptedException {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -2723,7 +2753,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
-        Assert.assertEquals(1, slotAfterIncremental.slotLastFlushedLsn().compareTo(slotAfterSnapshot.slotLastFlushedLsn()));
+        assertEquals(1, slotAfterIncremental.slotLastFlushedLsn().compareTo(slotAfterSnapshot.slotLastFlushedLsn()));
     }
 
     @Test
@@ -2750,7 +2780,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+        assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
 
         TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
         TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
@@ -2765,7 +2795,212 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         final SlotState slotAfterIncremental = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+        assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+    }
+
+    @Test
+    @FixFor({ "DBZ-5811", "DBZ-9641" })
+    public void shouldNotAckLsnOnSourceInManualFlushMode() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final SlotState slotAtTheBeginning = getDefaultReplicationSlot();
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "manual")
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        stopConnector();
+
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
+        assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+        stopConnector();
+
+        final SlotState slotAfterIncremental = getDefaultReplicationSlot();
+        assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldStartWithConnectorAndDriverMode() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver")
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // Consume snapshot records
+        SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
+
+        // Process streaming events
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords streamingRecords = consumeRecordsByTopic(2);
+        assertThat(streamingRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        stopConnector();
+
+        final SlotState slotAfterStreaming = getDefaultReplicationSlot();
+
+        // Verify LSN advanced after processing events (connector flushes on event processing)
+        assertThat(slotAfterStreaming.slotLastFlushedLsn())
+                .describedAs("LSN should advance after processing events in connector_and_driver mode")
+                .isGreaterThan(slotAfterSnapshot.slotLastFlushedLsn());
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldNotFlushLsnOfUnmonitoredActivityInConnectorMode() throws Exception {
+        int walSenderTimeout = TestHelper.setAndGetWalSenderTimeout(2);
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final SlotState slotBefore = getDefaultReplicationSlot();
+
+        Lsn preActivityServerLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            preActivityServerLsn = Lsn.valueOf(walLocation);
+        }
+        // Generate unmonitored WAL activity
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+
+        Lsn postActivityServerLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            postActivityServerLsn = Lsn.valueOf(walLocation);
+        }
+
+        Awaitility.await().atMost(waitTimeForRecords() * 2L, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            assertThat(postActivityServerLsn)
+                    .describedAs("Physical WAL activity should have advanced the server LSN")
+                    .isGreaterThan(preActivityServerLsn);
+        });
+
+        TimeUnit.SECONDS.sleep(walSenderTimeout); // Wait to ensure pgjdbc driver doesn't flush LSN
+        final SlotState slotAfter = getDefaultReplicationSlot();
+
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityServerLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
+
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("LSN should not advanced due to unmonitored activity in connector mode")
+                .isEqualTo(slotBefore.slotLastFlushedLsn());
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("Slot LSN should be behind server LSN as pgjdbc keep alive flushing is disabled")
+                .isLessThan(postActivityServerLsn);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-9641")
+    public void shouldFlushLsnOfUnmonitoredActivityInConnectorAndDriverMode() throws Exception {
+        int walSenderTimeout = TestHelper.setAndGetWalSenderTimeout(2);
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final SlotState slotBefore = getDefaultReplicationSlot();
+
+        Lsn preActivityServerLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            preActivityServerLsn = Lsn.valueOf(walLocation);
+        }
+        // Generate unmonitored WAL activity
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+        TestHelper.execute("CHECKPOINT;");
+        TestHelper.execute("SELECT pg_switch_wal();");
+
+        Lsn postActivityServerLsn;
+        try (PostgresConnection conn = TestHelper.create()) {
+            long walLocation = conn.currentXLogLocation();
+            postActivityServerLsn = Lsn.valueOf(walLocation);
+        }
+
+        Awaitility.await().atMost(waitTimeForRecords() * 2L, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            assertThat(postActivityServerLsn)
+                    .describedAs("Physical WAL activity should have advanced the server LSN")
+                    .isGreaterThan(preActivityServerLsn);
+        });
+
+        Awaitility.await().atMost(walSenderTimeout, TimeUnit.SECONDS)
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    SlotState currentSlot = getDefaultReplicationSlot();
+                    assertThat(currentSlot.slotLastFlushedLsn())
+                            .describedAs("Slot LSN should have been advanced by pgjdbc driver flushing of unmonitored activity")
+                            .isGreaterThan(slotBefore.slotLastFlushedLsn());
+                });
+        final SlotState slotAfter = getDefaultReplicationSlot();
+
+        logger.info("Slot Before {}, Server LSN Before {},  Slot after {}, Server LSN After {}", slotBefore.slotLastFlushedLsn(), preActivityServerLsn,
+                slotAfter.slotLastFlushedLsn(), postActivityServerLsn);
+
+        assertThat(slotAfter.slotLastFlushedLsn())
+                .describedAs("Slot LSN should match or exceed server LSN as pgjdbc keep alive flushing is enabled")
+                .isGreaterThanOrEqualTo(postActivityServerLsn);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1605")
+    void shouldApplyLsnFlushModeHeartbeatFallbackWhenNoOpportunityForFlush() {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
+                .build());
+
+        assertThat(config.getHeartbeatInterval()).isGreaterThan(java.time.Duration.ZERO);
     }
 
     @Test
@@ -2879,6 +3114,58 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         });
 
         assertTrue(TestHelper.publicationExists("cdc"));
+    }
+
+    static Stream<Envelope.Operation> skippableOperationsForAlter() {
+        return Stream.of(Envelope.Operation.CREATE, Envelope.Operation.UPDATE, Envelope.Operation.DELETE, Envelope.Operation.TRUNCATE);
+    }
+
+    @ParameterizedTest(name = "skipped.operations={0}")
+    @MethodSource("skippableOperationsForAlter")
+    @FixFor("DBZ-1970")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldPropagateSkippedOperationsWhenUpdatingFilteredPublication(Envelope.Operation skippedOp) throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder initialConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOp.code());
+
+        start(PostgresConnector.class, initialConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        // Build the expected publish value: all ops except the skipped one
+        List<String> publishOps = new ArrayList<>(Arrays.asList("insert", "update", "delete", "truncate"));
+        publishOps.remove(skippedOp == Envelope.Operation.CREATE ? "insert"
+                : skippedOp == Envelope.Operation.UPDATE ? "update"
+                        : skippedOp == Envelope.Operation.DELETE ? "delete" : "truncate");
+        String expectedPublish = String.join(",", publishOps);
+
+        Configuration.Builder updatedConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a,s2.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOp.code());
+
+        start(PostgresConnector.class, updatedConfigBuilder.build());
+        assertConnectorIsRunning();
+        consumeRecordsByTopic(2);
+
+        stopConnector(value -> assertTrue(
+                logInterceptor.containsMessage(String.format(
+                        "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s1\".\"a\", \"s2\".\"a\" WITH (publish = '%s');'",
+                        expectedPublish))));
     }
 
     @Test
@@ -3066,8 +3353,71 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         VerifyRecord.isValidInsert(recs.get(1), PK_FIELD, 501);
     }
 
+    static Stream<Arguments> skippedOperationsArguments() {
+        return Stream.of(
+                Arguments.of(Envelope.Operation.CREATE.code(), List.of(Envelope.Operation.CREATE.code())),
+                Arguments.of(Envelope.Operation.UPDATE.code(), List.of(Envelope.Operation.UPDATE.code())),
+                Arguments.of(Envelope.Operation.DELETE.code(), List.of(Envelope.Operation.DELETE.code())),
+                Arguments.of(Envelope.Operation.TRUNCATE.code(), List.of(Envelope.Operation.TRUNCATE.code())),
+                Arguments.of(Envelope.Operation.DELETE.code() + "," + Envelope.Operation.TRUNCATE.code(),
+                        List.of(Envelope.Operation.DELETE.code(), Envelope.Operation.TRUNCATE.code())));
+    }
+
+    @ParameterizedTest(name = "skipped.operations={0}")
+    @MethodSource("skippedOperationsArguments")
+    @FixFor("DBZ-1970")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication publish option only available for PGOUTPUT decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT plugin")
+    void shouldNotReceiveSkippedOperationsFromPublication(String skippedOps, List<String> skippedOpCodes) throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOps)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // SQL sequence: INSERT(c), UPDATE(u), DELETE(d), TRUNCATE(t), INSERT(c) — 5 records before skipping
+        List<String> executedOps = Arrays.asList(
+                Envelope.Operation.CREATE.code(),
+                Envelope.Operation.UPDATE.code(),
+                Envelope.Operation.DELETE.code(),
+                Envelope.Operation.TRUNCATE.code(),
+                Envelope.Operation.CREATE.code());
+
+        TestHelper.execute("INSERT INTO s1.a VALUES(301, 1);");
+        TestHelper.execute("UPDATE s1.a SET aa=100 WHERE pk=301;");
+        TestHelper.execute("DELETE FROM s1.a WHERE pk=301;");
+        TestHelper.execute("TRUNCATE TABLE s1.a;");
+        TestHelper.execute("INSERT INTO s1.a VALUES(302, 2);");
+
+        int expectedCount = (int) executedOps.stream().filter(op -> !skippedOpCodes.contains(op)).count();
+
+        SourceRecords records = consumeRecordsByTopic(expectedCount);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.a"));
+
+        assertThat(recordsForTopic).hasSize(expectedCount);
+        recordsForTopic.forEach(record -> {
+            String op = ((Struct) record.value()).getString("op");
+            skippedOpCodes.forEach(skipped -> assertNotEquals(skipped, op));
+        });
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
+
     @Test
-    public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
+    void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
         // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -3226,6 +3576,31 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertInsert(recordsForTopic.get(1), PK_FIELD, 201);
         assertInsert(recordsForTopic.get(2), PK_FIELD, 202);
         assertInsert(recordsForTopic.get(3), PK_FIELD, 203);
+    }
+
+    @Test
+    @FixFor("DBZ-1331")
+    public void shouldCreateEnumSchemaWithLogicalOrder() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+        assertConnectorIsRunning();
+
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        TestHelper.execute("CREATE TYPE enum8684 as enum ('c','a','b')");
+        TestHelper.execute("CREATE TABLE s1.enum_table (pk SERIAL, data enum8684, primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.enum_table (pk,data) values (1, 'a'::enum8684)");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.enum_table"));
+
+        assertThat(recordsForTopic).hasSize(1);
+        assertInsert(recordsForTopic.get(0), PK_FIELD, 1);
+
+        String allowedEnumValues = recordsForTopic.get(0).valueSchema().field("after").schema().field("data").schema().parameters().get("allowed");
+        assertThat(allowedEnumValues).isEqualTo("c,a,b");
     }
 
     @Test
@@ -3398,6 +3773,142 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-9688")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to manually advance slot")
+    public void shouldAdvanceOffsetToSlotWithTrustSlotStrategy() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // Start connector, process initial snapshot, then stop
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        SlotState slotBeforeStop = getDefaultReplicationSlot();
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // Insert more data
+        TestHelper.execute(INSERT_STMT);
+
+        // Manually advance the replication slot ahead of the stored offset
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute(String.format(
+                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
+        }
+
+        SlotState slotAfterAdvance = getDefaultReplicationSlot();
+        assertThat(slotAfterAdvance.slotLastFlushedLsn())
+                .describedAs("Slot should be advanced past original position")
+                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+
+        // Restart with TRUST_SLOT strategy - should jump to slot position
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_slot");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9688")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to test slot advancement")
+    public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // PART 1: Test offset > slot (should advance slot like TRUST_OFFSET)
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "manual"); // Prevent automatic slot flush
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        // Insert, process the record, and stop connector. With automatic flush disabled, this will create offset > slot scenario
+        TestHelper.execute(INSERT_STMT);
+        consumeRecordsByTopic(1);
+        stopConnector();
+        assertConnectorNotRunning();
+
+        SlotState slotBeforeRestart = getDefaultReplicationSlot();
+
+        // Restart with TRUST_GREATER_LSN - should advance slot to offset (choosing max)
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn")
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        Awaitility.await()
+                .alias("Wait for slot to advance after restart with trust_greater_lsn")
+                .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    SlotState slotAfterRestart = getDefaultReplicationSlot();
+                    assertThat(slotAfterRestart.slotLastFlushedLsn())
+                            .describedAs("TRUST_GREATER_LSN should advance slot to offset when offset > slot")
+                            .isGreaterThan(slotBeforeRestart.slotLastFlushedLsn());
+                });
+
+        SlotState slotAfterRestart = getDefaultReplicationSlot();
+        logger.info("Slot Before {}, Slot after {}", slotBeforeRestart.slotLastFlushedLsn(), slotAfterRestart.slotLastFlushedLsn());
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // PART 2: Test slot > offset (should advance offset like TRUST_SLOT)
+        // Manually advance the replication slot ahead of the stored offset
+        TestHelper.execute(INSERT_STMT);
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute(String.format(
+                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
+        }
+
+        SlotState slotAfterManualAdvance = getDefaultReplicationSlot();
+        assertThat(slotAfterManualAdvance.slotLastFlushedLsn())
+                .describedAs("Slot should be manually advanced ahead")
+                .isGreaterThan(slotAfterRestart.slotLastFlushedLsn());
+
+        Awaitility.await()
+                .alias("Wait to ensure slot is no longer active before restarting connector")
+                .atMost(TestHelper.waitTimeForRecords() * 2L, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> {
+                    SlotState currentSlot = getDefaultReplicationSlot();
+                    return !currentSlot.slotIsActive();
+                });
+
+        // Restart with TRUST_GREATER_LSN again - should now advance offset to slot (choosing max)
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn")
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+    }
+
+    @Test
     @FixFor("DBZ-5852")
     public void shouldInvokeSnapshotterAbortedMethod() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
@@ -3512,6 +4023,47 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-9305")
+    public void shouldStreamSuccessfullyWithSchemasWithUnderscores() throws Exception {
+        try {
+            String setupStmt = "DROP SCHEMA IF EXISTS test_ CASCADE;" +
+                    "DROP SCHEMA IF EXISTS test1 CASCADE;" +
+                    "CREATE SCHEMA test_;" +
+                    "CREATE SCHEMA test1;" +
+                    "CREATE TABLE test_.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "CREATE TABLE test1.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "INSERT INTO test_.tab (aa, bb) VALUES (1, 1);" +
+                    "INSERT INTO test1.tab (aa, bb) VALUES (2, 2);";
+            TestHelper.execute(setupStmt);
+            Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "test_.tab");
+
+            start(PostgresConnector.class, configBuilder.build());
+            assertConnectorIsRunning();
+
+            TestHelper.execute("INSERT INTO test_.tab (aa, bb) VALUES (3, 3);");
+            TestHelper.execute("INSERT INTO test1.tab (aa, bb) VALUES (4, 4);");
+
+            final int EXPECTED_RECORDS = 2; // 1 from snapshot, 1 from streaming
+            SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
+            List<SourceRecord> records = actualRecords.recordsForTopic(topicName("test_.tab"));
+            assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
+            AtomicInteger pkValue = new AtomicInteger(1);
+            records.forEach(System.out::println);
+
+            assertNoRecordsToConsume();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.execute("DROP SCHEMA IF EXISTS test_ CASCADE;");
+            TestHelper.execute("DROP SCHEMA IF EXISTS test1 CASCADE;");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-6076")
     public void shouldAddNewFieldToSourceInfo() throws InterruptedException {
         TestHelper.execute(
@@ -3575,7 +4127,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldFailWhenReadOnlyIsNotSupported() {
+    void shouldFailWhenReadOnlyIsNotSupported() {
 
         PostgresDatabaseVersionResolver databaseVersionResolver = new PostgresDatabaseVersionResolver();
 
@@ -3727,5 +4279,306 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private void waitForStreamingRunning() throws InterruptedException {
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTables() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        // Create multiple schemas and tables to test the guardrail limits
+        TestHelper.dropAllSchemas();
+        String createSchemas = "CREATE SCHEMA IF NOT EXISTS s1; CREATE SCHEMA IF NOT EXISTS s2;";
+        TestHelper.execute(createSchemas);
+
+        // Create multiple tables
+        for (int i = 1; i <= 5; i++) {
+            String createTable = String.format("CREATE TABLE s1.table%d (pk SERIAL, data VARCHAR(100), PRIMARY KEY(pk));", i);
+            TestHelper.execute(createTable);
+            TestHelper.execute(String.format("INSERT INTO s1.table%d (data) VALUES ('test');", i));
+        }
+        for (int i = 1; i <= 5; i++) {
+            String createTable = String.format("CREATE TABLE s2.table%d (pk SERIAL, data VARCHAR(100), PRIMARY KEY(pk));", i);
+            TestHelper.execute(createTable);
+            TestHelper.execute(String.format("INSERT INTO s2.table%d (data) VALUES ('test');", i));
+        }
+
+        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.*,s2.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 5)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(PostgresConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
+        // Create multiple schemas and tables to test the guardrail limits
+        TestHelper.dropAllSchemas();
+        String createSchemas = "CREATE SCHEMA IF NOT EXISTS s1; CREATE SCHEMA IF NOT EXISTS s2;";
+        TestHelper.execute(createSchemas);
+
+        // Create multiple tables
+        for (int i = 1; i <= 5; i++) {
+            String createTable = String.format("CREATE TABLE s1.table%d (pk SERIAL, data VARCHAR(100), PRIMARY KEY(pk));", i);
+            TestHelper.execute(createTable);
+            TestHelper.execute(String.format("INSERT INTO s1.table%d (data) VALUES ('test');", i));
+        }
+        for (int i = 1; i <= 5; i++) {
+            String createTable = String.format("CREATE TABLE s2.table%d (pk SERIAL, data VARCHAR(100), PRIMARY KEY(pk));", i);
+            TestHelper.execute(createTable);
+            TestHelper.execute(String.format("INSERT INTO s2.table%d (data) VALUES ('test');", i));
+        }
+
+        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.*,s2.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(PostgresConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        // Create a few tables within the guardrail limit
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+
+        String createSchemas = "CREATE SCHEMA IF NOT EXISTS s1;";
+        TestHelper.execute(createSchemas);
+
+        // Create 3 tables (well below the limit of 10)
+        for (int i = 1; i <= 3; i++) {
+            String createTable = String.format("CREATE TABLE s1.table%d (pk SERIAL, data VARCHAR(100), PRIMARY KEY(pk));", i);
+            TestHelper.execute(createTable);
+            TestHelper.execute(String.format("INSERT INTO s1.table%d (data) VALUES ('test');", i));
+        }
+
+        // Configure with guardrail limit of 10 tables
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should start successfully
+        start(PostgresConnector.class, config);
+        waitForSnapshotToBeCompleted();
+
+        // Consume all records to ensure the connector is working
+        SourceRecords records = consumeRecordsByTopic(3); // 3 tables
+        assertThat(records).isNotNull();
+        assertThat(records.topics()).hasSize(3);
+
+        stopConnector();
+    }
+
+    @Test
+    @DisplayName("Configuring multiple signal data collection for single task connector should fail the configuration validation")
+    public void signalDataCollectionValidation() throws Exception {
+        // Testing.Print.enable();
+
+        Configuration config = Configuration.create()
+                .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, String.join(",", "s1.signal_table1", "s1.signal_table2"))
+                .build();
+
+        PostgresConnector connector = new PostgresConnector();
+        Config validatedConfig = connector.validate(config.asMap());
+
+        assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-1258")
+    public void shouldEmitPlaceholderForUnchangedJsonbColumnOnUpdate() throws Exception {
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS dbz1258 CASCADE;",
+                "CREATE SCHEMA dbz1258;",
+                "CREATE TABLE dbz1258.toast_test (pk SERIAL PRIMARY KEY, label TEXT NOT NULL, payload JSONB);");
+
+        final String topic = topicName("dbz1258.toast_test");
+
+        // The placeholder Debezium emits when a TOAST column value cannot be obtained
+        // from the WAL stream (configured via UNAVAILABLE_VALUE_PLACEHOLDER, default below).
+        final String placeholder = "__debezium_unavailable_value";
+
+        // Build a jsonb value large enough (>2KB) to be stored via TOAST by PostgreSQL.
+        // Without a TOASTed value, pgoutput sends the column as type 't' (text present) on
+        // every UPDATE — the fix code path is never reached. With a real TOAST value,
+        // pgoutput sends type 'u' (unchanged toast) for an UPDATE that did not modify the column.
+        final String largeValue = RandomStringUtils.randomAlphanumeric(10000);
+        final String largeJsonb = "{\"data\": \"" + largeValue + "\"}";
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "dbz1258.toast_test")
+                // Keep REPLICA IDENTITY DEFAULT (no explicit setting) so that old tuples
+                // only carry primary-key columns — this is the setting that triggers DBZ-1258.
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // ── Scenario 1: INSERT — jsonb must be the real inserted value ─────
+        TestHelper.execute(
+                "INSERT INTO dbz1258.toast_test (label, payload) VALUES ('initial', '" + largeJsonb.replace("'", "''") + "');");
+
+        SourceRecords insertRecords = consumeRecordsByTopic(1);
+        assertThat(insertRecords.recordsForTopic(topic)).hasSize(1);
+
+        Struct insertAfter = ((Struct) insertRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(insertAfter.get("payload")).isEqualTo(largeJsonb);
+
+        // ── Scenario 2: UPDATE that does NOT touch the jsonb column ────────
+        // Before fix → null. After fix → placeholder string.
+        TestHelper.execute(
+                "UPDATE dbz1258.toast_test SET label = 'updated' WHERE pk = 1;");
+
+        SourceRecords updateRecords = consumeRecordsByTopic(1);
+        assertThat(updateRecords.recordsForTopic(topic)).hasSize(1);
+
+        Struct updateAfter = ((Struct) updateRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(updateAfter.get("label")).isEqualTo("updated");
+
+        // unchanged jsonb must not be null — real value from cache or placeholder, never null
+        Object payloadAfterUpdate = updateAfter.get("payload");
+        assertThat(payloadAfterUpdate).isNotNull();
+        assertThat(payloadAfterUpdate).satisfiesAnyOf(
+                v -> assertThat(v).isEqualTo(largeJsonb),
+                v -> assertThat(v).isEqualTo(placeholder));
+
+        // ── Scenario 3: INSERT with an explicit NULL jsonb — must stay null ─
+        // A genuine NULL in the column must not be confused with a TOAST marker.
+        TestHelper.execute(
+                "INSERT INTO dbz1258.toast_test (label, payload) VALUES ('nulljson', NULL);");
+
+        SourceRecords nullInsertRecords = consumeRecordsByTopic(1);
+        Struct nullInsertAfter = ((Struct) nullInsertRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(nullInsertAfter.get("payload")).isNull();
+
+        // ── Scenario 4: UPDATE that DOES change the jsonb column ──────────
+        // When Debezium can see the new value in the WAL it must pass it through unchanged.
+        TestHelper.execute(
+                "UPDATE dbz1258.toast_test SET payload = '{\"new\": \"data\"}' WHERE pk = 1;");
+
+        SourceRecords changedRecords = consumeRecordsByTopic(1);
+        Struct changedAfter = ((Struct) changedRecords.recordsForTopic(topic).get(0).value()).getStruct("after");
+        assertThat(changedAfter.get("payload")).isEqualTo("{\"new\": \"data\"}");
+
+        stopConnector();
+        TestHelper.execute("DROP SCHEMA IF EXISTS dbz1258 CASCADE;");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1800")
+    void shouldInitializeTypeRegistryOnlyOnceOnConnectorStart() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(TypeRegistry.class);
+        interceptor.setLoggerLevel(TypeRegistry.class, Level.TRACE);
+
+        // Verify that TypeRegistry is created only once even if multiple
+        // snapshot connections are established.
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForSnapshotToBeCompleted();
+        assertConnectorIsRunning();
+
+        List<String> matched = interceptor.getLogEntriesThatContainsMessage("Priming type registry with database types");
+        assertThat(matched.size()).isEqualTo(1);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1863")
+    public void testTrustGreaterLsnWithNonCapturedTableUpdates() throws Exception {
+        // This test verifies that when offset.mismatch.strategy is set to trust_greater_lsn,
+        // updates to non-captured tables (i.e., tables not included in the publication) do
+        // not cause connector restart failures.
+        // In this test, s1.a is treated as the captured table, and s2.a as the non-captured table.
+
+        final String PUBLICATION = "dbz_s1_a";
+        final String SLOT = "dbz_s1_a_slot";
+
+        try {
+            TestHelper.execute(SETUP_TABLES_STMT);
+            TestHelper.execute("CREATE PUBLICATION " + PUBLICATION + " FOR TABLE s1.a;");
+
+            Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false")
+                    .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, "true")
+                    .with(PostgresConnectorConfig.PUBLICATION_NAME, PUBLICATION)
+                    .with(PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.PGOUTPUT)
+                    .with(PostgresConnectorConfig.LSN_FLUSH_MODE, "connector_and_driver")
+                    .with(PostgresConnectorConfig.SLOT_NAME, SLOT)
+                    .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_greater_lsn");
+
+            start(PostgresConnector.class, configBuilder.build());
+            assertConnectorIsRunning();
+
+            try (PostgresConnection connection = TestHelper.create()) {
+                Lsn lsnBeforeCapturedTableInsert = Lsn.valueOf(getConfirmedFlushLsn(connection, LogicalDecoder.PGOUTPUT, SLOT));
+                TestHelper.execute("INSERT INTO s2.a (aa, bb) VALUES (2, 'hello');");
+
+                Awaitility.await()
+                        .alias("confirmed_flush_lsn did not advance after non-captured table update")
+                        .pollInterval(1000, TimeUnit.MILLISECONDS)
+                        .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                        .until(() -> {
+                            Lsn lsnAfterNonCapturedTableInsert = Lsn.valueOf(getConfirmedFlushLsn(connection, LogicalDecoder.PGOUTPUT, SLOT));
+                            return lsnAfterNonCapturedTableInsert.compareTo(lsnBeforeCapturedTableInsert) > 0;
+                        });
+            }
+            stopConnector();
+            assertConnectorNotRunning();
+
+            LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+            start(PostgresConnector.class, configBuilder.build());
+
+            // Note we do not call assertConnectorIsRunning() immediately after start().
+            // When the issue occurs, the connector fails during the startup process.
+            // Calling assertConnectorIsRunning() too early can incorrectly succeed
+            // because the connector is still in the process of starting.
+            Awaitility.await().atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                    .until(() -> interceptor
+                            .containsMessage("Starting replication stream from LSN"));
+            assertConnectorIsRunning();
+
+            stopConnector();
+            assertConnectorNotRunning();
+        }
+        finally {
+            TestHelper.execute("DROP PUBLICATION IF EXISTS " + PUBLICATION + ";");
+            TestHelper.execute("SELECT pg_drop_replication_slot('" + SLOT + "');");
+        }
     }
 }

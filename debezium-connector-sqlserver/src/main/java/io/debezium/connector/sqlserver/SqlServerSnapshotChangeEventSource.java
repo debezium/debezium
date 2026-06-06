@@ -85,7 +85,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> ctx)
             throws Exception {
-        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
+        return jdbcConnection.getAllTableIds(ctx.catalogName);
     }
 
     @Override

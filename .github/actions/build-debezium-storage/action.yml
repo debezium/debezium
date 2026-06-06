@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
   shell:
     description: "The shell to use"
     required: false
@@ -24,7 +28,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,:debezium-schema-generator
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-connector-common,debezium-config,debezium-util,debezium-embedded,debezium-testing,debezium-testing/debezium-testing-testcontainers,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,:debezium-schema-generator
         -am
         -DskipTests=true
         -DskipITs=true
@@ -39,7 +43,7 @@ runs:
     - name: Build Debezium MySQL Connector
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl debezium-connector-binlog,debezium-connector-mysql 
+        ./mvnw clean install -B -am -pl debezium-connector-binlog,debezium-connector-mysql 
         -Passembly
         -DskipTests=true
         -DskipITs=true
@@ -52,10 +56,11 @@ runs:
     - name: Build Storage Module
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -f debezium-storage/pom.xml 
+        ./mvnw clean install -B -f debezium-storage/pom.xml
         -Passembly
-        -Dcheckstyle.skip=true
-        -Dformat.skip=true
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}

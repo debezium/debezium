@@ -82,6 +82,8 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String LSN_KEY = "lsn";
     public static final String MSG_TYPE_KEY = "messageType";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
+    public static final String ORIGIN_KEY = "origin";
+    public static final String ORIGIN_LSN_KEY = "origin_lsn";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -95,6 +97,8 @@ public final class SourceInfo extends BaseSourceInfo {
     private Instant timestamp;
     private String schemaName;
     private String tableName;
+    private String originName;
+    private Lsn originLsn;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -214,6 +218,39 @@ public final class SourceInfo extends BaseSourceInfo {
         return txId;
     }
 
+    /**
+     * @return the name of the origin server from which the transaction originated.
+     */
+    public String originName() {
+        return originName;
+    }
+
+    /**
+     * @return the LSN on the origin server.
+     */
+    public Lsn originLsn() {
+        return originLsn;
+    }
+
+    /**
+     * Updates the origin information for the current transaction.
+     *
+     * @param originName the name of the origin server
+     * @param originLsn the LSN on the origin server
+     */
+    protected void updateOrigin(String originName, Lsn originLsn) {
+        this.originName = originName;
+        this.originLsn = originLsn;
+    }
+
+    /**
+     * Clears the origin information. Called when a new transaction begins.
+     */
+    protected void clearOrigin() {
+        this.originName = null;
+        this.originLsn = null;
+    }
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
@@ -243,6 +280,12 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         if (tableName != null) {
             sb.append(", table=").append(tableName);
+        }
+        if (originName != null) {
+            sb.append(", origin=").append(originName);
+        }
+        if (originLsn != null) {
+            sb.append(", originLsn=").append(originLsn.asLong());
         }
         sb.append(']');
         return sb.toString();

@@ -9,15 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -38,15 +37,16 @@ public class OracleDatabaseSchemaTest {
     protected OracleConnection connection;
     protected OracleDatabaseSchema schema;
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    void before() throws Exception {
         this.connection = Mockito.mock(OracleConnection.class);
         Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
+        Mockito.when(this.connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
         this.schema = createOracleDatabaseSchema();
     }
 
-    @After
-    public void after() {
+    @AfterEach
+    void after() {
         if (schema != null) {
             try {
                 schema.close();
@@ -70,7 +70,6 @@ public class OracleDatabaseSchemaTest {
     private OracleDatabaseSchema createOracleDatabaseSchema() {
         Configuration configuration = TestHelper.defaultConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
-        DebeziumOpenLineageEmitter.init(configuration.asMap(), "oracle");
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
@@ -83,7 +82,7 @@ public class OracleDatabaseSchemaTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, new CustomConverterRegistry(List.of()));
+                false, new CustomConverterRegistry(List.of()), new OracleTaskContext(configuration, connectorConfig));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

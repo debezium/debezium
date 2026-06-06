@@ -13,27 +13,6 @@ import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
  * @author Chris Cranford
  */
 public interface OracleCommonStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
-
-    @Deprecated
-    default long getMaxCapturedDmlInBatch() {
-        return getMaxCapturedDmlCountInBatch();
-    }
-
-    @Deprecated
-    default long getNetworkConnectionProblemsCounter() {
-        // Was used specifically by Oracle tests previously and not in runtime code.
-        return 0L;
-    }
-
-    /**
-     * @return total number of schema change parser errors
-     * @deprecated to be removed in Debezium 2.7, replaced by {{@link #getTotalSchemaChangeParseErrorCount()}}
-     */
-    @Deprecated
-    default long getUnparsableDdlCount() {
-        return getTotalSchemaChangeParseErrorCount();
-    }
-
     /**
      * @return total number of schema change events that resulted in a parser failure
      */

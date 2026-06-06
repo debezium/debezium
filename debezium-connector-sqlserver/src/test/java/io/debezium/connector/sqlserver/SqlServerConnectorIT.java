@@ -16,8 +16,9 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EX
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -49,12 +50,10 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -69,7 +68,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.RetryingCallable;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
@@ -89,8 +87,6 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
-import junit.framework.TestCase;
-
 /**
  * Integration test for the Debezium SQL Server connector.
  *
@@ -98,15 +94,12 @@ import junit.framework.TestCase;
  */
 public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
-
     public static final int ON_LINE = 0;
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException, InterruptedException {
+    @BeforeEach
+    void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -125,36 +118,36 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
-    @After
-    public void after() throws SQLException {
+    @AfterEach
+    void after() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeFunctionWithoutFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeFunctionWithoutFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.FUNCTION)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 0));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeFunctionWithFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeFunctionWithFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.FUNCTION)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 3));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeDirectWithoutFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeDirectWithoutFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.DIRECT)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 0));
     }
 
     @Test
-    public void createAndDeleteWithDataQueryModeDirectWithFetchThreshold() throws Exception {
+    void createAndDeleteWithDataQueryModeDirectWithFetchThreshold() throws Exception {
         createAndDelete(builder -> builder
                 .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.DIRECT)
                 .with(SqlServerConnectorConfig.STREAMING_FETCH_SIZE, 3));
@@ -236,7 +229,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void createAndDeleteInDataQueryDirectMode() throws Exception {
+    void createAndDeleteInDataQueryDirectMode() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -324,8 +317,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with("database.applicationIntent", "ReadOnly")
-                .with("database.applicationName", appId)
+                .with("driver.applicationIntent", "ReadOnly")
+                .with("driver.applicationName", appId)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -443,7 +436,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void deleteWithoutTombstone() throws Exception {
+    void deleteWithoutTombstone() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -491,7 +484,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void update() throws Exception {
+    void update() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
@@ -550,7 +543,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void updatePrimaryKey() throws Exception {
+    void updatePrimaryKey() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -815,7 +808,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void streamChangesWhileStopped() throws Exception {
+    void streamChangesWhileStopped() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -881,7 +874,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    @Ignore // the test is very flaky in CI environment
+    @Disabled // the test is very flaky in CI environment
     public void verifyOffsets() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
@@ -934,7 +927,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                         }
                     }
                     catch (Exception e) {
-                        org.junit.Assert.fail("Failed to fetch changes for table " + tableName + ": " + e.getMessage());
+                        fail("Failed to fetch changes for table " + tableName + ": " + e.getMessage());
                     }
                 }
             });
@@ -1006,7 +999,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testIncludeTable() throws Exception {
+    void testIncludeTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1089,7 +1082,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testTableIncludeList() throws Exception {
+    void testTableIncludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1125,7 +1118,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void testTableExcludeList() throws Exception {
+    void testTableExcludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -1161,15 +1154,15 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1617")
-    public void blacklistColumnWhenCdcColumnsDoNotMatchWithOriginalSnapshot() throws Exception {
+    public void excludeColumnWhenCdcColumnsDoNotMatchWithOriginalSnapshot() throws Exception {
         connection.execute("CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))");
         TestHelper.enableTableCdc(connection, "table_a");
 
-        connection.execute("ALTER TABLE table_a ADD blacklisted_column varchar(30)");
+        connection.execute("ALTER TABLE table_a ADD excluded_column varchar(30)");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.table_a.blacklisted_column")
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.table_a.excluded_column")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1207,14 +1200,14 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-1067")
     public void testColumnExcludeList() throws Exception {
         connection.execute(
-                "CREATE TABLE blacklist_column_table_a (id int, name varchar(30), amount integer primary key(id))",
-                "CREATE TABLE blacklist_column_table_b (id int, name varchar(30), amount integer primary key(id))");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_a");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_b");
+                "CREATE TABLE column_exclude_table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE column_exclude_table_b (id int, name varchar(30), amount integer primary key(id))");
+        TestHelper.enableTableCdc(connection, "column_exclude_table_a");
+        TestHelper.enableTableCdc(connection, "column_exclude_table_b");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.blacklist_column_table_a.amount")
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.column_exclude_table_a.amount")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1223,16 +1216,16 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Wait for snapshot completion
         consumeRecordsByTopic(1);
 
-        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
-        connection.execute("INSERT INTO blacklist_column_table_b VALUES(11, 'some_name', 447)");
+        connection.execute("INSERT INTO column_exclude_table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO column_exclude_table_b VALUES(11, 'some_name', 447)");
 
         final SourceRecords records = consumeRecordsByTopic(2);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_a");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_b");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.column_exclude_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.column_exclude_table_b");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB1.dbo.blacklist_column_table_a.Value")
+                .name("server1.testDB1.dbo.column_exclude_table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
@@ -1242,7 +1235,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         Schema expectedSchemaB = SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB1.dbo.blacklist_column_table_b.Value")
+                .name("server1.testDB1.dbo.column_exclude_table_b.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
@@ -1493,6 +1486,47 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1830")
+    public void whenCaptureInstanceExcludesColumnsAndColumnOverrideExpectSnapshotToIncludeAllColumns() throws Exception {
+        connection.execute(
+                "CREATE TABLE excluded_column_table_a (id int, name varchar(30), amount int, primary key(id))");
+        connection.execute("INSERT INTO excluded_column_table_a VALUES(10, 'a name', 100)");
+
+        TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a",
+                Arrays.asList("id", "name"));
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.CDC_COLUMN_FILTER_OVERRIDE, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        // Note that any change events will fail since 'amount' is not enabled for cdc
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        final SourceRecords records = consumeRecordsByTopic(3);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.excluded_column_table_a");
+
+        Schema expectedSchema = SchemaBuilder.struct()
+                .optional()
+                .name("server1.testDB1.dbo.excluded_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        Struct expectedValueSnapshot = new Struct(expectedSchema)
+                .put("id", 10)
+                .put("name", "a name")
+                .put("amount", 100);
+
+        assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldSchemaIsEqualTo(expectedSchema)
+                .valueAfterFieldIsEqualTo(expectedValueSnapshot);
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-2522")
     public void whenMultipleCaptureInstancesExcludesColumnsExpectLatestCDCTableUtilized() throws Exception {
         connection.execute(
@@ -1548,7 +1582,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-2522")
-    @Ignore // the test is very flaky in CI environment
+    @Disabled // the test is very flaky in CI environment
     public void whenCaptureInstanceExcludesColumnsAndColumnsRenamedExpectNoErrors() throws Exception {
         connection.execute(
                 "CREATE TABLE excluded_column_table_a (id int, name varchar(30), amount integer primary key(id))");
@@ -1826,7 +1860,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldPropagateDatabaseDriverProperties() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with("database.applicationName", "Debezium App DBZ-964")
+                .with("driver.applicationName", "Debezium App DBZ-964")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -2592,7 +2626,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReturnSingleTaskConfig() {
+    void shouldReturnSingleTaskConfig() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "mAsTeR,mOdEl")
                 .build()
@@ -2607,7 +2641,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldHandleMaxTasksGreaterThanNumberOfDatabaseNames() {
+    void shouldHandleMaxTasksGreaterThanNumberOfDatabaseNames() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "mAsTeR,mOdEl")
                 .build()
@@ -2624,7 +2658,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldReturnTwoTaskConfigs() {
+    void shouldReturnTwoTaskConfigs() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "MaStEr,MoDeL")
                 .build()
@@ -2755,8 +2789,19 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldFailWhenUserDoesNotHaveAccessToDatabase() {
-        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
+    void shouldFailWhenUserDoesNotHaveAccessToDatabase() throws Exception {
+        // Create testDB2 WITHOUT enabling CDC at the database level.
+        // createTestDatabases() always enables CDC, so we create testDB2 manually here.
+        // When CDC is not enabled, the cdc schema does not exist, meaning the user
+        // truly has no CDC access which is the scenario this test verifies.
+        try (SqlServerConnection adminConn = TestHelper.adminConnection()) {
+            adminConn.connect();
+            adminConn.execute("IF EXISTS (SELECT name FROM sys.databases WHERE name = N'"
+                    + TestHelper.TEST_DATABASE_2 + "') DROP DATABASE [" + TestHelper.TEST_DATABASE_2 + "]");
+            adminConn.execute("CREATE DATABASE [" + TestHelper.TEST_DATABASE_2 + "]");
+            adminConn.execute("ALTER DATABASE [" + TestHelper.TEST_DATABASE_2 + "] SET ALLOW_SNAPSHOT_ISOLATION ON");
+            // Intentionally NOT calling TestHelper.enableDbCdc() - testDB2 has no CDC at all.
+        }
         final Configuration config2 = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -2767,9 +2812,10 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             result.put("message", message);
         });
         assertEquals(false, result.get("success"));
-        assertEquals(
-                "Connector configuration is not valid. User sa does not have access to CDC schema in the following databases: testDB2. This user can only be used in initial_only snapshot mode",
-                result.get("message"));
+        // When CDC is not enabled on testDB2 at all, sp_cdc_help_change_data_capture
+        // throws an exception which results in an Unable to connect error.
+        // This correctly prevents the connector from starting with an unconfigured database.
+        assertThat(result.get("message").toString()).contains("testDB2");
     }
 
     @Test
@@ -2973,7 +3019,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
+    void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE WITH ROLLBACK IMMEDIATE");
             TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
@@ -2981,7 +3027,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
+    void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             TestHelper.waitForStreamingStarted();
             connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2
@@ -2990,7 +3036,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+    void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
 
         try {
             Configuration config = TestHelper.defaultConfig()
@@ -3017,11 +3063,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
             assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
             Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(1, struct.get("id"));
-            TestCase.assertEquals("Test1", struct.get("data"));
+            assertEquals(1, struct.get("id"));
+            assertEquals("Test1", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
 
             stopConnector();
 
@@ -3035,11 +3081,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Check we get up-to-date data in the snapshot.
             assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
             struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(3, struct.get("id"));
-            TestCase.assertEquals("Test3", struct.get("data"));
+            assertEquals(3, struct.get("id"));
+            assertEquals("Test3", struct.get("data"));
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -3050,7 +3096,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+    void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
@@ -3081,7 +3127,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
 
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
@@ -3152,7 +3198,59 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+    void shouldProcessPurgedLogsWhenDownAndSnapshotNeededNoData() throws SQLException, InterruptedException {
+
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+
+        // Use the DB configuration to define the connector's configuration ...
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .build();
+
+        // Start the connector ...
+        start(SqlServerConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        SourceRecords records = consumeRecordsByTopic(1 + 1); // CREATE 1 tables
+        // no data records, so size is null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        stopConnector();
+
+        // insert two data records
+        connection.execute(
+                "INSERT INTO tablea VALUES(100,'100')",
+                "INSERT INTO tablea VALUES(200,'200')");
+
+        purgeDatabaseLogs();
+
+        start(SqlServerConnector.class, config);
+
+        // consume the records
+        records = consumeRecordsByTopic(1 + 2);
+        // data records should be null
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).isNull();
+        // topic should contains only ddl record
+        assertThat(records.topics().size()).isEqualTo(1);
+        // ddl records should be one
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+    }
+
+    @Test
+    void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
 
         final String pkField = "id";
 
@@ -3472,6 +3570,149 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @FunctionalInterface
     interface SqlRunnable {
+
         void run() throws SQLException;
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTables() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
+
+        // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataButNotSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+
+        // Configure with guardrail limit of 1 table
+        // (connector is capturing 1 table for data, but all tables for schema from all databases)
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesEvenIfFewAreCapturedForDataAndSchema() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+
+        // Configure with guardrail limit of 1 table
+        // (connector is capturing 1 table for data, but all tables for schema from all databases)
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
+        connection = TestHelper.testConnection();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
+
+        // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        connection = TestHelper.testConnection();
+
+        // Configure with guardrail limit of 10 tables
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should start successfully
+        start(SqlServerConnector.class, config);
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        TestHelper.waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
+
+        // Consume all records to ensure the connector is working
+        SourceRecords records = consumeRecordsByTopic(1 + 1);
+        assertThat(records).isNotNull();
+        assertThat(records.topics()).hasSize(2);
+
+        stopConnector();
     }
 }

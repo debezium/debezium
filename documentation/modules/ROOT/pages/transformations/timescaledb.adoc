@@ -31,7 +31,7 @@ You can then use the `io.debezium.connector.postgresql.transforms.timescaledb.Ti
 * Continous aggregates
 * Compression
 
-These three functions are internally dependent. 
+These three functions are internally dependent.
 Each of the functions are built on the PostgreSQL functionality for storing data in tables.
 {prodname} supports all three functions to differing degrees.
 
@@ -103,9 +103,9 @@ CREATE MATERIALIZED VIEW conditions_summary WITH (timescaledb.continuous) AS
   GROUP BY location, bucket;
 ----
 
-The TimescaleDB SMT routes the change events captured in the aggregate to a topic with the name `timescaledb.public.conditions_summary`. 
+The TimescaleDB SMT routes the change events captured in the aggregate to a topic with the name `timescaledb.public.conditions_summary`.
 The transformation enriches event messages with headers that you define in the configuration.
-For example: 
+For example:
 [source]
 ----
 _debezium_timescaledb_chunk_table: _hyper_2_2_chunk
@@ -124,16 +124,17 @@ Typically, messages with compressed chunks are dropped, and are not processed by
 
 {prodname} uses replication slots to capture changes from TimescaleDB and PostgreSQL.
 Replication slots Data store data in multiple message formats.
-Typically, it's best to configure {prodname} to use the  link:/reference/connectors/postgresql.html#postgresql-pgoutput[pgoutput] decoder, the default decoder for TimescaleDB instances, to read from the slot.
+Typically, it's best to configure {prodname} to use the link:/reference/connectors/postgresql.html#postgresql-pgoutput[pgoutput] decoder, the default decoder for TimescaleDB instances, to read from the slot.
 
-To configure the replication slot, specify the following in the `postgresql.conf` file:
+To configure the replication slot to support logical decoding, specify the following setting in the `postgresql.conf` file:
 
 [source,properties]
 ----
 # REPLICATION
-wal_level = logical             // <1>
+wal_level = logical
 ----
-<1> Instructs the server to use logical decoding with the write-ahead log.
+
+You must restart the database server for the setting to take effect.
 
 To configure tables for replication, you must create a publication, as shown in the following example:
 [source,properties]
@@ -170,42 +171,72 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 [source,json]
 ----
 {
-  "name": "timescaledb-connector",  // <1>
+  "name": "timescaledb-connector",
   "config": {
-    "connector.class": "io.debezium.connector.postgresql.PostgresConnector", // <2>
-    "database.hostname": "192.168.99.100", // <3>
-    "database.port": "5432", // <4>
-    "database.user": "postgres", // <5>
-    "database.password": "postgres", // <6>
-    "database.dbname" : "postgres", // <7>
-    "topic.prefix": "dbserver1", // <8>
-    "plugin.name": "pgoutput", // <9>
-    "schema.include.list": "_timescaledb_internal", // <10>
-    "transforms": "timescaledb", // <11>
-    "transforms.timescaledb.type": "io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb", <12>
-    "transforms.timescaledb.database.hostname": "timescaledb", // <13>
-    "transforms.timescaledb.database.port": "5432", // <14>
-    "transforms.timescaledb.database.user": "postgres", // <15>
-    "transforms.timescaledb.database.password": "postgres", // <16>
-    "transforms.timescaledb.database.dbname": "postgres" // <17>
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "192.168.99.100",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname" : "postgres",
+    "topic.prefix": "dbserver1",
+    "plugin.name": "pgoutput",
+    "schema.include.list": "_timescaledb_internal",
+    "transforms": "timescaledb",
+    "transforms.timescaledb.type": "io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb",
+    "transforms.timescaledb.database.hostname": "timescaledb",
+    "transforms.timescaledb.database.port": "5432",
+    "transforms.timescaledb.database.user": "postgres",
+    "transforms.timescaledb.database.password": "postgres",
+    "transforms.timescaledb.database.dbname": "postgres"
   }
 }
 ----
-<1> The name of the connector when registered with a Kafka Connect service.
-<2> The name of this PostgreSQL connector class.
-<3> The address of the TimescaleDB server.
-<4> The port number of the TimescaleDB server.
-<5> The name of the TimescaleDB user.
-<6> The password for the TimescaleDB.
-<7> The name of the TimescaleDB database to connect to.
-<8> The topic prefix for the TimescaleDB server or cluster.
+
+The following list describes the purpose of the lines in the preceding example:
+
+
+`"name": "timescaledb-connector",`::
+The name of the connector when registered with a Kafka Connect service.
+
+`"connector.class": "io.debezium.connector.postgresql.PostgresConnector",`::
+The name of this PostgreSQL connector class.
+
+`"database.hostname": "192.168.99.100",`::
+The address of the TimescaleDB server.
+
+`"database.port": "5432",`::
+The port number of the TimescaleDB server.
+
+`"database.user": "postgres",`::
+The name of the TimescaleDB user.
+
+`"database.password": "postgres",`::
+The password for the TimescaleDB.
+
+`"database.dbname" : "postgres",`::
+The name of the TimescaleDB database to connect to.
+
+`"topic.prefix": "dbserver1",`::
+The topic prefix for the TimescaleDB server or cluster.
 This prefix forms a namespace, and is used in the names of all Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema, when the Avro converter is used.
-<9> Indicates use of the `pgoutput` logical decoding plug-in.
-<10> A list of all schemas that contain TimescaleDB physical tables.
-<11> Enables the SMT to process raw TimescaleDB events.
-<12> Enables the SMT to process raw TimescaleDB events.
-<13> Provides TimescaleDB connection information for the SMT. 
-The values must match the value of items `3` - `7`.
+
+`"plugin.name": "pgoutput",`::
+Indicates use of the `pgoutput` logical decoding plug-in.
+
+`"schema.include.list": "_timescaledb_internal",`::
+A list of all schemas that contain TimescaleDB physical tables.
+
+`"transforms": "timescaledb",`::
+Enables the SMT to process raw TimescaleDB events.
+
+`"transforms.timescaledb.type": "io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb",`::
+Enables the SMT to process raw TimescaleDB events.
+
+`"transforms.timescaledb.database.hostname": "timescaledb",`::
+This line and the lines that follow provide the SMT with TimescaleDB connection information, including the hostname, port number, database user, database password, and database name.
+These values must match the values in the preceding `database.hostname`, `database.port`, `database.user`, `database.password`, and `database.dbname` fields.
+The
 
 
 == Configuration options
