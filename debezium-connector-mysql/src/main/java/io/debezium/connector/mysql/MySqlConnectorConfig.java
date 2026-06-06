@@ -32,7 +32,6 @@ import io.debezium.connector.mysql.charset.MySqlCharsetRegistryServiceProvider;
 import io.debezium.connector.mysql.gtid.MySqlGtidSetFactory;
 import io.debezium.connector.mysql.history.MySqlHistoryRecordComparator;
 import io.debezium.function.Predicates;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Strings;
 
@@ -330,11 +329,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field GTID_SOURCE_EXCLUDES = BinlogConnectorConfig.GTID_SOURCE_EXCLUDES
             .withDescription("The source UUIDs used to exclude GTID ranges when determine the starting "
                     + "position in the MySQL server's binlog.");
-
-    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
-            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
-                             "the original value is a toasted value not provided by the database. " +
-                             "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create(SNAPSHOT_LOCKING_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot locking mode")
