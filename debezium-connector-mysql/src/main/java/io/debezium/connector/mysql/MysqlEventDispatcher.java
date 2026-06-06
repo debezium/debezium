@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -27,7 +26,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -45,43 +44,54 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
-public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionId> extends EventDispatcher {
+/**
+ * A MySQL specific {@link EventDispatcher} that, when the database runs with
+ * {@code binlog_row_image=NOBLOB}, replaces the values of unavailable BLOB/TEXT columns with the
+ * configured unavailable-value placeholder so that downstream consumers receive a consistent record
+ * shape instead of stale or missing values.
+ *
+ * @author Bue-Von-Hun
+ */
+public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionId> extends EventDispatcher<P, T> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MysqlEventDispatcher.class);
+
     private final MySqlDatabaseSchema schema;
     private final MySqlConnectorConfig mySqlConnectorConfig;
 
-    public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy topicNamingStrategy,
-                                MySqlDatabaseSchema schema, ChangeEventQueue queue, DataCollectionFilter filter,
+    public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
+                                MySqlDatabaseSchema schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                                 ChangeEventCreator changeEventCreator,
-                                InconsistentSchemaHandler inconsistentSchemaHandler,
-                                EventMetadataProvider metadataProvider, Heartbeat heartbeat,
-                                SchemaNameAdjuster schemaNameAdjuster, SignalProcessor signalProcessor,
+                                InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
+                                EventMetadataProvider metadataProvider, ScheduledHeartbeat heartbeat,
+                                SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
                                 DebeziumHeaderProducer debeziumHeaderProducer) {
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator,
                 inconsistentSchemaHandler, metadataProvider, heartbeat, schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
         this.schema = schema;
-        mySqlConnectorConfig = (MySqlConnectorConfig) connectorConfig;
+        this.mySqlConnectorConfig = (MySqlConnectorConfig) connectorConfig;
     }
 
     @Override
-    public SnapshotReceiver<P> getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener dataListener) {
+    public SnapshotReceiver<P> getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener<P> dataListener) {
         return new IncrementalSnapshotChangeRecordReceiver(dataListener);
     }
 
     @Override
     public SnapshotReceiver<P> getSnapshotChangeEventReceiver() {
-        return new BufferingSnapshotChangeRecordReceiver(this.getSnapshotMaxThreads() > 1);
+        return new BufferingSnapshotChangeRecordReceiver(getSnapshotMaxThreads() > 1);
     }
 
     private final class IncrementalSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
-        public final DataChangeEventListener<P> dataListener;
+        private final DataChangeEventListener<P> dataListener;
 
         IncrementalSnapshotChangeRecordReceiver(DataChangeEventListener<P> dataListener) {
             this.dataListener = dataListener;
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public void changeRecord(P partition,
                                  DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
@@ -93,13 +103,14 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
 
             LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
-            Schema keySchema = dataCollectionSchema.keySchema();
-            String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
+            applyUnavailablePlaceholdersForNoblobColumns(value, dataCollectionSchema);
+
+            final Schema keySchema = dataCollectionSchema.keySchema();
+            final String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
 
             doPostProcessing(key, value);
 
-            // TODO(hun): Marker for where to create a SourceRecord
-            SourceRecord record = new SourceRecord(
+            final SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
@@ -120,12 +131,11 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
 
         private DataChangeEvent dataChangeEvent;
         private OffsetContext offsetContext;
-
     }
 
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
-        private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
+        private final AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
         private final boolean threaded;
 
         BufferingSnapshotChangeRecordReceiver(boolean threaded) {
@@ -133,6 +143,7 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public void changeRecord(P partition,
                                  DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
@@ -146,22 +157,21 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
 
             doPostProcessing(key, value);
 
-            applyUnavailablePlaceholdersForNoblobColumns(value, schema);
+            applyUnavailablePlaceholdersForNoblobColumns(value, dataCollectionSchema);
 
-            SourceRecord record = new SourceRecord(
+            final SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id()),
                     null,
                     dataCollectionSchema.keySchema(),
                     key,
-                    // TODO(hun): maybe it contains column
                     dataCollectionSchema.getEnvelopeSchema().schema(),
                     value,
                     null,
                     headers);
 
-            BufferedDataChangeEvent nextBufferedEvent = new BufferedDataChangeEvent();
+            final BufferedDataChangeEvent nextBufferedEvent = new BufferedDataChangeEvent();
             nextBufferedEvent.offsetContext = offsetContext;
             nextBufferedEvent.dataChangeEvent = new DataChangeEvent(record);
 
@@ -184,9 +194,9 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
             // this way we ensure that the last event is always marked as last
             // even if it originates form non-last table
             final BufferedDataChangeEvent bufferedEvent = bufferedEventRef.getAndSet(BufferedDataChangeEvent.NULL);
-            DataChangeEvent event = bufferedEvent.dataChangeEvent;
+            final DataChangeEvent event = bufferedEvent.dataChangeEvent;
             if (event != null) {
-                SourceRecord record = event.getRecord();
+                final SourceRecord record = event.getRecord();
                 final Struct envelope = (Struct) record.value();
                 if (envelope.schema().field(Envelope.FieldName.SOURCE) != null) {
                     final Struct source = envelope.getStruct(Envelope.FieldName.SOURCE);
@@ -201,9 +211,41 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
         }
     }
 
+    /**
+     * Replaces the {@code before}/{@code after} values of BLOB/TEXT columns with the configured
+     * unavailable-value placeholder for the table the record belongs to.
+     */
+    private void applyUnavailablePlaceholdersForNoblobColumns(Struct value, DataCollectionSchema dataCollectionSchema) {
+        final Table table = schema.tableFor((TableId) dataCollectionSchema.id());
+        if (table == null) {
+            return;
+        }
+
+        final Set<String> blobOrTextColumns = new HashSet<>();
+        for (Column column : table.columns()) {
+            if (isBlobOrTextColumn(column)) {
+                blobOrTextColumns.add(column.name());
+            }
+        }
+        if (blobOrTextColumns.isEmpty()) {
+            return;
+        }
+
+        final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        if (after != null) {
+            value.put(Envelope.FieldName.AFTER, applyUnavailablePlaceholders(after, blobOrTextColumns));
+        }
+
+        final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+        if (before != null) {
+            value.put(Envelope.FieldName.BEFORE, applyUnavailablePlaceholders(before, blobOrTextColumns));
+        }
+    }
+
     private Struct applyUnavailablePlaceholders(Struct original, Set<String> fieldsToPlaceholder) {
-        final String unavailableValuePlaceholderString = new String(mySqlConnectorConfig.getUnavailableValuePlaceholder());
-        final ByteBuffer unavailableValuePlaceholderByteBuffer = ByteBuffer.wrap(mySqlConnectorConfig.getUnavailableValuePlaceholder());
+        final byte[] placeholder = mySqlConnectorConfig.getUnavailableValuePlaceholder();
+        final String unavailableValuePlaceholderString = new String(placeholder);
+        final ByteBuffer unavailableValuePlaceholderByteBuffer = ByteBuffer.wrap(placeholder);
         final Schema schema = original.schema();
         final Struct updated = new Struct(schema);
         for (Field field : schema.fields()) {
@@ -218,39 +260,30 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
                         updated.put(fieldName, unavailableValuePlaceholderByteBuffer);
                         break;
                     default:
-                        // For non-text/binary types, leave as-is (or extend as needed)
+                        // For non-text/binary types leave the original value untouched.
                         updated.put(fieldName, originalValue);
                         break;
                 }
             }
-            else  {
+            else {
                 updated.put(fieldName, originalValue);
             }
         }
         return updated;
     }
 
-    private void applyUnavailablePlaceholdersForNoblobColumns(Struct value, MySqlDatabaseSchema schema) {
-        final Set<TableId> tableIds = schema.tableIds();
-        final Table table = schema.tableFor(tableIds.stream().findFirst().get());
-        final List<Column> columns = table.columns();
-        final Set<String> shouldSkip = new HashSet<>();
-        for (Column column : columns) {
-            final String typeName = column.typeName();
-            final String name = column.name();
-            if ("BLOB".equalsIgnoreCase(typeName) || "TEXT".equalsIgnoreCase(typeName)) {
-                shouldSkip.add(name);
-            }
+    /**
+     * Determines whether a column is a BLOB or TEXT family column. This covers all MySQL size
+     * variants such as {@code TINYBLOB}, {@code MEDIUMBLOB}, {@code LONGBLOB}, {@code TINYTEXT},
+     * {@code MEDIUMTEXT} and {@code LONGTEXT}, all of which are excluded from the binlog row image
+     * when {@code binlog_row_image=NOBLOB}.
+     */
+    private static boolean isBlobOrTextColumn(Column column) {
+        final String typeName = column.typeName();
+        if (typeName == null) {
+            return false;
         }
-
-        final Struct after = value.getStruct("after");
-        if (after != null) {
-            value.put("after", applyUnavailablePlaceholders(after, shouldSkip));
-        }
-
-        final Struct before = value.getStruct("before");
-        if (before != null) {
-            value.put("before", applyUnavailablePlaceholders(before, shouldSkip));
-        }
+        final String upperCaseTypeName = typeName.toUpperCase();
+        return upperCaseTypeName.contains("BLOB") || upperCaseTypeName.contains("TEXT");
     }
 }

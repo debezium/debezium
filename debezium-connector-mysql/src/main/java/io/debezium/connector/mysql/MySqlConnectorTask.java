@@ -41,7 +41,6 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -221,7 +220,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final Configuration heartbeatConfig = config;
         final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
                 DebeziumHeaderProducer.class);
-        final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
+        final MysqlEventDispatcher<MySqlPartition, TableId> dispatcher = new MysqlEventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
                 schema,
@@ -254,25 +253,6 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
-        final MysqlEventDispatcher<MySqlPartition, TableId> mysqlEventDispatcher = new MysqlEventDispatcher<>(
-                connectorConfig,
-                topicNamingStrategy,
-                schema,
-                queue,
-                connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new,
-                null,
-                metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        () -> new MySqlConnection(
-                                new MySqlConnectionConfiguration(heartbeatConfig),
-                                MySqlFieldReaderResolver.resolve(connectorConfig)),
-                        new BinlogHeartbeatErrorHandler()),
-                schemaNameAdjuster,
-                signalProcessor,
-                debeziumHeaderProducer);
         ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
@@ -282,7 +262,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         connectorConfig,
                         connectionFactory,
                         errorHandler,
-                        mysqlEventDispatcher,
+                        dispatcher,
                         clock,
                         schema,
                         taskContext,

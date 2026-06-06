@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -31,6 +30,7 @@ import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.Testing.Files;
 
 /**
  * Testing binlog_row_image=noblob mode in mysql

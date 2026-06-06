@@ -280,9 +280,10 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
-     * Determines whether the binlog format used by the database server is {@code binlog_row_image='FULL' or 'NOBLOB'}.
+     * Determines whether the binlog format used by the database server is {@code binlog_row_image='FULL'} or
+     * {@code binlog_row_image='NOBLOB'}.
      *
-     * @return {@code true} if the {@code binlog_row_image} is set to {@code FULL}, {@code false} otherwise
+     * @return {@code true} if the {@code binlog_row_image} is set to {@code FULL} or {@code NOBLOB}, {@code false} otherwise
      */
     public boolean isBinlogRowImageFullOrNoblob() {
         try {
