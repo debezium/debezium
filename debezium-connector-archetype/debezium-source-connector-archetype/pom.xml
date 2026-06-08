@@ -5,7 +5,7 @@
 
     <parent>
         <groupId>io.debezium</groupId>
-        <artifactId>debezium-connector-archetype</artifactId>
+        <artifactId>debezium-archetype</artifactId>
         <version>3.6.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
