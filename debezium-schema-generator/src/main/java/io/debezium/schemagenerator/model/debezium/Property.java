@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 /**
  * Configuration property.
-  * Exposes default value for UI rendering.
+ * Exposes default value for UI rendering.
  */
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
