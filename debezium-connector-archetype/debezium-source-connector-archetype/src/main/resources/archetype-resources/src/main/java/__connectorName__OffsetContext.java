@@ -26,9 +26,11 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
     static final String POSITION_KEY = "position";
 
     private long position;
+    private final TransactionContext transactionContext;
 
     public ${connectorName}OffsetContext(${connectorName}SourceInfo sourceInfo) {
         super(sourceInfo);
+        this.transactionContext = new TransactionContext();
     }
 
     public long getPosition() {
@@ -56,6 +58,6 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
 
     @Override
     public TransactionContext getTransactionContext() {
-        return new TransactionContext();
+        return transactionContext;
     }
 }
