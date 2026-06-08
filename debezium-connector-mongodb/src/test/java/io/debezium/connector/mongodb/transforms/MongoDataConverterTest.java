@@ -123,8 +123,8 @@ public class MongoDataConverterTest {
                 .build());
     }
 
-    private String getFile(String fileName) throws IOException, URISyntaxException {
-        URL jsonResource = getClass().getClassLoader().getResource(fileName);
+    private String getFile(final String fileName) throws IOException, URISyntaxException {
+        final URL jsonResource = getClass().getClassLoader().getResource(fileName);
         return new String(
                 Files.readAllBytes(Paths.get(jsonResource.toURI())),
                 StandardCharsets.UTF_8);
@@ -246,5 +246,51 @@ public class MongoDataConverterTest {
         // This ensures the empty address document didn't cause a crash and was handled
         assertThat(usersStruct.getStruct("_1").getStruct("address")).isNotNull();
         assertThat(usersStruct.getStruct("_1").getStruct("address").schema().fields()).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1901")
+    public void shouldHandleIdenticalArrayElementsWithDocumentEncoding() {
+        val = BsonDocument.parse("""
+                {
+                    "_id": {"$oid": "6a24288af2e947561dd394aa"},
+                    "items": [
+                        {
+                            "title": "Product",
+                            "image": "dummy img",
+                            "price": 899,
+                            "qty": 2
+                        },
+                        {
+                            "title": "Product",
+                            "image": "dummy img",
+                            "price": 899,
+                            "qty": 2
+                        }
+                    ]
+                }
+                """);
+
+        builder = SchemaBuilder.struct().name("test");
+        converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+
+        final Map<String, Map<Object, BsonType>> schemaMap = converter.parseBsonDocument(val);
+        converter.buildSchema(schemaMap, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+
+        for (final Map.Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.buildStruct(entry, finalSchema, struct);
+        }
+
+        final Struct itemsStruct = struct.getStruct("items");
+        assertThat(itemsStruct).isNotNull();
+        assertThat(itemsStruct.getStruct("_0")).isNotNull();
+        assertThat(itemsStruct.getStruct("_1")).isNotNull();
+        assertThat(itemsStruct.getStruct("_0").get("title")).isEqualTo("Product");
+        assertThat(itemsStruct.getStruct("_0").get("price")).isEqualTo(899);
+        assertThat(itemsStruct.getStruct("_1").get("title")).isEqualTo("Product");
+        assertThat(itemsStruct.getStruct("_1").get("price")).isEqualTo(899);
     }
 }

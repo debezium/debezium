@@ -141,12 +141,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
+            // Requires explicit mapping and typecasting in filter lambda due to Eclipse compiler bug
+            @SuppressWarnings("unchecked")
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
                     schema,
                     queue,
-                    taskContext.getFilters().collectionFilter()::test,
+                    x -> taskContext.getFilters().collectionFilter().test((CollectionId) x),
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
