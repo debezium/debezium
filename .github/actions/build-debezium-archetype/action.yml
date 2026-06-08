@@ -1,0 +1,35 @@
+name: "Build Debezium Archetypes"
+description: "Builds the Debezium connector archetype modules"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: Build Debezium Archetypes
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl debezium-connector-archetype -amd -am
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
