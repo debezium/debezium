@@ -16,6 +16,12 @@
     <packaging>maven-archetype</packaging>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
         <extensions>
             <extension>
                 <groupId>org.apache.maven.archetype</groupId>
