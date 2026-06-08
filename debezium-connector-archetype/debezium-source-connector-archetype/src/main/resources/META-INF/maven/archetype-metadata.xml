@@ -31,6 +31,6 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
-ok    </fileSets>
+    </fileSets>
 
 </archetype-descriptor>
