@@ -466,10 +466,13 @@ The second value is the placement and it must always be `header` or `envelope`.
 
 Configuration examples are in xref:emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
-|[[outbox-event-router-property-table-fields-additional-error-on-missing]]<<outbox-event-router-property-table-fields-additional-error-on-missing, `table.fields.additional.error.on.missing`>>
-|`true`
+|[[outbox-event-router-property-table-field-additional-missing]]<<outbox-event-router-property-table-field-additional-missing, `table.field.additional.missing`>>
+|`error`
 |Table, Envelope
-a|Specifies whether this transformation throws an error if a field specified by the `table.fields.additional.placement` property is not found in the Outbox payload.
+a|Determines the behavior of the SMT when a field specified by the `table.fields.additional.placement` property is not found in the outbox payload. Possible settings are:
+
+* `error` - The SMT throws an exception if a configured additional field is missing.
+* `ignore` - The SMT silently skips the missing field.
 
 |[[outbox-event-router-property-table-field-event-schema-version]]<<outbox-event-router-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |

@@ -406,6 +406,14 @@ The second value is the placement and it must always be `header` or `envelope`.
 
 Configuration examples are in xref:mongodb-outbox-emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
+|[[mongodb-outbox-event-router-property-collection-field-additional-missing]]<<mongodb-outbox-event-router-property-collection-field-additional-missing, `collection.field.additional.missing`>>
+|`error`
+|Collection, Envelope
+a|Determines the behavior of the SMT when a field specified by the `collection.fields.additional.placement` property is not found in the outbox payload. Possible settings are:
+
+* `error` - The SMT throws an exception if a configured additional field is missing.
+* `ignore` - The SMT silently skips the missing field.
+
 |[[mongodb-outbox-event-router-property-collection-field-event-schema-version]]<<mongodb-outbox-event-router-property-collection-field-event-schema-version, `collection.field.event.schema.version`>>
 |
 |Collection, Schema
