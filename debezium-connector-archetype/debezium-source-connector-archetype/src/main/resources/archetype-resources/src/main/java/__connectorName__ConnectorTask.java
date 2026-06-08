@@ -129,7 +129,7 @@ public class ${connectorName}ConnectorTask
                         ${connectorName}SourceConnector.class,
                         connectorConfig,
                         new ${connectorName}ChangeEventSourceFactory(
-                                connectorConfig, dataCollectionId, dispatcher),
+                                connectorConfig, dataCollectionId, dispatcher, errorHandler),
                         new DefaultChangeEventSourceMetricsFactory<>(),
                         dispatcher,
                         schema,

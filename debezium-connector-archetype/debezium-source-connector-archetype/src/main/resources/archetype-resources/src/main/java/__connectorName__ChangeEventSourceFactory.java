@@ -5,6 +5,7 @@
  */
 package ${package};
 
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -23,13 +24,16 @@ class ${connectorName}ChangeEventSourceFactory
     private final ${connectorName}ConnectorConfig config;
     private final ${connectorName}DataCollectionId dataCollectionId;
     private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
+    private final ErrorHandler errorHandler;
 
     ${connectorName}ChangeEventSourceFactory(${connectorName}ConnectorConfig config,
                                               ${connectorName}DataCollectionId dataCollectionId,
-                                              EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher) {
+                                              EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
+                                              ErrorHandler errorHandler) {
         this.config = config;
         this.dataCollectionId = dataCollectionId;
         this.dispatcher = dispatcher;
+        this.errorHandler = errorHandler;
     }
 
     @Override
@@ -41,6 +45,6 @@ class ${connectorName}ChangeEventSourceFactory
 
     @Override
     public StreamingChangeEventSource<${connectorName}Partition, ${connectorName}OffsetContext> getStreamingChangeEventSource() {
-        return new ${connectorName}StreamingChangeEventSource(config, dataCollectionId, dispatcher);
+        return new ${connectorName}StreamingChangeEventSource(config, dataCollectionId, dispatcher, errorHandler);
     }
 }
