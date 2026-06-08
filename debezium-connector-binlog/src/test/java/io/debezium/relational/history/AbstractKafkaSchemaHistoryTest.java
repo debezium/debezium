@@ -120,7 +120,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
-    @FixFor("DBZ-2032")
+    @FixFor("debezium/dbz#2032")
     void shouldRecoverWhenAnotherConsumerHoldsTheGroupPartition() throws Exception {
         String topicName = "concurrent-recovery-schema-changes";
         String historyName = "my-db-history";
