@@ -106,10 +106,11 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext,
                 TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)),
-                this, streamingMetrics);
+                this, streamingMetrics, jdbcConnection);
 
         try (OracleConnection xsConnection = connectAndAttachWithRetries(jdbcConnection.config(), getStartPosition(offsetContext))) {
             try {
+                eventHandler.init();
                 // 2. receive events while running
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
