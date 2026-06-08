@@ -49,8 +49,10 @@ class ${connectorName}SnapshotChangeEventSource
     @Override
     public SnapshottingTask getSnapshottingTask(${connectorName}Partition partition,
                                                 ${connectorName}OffsetContext offsetContext) {
-        boolean shouldSnapshot = offsetContext.getPosition() == 0;
-        LOGGER.info("Snapshot decision: shouldSnapshot={}", shouldSnapshot);
+        boolean offsetExists = offsetContext.getPosition() > 0;
+        boolean shouldSnapshot = config.getSnapshotMode().shouldSnapshotData(offsetExists, false);
+        LOGGER.info("Snapshot decision: mode={}, offsetExists={}, shouldSnapshot={}",
+                config.getSnapshotMode(), offsetExists, shouldSnapshot);
         return new SnapshottingTask(shouldSnapshot, false, List.of(), Map.of(), false);
     }
 
