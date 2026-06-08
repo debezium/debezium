@@ -34,12 +34,9 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.apache.kafka.connect.util.ConnectorTaskId;
-import org.apache.kafka.connect.util.LoggingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +51,7 @@ import io.debezium.embedded.DebeziumEngineCommon;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.EmbeddedEngineSignaler;
+import io.debezium.embedded.EngineLoggingContext;
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -66,6 +64,7 @@ import io.debezium.engine.source.EngineSourceConnector;
 import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
+import io.debezium.engine.source.EngineTaskId;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.source.kafka.KafkaConnectSourceTaskContextAdapter;
 import io.debezium.spi.storage.OffsetStorageReader;
@@ -401,7 +400,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             int taskId = 0;
             for (Map<String, String> taskConfig : taskConfigs) {
                 final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-                final ConnectorTaskId connectorTaskId = new ConnectorTaskId(config.getString(ConnectorConfig.NAME_CONFIG), ++taskId);
+                final EngineTaskId connectorTaskId = new EngineTaskId(config.getString(EmbeddedEngineConfig.ENGINE_NAME.name()), ++taskId);
                 final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
                         taskConfig,
                         connector.context().offsetStorageReader(),
@@ -436,8 +435,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
         for (EngineSourceTask task : tasks) {
             taskCompletionService.submit(() -> {
-                LoggingContext.clear();
-                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                EngineLoggingContext.clear();
+                try (EngineLoggingContext loggingContext = EngineLoggingContext.forTask(task.context().connectorTaskId())) {
                     Thread.currentThread().setContextClassLoader(this.classLoader);
                     task.connectTask().start(task.context().config());
                 }
@@ -1230,9 +1229,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         public Void doCall() throws Exception {
             while (engineState.get() == State.POLLING_TASKS) {
                 LOGGER.trace("Thread {} running task {} starts polling for records.", Thread.currentThread().getName(), task.connectTask());
-                LoggingContext.clear();
+                EngineLoggingContext.clear();
                 final List<SourceRecord> changeRecords;
-                try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                try (EngineLoggingContext loggingContext = EngineLoggingContext.forTask(task.context().connectorTaskId())) {
                     changeRecords = task.connectTask().poll(); // blocks until there are values ...
                 }
                 LOGGER.trace("Thread {} polled {} records.", Thread.currentThread().getName(), changeRecords == null ? "no" : changeRecords.size());
