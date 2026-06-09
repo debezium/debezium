@@ -14,6 +14,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
@@ -622,5 +623,26 @@ public class MongoArrayConverterTest {
                     }
                 }""";
         assertThat(struct.toString()).isEqualToIgnoringWhitespace(expectedStruct);
+    }
+
+    @Test
+    public void shouldFailOnMixedArrayWithArrayEncoding() {
+        assertThrows(DataException.class, () -> {
+            final var converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+            final var val = BsonDocument.parse("""
+                    {
+                      "_id": 1,
+                      "items": [1, {"name": "doc"}, 2]
+                    }
+                    """);
+            builder = SchemaBuilder.struct().name("mixedArray");
+            Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+            converter.buildSchema(entry, builder);
+            final var finalSchema = builder.build();
+            final var struct = new Struct(finalSchema);
+            for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+                converter.buildStruct(bsonValueEntry, finalSchema, struct);
+            }
+        });
     }
 }
