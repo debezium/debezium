@@ -133,16 +133,11 @@ public interface SchemaHistory {
 
     Field MEMORY_OPTIMIZATION = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "memory.optimization")
             .withDisplayName("Memory optimization mode for schema history")
-            .withType(Type.STRING)
+            .withEnum(MemoryOptimizationMode.class, MemoryOptimizationMode.OFF)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how Debezium deduplicates identical schema objects (tables, columns, attributes) "
-                    + "in memory using an interner. "
-                    + "'off' (default): no deduplication is performed. "
-                    + "'on': each connector uses its own isolated intern pool. "
-                    + "'shared': all connectors with this setting share a single global pool, maximising deduplication "
-                    + "when many connectors track tables with similar structures.")
-            .withDefault("off");
+                    + "in memory using an interner.");
 
     // Temporary preference for DDL over logical schema due to DBZ-32
     Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
