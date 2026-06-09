@@ -121,7 +121,7 @@ fulfillment.inventory.products
 
 The connector applies similar naming conventions to label its internal database schema history topics, xref:yashandb-schema-change-topic[schema change topics], and xref:yashandb-transaction-metadata[transaction metadata topics].
 
-If the default topic name do not meet your requirements, you can configure custom topic names.
+If the default topic name does not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
@@ -151,11 +151,6 @@ You can configure a {prodname} YashanDB connector to produce schema change event
 The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the namespace that is specified in the xref:yashandb-property-topic-prefix[`topic.prefix`] configuration property.
 
 {prodname} emits a new message to the schema change topic whenever it streams data from a new table, or when the structure of the table is altered.
-
-[NOTE]
-====
-Following a change in table structure, you must follow (the xref:surrogate-schema-evolution[schema evolution procedure]).
-====
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 
