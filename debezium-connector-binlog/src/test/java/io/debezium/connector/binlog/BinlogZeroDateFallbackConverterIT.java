@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
@@ -45,8 +46,8 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
     // Pre-computed wire-format constants used across all scenarios.
     private static final int EPOCH_DAYS_REAL_1970 = 0;
     private static final int EPOCH_DAYS_NORMAL = (int) LocalDate.parse("2024-06-15").toEpochDay();
-    private static final long EPOCH_MS_REAL_1970 = 0L;
-    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").toInstant(ZoneOffset.UTC).toEpochMilli();
+    private static final long EPOCH_MS_REAL_1970 = LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     private static final String ISO_REAL_1970 = "1970-01-02T00:00:00Z";
     private static final String ISO_NORMAL = "2024-06-15T12:34:56Z";
 
@@ -196,11 +197,11 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dt_full"))
                 .with(BinlogConnectorConfig.CUSTOM_CONVERTERS, "zero-date")
                 // Override the IT framework default (US/Samoa) so TIMESTAMP emit is deterministic
-                // UTC regardless of CI MySQL/MariaDB version. mysql-connector-j 8.0 only applies
+                // regardless of CI MySQL/MariaDB version. mysql-connector-j 8.0 only applies
                 // connectionTimeZone to the JVM side, so also force the MySQL server session to
-                // UTC via sessionVariables (mariadb-java-client syncs both sides automatically).
-                .with("database.connectionTimeZone", "UTC")
-                .with("database.sessionVariables", "time_zone='+00:00'")
+                // current timezone via sessionVariables (mariadb-java-client syncs both sides automatically).
+                .with("database.connectionTimeZone", ZoneId.systemDefault().getId())
+                .with("database.sessionVariables", "time_zone='%s'".formatted(ZoneId.systemDefault().getId()))
                 .with("zero-date.type", ZeroDateFallbackConverter.class.getName());
     }
 
