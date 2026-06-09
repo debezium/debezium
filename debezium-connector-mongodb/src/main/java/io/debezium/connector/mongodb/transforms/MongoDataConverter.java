@@ -93,12 +93,6 @@ public class MongoDataConverter {
     }
 
     /**
-     * Traverses a BsonArray and builds a unified schema for the array elements
-     *
-     * @param array the BsonArray to traverse
-     * @return a map representing the unified schema of the array elements
-     */
-    /**
      * Strategy interface for handling array encoding
      */
     private interface ArrayEncodingStrategy {
@@ -152,6 +146,12 @@ public class MongoDataConverter {
         }
     }
 
+    /**
+     * Traverses a BsonArray and builds a unified schema for the array elements
+     *
+     * @param array the BsonArray to traverse
+     * @return a map representing the unified schema of the array elements
+     */
     public Map<Object, BsonType> traverseArray(BsonArray array) {
         final Map<Object, BsonType> unifiedSchema = new LinkedHashMap<>();
         final List<Object> arrayElementList = new ArrayList<>();
