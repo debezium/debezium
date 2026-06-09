@@ -205,9 +205,7 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
     }
 
     private List<SourceRecord> readDtFullRecords() throws InterruptedException {
-        // Snapshot emits schema-change events ahead of the 3 data rows, so consume a comfortably
-        // larger window. recordsForTopic() filters down to just the dt_full table records.
-        final SourceRecords records = consumeRecordsByTopic(15);
+        final SourceRecords records = consumeRecordsByTopic(9); // 6 DDL events + 3 records from snapshot.
         return records.recordsForTopic(DATABASE.topicForTable("dt_full"));
     }
 
