@@ -241,7 +241,7 @@ public class IncrementalSnapshotStateManager {
      * @return true if the chunk ID is unexpected, false otherwise
      */
     private boolean isUnexpectedChunk(String chunkId) {
-        return currentChunkId == null || !chunkId.startsWith(currentChunkId);
+        return chunkId == null || currentChunkId == null || !chunkId.startsWith(currentChunkId);
     }
 
     /**
