@@ -43,23 +43,6 @@ public final class Interner {
         ON,
         /** All connectors configured with this mode share a single global pool. */
         SHARED;
-
-        /**
-         * Parses a mode from a configuration string value.
-         * Accepts {@code "off"}, {@code "on"}, {@code "shared"} (case-insensitive).
-         */
-        public static Mode parse(String value) {
-            if (value == null || value.isEmpty()) {
-                return OFF;
-            }
-            return switch (value.toLowerCase()) {
-                case "off" -> OFF;
-                case "on" -> ON;
-                case "shared" -> SHARED;
-                default -> throw new IllegalArgumentException(
-                        "Invalid memory optimization mode: '" + value + "'. Valid values are: off, on, shared");
-            };
-        }
     }
 
     private static final Pool SHARED_POOL = new Pool();

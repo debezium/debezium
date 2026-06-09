@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.relational.history.MemoryOptimizationMode;
 import io.debezium.util.Interner.Mode;
 
 public class InternerTest {
@@ -222,32 +223,32 @@ public class InternerTest {
         assertThat(a).isSameAs(b);
     }
 
-    // --- Mode.parse tests ---
+    // --- MemoryOptimizationMode.parse tests ---
 
     @Test
     public void shouldParseOffMode() {
-        assertThat(Mode.parse("off")).isEqualTo(Mode.OFF);
-        assertThat(Mode.parse("OFF")).isEqualTo(Mode.OFF);
-        assertThat(Mode.parse(null)).isEqualTo(Mode.OFF);
-        assertThat(Mode.parse("")).isEqualTo(Mode.OFF);
+        assertThat(MemoryOptimizationMode.parse("off")).isEqualTo(MemoryOptimizationMode.OFF);
+        assertThat(MemoryOptimizationMode.parse("OFF")).isEqualTo(MemoryOptimizationMode.OFF);
+        assertThat(MemoryOptimizationMode.parse(null)).isEqualTo(MemoryOptimizationMode.OFF);
+        assertThat(MemoryOptimizationMode.parse("")).isEqualTo(MemoryOptimizationMode.OFF);
     }
 
     @Test
     public void shouldParseOnMode() {
-        assertThat(Mode.parse("on")).isEqualTo(Mode.ON);
-        assertThat(Mode.parse("ON")).isEqualTo(Mode.ON);
+        assertThat(MemoryOptimizationMode.parse("on")).isEqualTo(MemoryOptimizationMode.ON);
+        assertThat(MemoryOptimizationMode.parse("ON")).isEqualTo(MemoryOptimizationMode.ON);
     }
 
     @Test
     public void shouldParseSharedMode() {
-        assertThat(Mode.parse("shared")).isEqualTo(Mode.SHARED);
-        assertThat(Mode.parse("SHARED")).isEqualTo(Mode.SHARED);
+        assertThat(MemoryOptimizationMode.parse("shared")).isEqualTo(MemoryOptimizationMode.SHARED);
+        assertThat(MemoryOptimizationMode.parse("SHARED")).isEqualTo(MemoryOptimizationMode.SHARED);
     }
 
     @Test
     public void shouldThrowForUnknownMode() {
         org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalArgumentException.class,
-                () -> Mode.parse("invalid"));
+                () -> MemoryOptimizationMode.parse("invalid"));
     }
 }

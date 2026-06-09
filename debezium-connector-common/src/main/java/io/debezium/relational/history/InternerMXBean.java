@@ -28,7 +28,7 @@ public interface InternerMXBean {
 
     /**
      * Hit ratio as a percentage ({@code hitCount / (hitCount + missCount) * 100}),
-     * or {@code -1} if no calls have been recorded yet.
+     * or {@code 0} if no calls have been recorded yet.
      */
     double getHitRatioPercent();
 }

@@ -22,6 +22,7 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.InternerMetrics;
+import io.debezium.relational.history.MemoryOptimizationMode;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.util.Interner;
@@ -117,7 +118,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         this.skipUnparseableDDL = config.getBoolean(SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyCapturedTablesDdl = config.getBoolean(STORE_ONLY_CAPTURED_TABLES_DDL);
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
-        this.internerStats = Interner.activate(Interner.Mode.parse(config.getString(MEMORY_OPTIMIZATION)));
+        this.internerStats = Interner.activate(MemoryOptimizationMode.parse(config.getString(MEMORY_OPTIMIZATION)).toInternerMode());
     }
 
     /**
