@@ -3338,7 +3338,7 @@ Set one of the following options:
 
 `no_validation`::
 The connector attempts to stream from the stored offset without validating the replication slot state.
-If the slot is ahead of the offset, PostgreSQL returns an error because the requested LSN is no longer available in the WAL.
+If the slot is ahead of the offset, PostgreSQL returns an error because the requested LSN is no longer available in the WAL (Postgres 14 and older) or will start from `confirmed_flush_lsn` (Postgres 15 and newer).
 
 `trust_offset`::
 The connector validates that the stored offset is not behind the replication slot's confirmed flush LSN.
