@@ -82,7 +82,7 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
      * column; real-1970 / normal rows still flow through normal conversion.
      */
     @Test
-    void scenarioDefault_allNullFallback_zeroDateEmitsNull() throws InterruptedException {
+    void scenarioDefaultAllNullFallbackZeroDateEmitsNull() throws InterruptedException {
         config = baseConfig().build();
         start(getConnectorClass(), config);
 
@@ -95,7 +95,7 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
      * sentinel; real-1970 / normal rows are unaffected.
      */
     @Test
-    void scenarioTypedValues_userSentinels_zeroDateEmitsUserValues() throws InterruptedException {
+    void scenarioTypedValuesUserSentinelsZeroDateEmitsUserValues() throws InterruptedException {
         config = baseConfig()
                 .with("zero-date.fallback.date", "2000-01-01")
                 .with("zero-date.fallback.datetime", "2000-01-01 00:00:00")
@@ -133,7 +133,7 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
      * Scenario 3 — mixed policy. DATE / TIMESTAMP are NULL, DATETIME is a user sentinel.
      */
     @Test
-    void scenarioMixed_dateAndTimestampNull_datetimeUserValue() throws InterruptedException {
+    void scenarioMixedDateAndTimestampNullDatetimeUserValue() throws InterruptedException {
         config = baseConfig()
                 .with("zero-date.fallback.datetime", "2000-01-01 00:00:00")
                 .build();
@@ -163,7 +163,7 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
      * effective policies (NULL / type-level value / column-level value).
      */
     @Test
-    void scenarioColumnOverride_perColumnEffectivePolicy() throws InterruptedException {
+    void scenarioColumnOverridePerColumnEffectivePolicy() throws InterruptedException {
         final String db = DATABASE.getDatabaseName();
         config = baseConfig()
                 .with("zero-date.fallback.datetime", "2000-01-01 00:00:00")
@@ -188,8 +188,6 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
         assertRow(recs, 2, "dt_epoch_default", typeLevelSentinel);
         assertRow(recs, 2, "dt_other_default", columnLevelSentinel);
     }
-
-    // -- helpers --------------------------------------------------------------------------------
 
     private Configuration.Builder baseConfig() {
         return DATABASE.defaultConfig()
