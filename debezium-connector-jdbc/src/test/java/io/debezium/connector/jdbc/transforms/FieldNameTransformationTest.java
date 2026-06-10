@@ -247,6 +247,26 @@ public class FieldNameTransformationTest {
         }
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("dbz#2051")
+    void testOptionalFieldValuesWithDefaultValues(SinkRecordFactory factory) {
+        try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
+            final Map<String, String> properties = new HashMap<>();
+            transform.configure(properties);
+
+            var record = new KafkaDebeziumSinkRecord(
+                    transform.apply(createSinkRecord(factory, "id", "randomValue", new JdbcSinkConnectorConfig(properties), "id", "name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+
+            assertSchemaFieldNames(record.keySchema()).containsOnly("id");
+            assertSchemaFieldNames(record.getPayload().schema()).containsOnly("id", "name", "nick_name_");
+
+            assertThat(record.getPayload().getWithoutDefault("name")).isNull();
+            assertThat(record.getPayload().get("name")).isEqualTo("randomValue");
+        }
+    }
+
     private static ListAssert assertSchemaFieldNames(Schema schema) {
         return assertThat(schema.fields().stream().map(Field::name).toList());
     }
@@ -271,6 +291,33 @@ public class FieldNameTransformationTest {
         Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
             recordSchemaBuilder.field(payloadFieldName, optionalFields ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
             builder.after(payloadFieldName, "randomValue");
+        });
+
+        return builder.keySchema(keySchema)
+                .recordSchema(recordSchemaBuilder.build())
+                .sourceSchema(sourceSchema)
+                .key(keyFieldName, (byte) 1)
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build()
+                .getOriginalKafkaRecord();
+    }
+
+    private static SinkRecord createSinkRecord(SinkRecordFactory factory, String keyFieldName, String defaultValue,
+                                               JdbcSinkConnectorConfig config, String... payloadFieldNames) {
+        final Schema keySchema = SchemaBuilder.struct().field(keyFieldName, Schema.INT8_SCHEMA).build();
+        final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
+
+        final SinkRecordTypeBuilder builder = SinkRecordBuilder.create(config)
+                .flat(factory.isFlattened())
+                .name("prefix")
+                .topic("topic")
+                .offset(1)
+                .partition(0);
+
+        final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
+        Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
+            recordSchemaBuilder.field(payloadFieldName, SchemaBuilder.string().optional().defaultValue(defaultValue));
+            builder.after(payloadFieldName, !payloadFieldName.equals(keyFieldName) ? null : "randomValue");
         });
 
         return builder.keySchema(keySchema)
