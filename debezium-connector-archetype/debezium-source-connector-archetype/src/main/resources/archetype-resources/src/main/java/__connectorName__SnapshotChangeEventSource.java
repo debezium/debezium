@@ -18,6 +18,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.util.Clock;
 
 /**
  * Performs an initial snapshot of the ${connectorName} data source.
@@ -35,15 +36,18 @@ class ${connectorName}SnapshotChangeEventSource
     private final ${connectorName}DataCollectionId dataCollectionId;
     private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
     private final SnapshotProgressListener<${connectorName}Partition> progressListener;
+    private final Clock clock;
 
     ${connectorName}SnapshotChangeEventSource(${connectorName}ConnectorConfig config,
                                                ${connectorName}DataCollectionId dataCollectionId,
                                                EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
-                                               SnapshotProgressListener<${connectorName}Partition> progressListener) {
+                                               SnapshotProgressListener<${connectorName}Partition> progressListener,
+                                               Clock clock) {
         this.config = config;
         this.dataCollectionId = dataCollectionId;
         this.dispatcher = dispatcher;
         this.progressListener = progressListener;
+        this.clock = clock;
     }
 
     @Override
@@ -78,8 +82,10 @@ class ${connectorName}SnapshotChangeEventSource
         LOGGER.info("Starting ${connectorName} snapshot");
 
         // TODO: implement snapshot logic here.
-        // For each existing record, call dispatcher.dispatchDataChangeEvent(...) with
-        // a ${connectorName}ChangeRecordEmitter using Envelope.Operation.READ.
+        // For each existing record, read the raw row from your source, then dispatch:
+        //   dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
+        //       new ${connectorName}ChangeRecordEmitter(
+        //           partition, offsetContext, Envelope.Operation.READ, rawRowData, clock, config));
         // Update offsetContext.setPosition(...) as you advance through the source.
 
         LOGGER.info("${connectorName} snapshot complete");
