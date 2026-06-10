@@ -12,6 +12,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.util.Clock;
 
 /**
  * Creates the snapshot and streaming change event sources for the ${connectorName} connector.
@@ -25,26 +26,29 @@ class ${connectorName}ChangeEventSourceFactory
     private final ${connectorName}DataCollectionId dataCollectionId;
     private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
     private final ErrorHandler errorHandler;
+    private final Clock clock;
 
     ${connectorName}ChangeEventSourceFactory(${connectorName}ConnectorConfig config,
                                               ${connectorName}DataCollectionId dataCollectionId,
                                               EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
-                                              ErrorHandler errorHandler) {
+                                              ErrorHandler errorHandler,
+                                              Clock clock) {
         this.config = config;
         this.dataCollectionId = dataCollectionId;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
+        this.clock = clock;
     }
 
     @Override
     public SnapshotChangeEventSource<${connectorName}Partition, ${connectorName}OffsetContext> getSnapshotChangeEventSource(
             SnapshotProgressListener<${connectorName}Partition> progressListener,
             NotificationService<${connectorName}Partition, ${connectorName}OffsetContext> notificationService) {
-        return new ${connectorName}SnapshotChangeEventSource(config, dataCollectionId, dispatcher, progressListener);
+        return new ${connectorName}SnapshotChangeEventSource(config, dataCollectionId, dispatcher, progressListener, clock);
     }
 
     @Override
     public StreamingChangeEventSource<${connectorName}Partition, ${connectorName}OffsetContext> getStreamingChangeEventSource() {
-        return new ${connectorName}StreamingChangeEventSource(config, dataCollectionId, dispatcher, errorHandler);
+        return new ${connectorName}StreamingChangeEventSource(config, dataCollectionId, dispatcher, errorHandler, clock);
     }
 }

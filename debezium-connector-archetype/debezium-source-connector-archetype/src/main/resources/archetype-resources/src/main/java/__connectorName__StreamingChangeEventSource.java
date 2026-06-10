@@ -12,6 +12,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.util.Clock;
 
 /**
  * Streams ongoing changes from the ${connectorName} data source.
@@ -30,15 +31,18 @@ class ${connectorName}StreamingChangeEventSource
     private final ${connectorName}DataCollectionId dataCollectionId;
     private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
     private final ErrorHandler errorHandler;
+    private final Clock clock;
 
     ${connectorName}StreamingChangeEventSource(${connectorName}ConnectorConfig config,
                                                ${connectorName}DataCollectionId dataCollectionId,
                                                EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
-                                               ErrorHandler errorHandler) {
+                                               ErrorHandler errorHandler,
+                                               Clock clock) {
         this.config = config;
         this.dataCollectionId = dataCollectionId;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
+        this.clock = clock;
     }
 
     @Override
@@ -50,9 +54,11 @@ class ${connectorName}StreamingChangeEventSource
 
         while (context.isRunning()) {
             // TODO: poll or watch the data source for new change events.
-            // For each new event, call:
+            // For each event, determine the operation and read the raw row, then dispatch:
+            //   Envelope.Operation operation = ...; // CREATE, UPDATE, or DELETE
             //   dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
-            //       new ${connectorName}ChangeRecordEmitter(partition, offsetContext, operation, key, value));
+            //       new ${connectorName}ChangeRecordEmitter(
+            //           partition, offsetContext, operation, rawRowData, clock, config));
             // Then advance offsetContext.setPosition(...) and persist it.
 
             // Remove this placeholder sleep once real polling is implemented.
