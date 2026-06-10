@@ -1535,7 +1535,7 @@ The following example shows a JSON request for registering an instance of the {p
 {
     "name": "inventory-connector",  // <1>
     "config": {
-        "connector.class" : "io.debezium.connector.yashandb.YashanDBConnector",  // <2>
+        "connector.class" : "io.debezium.connector.yashandb.YashanDbConnector",  // <2>
         "database.hostname" : "<YASHANDB_IP_ADDRESS>",  // <3>
         "database.port" : "1688",  // <4>
         "database.user" : "username",  // <5>
@@ -1626,7 +1626,7 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-connector-class]]<<yashandb-property-connector-class, `+connector.class+`>>
 |No default
-|The name of the Java class for the connector. Always use a value of `io.debezium.connector.yashandb.YashanDBConnector` for the YashanDB connector.
+|The name of the Java class for the connector. Always use a value of `io.debezium.connector.yashandb.YashanDbConnector` for the YashanDB connector.
 
 |[[yashandb-property-tasks-max]]<<yashandb-property-tasks-max, `+tasks.max+`>>
 |`1`
@@ -1837,98 +1837,38 @@ For each converter that you configure for a connector, you must also add a `.typ
 
 |===
 
-[[yashandb-properties-database-history]]
-=== {prodname} YashanDB connector database schema history configuration properties
+[id="debezium-yashandb-connector-database-history-configuration-properties"]
+==== {prodname} YashanDB connector database schema history configuration properties
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-{prodname} provides a set of `schema.history.internal.*` properties that control how the connector interacts with the schema history topic.
-
-The following table describes the `schema.history.internal` properties for configuring the {prodname} YashanDB connector.
-
-.Connector database schema history configuration properties
-[cols="33%a,17%a,50%a",options="header"]
-|===
-|Property
-|Default
-|Description
-
-|[[yashandb-property-database-history-kafka-topic]]<<yashandb-property-database-history-kafka-topic, `+schema.history.internal.kafka.topic+`>>
-|No default
-|The full name of the Kafka topic where the connector stores the database schema history.
-
-|[[yashandb-property-database-history-kafka-bootstrap-servers]]<<yashandb-property-database-history-kafka-bootstrap-servers, `+schema.history.internal.kafka.bootstrap.servers+`>>
-|No default
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. This connection is used for retrieving the database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
-
-|[[yashandb-property-database-history-kafka-recovery-poll-interval-ms]]<<yashandb-property-database-history-kafka-recovery-poll-interval-ms, `+schema.history.internal.kafka.recovery.poll.interval.ms+`>>
-|`100`
-|An integer value that specifies the maximum number of milliseconds the connector should wait during startup/recovery while polling for persisted data.
-
-|[[yashandb-property-database-history-kafka-query-timeout-ms]]<<yashandb-property-database-history-kafka-query-timeout-ms, `+schema.history.internal.kafka.query.timeout.ms+`>>
-|`3000`
-|An integer value that specifies the maximum number of milliseconds the connector should wait while fetching cluster information using Kafka admin client.
-
-|[[yashandb-property-database-history-kafka-create-timeout-ms]]<<yashandb-property-database-history-kafka-create-timeout-ms, `+schema.history.internal.kafka.create.timeout.ms+`>>
-|`30000`
-|An integer value that specifies the maximum number of milliseconds the connector should wait while creating the Kafka history topic using Kafka admin client.
-
-|[[yashandb-property-database-history-kafka-recovery-attempts]]<<yashandb-property-database-history-kafka-recovery-attempts, `+schema.history.internal.kafka.recovery.attempts+`>>
-|`100`
-|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error.
-
-|[[yashandb-property-database-history-skip-unparseable-ddl]]<<yashandb-property-database-history-skip-unparseable-ddl, `+schema.history.internal.skip.unparseable.ddl+`>>
-|`false`
-|A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue. The safe default is `false`. Skipping should be used only with care as it can lead to data loss or mangling when the log is being processed.
-
-|[[yashandb-property-database-history-store-only-captured-tables-ddl]]<<yashandb-property-database-history-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
-|`false`
-|A Boolean value that specifies whether the connector records schema structures from all tables in a schema or database, or only from tables that are designated for capture.
-
-`false` (default):: During a database snapshot, the connector records the schema data for all non-system tables in the database, including tables that are not designated for capture. It's best to retain the default setting.
-
-`true`:: During a database snapshot, the connector records the table schemas only for the tables from which {prodname} captures change events.
-
-|[[yashandb-property-database-history-store-only-captured-databases-ddl]]<<yashandb-property-database-history-store-only-captured-databases-ddl, `+schema.history.internal.store.only.captured.databases.ddl+`>>
-|`false`
-|A Boolean value that specifies whether the connector records schema structures from all logical databases in the database instance.
-
-`true`:: The connector records schema structures only for tables in the logical database and schema from which {prodname} captures change events.
-
-`false`:: The connector records schema structures for all logical databases.
-
-|===
-
-[[yashandb-connector-pass-through-properties]]
-=== Pass-through YashanDB connector configuration properties
+[id="debezium-yashandb-connector-pass-through-properties"]
+==== Pass-through YashanDB connector configuration properties
 
 The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
 For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
-[[yashandb-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients]]
-==== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
+[id="debezium-yashandb-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
 
-
-[[yashandb-connector-pass-through-kafka-signals-configuration-properties]]
-==== Pass-through properties for configuring how the YashanDB connector interacts with the Kafka signaling topic
+[id="debezium-yashandb-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the YashanDB connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-
-[[yashandb-connector-pass-through-signals-kafka-consumer-client-configuration-properties]]
-==== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+[id="debezium-yashandb-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
 
-
-[[yashandb-connector-pass-through-kafka-sink-notification-configuration-properties]]
-==== Pass-through properties for configuring the YashanDB connector sink notification channel
+[id="debezium-yashandb-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the YashanDB connector sink notification channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
-
-[[yashandb-connector-pass-through-database-driver-configuration-properties]]
-==== {prodname} connector pass-through database driver configuration properties
+[id="debezium-yashandb-connector-pass-through-database-driver-configuration-properties"]
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
