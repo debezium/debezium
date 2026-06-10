@@ -173,13 +173,13 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
                 final Map<String, Object> newValues = new HashMap<>();
                 for (Field field : originalSchema.fields()) {
                     if (field.name().equals(FieldName.BEFORE) || field.name().equals(FieldName.AFTER)) {
-                        var transformed = transform(field.schema(), (Struct) originalValue.get(field));
+                        var transformed = transform(field.schema(), (Struct) originalValue.getWithoutDefault(field.name()));
                         schema.field(field.name(), transformed.schema());
                         newValues.put(field.name(), transformed.value());
                     }
                     else {
                         schema.field(field.name(), field.schema());
-                        newValues.put(field.name(), originalValue.get(field));
+                        newValues.put(field.name(), originalValue.getWithoutDefault(field.name()));
                     }
                 }
 
@@ -216,7 +216,7 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
         if (originalValue != null) {
             value = new Struct(valueSchema);
             for (Field field : originalSchema.fields()) {
-                value.put(transformFieldName(field.name()), originalValue.get(field));
+                value.put(transformFieldName(field.name()), originalValue.getWithoutDefault(field.name()));
             }
         }
 
