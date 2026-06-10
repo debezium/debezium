@@ -26,11 +26,44 @@ jobs:
     steps:
       - uses: debezium/dbz/.github/actions/check-dco@main
 
+  # Checks that the PR does not contain forbidden files or directories
+  check-forbidden-files:
+    name: "Check for forbidden files"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+
+      - name: Check for forbidden directories
+        id: forbidden
+        uses: step-security/file-existence-action@v3
+        with:
+          files: ".claude, .vscode"
+
+      - name: Reject forbidden files
+        if: steps.forbidden.outputs.files_exists == 'true'
+        run: |
+          echo "::error::PR contains .claude/ or .vscode/ directories which are not permitted."
+          exit 1
+
+  # Checks for malicious or adversarial Unicode patterns in changed files
+  check-unicode-safety:
+    name: "Check for malicious Unicode"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Unicode safety check
+        uses: dcondrey/unicode-safety-check@v2
+
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
   # that subsequent jobs can use to determine whether a particular job should be skipped or included.
   file_changes:
     name: "Detect repository changes"
-    needs: [ check-signed-commits ]
+    needs: [ check-signed-commits, check-forbidden-files, check-unicode-safety ]
     runs-on: ubuntu-latest
     outputs:
       ai-changed: ${{ steps.changed-files-ai.outputs.any_changed }}
