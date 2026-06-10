@@ -8,45 +8,43 @@ package ${package};
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.data.Envelope;
-import io.debezium.pipeline.spi.ChangeRecordEmitter;
-import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.data.Envelope.Operation;
+import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.schema.DataCollectionSchema;
+import io.debezium.util.Clock;
 
 /**
- * Emits a pre-parsed row as a Debezium change record.
+ * Converts a raw source row into a Debezium change record and emits it to the framework.
  *
- * <p>Holds the key and value {@link Struct}s built by the snapshot or streaming source
- * and hands them to the framework's {@link io.debezium.pipeline.EventDispatcher} via the
- * {@link ChangeRecordEmitter.Receiver} callback.
+ * <p>The snapshot and streaming sources construct one instance per changed row and pass it to
+ * {@link io.debezium.pipeline.EventDispatcher#dispatchDataChangeEvent}. The dispatcher then calls
+ * {@link #emitChangeRecords}, supplying the registered {@link DataCollectionSchema} for the
+ * collection. This class uses that schema together with the raw source data to build the key,
+ * value, and envelope {@link Struct}s before forwarding them to the receiver.
+ *
+ * <p>Replace {@code Object} with your connector's native row or document type, and fill in each
+ * {@code emitXxxRecord} method to produce the correct Structs for your data source.
  */
-class ${connectorName}ChangeRecordEmitter implements ChangeRecordEmitter<${connectorName}Partition> {
+class ${connectorName}ChangeRecordEmitter
+        extends AbstractChangeRecordEmitter<${connectorName}Partition, DataCollectionSchema> {
 
-    private final ${connectorName}Partition partition;
-    private final ${connectorName}OffsetContext offsetContext;
     private final Envelope.Operation operation;
-    private final Struct keyStruct;
-    private final Struct afterStruct;
+
+    /**
+     * Raw data from the source for this row. Replace {@code Object} with your connector's
+     * native row type, for example a JDBC {@code ResultSet} row or a document map.
+     */
+    private final Object rowData;
 
     ${connectorName}ChangeRecordEmitter(${connectorName}Partition partition,
                                         ${connectorName}OffsetContext offsetContext,
                                         Envelope.Operation operation,
-                                        Struct keyStruct,
-                                        Struct afterStruct) {
-        this.partition = partition;
-        this.offsetContext = offsetContext;
+                                        Object rowData,
+                                        Clock clock,
+                                        ${connectorName}ConnectorConfig config) {
+        super(partition, offsetContext, clock, config);
         this.operation = operation;
-        this.keyStruct = keyStruct;
-        this.afterStruct = afterStruct;
-    }
-
-    @Override
-    public ${connectorName}Partition getPartition() {
-        return partition;
-    }
-
-    @Override
-    public OffsetContext getOffset() {
-        return offsetContext;
+        this.rowData = rowData;
     }
 
     @Override
@@ -55,18 +53,38 @@ class ${connectorName}ChangeRecordEmitter implements ChangeRecordEmitter<${conne
     }
 
     @Override
-    public void emitChangeRecords(DataCollectionSchema schema, Receiver<${connectorName}Partition> receiver)
+    protected void emitReadRecord(Receiver<${connectorName}Partition> receiver, DataCollectionSchema schema)
             throws InterruptedException {
-        // Build the full envelope struct and pass it to the receiver.
-        // The envelope schema comes from the collection schema registered for this data collection.
-        var envelopeSchema = schema.getEnvelopeSchema();
-        Struct envelope;
-        switch (operation) {
-            case READ, CREATE -> envelope = envelopeSchema.create(afterStruct, offsetContext.getSourceInfo(), null);
-            case UPDATE -> envelope = envelopeSchema.update(null, afterStruct, offsetContext.getSourceInfo(), null);
-            case DELETE -> envelope = envelopeSchema.delete(keyStruct, offsetContext.getSourceInfo(), null);
-            default -> throw new IllegalArgumentException("Unsupported operation: " + operation);
-        }
-        receiver.changeRecord(partition, schema, operation, keyStruct, envelope, offsetContext, null);
+        // Build the key Struct from rowData. schema.keySchema() gives the Connect key schema.
+        // If you need a richer value schema, cast schema to your connector-specific subtype.
+        Struct key = new Struct(schema.keySchema());
+        // TODO: populate key fields, e.g. key.put("my_id", extractId(rowData));
+
+        Struct value = null;
+        // TODO: build value Struct from rowData using the collection's value schema.
+
+        Struct envelope = schema.getEnvelopeSchema().read(value, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), schema, Operation.READ, key, envelope, getOffset(), null);
+    }
+
+    @Override
+    protected void emitCreateRecord(Receiver<${connectorName}Partition> receiver, DataCollectionSchema schema)
+            throws InterruptedException {
+        // TODO: same structure as emitReadRecord; use schema.getEnvelopeSchema().create(value, ...).
+        throw new UnsupportedOperationException("TODO: implement CREATE emission");
+    }
+
+    @Override
+    protected void emitUpdateRecord(Receiver<${connectorName}Partition> receiver, DataCollectionSchema schema)
+            throws InterruptedException {
+        // TODO: UPDATE may supply both old and new row state. Use schema.getEnvelopeSchema().update(before, after, ...).
+        throw new UnsupportedOperationException("TODO: implement UPDATE emission");
+    }
+
+    @Override
+    protected void emitDeleteRecord(Receiver<${connectorName}Partition> receiver, DataCollectionSchema schema)
+            throws InterruptedException {
+        // TODO: use schema.getEnvelopeSchema().delete(before, ...).
+        throw new UnsupportedOperationException("TODO: implement DELETE emission");
     }
 }

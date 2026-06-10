@@ -30,6 +30,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Clock;
 
 /**
  * The Kafka Connect source task for ${connectorName}.
@@ -129,7 +130,7 @@ public class ${connectorName}ConnectorTask
                         ${connectorName}SourceConnector.class,
                         connectorConfig,
                         new ${connectorName}ChangeEventSourceFactory(
-                                connectorConfig, dataCollectionId, dispatcher, errorHandler),
+                                connectorConfig, dataCollectionId, dispatcher, errorHandler, Clock.system()),
                         new DefaultChangeEventSourceMetricsFactory<>(),
                         dispatcher,
                         schema,
