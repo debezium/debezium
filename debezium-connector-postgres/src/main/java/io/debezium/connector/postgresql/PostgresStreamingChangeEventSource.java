@@ -355,13 +355,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             maybeWarnAboutGrowingWalBacklog(true);
         }
         else if (message.getOperation() == Operation.MESSAGE) {
-            final LogicalDecodingMessage logicalMessage = (LogicalDecodingMessage) message;
-            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, logicalMessage.getCommitTime(), toLong(logicalMessage.getTransactionId()),
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                     getSlotXmin(),
-                    logicalMessage.getOperation());
+                    message.getOperation());
 
             // non-transactional message that will not be followed by a COMMIT message
-            if (!logicalMessage.isTransactional()) {
+            if (message.isLastEventForLsn()) {
                 commitMessage(partition, offsetContext, lsn);
             }
 
@@ -369,7 +368,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     partition,
                     offsetContext,
                     clock.currentTimeAsInstant().toEpochMilli(),
-                    logicalMessage);
+                    (LogicalDecodingMessage) message);
 
             maybeWarnAboutGrowingWalBacklog(true);
         }
