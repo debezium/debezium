@@ -100,9 +100,9 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             }
 
             // Initialize RocksDb
-            final var options = createOptions();
-            db = RocksDB.open(options, dbPath.toString());
-            options.close();
+            try (var options = createOptions()) {
+                db = RocksDB.open(options, dbPath.toString());
+            }
             LOGGER.info("RocksDb table mapping storage initialized at: {} (type: {})", dbPath, storageTypeName);
         }
         catch (IOException | RocksDBException e) {
@@ -166,9 +166,9 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
         deleteDirectory(dbPath.toFile());
         try {
             Files.createDirectories(dbPath);
-            final var options = createOptions();
-            db = RocksDB.open(options, dbPath.toString());
-            options.close();
+            try (var options = createOptions()) {
+                db = RocksDB.open(options, dbPath.toString());
+            }
         }
         catch (IOException | RocksDBException e) {
             throw new DebeziumException("Failed to clear RocksDb storage", e);
@@ -327,11 +327,11 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
      * Uses custom serialization for Table and TableSchema objects to avoid NotSerializableException.
      */
     private byte[] serializeValue(V value) throws IOException {
-        if (value instanceof io.debezium.relational.Table) {
-            return serializeTable((io.debezium.relational.Table) value);
+        if (value instanceof io.debezium.relational.Table table) {
+            return serializeTable(table);
         }
-        if (value instanceof io.debezium.relational.TableSchema) {
-            return serializeTableSchema((io.debezium.relational.TableSchema) value);
+        if (value instanceof io.debezium.relational.TableSchema tableSchema) {
+            return serializeTableSchema(tableSchema);
         }
         // Fallback to ObjectOutputStream for other types
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();

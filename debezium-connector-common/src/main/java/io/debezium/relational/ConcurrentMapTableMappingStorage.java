@@ -77,6 +77,11 @@ public class ConcurrentMapTableMappingStorage<V> implements TableMappingStorage<
         storage.forEach(action);
     }
 
+    @Override
+    public void close() {
+        // No-op: in-memory storage doesn't require cleanup
+    }
+
     /**
      * Normalizes the table identifier based on case sensitivity settings.
      *
