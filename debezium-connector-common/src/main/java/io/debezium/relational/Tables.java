@@ -7,7 +7,6 @@ package io.debezium.relational;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -279,14 +278,19 @@ public final class Tables {
 
     public void removeTablesForDatabase(String catalogName, String schemaName) {
         lock.write(() -> {
-            tablesByTableId.entrySet().removeIf(tableIdTableEntry -> {
-                TableId tableId = tableIdTableEntry.getKey();
+            // Collect table IDs to remove
+            final List<TableId> toRemove = new java.util.ArrayList<>();
+            tablesByTableId.storage.forEach((tableId, table) -> {
+                final boolean equalCatalog = Objects.equals(catalogName, tableId.catalog());
+                final boolean equalSchema = Objects.equals(schemaName, tableId.schema());
 
-                boolean equalCatalog = Objects.equals(catalogName, tableId.catalog());
-                boolean equalSchema = Objects.equals(schemaName, tableId.schema());
-
-                return equalSchema && equalCatalog;
+                if (equalSchema && equalCatalog) {
+                    toRemove.add(tableId);
+                }
             });
+
+            // Remove collected table IDs from storage
+            toRemove.forEach(tablesByTableId.storage::remove);
         });
     }
 
@@ -505,13 +509,6 @@ public final class Tables {
 
         void forEach(BiConsumer<? super TableId, ? super Table> action) {
             storage.forEach(action);
-        }
-
-        Set<Map.Entry<TableId, Table>> entrySet() {
-            // Create a temporary map for compatibility with existing code
-            Map<TableId, Table> tempMap = new java.util.HashMap<>();
-            storage.forEach(tempMap::put);
-            return tempMap.entrySet();
         }
 
         void clear() {

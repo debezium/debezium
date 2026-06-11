@@ -18,7 +18,7 @@ import io.debezium.common.annotation.Incubating;
  * @author Debezium Authors
  */
 @Incubating
-public interface TableMappingStorage<V> {
+public interface TableMappingStorage<V> extends AutoCloseable {
     String STORAGE_PREFIX = "memory.management.";
     String STORAGE_PREFIX_SCHEMAS = STORAGE_PREFIX + "schemas.";
     String STORAGE_PREFIX_TABLES = STORAGE_PREFIX + "tables.";
@@ -115,4 +115,13 @@ public interface TableMappingStorage<V> {
      * @param action the action to be performed for each entry
      */
     void forEach(BiConsumer<? super TableId, ? super V> action);
+
+    /**
+     * Closes this storage and releases any system resources associated with it.
+     * If the storage is already closed then invoking this method has no effect.
+     *
+     * @throws Exception if this resource cannot be closed
+     */
+    @Override
+    void close() throws Exception;
 }

@@ -66,25 +66,15 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     @Override
     public void close() {
-        // Close schema storage if it's AutoCloseable
-        if (schemasByTableId.storage instanceof AutoCloseable) {
-            try {
-                ((AutoCloseable) schemasByTableId.storage).close();
-            }
-            catch (Exception e) {
-                LOG.warn("Failed to close schema storage", e);
-            }
-        }
+        // Close schema storage
+        schemasByTableId.close();
 
-        // Close table storage if it's AutoCloseable
-        TableMappingStorage<Table> tableStorage = tables.getStorage();
-        if (tableStorage instanceof AutoCloseable) {
-            try {
-                ((AutoCloseable) tableStorage).close();
-            }
-            catch (Exception e) {
-                LOG.warn("Failed to close table storage", e);
-            }
+        // Close table storage
+        try {
+            tables.getStorage().close();
+        }
+        catch (Exception e) {
+            LOG.warn("Failed to close table storage", e);
         }
     }
 
@@ -221,6 +211,15 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         public TableSchema put(TableId tableId, TableSchema updated) {
             return storage.put(tableId, updated);
+        }
+
+        public void close() {
+            try {
+                storage.close();
+            }
+            catch (Exception e) {
+                LOG.warn("Failed to close schema storage", e);
+            }
         }
     }
 
