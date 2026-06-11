@@ -652,7 +652,7 @@ public abstract class CommonConnectorConfig {
     public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 8))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(CommonConnectorConfig::validateTopicName)
