@@ -1136,7 +1136,8 @@ a|_n/a_
 [id="vitess-temporal-types"]
 === Temporal types
 
-Excluding the `TIMESTAMP` data type, Vitess temporal types depend on the value of the xref:vitess-property-time-precision-mode[`time.precision.mode`] connector configuration property.
+Vitess temporal types depend on the value of the xref:vitess-property-time-precision-mode[`time.precision.mode`] connector configuration property.
+The `TIMESTAMP` data type is an exception: it is always represented as `io.debezium.time.ZonedTimestamp`, unless `time.precision.mode` is set to `connect`.
 
 .Temporal values without time zones
 The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:27".
@@ -1218,6 +1219,12 @@ Represents the time value in microseconds since midnight and does not include ti
 |`INT64`
 a|`org.apache.kafka.connect.data.Timestamp` +
 Represents the number of milliseconds elapsed since the UNIX epoch, and does not include time zone information.
+
+|`TIMESTAMP[(M)]`
+|`INT64`
+a|`org.apache.kafka.connect.data.Timestamp` +
+Represents the number of milliseconds elapsed since the UNIX epoch.
+MySQL converts `TIMESTAMP` values to UTC when they are written.
 
 |===
 
