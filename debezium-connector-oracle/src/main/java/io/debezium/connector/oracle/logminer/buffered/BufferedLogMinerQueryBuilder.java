@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -153,18 +152,6 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
             return isCteQuery ? CTE_OPERATION_CODES_LOB : OPERATION_CODES_LOB;
         }
 
-        final List<Integer> nonLobOperations = isCteQuery ? CTE_OPERATION_CODES_NO_LOB : OPERATION_CODES_NO_LOB;
-
-        if (connectorConfig.isLegacyLogMinerHeapTransactionStartBehaviorEnabled()) {
-            // The legacy behavior skipped START events as a performance optimization to avoid adding
-            // extra objects to the transaction cache. Without these, the username and client id
-            // filter options and source information block fields won't work in some corner cases if
-            // the transaction start is in a prior archive log.
-            final List<Integer> operationCodes = new ArrayList<>(nonLobOperations);
-            operationCodes.removeIf(operationCode -> operationCode == 6);
-            return operationCodes;
-        }
-
-        return nonLobOperations;
+        return isCteQuery ? CTE_OPERATION_CODES_NO_LOB : OPERATION_CODES_NO_LOB;
     }
 }

@@ -108,9 +108,9 @@ public class LogMinerQueryBuilderTest {
     }
 
     @Test
-    @FixFor("DBZ-8884")
-    public void testLegacyTransactionStartBufferingBehavior() {
-        assertQuery(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START, false).build());
+    @FixFor("debezium/dbz#1663")
+    public void testDeferredTransactionStartBufferingBehavior() {
+        assertQuery(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, false).build());
     }
 
     @Test
@@ -272,9 +272,7 @@ public class LogMinerQueryBuilderTest {
 
         final String codes = config.isLobEnabled()
                 ? "1,2,3,6,7,9,10,11,27,29,34,36,68,70,71,91,92,93,255"
-                : config.isLegacyLogMinerHeapTransactionStartBehaviorEnabled()
-                        ? "1,2,3,7,27,34,36,255"
-                        : "1,2,3,6,7,27,34,36,255";
+                : "1,2,3,6,7,27,34,36,255";
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";

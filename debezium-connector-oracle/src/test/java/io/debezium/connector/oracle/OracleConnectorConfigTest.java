@@ -390,4 +390,72 @@ public class OracleConnectorConfigTest {
         final Configuration config = Configuration.create().with(SIGNAL_DATA_COLLECTION, "db.schema.table").build();
         assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
     }
+
+    @Test
+    public void shouldFailValidationWhenDeferredTransactionStartEnabledWithLob() {
+        List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
+        final Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isFalse();
+    }
+
+    @Test
+    public void shouldPassValidationWhenDeferredTransactionStartEnabledWithoutLob() {
+        List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
+        final Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
+                .with(OracleConnectorConfig.LOB_ENABLED, false)
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+    }
+
+    @Test
+    public void shouldDisableDeferredTransactionStartWithUnbufferedAdapter() {
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer_unbuffered")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.isDeferredLogMinerTransactionStartBehaviorEnabled()).isFalse();
+    }
+
+    @Test
+    public void shouldResolveDeferredTransactionStartViaDeprecatedAlias() {
+        List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, OracleConnectorConfig.LogMiningBufferType.MEMORY)
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.isDeferredLogMinerTransactionStartBehaviorEnabled()).isTrue();
+    }
+
+    @Test
+    public void shouldReturnDefaultDeferredTransactionRetention() {
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningDeferredTransactionRetention()).isEqualTo(Duration.ofHours(24));
+    }
+
+    @Test
+    public void shouldReturnCustomDeferredTransactionRetention() {
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, 3_600_000L)
+                .build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningDeferredTransactionRetention()).isEqualTo(Duration.ofHours(1));
+    }
 }
