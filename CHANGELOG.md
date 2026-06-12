@@ -3,6 +3,89 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.0.Beta2
+June 12nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Beta2)
+
+### New features since 3.6.0.Beta1
+
+* Support MySQL GTID tags [DBZ-8323] [debezium/dbz#1200](https://github.com/debezium/dbz/issues/1200)
+* Support for collection.fields.additional.error.on.missing in MongoEventRouter [DBZ-8854] [debezium/dbz#1342](https://github.com/debezium/dbz/issues/1342)
+* Upgrade Apicurio to version 3.2.5 [DBZ-9538] [debezium/dbz#1409](https://github.com/debezium/dbz/issues/1409)
+* Start & Stop API for the Quarkus Runtime Extension [debezium/dbz#1662](https://github.com/debezium/dbz/issues/1662)
+* Deploy OpenTelemetry Collector in Platform Helm Chart [debezium/dbz#1897](https://github.com/debezium/dbz/issues/1897)
+* Customizable zero-date fallback value (per type) for MySQL/MariaDB connectors [debezium/dbz#1912](https://github.com/debezium/dbz/issues/1912)
+* Provide the default value(if available) for the fields in schema descriptor response [debezium/dbz#1941](https://github.com/debezium/dbz/issues/1941)
+* Debezium CLI [debezium/dbz#1955](https://github.com/debezium/dbz/issues/1955)
+* Spanner UUID Support [debezium/dbz#1980](https://github.com/debezium/dbz/issues/1980)
+* Debezium Extensions for Quarkus: filter on column changes - Single Event Capturing [debezium/dbz#1081](https://github.com/debezium/dbz/issues/1081)
+* Debezium Extensions for Quarkus: filter on column changes - Batch Events Capturing [debezium/dbz#1991](https://github.com/debezium/dbz/issues/1991)
+* Add support for extra volumes and volume mounts in the Debezium Platform chart [debezium/dbz#1994](https://github.com/debezium/dbz/issues/1994)
+* Support for multiengine Quarkus heartbeat event [debezium/dbz#2006](https://github.com/debezium/dbz/issues/2006)
+* Add retry/back-off to XStream attach retry loop [debezium/dbz#2031](https://github.com/debezium/dbz/issues/2031)
+* Improve the dark mode in debezium platfrom UI [debezium/dbz#2037](https://github.com/debezium/dbz/issues/2037)
+* Use the "default" value passed in the fields to populate the same in UI [debezium/dbz#2038](https://github.com/debezium/dbz/issues/2038)
+* Make connection field value as a clickable link in the source/sink view mode [debezium/dbz#2044](https://github.com/debezium/dbz/issues/2044)
+* Oracle RAC: PRIVATE redo thread logs collected but not validated, can cause LogFileNotFoundException [debezium/dbz#2049](https://github.com/debezium/dbz/issues/2049)
+* Add ORA-25303 to allowed retriable exceptions [debezium/dbz#2057](https://github.com/debezium/dbz/issues/2057)
+
+
+### Breaking changes since 3.6.0.Beta1
+
+None
+
+
+### Fixes since 3.6.0.Beta1
+
+* MariaDB failover restart can trigger "Encountered change event ... whose schema isn't known to this connector" despite non-empty schema history [debezium/dbz#1672](https://github.com/debezium/dbz/issues/1672)
+* OpenLogReplicator (OLR) streaming may skip all events when resuming from checkpoint without index [debezium/dbz#1756](https://github.com/debezium/dbz/issues/1756)
+* in debezium-connector-ibmi, incremental snapshot is not resumed after a restart [debezium/dbz#1861](https://github.com/debezium/dbz/issues/1861)
+* Credential leakage in logs — sensitive config values logged in plaintext [debezium/dbz#1869](https://github.com/debezium/dbz/issues/1869)
+* MongoDB connector failing with array.encoding = document [debezium/dbz#1901](https://github.com/debezium/dbz/issues/1901)
+* Negative timestamp in Postgres not being handled correctly during snapshot [debezium/dbz#1916](https://github.com/debezium/dbz/issues/1916)
+* impossible to route default `Capturing` destination for batch processing [debezium/dbz#1943](https://github.com/debezium/dbz/issues/1943)
+* Memory leak in SpannerBaseSourceTask - full SourceRecords retained until offset commit [debezium/dbz#1992](https://github.com/debezium/dbz/issues/1992)
+* Spanner connector resolves partition offsets one-by-one without timeout protection on batch path [debezium/dbz#1993](https://github.com/debezium/dbz/issues/1993)
+* Possible regression in binlog snaphost consistency [debezium/dbz#1995](https://github.com/debezium/dbz/issues/1995)
+* Cassandra fails to start with a template NullPointerException [debezium/dbz#1996](https://github.com/debezium/dbz/issues/1996)
+* CockroachDB connector deduplicates events by unqualified table name, colliding across schemas [debezium/dbz#1998](https://github.com/debezium/dbz/issues/1998)
+* CockroachDB connector should default enriched_properties to source and treat the value as a passthrough [debezium/dbz#1999](https://github.com/debezium/dbz/issues/1999)
+* CockroachDB connector accepts envelope values it cannot parse (wrapped, bare) [debezium/dbz#2000](https://github.com/debezium/dbz/issues/2000)
+* CockroachDBEndToEndIT passes without verifying end-to-end delivery [debezium/dbz#2001](https://github.com/debezium/dbz/issues/2001)
+* Transactional pg_logical_emit_message() events are emitted twice after connector restart [debezium/dbz#2004](https://github.com/debezium/dbz/issues/2004)
+* Oracle STORE-syntax DDL fails to parse due to quoted segment name [debezium/dbz#2005](https://github.com/debezium/dbz/issues/2005)
+* QuantileMeter spawns unnecessary background threads for percentile computation [debezium/dbz#2010](https://github.com/debezium/dbz/issues/2010)
+* Connection creation fails with HTTP 400 when using SQS connection type [debezium/dbz#2011](https://github.com/debezium/dbz/issues/2011)
+* The official website link for the YashanDB Connector is incorrect. [debezium/dbz#2021](https://github.com/debezium/dbz/issues/2021)
+* About YashanDB connector release doc  database version err [debezium/dbz#2029](https://github.com/debezium/dbz/issues/2029)
+* KafkaSchemaHistory recovery race (subscribe vs assign) [debezium/dbz#2032](https://github.com/debezium/dbz/issues/2032)
+* Metric tests fail randomly [debezium/dbz#2033](https://github.com/debezium/dbz/issues/2033)
+* Failure on mismatched scale in default value [debezium/dbz#2042](https://github.com/debezium/dbz/issues/2042)
+* BinlogZeroDateFallbackConverterIT fails [debezium/dbz#2048](https://github.com/debezium/dbz/issues/2048)
+* FieldNameTransformation replaces null values with defaults [debezium/dbz#2051](https://github.com/debezium/dbz/issues/2051)
+* Vitess connector fails on keyspaces/tables whose names are not bare MySQL identifiers (e.g. contain hyphens) [debezium/dbz#2054](https://github.com/debezium/dbz/issues/2054)
+* PostgreSQL:Subsequent DML event is lost after connector restart when transaction contains a transactional logical message [debezium/dbz#2058](https://github.com/debezium/dbz/issues/2058)
+
+
+### Other changes since 3.6.0.Beta1
+
+* Update the Reactflow to latest xyzflow [DBZ-9635] [debezium/dbz#1424](https://github.com/debezium/dbz/issues/1424)
+* Update Debezium Server et all to Quarks 3.27.3 [debezium/dbz#1753](https://github.com/debezium/dbz/issues/1753)
+* Add retro-compatibility for datasource configuration [debezium/dbz#1936](https://github.com/debezium/dbz/issues/1936)
+* Align Quarkus version for Operator, Debezium Server, Platform and Extensions in Debezium to `3.33.1.1` [debezium/dbz#1951](https://github.com/debezium/dbz/issues/1951)
+* setup Debezium CLI project with Picocli and jbang [debezium/dbz#1956](https://github.com/debezium/dbz/issues/1956)
+* update hibernate to `7.2.6.Final` [debezium/dbz#1964](https://github.com/debezium/dbz/issues/1964)
+* Keep order of events in batch processing [debezium/dbz#1984](https://github.com/debezium/dbz/issues/1984)
+* Avoid Overriding Configuration with Agroal [debezium/dbz#1985](https://github.com/debezium/dbz/issues/1985)
+* Disable compatibility mode [debezium/dbz#1986](https://github.com/debezium/dbz/issues/1986)
+* Add new Debezium Services as reflective class in EngineProcessor [debezium/dbz#1997](https://github.com/debezium/dbz/issues/1997)
+* Support for engine filtering and multi connector engine [debezium/dbz#2007](https://github.com/debezium/dbz/issues/2007)
+* Add cypress based e2e tests for missing user flows [debezium/dbz#2016](https://github.com/debezium/dbz/issues/2016)
+* Refactor YashanDB connector to clean up and align unused SourceInfo fields and event examples [debezium/dbz#2017](https://github.com/debezium/dbz/issues/2017)
+* Intermittent test failures on CI: AbstractIncrementalSnapshotTest::consumeMixedWithIncrementalSnapshot (Postgres) [DBZ-4223] [debezium/dbz#523](https://github.com/debezium/dbz/issues/523)
+* Document `collection.field.additional.missing` and `table.field.additional.missing` SMT properties [debezium/dbz#2039](https://github.com/debezium/dbz/issues/2039)
+
+
+
 ## 3.6.0.Beta1
 May 29th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Beta1)
 

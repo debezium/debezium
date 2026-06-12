@@ -246,7 +246,12 @@ class GitHubIssue {
 
     def getType() {
         try {
-            IssueType.valueOf(labels.find({ it.startsWith(LABEL_ISSUE_TYPE) })[5..-1])
+            def typeLabel = labels.find({ it.startsWith(LABEL_ISSUE_TYPE) })
+            if (!typeLabel) {
+                println "No type label for $url"
+                return null
+            }
+            IssueType.valueOf(typeLabel[5..-1])
         }
         catch (e) {
             throw new Exception("Error while getting issue type for ${this.url}", e)
@@ -332,8 +337,10 @@ def getProjectIssuesForIteration(iteration) {
 
         def json = slurper.parseText(body)
         if (json.errors) {
-            System.err.println("Failed to parse GraphQL response with errors:")
+            System.err.println("Failed to parse GraphQL (list issues) response with errors:")
             json.errors.each { System.err.println(" - ${it.message}") }
+            System.err.println(body)
+            System.err.println(payload)
             System.exit(4)
         }
 
@@ -549,12 +556,14 @@ def setNewIteration() {
     allIssuesToUpdate.entrySet().toList().collate(10).each { issuesToUpdate -> 
         def updateQuery = new StringBuilder(modifyOperationPre)
 
+        def anythingToUpdate = false
         issuesToUpdate.each { entry ->
             issue = entry.key
             iterationFieldName = entry.value
             if (!allIssues && (issue.status == 'Done' || issue.status == 'Released')) {
                 return
             }
+            anythingToUpdate = true
             def itemNo = issue.number
             def itemId = issue.itemId
             def fieldId = availableIterations[iterationFieldName].id
@@ -579,6 +588,9 @@ def setNewIteration() {
         }
         updateQuery << '}'
 
+        if (!anythingToUpdate) {
+            return
+        }
         def client = new OkHttpClient()
         def slurper = new JsonSlurper()
         def variables = [
@@ -605,8 +617,10 @@ def setNewIteration() {
 
         def json = slurper.parseText(body)
         if (json.errors) {
-            System.err.println("Failed to parse GraphQL response with errors:")
+            System.err.println("Failed to parse GraphQL (set iteration) response with errors:")
             json.errors.each { System.err.println(" - ${it.message}") }
+            System.err.println(body)
+            System.err.println(payload)
             System.exit(4)
         }
     }
@@ -687,8 +701,10 @@ def setStatusToReleasedInIteration() {
 
     def json = slurper.parseText(body)
     if (json.errors) {
-        System.err.println("Failed to parse GraphQL response with errors:")
+        System.err.println("Failed to parse GraphQL (set status) response with errors:")
         json.errors.each { System.err.println(" - ${it.message}") }
+        System.err.println(body)
+        System.err.println(payload)
         System.exit(4)
     }
 }
