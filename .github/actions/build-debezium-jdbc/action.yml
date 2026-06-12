@@ -13,6 +13,10 @@ inputs:
     description: "Test tags to run"
     required: false
     default: "it-sqlserver,e2e-sqlserver,it-postgresql,e2e-postgresql,it-mysql,e2e-mysql"
+  sink-framework:
+    description: "Enables usage of the new shared sink framework logic"
+    required: false
+    default: 'false'
   shell:
     description: "The shell to use"
     required: false
@@ -33,6 +37,7 @@ runs:
         ./mvnw clean install -B -pl debezium-connector-jdbc -am
         -Passembly
         -Dtest.tags=${{ inputs.tags }}
+        -Denable.sces=${{ inputs.sink-framework }}
         -Dcheckstyle.skip=true
         -Dformat.skip=true
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

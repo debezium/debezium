@@ -79,6 +79,42 @@ public interface SinkConnectorConfig {
         }
     }
 
+    /**
+     * Different modes for how keyed messages are batched.
+     */
+    enum KeyedMessageBatchMode implements EnumeratedValue {
+        /**
+         * All events are preserved and passed through without deduplication.
+         * Batches are split at duplicate-key boundaries.
+         */
+        PASSTHROUGH("passthrough"),
+
+        /**
+         * Records with the same key are deduplicated within a batch (last-write-wins).
+         */
+        DEDUPLICATION("deduplication");
+
+        private final String mode;
+
+        KeyedMessageBatchMode(String mode) {
+            this.mode = mode;
+        }
+
+        public static KeyedMessageBatchMode parse(String value) {
+            for (KeyedMessageBatchMode option : KeyedMessageBatchMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return KeyedMessageBatchMode.DEDUPLICATION;
+        }
+
+        @Override
+        public String getValue() {
+            return mode;
+        }
+    }
+
     String COLLECTION_NAME_FORMAT = "collection.name.format";
     String DEPRECATED_TABLE_NAME_FORMAT = "table.name.format";
     Field COLLECTION_NAME_FORMAT_FIELD = Field.create(COLLECTION_NAME_FORMAT)
@@ -166,6 +202,17 @@ public interface SinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
+    String KEYED_MESSAGE_BATCH_MODE = "keyed.message.batch.mode";
+    Field KEYED_MESSAGE_BATCH_MODE_FIELD = Field.create(KEYED_MESSAGE_BATCH_MODE)
+            .withDisplayName("Keyed message batch mode")
+            .withEnum(KeyedMessageBatchMode.class, KeyedMessageBatchMode.DEDUPLICATION)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Controls how keyed records are batched. "
+                    + "'deduplication' (default) deduplicates records by key within a batch (last-write-wins). "
+                    + "'passthrough' preserves all events and splits batches at duplicate-key boundaries.");
+
     String PRIMARY_KEY_FIELDS = "primary.key.fields";
     Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
             .withDisplayName("Comma-separated list of primary key field names")
@@ -186,7 +233,19 @@ public interface SinkConnectorConfig {
             .withDefault(".*CloudEvents\\.Envelope$")
             .withDescription("Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.");
 
+    String ENABLE_SHARED_CHANGE_EVENT_SINK = "enable.sces";
+    Field ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD = Field.createInternal(ENABLE_SHARED_CHANGE_EVENT_SINK)
+            .withDisplayName("Specifies whether to enable the new shared sink connector framework (sces) logic.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 0))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Enables usage of the new shared sink connector framework logic.");
+
     String getCollectionNameFormat();
+
+    KeyedMessageBatchMode getKeyedMessageBatchMode();
 
     PrimaryKeyMode getPrimaryKeyMode();
 

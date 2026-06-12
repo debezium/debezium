@@ -32,7 +32,6 @@ import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 
@@ -46,7 +45,6 @@ public class TestInfrastructureHelper {
         POSTGRES,
         MYSQL,
         SQLSERVER,
-        MONGODB,
         ORACLE,
         MARIADB,
         NONE,
@@ -96,14 +94,6 @@ public class TestInfrastructureHelper {
             .withEnv("MARIADB_ROOT_PASSWORD", "debezium")
             .withNetworkAliases("mariadb");
 
-    private static final MongoDbReplicaSet MONGODB_REPLICA = MongoDbReplicaSet.replicaSet()
-            .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
-            .name("rs0")
-            .memberCount(1)
-            .network(NETWORK)
-            .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
-            .build();
-
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
@@ -135,7 +125,6 @@ public class TestInfrastructureHelper {
         final Startable dbStartable = switch (database) {
             case POSTGRES -> POSTGRES_CONTAINER;
             case MYSQL -> MYSQL_CONTAINER;
-            case MONGODB -> MONGODB_REPLICA;
             case SQLSERVER -> SQL_SERVER_CONTAINER;
             case ORACLE -> ORACLE_CONTAINER;
             case MARIADB -> MARIADB_CONTAINER;
@@ -162,7 +151,7 @@ public class TestInfrastructureHelper {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA,
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER,
                 MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
@@ -189,7 +178,7 @@ public class TestInfrastructureHelper {
                 .until(() -> !TestInfrastructureHelper.getDebeziumContainer().isRunning());
     }
 
-    public static void setupDebeziumContainer(String connectorVersion, String restExtensionClasses, String debeziumContainerImageVersion) {
+    public static void setupDebeziumContainer(String connectorVersion, String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
             waitForDebeziumContainerIsStopped();
@@ -211,9 +200,6 @@ public class TestInfrastructureHelper {
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
-        if (null != restExtensionClasses && !restExtensionClasses.isEmpty()) {
-            DEBEZIUM_CONTAINER.withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses);
-        }
     }
 
     public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
@@ -226,7 +212,7 @@ public class TestInfrastructureHelper {
                 "-N", "-C");
     }
 
-    public static void defaultDebeziumContainer(String debeziumContainerImageVersion) {
+    public static DebeziumContainer defaultDebeziumContainer(String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
             waitForDebeziumContainerIsStopped();
@@ -246,6 +232,7 @@ public class TestInfrastructureHelper {
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
+        return DEBEZIUM_CONTAINER;
     }
 
     public static DebeziumContainer getDebeziumContainer() {

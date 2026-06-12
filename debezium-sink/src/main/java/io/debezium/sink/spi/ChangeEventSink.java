@@ -6,11 +6,13 @@
 package io.debezium.sink.spi;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.batch.Batch;
 
 /**
  * A change event sink that consumes events from one or more Kafka topics.
@@ -25,8 +27,9 @@ public interface ChangeEventSink extends AutoCloseable {
      *
      * @param records the sink records, never {@code null}
      */
-    void execute(Collection<SinkRecord> records);
+    List<Batch> put(Collection<SinkRecord> records);
 
     CollectionId getCollectionId(String collectionName);
 
+    List<Batch> forcePoll();
 }
