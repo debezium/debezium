@@ -716,16 +716,29 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field SIGNAL_DATA_COLLECTION = CommonConnectorConfig.SIGNAL_DATA_COLLECTION
             .withValidation(OracleConnectorConfig::validateSignalDataCollection);
 
-    public static final Field LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START = Field.createInternal("log.mining.buffer.memory.legacy.transaction.start")
-            .withDisplayName("Use legacy transaction start behavior")
+    public static final Field LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START = Field.create("log.mining.buffer.deferred.transaction.start")
+            .withDisplayName("Use deferred transaction start behavior")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
-            .withValidation(OracleConnectorConfig::validateIncludeTransactionStartEvents)
-            .withDescription("Controls whether transaction start events are buffered when using the heap/memory buffer type. " +
-                    "true: transaction start events are not buffered; " +
-                    "false: (the default) transaction start events are buffered");
+            .withValidation(OracleConnectorConfig::validateDeferredTransactionStart)
+            .withDescription("Controls whether transaction start events are deferred when using buffered LogMiner. " +
+                    "When enabled, transaction start events are stored in a lightweight metadata map. " +
+                    "Transactions are only promoted to the transaction cache when a DML event is observed. " +
+                    "The mining window is not pinned by transactions, allowing a block-by-block sliding window.")
+            .withDeprecatedAliases("log.mining.buffer.memory.legacy.transaction.start");
+
+    public static final Field LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS = Field.create("log.mining.buffer.deferred.transaction.retention.ms")
+            .withDisplayName("Deferred transaction retention")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(TimeUnit.HOURS.toMillis(24))
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("Duration in milliseconds to retain deferred transaction metadata for transactions that never " +
+                    "emit a DML event. By default, deferred transaction metadata is retained for 24 hours. " +
+                    "This is independent of log.mining.transaction.retention.ms which governs cached transactions with events.");
 
     public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
             .withDisplayName("Use legacy decimal handling strategy")
@@ -863,7 +876,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_CLIENTID_INCLUDE_LIST,
                     LOG_MINING_CLIENTID_EXCLUDE_LIST,
                     LOG_MINING_RESUME_POSITION_INTERVAL_MS,
-                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
+                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START,
+                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS,
                     LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_READONLY_HOSTNAME,
                     LEGACY_DECIMAL_HANDLING_STRATEGY,
@@ -951,6 +965,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningBufferTrackUsername;
     private final boolean logMiningBufferTrackCommitTimestamp;
     private final boolean logMiningBufferTrackStartTimestamp;
+    private final boolean logMiningDeferredTransactionStart;
+    private final Duration logMiningDeferredTransactionRetention;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -1041,6 +1057,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferTrackUsername = config.getBoolean(LOG_MINING_BUFFER_TRACK_USERNAME);
         this.logMiningBufferTrackCommitTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP);
         this.logMiningBufferTrackStartTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_START_TIMESTAMP);
+        this.logMiningDeferredTransactionStart = config.getBoolean(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
+        this.logMiningDeferredTransactionRetention = Duration.ofMillis(config.getLong(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS));
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -2147,15 +2165,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * Whether legacy LogMiner heap transaction start event non-buffering is enabled
+     * Whether deferred LogMiner transaction start behavior is enabled.
+     * When enabled, transactions are stored in a lightweight metadata map until a DML event is observed.
      */
-    public boolean isLegacyLogMinerHeapTransactionStartBehaviorEnabled() {
-        if (LogMiningBufferType.MEMORY.equals(getLogMiningBufferType())) {
-            // This only applies when using the heap buffer type
-            // Other buffer types always included the transaction start events regardless
-            return getConfig().getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
+    public boolean isDeferredLogMinerTransactionStartBehaviorEnabled() {
+        if (ConnectorAdapter.LOG_MINER.equals(getConnectorAdapter())) {
+            return logMiningDeferredTransactionStart;
         }
         return false;
+    }
+
+    /**
+     * @return the duration for which deferred transaction metadata is retained for transactions that never emit events.
+     */
+    public Duration getLogMiningDeferredTransactionRetention() {
+        return logMiningDeferredTransactionRetention;
     }
 
     /**
@@ -2442,13 +2466,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    public static int validateIncludeTransactionStartEvents(Configuration config, Field field, ValidationOutput problems) {
-        final boolean includeTransactionStarts = config.getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
-        if (includeTransactionStarts && isBufferedLogMiner(config)) {
-            final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-            if (!LogMiningBufferType.MEMORY.equals(bufferType)) {
-                LOGGER.warn("'{}' only applies to buffered LogMiner with buffer type 'memory', setting will be ignored.",
-                        LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START.name());
+    public static int validateDeferredTransactionStart(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START)) {
+            if (config.getBoolean(LOB_ENABLED)) {
+                problems.accept(field, true, String.format(
+                        "The configuration property '%s' cannot be enabled when '%s' is set to true.",
+                        field.name(), LOB_ENABLED.name()));
+                return 1;
             }
         }
         return 0;

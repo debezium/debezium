@@ -1199,6 +1199,9 @@ The default buffer type is configured using `memory`.
 Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
 If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
 
+When you set xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] to `true`, the connector retains lightweight metadata for transactions that emit only a `START` event until a DML event promotes the transaction into the main cache.
+To limit how long the connector retains metadata for transactions that never emit DML, set xref:oracle-property-log-mining-buffer-deferred-transaction-retention-ms[`log.mining.buffer.deferred.transaction.retention.ms`].
+
 ifdef::community[]
 [[oracle-event-buffering-infinispan]]
 ==== Infinispan
@@ -4616,6 +4619,13 @@ The degree of latency depends on how frequently the database is configured to ar
 |The number of milliseconds the connector will sleep in between polling to determine if the starting system change number is in the archive logs.
 If `log.mining.archive.log.only.mode` is not enabled, this setting is not used.
 
+|[[oracle-property-log-mining-buffer-deferred-transaction-start]]<<oracle-property-log-mining-buffer-deferred-transaction-start, `log.mining.buffer.deferred.transaction.start`>>
+|`false`
+|Boolean value that specifies whether the connector defers creating buffered LogMiner transactions until the first DML or DDL event is observed.
+When set to `true`, the connector stores only lightweight transaction metadata after a `START` event and promotes the transaction into the main cache only after the first data-bearing event arrives.
+
+This option cannot be enabled when xref:oracle-property-lob-enabled[`lob.enabled`] is set to `true`.
+
 |[[oracle-property-log-mining-transaction-retention-ms]]<<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>>
 |`0`
 |Positive integer value that specifies the number of milliseconds to retain long running transactions between redo log switches.
@@ -4625,6 +4635,14 @@ By default, the LogMiner adapter maintains an in-memory buffer of all running tr
 Because all of the DML operations that are part of a transaction are buffered until a commit or rollback is detected,
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
+
+|[[oracle-property-log-mining-buffer-deferred-transaction-retention-ms]]<<oracle-property-log-mining-buffer-deferred-transaction-retention-ms, `log.mining.buffer.deferred.transaction.retention.ms`>>
+|`86400000`
+|Positive integer value that specifies the number of milliseconds to retain deferred transaction metadata for buffered LogMiner transactions that emit a `START` event but do not yet emit DML.
+When set to `0`, the connector retains the deferred metadata until a commit or rollback is detected.
+
+Use this setting with deferred transaction start behavior to bound the amount of memory used by transactions that never progress beyond `START`.
+This setting does not affect transactions that have already been promoted into the main transaction cache.
 
 ifdef::community[]
 |[[oracle-property-log-mining-window-max-ms]]<<oracle-property-log-mining-window-max-ms, `log.mining.window.max.ms`>>

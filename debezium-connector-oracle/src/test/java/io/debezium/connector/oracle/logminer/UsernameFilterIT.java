@@ -19,6 +19,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -33,6 +34,8 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Integration tests for various LogMiner username include/exclude list scenarios.
@@ -291,6 +294,71 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz8884");
+        }
+    }
+
+    @Test
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Deferred transaction start only applies to buffered mode")
+    public void shouldIncludeEventsByUsernameFilterWithDeferredTransactionStart() throws Exception {
+        final LogInterceptor processorLogging = TestHelper.getAbstractEventProcessorLogInterceptor();
+        processorLogging.setLoggerLevel(AbstractLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+        TestHelper.dropTable(connection, "dbz9998");
+        TestHelper.dropTable(connection, "dbz9999");
+        try {
+            connection.execute("CREATE TABLE dbz9998 (id number(9,0), data varchar2(50), primary key(id))");
+            connection.execute("CREATE TABLE dbz9999 (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz9998");
+            TestHelper.streamTable(connection, "dbz9999");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9999")
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOB_ENABLED, false)
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                    // This test expects the filtering to occur in the connector, not the query
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final int batchesBeforeTransactionStart = processorLogging.getLogEntriesThatContainsMessage("Processed in ").size();
+
+            // Start the transaction on a table that is not captured and wait for the connector to complete
+            // a mining iteration. This ensures the START event is mined before the captured table DML occurs.
+            connection.executeWithoutCommitting("INSERT INTO dbz9998 (id,data) values (0,'seed')");
+
+            Awaitility.await()
+                    .atMost(Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout()))
+                    .until(() -> processorLogging.getLogEntriesThatContainsMessage("Processed in ").size() > batchesBeforeTransactionStart);
+
+            for (int i = 1; i <= 10; i++) {
+                connection.executeWithoutCommitting(String.format(
+                        "INSERT INTO dbz9999 (id,data) values (%d,'Test%d')", i, i));
+            }
+
+            connection.execute("COMMIT");
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(10);
+
+            List<SourceRecord> records = sourceRecords.recordsForTopic(topicName("DEBEZIUM", "DBZ9999"));
+            assertThat(records).hasSize(10);
+
+            for (int i = 1; i <= 10; i++) {
+                SourceRecord record = records.get(i - 1);
+                assertThat(getAfter(record).get("ID")).isEqualTo(i);
+                assertThat(getAfter(record).get("DATA")).isEqualTo(String.format("Test%d", i));
+                assertThat(getSource(record).get("user_name")).isEqualTo("DEBEZIUM");
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz9998");
+            TestHelper.dropTable(connection, "dbz9999");
         }
     }
 
