@@ -88,7 +88,7 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
                                 transformedRecord -> {
-                                    if (transformedRecord != null && watcher.engine().isConsuming()) {
+                                    if (transformedRecord != null && watcher.engine().isPolling()) {
                                         consumer.accept(transformedRecord);
                                     }
                                 }, watcher)));
