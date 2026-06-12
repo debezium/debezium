@@ -52,7 +52,7 @@ public abstract class AbstractRecordProcessor<R> implements RecordProcessor<R> {
 
             @Override
             public void process(List<R> records) throws InterruptedException {
-                if (watcher.engine().isConsuming()) {
+                if (watcher.engine().isPolling()) {
                     LOGGER.trace("Calling user handler.");
                     userHandler.handleBatch(records, committer);
                 }
@@ -93,7 +93,7 @@ public abstract class AbstractRecordProcessor<R> implements RecordProcessor<R> {
 
             @Override
             public void process(R record) throws InterruptedException {
-                if (!watcher.engine().isConsuming()) {
+                if (!watcher.engine().isPolling()) {
                     return;
                 }
                 consumer.accept(record);

@@ -48,7 +48,7 @@ public class ShutdownConsumer<R> implements Consumer<R> {
     @Override
     public void accept(R record) {
         before.evaluate(record);
-        if (watcher.engine().isConsuming()) {
+        if (watcher.engine().isPolling()) {
             consumer.accept(record);
         }
         after.evaluate(record);
