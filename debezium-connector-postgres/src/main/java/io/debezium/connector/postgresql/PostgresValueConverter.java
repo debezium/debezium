@@ -835,11 +835,35 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     @Override
-    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        if (data instanceof PGobject) {
-            // returned by the JDBC driver
-            data = ((PGobject) data).getValue();
+    protected ValueConverter convertBits(Column column, Field fieldDefn) {
+        // For VARBIT(1), we need special handling because JDBC returns PGobject
+        if (column.nativeType() == PgOid.VARBIT && column.length() == 1) {
+            return data -> {
+                if (data instanceof PGobject pgObject) {
+                    data = pgObject.getValue();
+                }
+                if (data instanceof String str) {
+                    return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
+                }
+                return convertBit(column, fieldDefn, data);
+            };
         }
+        return super.convertBits(column, fieldDefn);
+    }
+
+    @Override
+    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
+        if (data instanceof PGobject pgObject) {
+            // returned by the JDBC driver
+            data = pgObject.getValue();
+        }
+
+        // For VARBIT(1), convert to boolean just like BIT(1)
+        if (column.length() == 1 && data instanceof String str) {
+            // Return boolean directly
+            return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+
         if (data instanceof String) {
             String dataStr = (String) data;
             BitSet bitset = new BitSet(dataStr.length());
