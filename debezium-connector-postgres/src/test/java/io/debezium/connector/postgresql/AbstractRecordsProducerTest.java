@@ -120,8 +120,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             "'-infinity'::TIMESTAMPTZ," +
             "'21016-11-04T13:51:30.000000+07:00'::TIMESTAMPTZ"
             + ")";
-    protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
-            "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
+    protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv1, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
+            "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '1'::bit varying(1), '00'::bit(2), '000000110000001000000001'::bit(24),"
+            +
             "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64), '101', '111011010001000110000001000000001')";
     protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba, bytea_array) VALUES (E'\\\\001\\\\002\\\\003'::bytea, array[E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea])";
     protected static final String INSERT_CIRCLE_STMT = "INSERT INTO circle_table (ccircle) VALUES ('((10, 20),10)'::circle)";
@@ -634,6 +635,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                 new SchemaAndValueField("bol2", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
                 new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[]{ 3 }),
                 new SchemaAndValueField("bs7", Bits.builder(7).optional().build(), new byte[]{ 64 }),
+                new SchemaAndValueField("bv1", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
                 new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[]{}),
                 new SchemaAndValueField("bv2", Bits.builder(24).optional().build(), new byte[]{ 1, 2, 3 }),
                 new SchemaAndValueField("bvl", Bits.builder(64).optional().build(), new byte[]{ 0, 0, 0, 0, 0, 0, 0, -128 }), // Long.MAX_VALUE + 1
