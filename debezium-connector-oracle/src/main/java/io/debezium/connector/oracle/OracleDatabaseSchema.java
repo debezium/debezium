@@ -205,7 +205,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Returns whether the specified value is the unavailable value placeholder for an LOB column.
      */
     public boolean isColumnUnavailableValuePlaceholder(Column column, Object value) {
-        if (isClobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column)) {
+        if (isClobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column) || isJsonColumn(column)) {
             return valueConverters.getUnavailableValuePlaceholderString().equals(value);
         }
         else if (isBlobColumn(column)) {
@@ -218,14 +218,14 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Return whether the column is replaced by the {@code unavailable.value.placeholder}.
      */
     public static boolean isNullReplacedByUnavailableValue(Column column) {
-        return isLobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column);
+        return isLobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column) || isJsonColumn(column);
     }
 
     /**
      * Return whether the provided relational column model is a LOB data type.
      */
     private static boolean isLobColumn(Column column) {
-        return isClobColumn(column) || isBlobColumn(column);
+        return isClobColumn(column) || isBlobColumn(column) || isJsonColumn(column);
     }
 
     /**
@@ -259,6 +259,10 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return column.jdbcType() == OracleTypes.NVARCHAR && column.length() > 2000;
     }
 
+    private static boolean isJsonColumn(Column column) {
+        return "JSON".equals(column.typeName());
+    }
+
     private void buildAndRegisterTableObjectIdReferences(Table table) {
         final Attribute attribute = table.attributeWithName(ATTRIBUTE_OBJECT_ID);
         if (attribute != null) {
@@ -286,6 +290,11 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         lobColumns.add(column);
                     }
                     break;
+                default: {
+                    if (isJsonColumn(column)) {
+                        lobColumns.add(column);
+                    }
+                }
             }
         }
         if (!lobColumns.isEmpty()) {

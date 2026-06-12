@@ -56,6 +56,7 @@ import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
+import oracle.sql.json.OracleJsonObject;
 
 public class OracleConnection extends JdbcConnection {
 
@@ -633,6 +634,14 @@ public class OracleConnection extends JdbcConnection {
         // "NULLS LAST is the default for ascending order"
         // https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/SELECT.html
         return Optional.of(true);
+    }
+
+    @Override
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        if (column.jdbcType() == OracleTypes.JSON || "JSON".equals(column.typeName())) {
+            return rs.getObject(columnIndex, OracleJsonObject.class);
+        }
+        return super.getColumnValue(rs, columnIndex, column, table);
     }
 
     @Override

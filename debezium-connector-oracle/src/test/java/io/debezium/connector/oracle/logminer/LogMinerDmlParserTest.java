@@ -753,4 +753,42 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[1]).isEqualTo(
                 "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
     }
+
+    @Test
+    @FixFor("dbz#1884")
+    public void shouldParseJsonAsBinaryInsert() throws Exception {
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ1872"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("EXTRA_DATA").create())
+                .create();
+
+        String sql = "insert into \"DEBEZIUM\".\"DBZ1872\"(\"ID\",\"EXTRA_DATA\") values ('1',/* JSON */ EMPTY_BLOB());";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("/* JSON */ EMPTY_BLOB()");
+    }
+
+    @Test
+    @FixFor("dbz#1884")
+    public void shouldParseJsonAsBinaryUpdate() throws Exception {
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ1872"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("EXTRA_DATA").create())
+                .create();
+
+        String sql = "update \"DEBEZIUM\".\"DBZ1872\" set \"EXTRA_DATA\" = /* JSON */ HEXTORAW('ff4a5a012106020009001700009ce600050000046e616d650361676584020201000800140b53616c6c79204669656c6421c14e') where \"ID\" = '1';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1])
+                .isEqualTo("/* JSON */ HEXTORAW('ff4a5a012106020009001700009ce600050000046e616d650361676584020201000800140b53616c6c79204669656c6421c14e')");
+    }
 }
