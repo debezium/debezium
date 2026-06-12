@@ -373,6 +373,101 @@ class DebeziumDescriptorSchemaCreatorTest {
                 .contains("Default: 42");
     }
 
+     @Test
+    void shouldExposeDefaultValueAsField() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("port.field")
+                        .withDisplayName("Port")
+                        .withType(ConfigDef.Type.INT)
+                        .withImportance(ConfigDef.Importance.HIGH)
+                        .withDescription("The port of the database")
+                        .withDefault(5432)
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "port.field");
+
+        assertThat(property).isNotNull();
+        assertThat(property.defaultValue()).isEqualTo("5432");
+    }
+
+    @Test
+    void shouldExposeStringDefaultValueAsField() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("mode.field")
+                        .withDisplayName("Snapshot Mode")
+                        .withType(ConfigDef.Type.STRING)
+                        .withImportance(ConfigDef.Importance.MEDIUM)
+                        .withDescription("The snapshot mode to use")
+                        .withDefault("initial")
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "mode.field");
+
+        assertThat(property).isNotNull();
+        assertThat(property.defaultValue()).isEqualTo("initial");
+    }
+
+    @Test
+    void shouldExposeNullWhenNoDefault() {
+        ComponentMetadata metadata = new ComponentMetadata() {
+            @Override
+            public ComponentDescriptor getComponentDescriptor() {
+                return new ComponentDescriptor("io.debezium.test.TestConnector", "1.0.0");
+            }
+
+            @Override
+            public Field.Set getComponentFields() {
+                Field field = Field.create("hostname.field")
+                        .withDisplayName("Hostname")
+                        .withType(ConfigDef.Type.STRING)
+                        .withImportance(ConfigDef.Importance.HIGH)
+                        .withDescription("The hostname of the database server")
+                        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0));
+
+                return Field.setOf(field);
+            }
+        };
+
+        DebeziumDescriptorSchemaCreator creator = new DebeziumDescriptorSchemaCreator(metadata, f -> true);
+
+        io.debezium.schemagenerator.model.debezium.ComponentDescriptor descriptor = creator.buildDescriptor();
+
+        Property property = findProperty(descriptor, "hostname.field");
+
+        assertThat(property).isNotNull();
+        assertThat(property.defaultValue()).isNull();
+    }
+
     @Test
     void shouldReplaceExistingDefaultText() {
         ComponentMetadata metadata = new ComponentMetadata() {
