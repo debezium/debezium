@@ -179,6 +179,18 @@ jobs:
       maven-cache-key: maven-debezium-test-push-build
       max-parallel: 1
 
+  build_archetype:
+    name: "Connector Archetypes"
+    needs: [ check_style, build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/build-debezium-archetype
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
   # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
