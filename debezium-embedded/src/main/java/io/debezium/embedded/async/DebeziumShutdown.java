@@ -53,9 +53,9 @@ public class DebeziumShutdown<R> implements Shutdown<R> {
     /**
      * Fluent builder for {@link DebeziumShutdown} instances.
      *
-     * <p>Call {@link #before()} or {@link #after()} to obtain a {@link ConsumingBuilder} that lets you
-     * choose a built-in strategy (e.g. {@link ConsumingBuilder#records(int)}) or supply a
-     * {@link ConsumingBuilder#custom(ShutdownStrategy) custom} one.
+     * <p>Call {@link #before()} or {@link #after()} to obtain a {@link ShutdownStrategyBuilder} that lets you
+     * choose a built-in strategy (e.g. {@link ShutdownStrategyBuilder#records(int)}) or supply a
+     * {@link ShutdownStrategyBuilder#custom(ShutdownStrategy) custom} one.
      *
      * @param <R> the record type produced by the engine
      */
@@ -67,10 +67,10 @@ public class DebeziumShutdown<R> implements Shutdown<R> {
         /**
          * Begins configuration of the post-consumer shutdown strategy.
          *
-         * @return a {@link ConsumingBuilder} for selecting the after-consumer strategy
+         * @return a {@link ShutdownStrategyBuilder} for selecting the after-consumer strategy
          */
-        public ConsumingBuilder<R> after() {
-            return new ConsumingBuilder<>() {
+        public ShutdownStrategyBuilder<R> after() {
+            return new ShutdownStrategyBuilder<>() {
                 @Override
                 public Builder<R> records(int number) {
                     Builder.this.after = new Builder.CountDown<>(number);
@@ -88,10 +88,10 @@ public class DebeziumShutdown<R> implements Shutdown<R> {
         /**
          * Begins configuration of the pre-consumer shutdown strategy.
          *
-         * @return a {@link ConsumingBuilder} for selecting the before-consumer strategy
+         * @return a {@link ShutdownStrategyBuilder} for selecting the before-consumer strategy
          */
-        public ConsumingBuilder<R> before() {
-            return new ConsumingBuilder<>() {
+        public ShutdownStrategyBuilder<R> before() {
+            return new ShutdownStrategyBuilder<>() {
                 @Override
                 public Builder<R> records(int number) {
                     Builder.this.before = new Builder.CountDown<>(number);
@@ -121,7 +121,7 @@ public class DebeziumShutdown<R> implements Shutdown<R> {
          *
          * @param <R> the record type produced by the engine
          */
-        public interface ConsumingBuilder<R> {
+        public interface ShutdownStrategyBuilder<R> {
 
             /**
              * Shuts down the engine after the given number of records have been evaluated.
