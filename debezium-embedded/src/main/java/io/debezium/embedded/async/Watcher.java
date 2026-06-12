@@ -38,7 +38,7 @@ public interface Watcher {
          *         source database; {@code false} if the engine is in any other state
          *         (initializing, starting tasks, stopping, stopped, etc.)
          */
-        boolean isConsuming();
+        boolean isPolling();
     }
 
 }

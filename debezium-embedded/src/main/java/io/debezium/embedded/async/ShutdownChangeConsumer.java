@@ -53,7 +53,7 @@ public class ShutdownChangeConsumer<R> implements DebeziumEngine.ChangeConsumer<
     @Override
     public void handleBatch(List<R> records, DebeziumEngine.RecordCommitter<R> committer) throws InterruptedException {
         records.forEach(before::evaluate);
-        if (watcher.engine().isConsuming()) {
+        if (watcher.engine().isPolling()) {
             consumer.handleBatch(records, committer);
         }
         records.forEach(after::evaluate);
