@@ -38,7 +38,11 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningPlatform;
+import io.debezium.connector.oracle.logminer.LogMinerPlatformStrategy;
 import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
+import io.debezium.connector.oracle.logminer.platforms.RdsLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -91,34 +95,47 @@ public class OracleConnection extends JdbcConnection {
     private static final String QUOTED_CHARACTER = "\"";
 
     private final int queryFetchSize;
+    private final LogMinerPlatformStrategy platformStrategy;
     private OracleDatabaseVersion databaseVersion;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
-        this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
+        this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit,
+                resolvePlatformStrategy(connectorConfig.getLogMiningPlatform()));
     }
 
     public OracleConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig, boolean autoCommit) {
-        this(jdbcConfig, connectorConfig.getQueryFetchSize(), autoCommit);
+        this(jdbcConfig, connectorConfig.getQueryFetchSize(), autoCommit,
+                resolvePlatformStrategy(connectorConfig.getLogMiningPlatform()));
     }
 
     @VisibleForTesting
     public OracleConnection(JdbcConfiguration config, boolean autoCommit) {
-        this(config, 10, autoCommit);
+        this(config, 10, autoCommit, new DefaultLogMinerPlatformStrategy());
     }
 
-    private OracleConnection(JdbcConfiguration config, int queryFetchSize, boolean autoCommit) {
-        this(config, resolveConnectionFactory(config), queryFetchSize, autoCommit);
+    private OracleConnection(JdbcConfiguration config, int queryFetchSize, boolean autoCommit,
+                             LogMinerPlatformStrategy platformStrategy) {
+        this(config, resolveConnectionFactory(config), queryFetchSize, autoCommit, platformStrategy);
     }
 
     @VisibleForTesting
     public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean autoCommit) {
-        this(config, connectionFactory, 10, autoCommit);
+        this(config, connectionFactory, 10, autoCommit, new DefaultLogMinerPlatformStrategy());
     }
 
-    private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize, boolean autoCommit) {
+    private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize,
+                             boolean autoCommit, LogMinerPlatformStrategy platformStrategy) {
         super(config, connectionFactory, initialOperations(autoCommit), QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
         this.queryFetchSize = queryFetchSize;
+        this.platformStrategy = platformStrategy;
+    }
+
+    private static LogMinerPlatformStrategy resolvePlatformStrategy(LogMiningPlatform platform) {
+        if (platform == LogMiningPlatform.RDS) {
+            return new RdsLogMinerPlatformStrategy();
+        }
+        return new DefaultLogMinerPlatformStrategy();
     }
 
     private static Operations initialOperations(boolean autoCommit) {
@@ -126,11 +143,28 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void setSessionToPdb(String pdbName) {
+        if (!platformStrategy.isCdbRootAccessible()) {
+            LOGGER.trace("Skipping PDB session switch on RDS deployment; operating within PDB context.");
+            return;
+        }
         setContainerAs(pdbName);
     }
 
     public void resetSessionToCdb() {
+        if (!platformStrategy.isCdbRootAccessible()) {
+            LOGGER.trace("Skipping CDB root session switch on RDS deployment; CDB$ROOT access is not permitted.");
+            return;
+        }
         setContainerAs("cdb$root");
+    }
+
+    /**
+     * Get the LogMiner platform strategy used by this connection.
+     *
+     * @return the platform strategy, never {@code null}
+     */
+    public LogMinerPlatformStrategy getPlatformStrategy() {
+        return platformStrategy;
     }
 
     private void setContainerAs(String containerName) {
@@ -259,7 +293,7 @@ public class OracleConnection extends JdbcConnection {
      * @throws IllegalStateException if the query does not return at least one row
      */
     public Scn getCurrentScn() throws SQLException {
-        return queryAndMap("SELECT CURRENT_SCN FROM V$DATABASE", (rs) -> {
+        return queryAndMap(platformStrategy.getCurrentScnQuery(), (rs) -> {
             if (rs.next()) {
                 return Scn.valueOf(rs.getString(1));
             }
@@ -513,7 +547,7 @@ public class OracleConnection extends JdbcConnection {
      */
     protected boolean isArchiveLogMode() {
         try {
-            final String mode = queryAndMap("SELECT LOG_MODE FROM V$DATABASE", rs -> rs.next() ? rs.getString(1) : "");
+            final String mode = queryAndMap(platformStrategy.getArchiveLogModeQuery(), rs -> rs.next() ? rs.getString(1) : "");
             LOGGER.debug("LOG_MODE={}", mode);
             return "ARCHIVELOG".equalsIgnoreCase(mode);
         }
@@ -815,8 +849,8 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void removeAllLogFilesFromLogMinerSession() throws SQLException {
-        final Set<String> fileNames = queryAndMap("SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS", rs -> {
-            final Set<String> results = new HashSet<>();
+        final Set<String> fileNames = queryAndMap(platformStrategy.getRegisteredLogFilesQuery(), rs -> {
+            final var results = new HashSet<String>();
             while (rs.next()) {
                 results.add(rs.getString(1));
             }
@@ -825,7 +859,7 @@ public class OracleConnection extends JdbcConnection {
 
         for (String fileName : fileNames) {
             LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
-            final String sql = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
+            final String sql = platformStrategy.getRemoveLogFileSql(fileName);
             try (CallableStatement statement = connection(false).prepareCall(sql)) {
                 statement.execute();
             }
@@ -833,7 +867,7 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public RedoThreadState getRedoThreadState() throws SQLException {
-        final String query = "SELECT * FROM V$THREAD";
+        final String query = platformStrategy.getRedoThreadStateQuery();
         try {
             return queryAndMap(query, rs -> {
                 RedoThreadState.Builder builder = RedoThreadState.builder();

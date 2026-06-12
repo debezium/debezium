@@ -117,7 +117,7 @@ public abstract class AbstractLogMinerStreamingAdapter
     }
 
     private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
-        final String query = "SELECT CURRENT_SCN FROM V$DATABASE";
+        final String query = connection.getPlatformStrategy().getCurrentScnQuery();
 
         Scn currentScn;
         do {
@@ -242,7 +242,8 @@ public abstract class AbstractLogMinerStreamingAdapter
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
-            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
+            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG,
+                    connectorConfig.getLogMiningPathToDictionary(), connection.getPlatformStrategy())) {
                 context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
                 context.startSession(Scn.NULL, Scn.NULL, false);
 

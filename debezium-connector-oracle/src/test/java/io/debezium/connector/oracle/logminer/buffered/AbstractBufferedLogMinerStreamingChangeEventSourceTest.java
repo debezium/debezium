@@ -51,6 +51,7 @@ import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -685,6 +686,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .thenThrow(new SQLException("ORA-01555 Snapshot too old", null, 1555));
         }
         Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
+        Mockito.when(connection.getPlatformStrategy()).thenReturn(new DefaultLogMinerPlatformStrategy());
         return connection;
     }
 
