@@ -11,6 +11,7 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -95,6 +96,39 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                     totalCount.incrementAndGet(), expectedValuesByTopicName.size(),
                     1, 1);
             assertRecordOffsetAndSnapshotSource(record, expected);
+        });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2025")
+    public void shouldGenerateSnapshotForVarbit1Datatype() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        TestHelper.execute(INSERT_BIN_TYPES_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig());
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        consumer.process(record -> {
+            assertReadRecord(record, schemaAndValuesByTopicName());
+            assertSourceInfo(record);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST);
+
+            Struct value = (Struct) record.value();
+            Struct after = value.getStruct(Envelope.FieldName.AFTER);
+
+            // Verify bv1 (varbit(1)) field exists and has the correct value and type
+            Boolean varbit1Value = after.getBoolean("bv1");
+            assertNotNull(varbit1Value, "varbit(1) field 'bv1' should not be NULL in snapshot");
+            assertTrue(varbit1Value, "varbit(1) field 'bv1' should be true");
+
+            // Verify bit(1) field works
+            Boolean bit1Value = after.getBoolean("bol");
+            assertNotNull(bit1Value, "bit(1) field 'bol' should not be NULL in snapshot");
+            assertFalse(bit1Value, "bit(1) field 'bol' should be false");
         });
     }
 
