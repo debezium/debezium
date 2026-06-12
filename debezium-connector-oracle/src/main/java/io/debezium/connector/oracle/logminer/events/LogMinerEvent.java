@@ -21,7 +21,7 @@ public class LogMinerEvent {
     private final EventType eventType;
     private final Scn scn;
     private final TableId tableId;
-    private final long rowId;
+    private long rowId;
     private final String rsId;
     private final long changeTime;
 
@@ -52,6 +52,10 @@ public class LogMinerEvent {
 
     public Long getRowId() {
         return rowId;
+    }
+
+    public void setRowId(long rowId) {
+        this.rowId = rowId;
     }
 
     public String getRowIdAsString() {
