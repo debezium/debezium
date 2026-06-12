@@ -461,6 +461,7 @@ Matt Hejnas
 Matt Vance
 Matteo Capitanio
 Mathieu Rozieres
+Matthias Crauwels
 Matthias Wessendorf
 Mauricio Scheffer
 Max Kaplan
@@ -664,6 +665,7 @@ Syed Muhammad Sufyian
 Sylvain Marty
 Tapani Moilanen
 Tautvydas Januskevicius
+Tayler Dunn
 Taylor Rolison
 Teo Stocco
 Théophile Helleboid
@@ -704,6 +706,7 @@ Vadzim Ramanenka
 Vaibhav Kushwaha
 Vasily Ulianko
 Vedit Firat Arig
+Vincentius Adrian
 Vincenzo Santonastaso
 Vineeth Yelagandula
 Victar Malinouski
@@ -742,6 +745,7 @@ Yannick Eisenschmidt
 yangrong688
 yangsanity
 Yashashree Chopada
+Yashi Srivastava
 Yauheni Ramanovich
 Yevhenii Lopatenko
 Yilong Chang
