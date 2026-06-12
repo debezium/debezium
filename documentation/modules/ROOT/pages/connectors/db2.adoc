@@ -2131,6 +2131,34 @@ In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effe
 .Additional resources
 * For more information about capture agent parameters, see the Db2 documentation.
 
+=== Db2 Change Table Pruning
+
+As the capture agent functions by creating sql records that represent changes in the captured tables and Debezium produces
+these as Kafka events, it is necessary to have a pruning process of the change capture tables.  In default deployments, this
+is controlled by the DB2 *Apply* agent (responsible for reading the change tables and representing them elsewhere, like Debezium),
+updating a set of prune tables that notify the *Capture* agent that the records have been reflected to the target system(s)
+and the data can be removed from the change tables, otherwise they will grow and become unmanagable or exhaust resourced.
+
+If the *Apply* agent is not needed as Debezium is handling that role, a use case that solutions often encounter, the *Apply* agent
+can be stopped - it need not use resources, but the *prune* function must be fulfilled in its absence, and the database must be
+configured such that the prune thread is able to use the tables that communicate what can be pruned.
+
+This is a summary of what needs to be in place for the prune to work in this way.  Please review the IBM documentation
+regarding the IBMSNAP control tables as official documentation for the version in use.
+
+DB2 tables - The table must exist on the IBMSNAP_REGISTER table, with its change tables properly defined and a non-null
+CD_SYNCHPOINT_OLD column.  It also needs to be present on the IBMSNAP_PRUNCNTL table, with the exact same values for the table,
+schema, with the change capture tables as well and a unique MAP_ID.  Finally, it must be present on the IBMSNAP_PRUNE_SET,
+with matching values for the APPLY_QUAL, SET_NAME, and a unique TARGET_SERVER value.  If all of these are in place, the prune
+thread will run on an interval defined by IBMSNAP_CAPPARAMS's PRUNE_INTERVAL in seconds.  If there are addititional records
+on the IBMSNAP_PRUNE_SET table for the same APPLY_QUAL and SET_NAME, but with a different TARGET_SERVER, the prune will not
+be effective, as the Capture agent will not prune the change table unless all TARGET_SERVER values have advanced in their
+SYNCHPOINT such that the older records may be removed.
+[NOTE]
+====
+Specific guidance about how to configure Db2 capture agent parameters is beyond the scope of this documentation.
+====
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-db2-connectors
 // Title: Deployment of {prodname} Db2 connectors
@@ -3386,6 +3414,38 @@ The maximum number of seconds for a streaming query to include the changes for, 
 Used to limit the size of queries when the change table is large to avoid excessive resource usage, sometimes resulting in query cancellation.
 If 0, no timespan limit will apply.
 One second is not allowed as this can result in an infinite loop.  Recommended non-zero default is 120 seconds.
+
+
+|[[db2-property-update-capture-table-prune-ind]]<<db2-property-update-capture-table-prune-ind, `update.capture.table.prune.ind`>>
+|false (disabled)
+|A switch to control if the connector instance is responsible for updating the prune table (usually
+done by IBM DB2 Apply agent) which will cause the IBM Capture agent to prune read data from the change tables.
+If true, related configuration must be specified.
+
+|[[db2-property-update-capture-table-prune-set-name]]<<db2-property-update-capture-table-prune-set-name, update.capture.table.prune.set.name>>
+| No default
+| If set to update the prune table, this will identify the prune set name that should be used when updating the table for this instance. The if prune update is enabled, the set name must be set to a non-empty string. The if prune update is disabled, the set name may not be set to a value.
+
+|[[db2-property-update-capture-table-prune-min-interval]]<<db2-property-update-capture-table-prune-min-interval, update.capture.table.prune.min.interval.ms>>
+|10000
+| The minimum number of milliseconds between the connector instance's update of the prune point for the prune set. Default is 10000 (10 seconds).
+
+|[[db2-property-update-capture-table-prune-lsn-decrement]]<<db2-property-update-capture-table-prune-lsn-decrement, update.capture.table.prune.lsn.decrement>>
+|true (enabled)
+| A switch to decrement the prune lsn/syncpoint by one to avoid allowing the last lsn processed to get pruned to avoid the risk of an unnecessary snapshot due to the last processed lsn not being present in the change table.  Only applies if prune indicator is set.
+
+|[[db2-property-update-capture-table-prune-apply-qual]]<<db2-property-update-capture-table-prune-apply-qual, update.capture.table.prune.apply.qual>>
+| No default
+| The apply_qual name that represents the apply agent (this instance) to the prune set.
+
+|[[db2-property-update-capture-table-prune-target-server]]<<db2-property-update-capture-table-prune-target-server, update.capture.table.prune.target.server>>
+| No default
+| The target_server name that represents the apply agent's target (where the data is going) for the subscription set.
+
+|[[db2-property-update-capture-table-prune-procedure-override-name]]<<db2-property-update-capture-table-prune-procedure-override-name, update.capture.table.prune.procedure.override.name>>
+| No default
+| The name of a prepared statement in the database that will be used instead of direct SQL update to allow for DBA control of the update code where needed.
+
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]
