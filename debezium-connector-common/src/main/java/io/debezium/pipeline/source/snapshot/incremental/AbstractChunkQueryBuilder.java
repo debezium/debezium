@@ -193,8 +193,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     @Override
-    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
+    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException {
+        final PreparedStatement statement = connection.readTablePreparedStatement(connectorConfig, sql,
                 OptionalLong.empty());
         if (context.isNonInitialChunk()) {
             final Object[] maximumKey = context.maximumKey().get();
@@ -202,8 +202,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             final List<Column> queryColumns = getQueryColumns(context, table);
 
             // Fill lower-bound (chunk end) and upper-bound (maximum key) placeholders
-            int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, jdbcConnection);
-            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, maximumKey, pos, jdbcConnection);
+            int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, connection);
+            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, maximumKey, pos, connection);
         }
         return statement;
     }

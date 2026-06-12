@@ -4746,6 +4746,33 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[oracle-property-incremental-snapshot-pool-release-delay-ms]]<<oracle-property-incremental-snapshot-pool-release-delay-ms, `+incremental.snapshot.pool.release.delay.ms+`>>
+|`60000` (1 minute)
+|Milliseconds to wait after the last active or pending table completes before closing the parallel snapshot connection pool.
+A new signal arriving within this window cancels the pending release, so back-to-back signal bursts reuse the same pool instead of paying open/close overhead on every signal.
+Set to `0` to release the pool as soon as no work remains.
+The setting only has an effect when `snapshot.max.threads` is greater than 1, since the parallel pool is only allocated in that mode.
+
+|[[oracle-property-incremental-snapshot-retry-max-attempts]]<<oracle-property-incremental-snapshot-retry-max-attempts, `+incremental.snapshot.retry.max.attempts+`>>
+|`5`
+|Maximum number of retry attempts for transient JDBC failures during an incremental snapshot chunk read.
+Set to `-1` to retry indefinitely.
+
+|[[oracle-property-incremental-snapshot-retry-initial-delay-ms]]<<oracle-property-incremental-snapshot-retry-initial-delay-ms, `+incremental.snapshot.retry.initial.delay.ms+`>>
+|`1000`
+|Initial wait in milliseconds before retrying a failed chunk read.
+Subsequent delays grow by `incremental.snapshot.retry.backoff.multiplier`, capped at `incremental.snapshot.retry.max.delay.ms`.
+
+|[[oracle-property-incremental-snapshot-retry-max-delay-ms]]<<oracle-property-incremental-snapshot-retry-max-delay-ms, `+incremental.snapshot.retry.max.delay.ms+`>>
+|`60000` (1 minute)
+|Maximum wait in milliseconds between retries.
+Bounds the exponential backoff that grows from `incremental.snapshot.retry.initial.delay.ms` by `incremental.snapshot.retry.backoff.multiplier`.
+
+|[[oracle-property-incremental-snapshot-retry-backoff-multiplier]]<<oracle-property-incremental-snapshot-retry-backoff-multiplier, `+incremental.snapshot.retry.backoff.multiplier+`>>
+|`2.0`
+|Multiplier applied to the previous delay on each retry.
+Must be greater than `1.0` for the delay to grow exponentially.
+
 |[[oracle-property-incremental-snapshot-watermarking-strategy]]<<oracle-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
 |Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes. +

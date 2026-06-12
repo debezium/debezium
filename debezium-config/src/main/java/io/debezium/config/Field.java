@@ -1654,6 +1654,22 @@ public final class Field {
         return 0;
     }
 
+    public static int isPositiveDouble(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        if (value == null) {
+            return 0;
+        }
+        try {
+            if (Double.parseDouble(value) > 0) {
+                return 0;
+            }
+        }
+        catch (NumberFormatException e) {
+        }
+        problems.accept(field, value, "A positive, non-zero double value is expected");
+        return 1;
+    }
+
     public static int isZoneOffset(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
         if (value == null) {
