@@ -50,8 +50,15 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
     private final ElapsedTimeStrategy lastChangeAppliedLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
     private final ElapsedTimeStrategy lastChangeRecoveredLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
 
+    private final InternerMetrics internerMetrics;
+
     public SchemaHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode) {
+        this(connectorConfig, multiPartitionMode, null);
+    }
+
+    public SchemaHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode, InternerMetrics internerMetrics) {
         super(connectorConfig, CONTEXT_NAME, multiPartitionMode);
+        this.internerMetrics = internerMetrics;
         lastChangeAppliedLogDelay.hasElapsed();
         lastChangeRecoveredLogDelay.hasElapsed();
     }
@@ -100,12 +107,18 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
     public void started() {
         status = SchemaHistoryStatus.RUNNING;
         register();
+        if (internerMetrics != null) {
+            internerMetrics.register();
+        }
     }
 
     @Override
     public void stopped() {
         status = SchemaHistoryStatus.STOPPED;
         unregister();
+        if (internerMetrics != null) {
+            internerMetrics.unregister();
+        }
     }
 
     @Override

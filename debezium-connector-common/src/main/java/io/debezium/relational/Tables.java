@@ -24,6 +24,7 @@ import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
+import io.debezium.util.Interner;
 
 /**
  * Structural definitions for a set of tables in a JDBC database.
@@ -239,7 +240,7 @@ public final class Tables {
      */
     public Table overwriteTable(Table table) {
         return lock.write(() -> {
-            TableImpl updated = new TableImpl(table);
+            TableImpl updated = Interner.intern(new TableImpl(table));
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -280,8 +281,8 @@ public final class Tables {
                 return null;
             }
             tablesByTableId.remove(existing.id());
-            TableImpl updated = new TableImpl(newTableId, existing.columns(),
-                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment(), existing.attributes());
+            TableImpl updated = Interner.intern(new TableImpl(newTableId, existing.columns(),
+                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment(), existing.attributes()));
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -305,8 +306,8 @@ public final class Tables {
             Table existing = tablesByTableId.get(tableId);
             Table updated = changer.apply(existing);
             if (updated != existing) {
-                tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
-                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment(), updated.attributes()));
+                tablesByTableId.put(tableId, Interner.intern(new TableImpl(tableId, updated.columns(),
+                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment(), updated.attributes())));
             }
             changes.add(tableId);
             return existing;
