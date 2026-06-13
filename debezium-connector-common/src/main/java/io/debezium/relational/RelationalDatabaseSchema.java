@@ -9,8 +9,6 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
@@ -61,13 +59,23 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         this.columnMappers = ColumnMappers.create(config);
         this.customKeysMapper = customKeysMapper;
 
-        this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
-        this.tables = new Tables(tableIdCaseInsensitive);
+        this.schemasByTableId = new SchemasByTableId(config.createSchemaStorage(tableIdCaseInsensitive));
+        this.tables = new Tables(tableIdCaseInsensitive, config);
         this.taskContext = taskContext;
     }
 
     @Override
     public void close() {
+        // Close schema storage
+        schemasByTableId.close();
+
+        // Close table storage
+        try {
+            tables.getStorage().close();
+        }
+        catch (Exception e) {
+            LOG.warn("Failed to close table storage", e);
+        }
     }
 
     /**
@@ -103,7 +111,17 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
      */
     @Override
     public TableSchema schemaFor(TableId id) {
-        return schemasByTableId.get(id);
+        TableSchema schema = schemasByTableId.get(id);
+        // If schema not found in storage (e.g., cache-only mode), try to rebuild from Table
+        if (schema == null) {
+            Table table = tableFor(id);
+            if (table != null) {
+                // Rebuild and register the schema from the table definition
+                buildAndRegisterSchema(table);
+                schema = schemasByTableId.get(id);
+            }
+        }
+        return schema;
     }
 
     /**
@@ -173,32 +191,35 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
      */
     private static class SchemasByTableId {
 
-        private final boolean tableIdCaseInsensitive;
-        private final ConcurrentMap<TableId, TableSchema> values;
+        private final TableMappingStorage<TableSchema> storage;
 
-        SchemasByTableId(boolean tableIdCaseInsensitive) {
-            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
-            this.values = new ConcurrentHashMap<>();
+        SchemasByTableId(TableMappingStorage<TableSchema> storage) {
+            this.storage = storage;
         }
 
         public void clear() {
-            values.clear();
+            storage.clear();
         }
 
         public TableSchema remove(TableId tableId) {
-            return values.remove(toLowerCaseIfNeeded(tableId));
+            return storage.remove(tableId);
         }
 
         public TableSchema get(TableId tableId) {
-            return values.get(toLowerCaseIfNeeded(tableId));
+            return storage.get(tableId);
         }
 
         public TableSchema put(TableId tableId, TableSchema updated) {
-            return values.put(toLowerCaseIfNeeded(tableId), updated);
+            return storage.put(tableId, updated);
         }
 
-        private TableId toLowerCaseIfNeeded(TableId tableId) {
-            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        public void close() {
+            try {
+                storage.close();
+            }
+            catch (Exception e) {
+                LOG.warn("Failed to close schema storage", e);
+            }
         }
     }
 

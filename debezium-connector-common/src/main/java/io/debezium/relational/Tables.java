@@ -7,7 +7,6 @@ package io.debezium.relational;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -155,7 +154,21 @@ public final class Tables {
      */
     public Tables(boolean tableIdCaseInsensitive) {
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
-        this.tablesByTableId = new TablesById(tableIdCaseInsensitive);
+        TableMappingStorage<Table> storage = new ConcurrentMapTableMappingStorage<>();
+        storage.configure(null, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
+        this.tablesByTableId = new TablesById(storage);
+        this.changes = new TableIds(tableIdCaseInsensitive);
+    }
+
+    /**
+     * Create an empty set of definitions with connector configuration.
+     *
+     * @param tableIdCaseInsensitive - true if lookup is case insensitive (typical for MySQL on Windows)
+     * @param config - connector configuration for creating storage instances
+     */
+    public Tables(boolean tableIdCaseInsensitive, RelationalDatabaseConnectorConfig config) {
+        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.tablesByTableId = new TablesById(config.createTableStorage(tableIdCaseInsensitive));
         this.changes = new TableIds(tableIdCaseInsensitive);
     }
 
@@ -176,6 +189,16 @@ public final class Tables {
             tablesByTableId.clear();
             changes.clear();
         });
+    }
+
+    /**
+     * Get the underlying table storage for resource management.
+     * Package-private for use by RelationalDatabaseSchema.
+     *
+     * @return the table storage instance
+     */
+    TableMappingStorage<Table> getStorage() {
+        return tablesByTableId.storage;
     }
 
     @Override
@@ -255,14 +278,19 @@ public final class Tables {
 
     public void removeTablesForDatabase(String catalogName, String schemaName) {
         lock.write(() -> {
-            tablesByTableId.entrySet().removeIf(tableIdTableEntry -> {
-                TableId tableId = tableIdTableEntry.getKey();
+            // Collect table IDs to remove
+            final List<TableId> toRemove = new java.util.ArrayList<>();
+            tablesByTableId.storage.forEach((tableId, table) -> {
+                final boolean equalCatalog = Objects.equals(catalogName, tableId.catalog());
+                final boolean equalSchema = Objects.equals(schemaName, tableId.schema());
 
-                boolean equalCatalog = Objects.equals(catalogName, tableId.catalog());
-                boolean equalSchema = Objects.equals(schemaName, tableId.schema());
-
-                return equalSchema && equalCatalog;
+                if (equalSchema && equalCatalog) {
+                    toRemove.add(tableId);
+                }
             });
+
+            // Remove collected table IDs from storage
+            toRemove.forEach(tablesByTableId.storage::remove);
         });
     }
 
@@ -445,67 +473,56 @@ public final class Tables {
      */
     private static class TablesById {
 
-        private final boolean tableIdCaseInsensitive;
-        private final ConcurrentMap<TableId, Table> values;
+        private final TableMappingStorage<Table> storage;
 
-        TablesById(boolean tableIdCaseInsensitive) {
-            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
-            this.values = new ConcurrentHashMap<>();
+        TablesById(TableMappingStorage<Table> storage) {
+            this.storage = storage;
         }
 
         public Set<TableId> ids() {
-            return values.keySet();
+            return storage.keySet();
         }
 
         boolean isEmpty() {
-            return values.isEmpty();
+            return storage.isEmpty();
         }
 
         public void putAll(TablesById tablesByTableId) {
-            if (tableIdCaseInsensitive) {
-                tablesByTableId.values.entrySet()
-                        .forEach(e -> put(e.getKey().toLowercase(), e.getValue()));
-            }
-            else {
-                values.putAll(tablesByTableId.values);
-            }
+            tablesByTableId.storage.forEach((tableId, table) -> storage.put(tableId, table));
         }
 
         public Table remove(TableId tableId) {
-            return values.remove(toLowerCaseIfNeeded(tableId));
+            return storage.remove(tableId);
         }
 
         public Table get(TableId tableId) {
-            return values.get(toLowerCaseIfNeeded(tableId));
+            return storage.get(tableId);
         }
 
         public Table put(TableId tableId, Table updated) {
-            return values.put(toLowerCaseIfNeeded(tableId), updated);
+            return storage.put(tableId, updated);
         }
 
         int size() {
-            return values.size();
+            return storage.size();
         }
 
         void forEach(BiConsumer<? super TableId, ? super Table> action) {
-            values.forEach(action);
-        }
-
-        Set<Map.Entry<TableId, Table>> entrySet() {
-            return values.entrySet();
+            storage.forEach(action);
         }
 
         void clear() {
-            values.clear();
-        }
-
-        private TableId toLowerCaseIfNeeded(TableId tableId) {
-            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+            storage.clear();
         }
 
         @Override
         public int hashCode() {
-            return values.hashCode();
+            int hash = 0;
+            for (TableId key : storage.keySet()) {
+                Table value = storage.get(key);
+                hash += (key == null ? 0 : key.hashCode()) ^ (value == null ? 0 : value.hashCode());
+            }
+            return hash;
         }
 
         @Override
@@ -521,7 +538,18 @@ public final class Tables {
             }
             TablesById other = (TablesById) obj;
 
-            return values.equals(other.values);
+            if (storage.size() != other.storage.size()) {
+                return false;
+            }
+
+            for (TableId key : storage.keySet()) {
+                Table value = storage.get(key);
+                Table otherValue = other.storage.get(key);
+                if (!java.util.Objects.equals(value, otherValue)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

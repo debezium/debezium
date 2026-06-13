@@ -74,7 +74,12 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     @Override
     public void close() {
-        schemaHistory.stop();
+        try {
+            schemaHistory.stop();
+        }
+        finally {
+            super.close();
+        }
     }
 
     /**
