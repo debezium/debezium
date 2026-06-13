@@ -292,6 +292,14 @@ public class PostgresType {
             return this.elementTypeOid != 0;
         }
 
+        public int getElementTypeOid() {
+            return this.elementTypeOid;
+        }
+
+        public int getParentTypeOid() {
+            return this.parentTypeOid;
+        }
+
         public Builder enumValues(List<String> enumValues) {
             this.enumValues = enumValues;
             return this;
