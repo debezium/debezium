@@ -7,6 +7,7 @@ package io.debezium.embedded.async;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -16,6 +17,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
 
@@ -29,14 +31,13 @@ import io.debezium.engine.StopEngineException;
 public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertAsyncConsumerProcessor.class);
 
-    final DebeziumEngine.RecordCommitter committer;
-    final Consumer<R> consumer;
-    final Function<SourceRecord, R> convertor;
+    private final DebeziumEngine.RecordCommitter committer;
+    private final Function<SourceRecord, ProcessingCallables.TransformConvertConsumeRecord<R>> transformation;
 
-    ParallelSmtAndConvertAsyncConsumerProcessor(DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertAsyncConsumerProcessor(DebeziumEngine.RecordCommitter committer,
+                                                Function<SourceRecord, ProcessingCallables.TransformConvertConsumeRecord<R>> transformation) {
         this.committer = committer;
-        this.consumer = consumer;
-        this.convertor = convertor;
+        this.transformation = transformation;
     }
 
     @Override
@@ -47,7 +48,7 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
         Iterator<SourceRecord> recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
             recordFutures[i] = recordService
-                    .submit(new ProcessingCallables.TransformConvertConsumeRecord<>(recordsIterator.next(), transformations, convertor, consumer));
+                    .submit(transformation.apply(recordsIterator.next()));
         }
 
         LOGGER.trace("Waiting for the batch to finish processing.");
@@ -67,5 +68,32 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
 
         LOGGER.trace("Marking batch as finished.");
         committer.markBatchFinished();
+    }
+
+    public static <R> ParallelSmtAndConvertAsyncConsumerProcessor<R> create(DebeziumEngine.RecordCommitter<SourceRecord> committer,
+                                                                            Consumer<R> consumer,
+                                                                            Function<SourceRecord, R> convertor,
+                                                                            Watcher watcher,
+                                                                            DebeziumEngine.Shutdown<R> shutdown,
+                                                                            Runnable workflow,
+                                                                            Transformations transformations,
+                                                                            Map<String, String> configuration) {
+        if (shutdown == null) {
+            return new ParallelSmtAndConvertAsyncConsumerProcessor<>(
+                    committer,
+                    record -> new ProcessingCallables.TransformConvertConsumeRecord<>(record, transformations, convertor, consumer));
+        }
+        return new ParallelSmtAndConvertAsyncConsumerProcessor<>(
+                committer,
+                record -> new ProcessingCallables.TransformConvertConsumeRecord<>(record,
+                        transformations,
+                        convertor,
+                        new ShutdownConsumer<>(DefaultShutdownHandler.create(shutdown.before(), workflow, committer, configuration),
+                                DefaultShutdownHandler.create(shutdown.after(), workflow, committer, configuration),
+                                transformedRecord -> {
+                                    if (transformedRecord != null && watcher.engine().isPolling()) {
+                                        consumer.accept(transformedRecord);
+                                    }
+                                }, watcher)));
     }
 }
