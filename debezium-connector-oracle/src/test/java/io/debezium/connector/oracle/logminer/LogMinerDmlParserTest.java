@@ -753,4 +753,39 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[1]).isEqualTo(
                 "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
     }
+
+    @Test
+    @FixFor("DBZ-2070")
+    public void shouldEmitInsertUpdateRelaxedQuoteDetectionSingleQuotedValues() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA1").create())
+                .addColumn(Column.editor().name("DATA2").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA1\",\"DATA2\") values ('Test',''Insert1'',''Insert2'');";
+
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo("'Insert1'");
+        assertThat(entry.getNewValues()[2]).isEqualTo("'Insert2'");
+
+        sql = "update \"SCHEMA\".\"TAB\" set \"DATA1\" = ''Update1'', \"DATA2\" = ''Update2'' where \"NAME\" = 'Test' and \"DATA1\" = '''Insert1''' and \"DATA2\" = '''Insert2''';";
+
+        entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Test");
+        assertThat(entry.getOldValues()[1]).isEqualTo("'Insert1'");
+        assertThat(entry.getOldValues()[2]).isEqualTo("'Insert2'");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo("'Update1'");
+        assertThat(entry.getNewValues()[2]).isEqualTo("'Update2'");
+    }
 }
