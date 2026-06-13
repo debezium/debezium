@@ -41,7 +41,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     public static final Field SINK_DATABASE_NAME = Field.create(SINK_DATABASE)
             .withDisplayName("The sink MongoDB database name.")
             .withType(ConfigDef.Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("The name of the MongoDB database to which the connector writes to.")
@@ -50,14 +50,14 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("ColumnNamingStrategy class")
             .withType(ConfigDef.Type.CLASS)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("The fully qualified name of the class that provide the column naming strategy. It must implement the ColumnNamingStrategy interface.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .connector(
+            .group(Field.Group.CONNECTOR,
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
                     COLLECTION_NAMING_STRATEGY_FIELD,

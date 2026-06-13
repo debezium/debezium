@@ -8,6 +8,7 @@ package io.debezium.config;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 
@@ -24,19 +25,12 @@ import io.debezium.annotation.ThreadSafe;
 @Immutable
 public class ConfigDefinition {
 
-    private final String connectorName;
-    private final List<Field> type;
-    private final List<Field> connector;
-    private final List<Field> history;
-    private final List<Field> events;
+    private final String componentName;
+    private final Map<Field.Group, List<Field>> fieldsByGroup;
 
-    ConfigDefinition(String connectorName, List<Field> type, List<Field> connector, List<Field> history,
-                     List<Field> events) {
-        this.connectorName = connectorName;
-        this.type = Collections.unmodifiableList(type);
-        this.connector = Collections.unmodifiableList(connector);
-        this.history = Collections.unmodifiableList(history);
-        this.events = Collections.unmodifiableList(events);
+    ConfigDefinition(String componentName, Map<Field.Group, List<Field>> fieldsByGroup) {
+        this.componentName = componentName;
+        this.fieldsByGroup = Collections.unmodifiableMap(fieldsByGroup);
     }
 
     /**
@@ -55,53 +49,27 @@ public class ConfigDefinition {
 
     public Iterable<Field> all() {
         final List<Field> all = new ArrayList<>();
-
-        addToList(all, type);
-        addToList(all, connector);
-        addToList(all, history);
-        addToList(all, events);
-
+        for (List<Field> groupFields : fieldsByGroup.values()) {
+            all.addAll(groupFields);
+        }
         return all;
     }
 
     public ConfigDef configDef() {
         final ConfigDef config = new ConfigDef();
-        addToConfigDef(config, connectorName, type);
-        addToConfigDef(config, "Connector", connector);
-        addToConfigDef(config, "History Storage", history);
-        addToConfigDef(config, "Events", events);
+        for (Map.Entry<Field.Group, List<Field>> entry : fieldsByGroup.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                Field.group(config, entry.getKey().name(), entry.getValue().toArray(new Field[0]));
+            }
+        }
         return config;
     }
 
-    public String connectorName() {
-        return connectorName;
+    public String componentName() {
+        return componentName;
     }
 
-    public List<Field> type() {
-        return type;
-    }
-
-    public List<Field> connector() {
-        return connector;
-    }
-
-    public List<Field> history() {
-        return history;
-    }
-
-    public List<Field> events() {
-        return events;
-    }
-
-    private void addToList(List<Field> list, List<Field> fields) {
-        if (fields != null) {
-            list.addAll(fields);
-        }
-    }
-
-    private void addToConfigDef(ConfigDef configDef, String group, List<Field> fields) {
-        if (!fields.isEmpty()) {
-            Field.group(configDef, group, fields.toArray(new Field[0]));
-        }
+    public Map<Field.Group, List<Field>> fieldsByGroup() {
+        return fieldsByGroup;
     }
 }

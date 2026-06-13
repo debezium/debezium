@@ -10,17 +10,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.schemagenerator.model.debezium.ComponentDescriptor;
@@ -58,13 +58,16 @@ public class DebeziumDescriptorSchemaCreator {
 
         List<Property> properties = new ArrayList<>();
         Set<String> usedGroups = new LinkedHashSet<>();
-        StreamSupport.stream(componentMetadata.getConfigDefinition().all().spliterator(), false)
-                .map(this::buildProperty)
-                .filter(Objects::nonNull)
-                .forEach(property -> {
+        ConfigDefinition configDefinition = componentMetadata.getConfigDefinition();
+        for (Map.Entry<Field.Group, List<Field>> entry : configDefinition.fieldsByGroup().entrySet()) {
+            for (Field field : entry.getValue()) {
+                Property property = buildProperty(field);
+                if (property != null) {
                     usedGroups.add(property.display().group().toLowerCase());
                     properties.add(property);
-                });
+                }
+            }
+        }
 
         return new ComponentDescriptor(
                 componentMetadata.getComponentDescriptor().getDisplayName(),
@@ -214,6 +217,7 @@ public class DebeziumDescriptorSchemaCreator {
             case ADVANCED_HEARTBEAT -> "Heartbeat configuration";
             case CONNECTOR_ADVANCED -> "Advanced connector configuration";
             case ADVANCED -> "Advanced configuration";
+            case GENERIC -> "Generic configuration";
         };
     }
 
