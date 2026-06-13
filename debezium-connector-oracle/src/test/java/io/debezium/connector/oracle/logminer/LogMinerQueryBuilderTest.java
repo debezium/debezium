@@ -258,6 +258,7 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getBufferedQuery(OracleConnectorConfig config) {
+        final String internalEventsPredicate = " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%AAAAAAAAAAAA' AND UBABLK > 0)";
         final String operationDdlPredicate = " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
 
         String query = "SELECT " + buildSelectColumns(config) + "FROM V$LOGMNR_CONTENTS WHERE ";
@@ -278,6 +279,7 @@ public class LogMinerQueryBuilderTest {
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
+        query += config.isLobEnabled() ? internalEventsPredicate : "";
         query += config.storeOnlyCapturedTables() ? operationDdlPredicate : "";
         query += ")";
 

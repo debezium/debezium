@@ -11,6 +11,7 @@ import java.util.List;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerQueryBuilder;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.util.Strings;
 
 /**
@@ -136,12 +137,22 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         operationInClause.withValues(getOperationCodesList(isCteQuery));
         predicate.append("(").append(operationInClause.build());
 
+        // Handle INTERNAL operations that can contain ROW_IDs for INSERT/UPDATE operations with empty ROW_IDs
+        if (connectorConfig.isLobEnabled()) {
+            predicate.append(getInternalPredicate());
+        }
+
         // Handle DDL operations
         if (connectorConfig.storeOnlyCapturedTables()) {
             predicate.append(getDdlPredicate());
         }
 
         return predicate.append(")").toString();
+    }
+
+    private static String getInternalPredicate() {
+        return " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%%%s' AND UBABLK > 0)"
+                .formatted(RowIdCodec.EMPTY_ROW_ID_SUFFIX);
     }
 
     private static String getDdlPredicate() {
